@@ -9,4 +9,5 @@ coverage/
 .cursor/
 .claude/
 .codex/
+evals/runs/
 .opensky/

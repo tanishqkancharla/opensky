@@ -177,3 +177,15 @@ bun test
 `npm test` is an alias for `bun test`. `npm run build` still emits the Node-compatible `dist/` used by the published `opensky` bin.
 
 Tests use a mock `cua-driver` so they run without a desktop or TCC grants.
+
+## Evals
+
+Computer-use harness comparison (opensky vs Cua Driver vs Codex Computer Use) lives in [`evals/`](evals/). Each case claims a Cua Fleet VM, runs gpt-5.6-sol, then a judge scores the transcript.
+
+```bash
+export FLEETS_TOKEN=...
+export OPENAI_API_KEY=...
+bun run evals -- --harness opensky,cua-driver,codex
+```
+
+Codex Computer Use needs a macOS Fleet image (`CUA_EVAL_OS=macos` and `CUA_EVAL_IMAGE=...`). See [`evals/README.md`](evals/README.md).
