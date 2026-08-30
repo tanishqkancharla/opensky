@@ -3,7 +3,7 @@
 `opensky` is an open implementation of the OpenAI Computer [`@oai/sky`](https://openai.com) API. It is a **library**, an **async Node REPL**, and an **agent skill**. Under the hood it calls [Cua Driver](https://cua.ai/cua-driver) (`cua-driver call …`) instead of the proprietary `@oai/sky` host module.
 
 ```js
-import { createOpenSky } from "opensky";
+import { createOpenSky } from "opensky-cua";
 
 const opensky = createOpenSky();
 const apps = await opensky.list_apps();
