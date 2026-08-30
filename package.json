@@ -1,0 +1,40 @@
+{
+  "name": "ccua",
+  "version": "0.1.0",
+  "description": "Computer-use skill and async Node REPL that wraps Cua Driver with an @oai/sky-compatible API",
+  "type": "module",
+  "bin": {
+    "ccua": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./sky": "./dist/sky.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test --test-timeout 20000 test/*.test.js",
+    "ccua": "node dist/cli.js",
+    "prepare": "tsc"
+  },
+  "keywords": [
+    "computer-use",
+    "cua-driver",
+    "sky",
+    "repl",
+    "skill",
+    "accessibility"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2"
+  }
+}

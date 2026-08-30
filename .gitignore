@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.tgz
+.DS_Store
+coverage/
+.tmp/
+.env
+.agents/
+.cursor/
+.claude/
+.codex/
+.ccua/

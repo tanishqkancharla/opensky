@@ -1,0 +1,155 @@
+export type SkyTarget = "mac" | "win" | "linux";
+
+export type Direction =
+  | "up"
+  | "down"
+  | "left"
+  | "right"
+  | "u"
+  | "d"
+  | "l"
+  | "r";
+
+export type SelectionType = "text" | "cursor_before" | "cursor_after";
+
+export type MouseButton =
+  | "left"
+  | "right"
+  | "middle"
+  | "l"
+  | "r"
+  | "m"
+  | 0
+  | 1
+  | 2;
+
+export type PasteFormat = "text" | "md" | "html";
+
+export interface App {
+  id: string;
+  displayName?: string;
+  lastUsedDate?: string | number;
+  useCount?: number;
+  isRunning?: boolean;
+}
+
+export interface Screenshot {
+  url: string;
+}
+
+export interface AppState {
+  app: string;
+  screenshot: Screenshot | null;
+  text: string;
+}
+
+export interface Sky {
+  readonly target: SkyTarget;
+  list_apps(): Promise<App[]>;
+  get_app_state(args: {
+    app: string;
+    disableDiff?: boolean;
+  }): Promise<AppState>;
+  click(args: {
+    app: string;
+    element_index?: number;
+    x?: number;
+    y?: number;
+    mouse_button?: MouseButton;
+    click_count?: number;
+  }): Promise<void>;
+  drag(args: {
+    app: string;
+    from_x: number;
+    from_y: number;
+    to_x: number;
+    to_y: number;
+  }): Promise<void>;
+  paste(args: {
+    app: string;
+    text: string;
+    format: PasteFormat;
+  }): Promise<void>;
+  perform_secondary_action(args: {
+    app: string;
+    element_index: number;
+    action: string;
+  }): Promise<void>;
+  press_key(args: { app: string; key: string }): Promise<void>;
+  scroll(args: {
+    app: string;
+    element_index: number;
+    direction: Direction;
+    pages?: number;
+  }): Promise<void>;
+  select_text(args: {
+    app: string;
+    element_index: number;
+    text: string;
+    prefix?: string;
+    suffix?: string;
+    selection_type?: SelectionType;
+  }): Promise<void>;
+  set_value(args: {
+    app: string;
+    element_index: number;
+    value: string;
+  }): Promise<void>;
+  type_text(args: { app: string; text: string }): Promise<void>;
+}
+
+export interface DriverCall {
+  tool: string;
+  args: Record<string, unknown>;
+}
+
+export interface DriverResult {
+  structured: unknown;
+  text: string;
+  raw: unknown;
+}
+
+export interface DriverClient {
+  call(tool: string, args?: Record<string, unknown>): Promise<DriverResult>;
+  status(): Promise<{ running: boolean; text: string }>;
+  ensureDaemon(): Promise<void>;
+}
+
+export interface ResolvedApp {
+  query: string;
+  name: string;
+  bundleId?: string;
+  launchPath?: string;
+  pid: number;
+  windowId?: number;
+  snapshotId?: string;
+}
+
+export interface SnapshotElement {
+  element_index: number;
+  element_token?: string;
+  role?: string;
+  label?: string;
+  value?: string;
+  actions?: string[];
+  frame?: { x: number; y: number; w: number; h: number };
+}
+
+export interface WindowSnapshot {
+  pid: number;
+  windowId: number;
+  snapshotId?: string;
+  tree: string;
+  elements: SnapshotElement[];
+  screenshotPath: string | null;
+}
+
+export interface SkyOptions {
+  driver?: DriverClient;
+  homeDir?: string;
+  screenshotDir?: string;
+  session?: string;
+  autoLaunch?: boolean;
+  pasteModifier?: "cmd" | "ctrl";
+  target?: SkyTarget;
+}
