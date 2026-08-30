@@ -41,7 +41,7 @@ export class ReplServer {
     });
     const address = this.server.address();
     if (!address || typeof address === "string") {
-      throw new Error("Failed to bind ccua REPL server");
+      throw new Error("Failed to bind opensky REPL server");
     }
     const info = { port: address.port, pid: process.pid, host: "127.0.0.1" };
     await writeFile(this.infoPath, JSON.stringify(info, null, 2));
@@ -88,7 +88,7 @@ export class ReplServer {
   private async evaluate(raw: string): Promise<ReplEvalResponse> {
     const request = JSON.parse(raw) as ReplEvalRequest;
     try {
-      const result = await this.repl.evaluate(request.code, request.filename ?? "ccua-eval");
+      const result = await this.repl.evaluate(request.code, request.filename ?? "opensky-eval");
       return {
         ok: true,
         value: jsonSafe(result.value),
@@ -114,14 +114,14 @@ export async function evalOnServer(
     host: string;
     port: number;
   };
-  const payload = `${JSON.stringify({ code, filename: options.filename ?? "ccua-eval" })}\n`;
+  const payload = `${JSON.stringify({ code, filename: options.filename ?? "opensky-eval" })}\n`;
   return new Promise((resolve, reject) => {
     const socket = connect(info.port, info.host);
     socket.setEncoding("utf8");
     let buffer = "";
     const timer = setTimeout(() => {
       socket.destroy();
-      reject(new Error("ccua REPL server timed out"));
+      reject(new Error("opensky REPL server timed out"));
     }, 15_000);
     socket.on("connect", () => {
       socket.write(payload);

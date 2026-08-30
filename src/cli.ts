@@ -10,38 +10,38 @@ import { evalOnServer, ReplServer, serverAlive } from "./repl-server.js";
 import { createSky } from "./sky.js";
 import { installSkill, skillDestinations, uninstallSkill } from "./skill-install.js";
 
-const HELP = `ccua — async Node REPL for computer-use, backed by Cua Driver
+const HELP = `opensky — async Node REPL for computer-use, backed by Cua Driver
 
 Usage:
-  ccua                     Start an interactive async REPL with sky preloaded
-  ccua repl                Same as above
-  ccua eval <code>         Evaluate async JavaScript (top-level await)
-  ccua -e <code>           Same as eval
-  ccua run <file>          Run a .js file as an async script
-  ccua serve              Start a persistent REPL server for multi-turn eval
-  ccua stop               Stop the persistent REPL server
-  ccua doctor             Check cua-driver + ccua status
-  ccua skill install      Copy the ccua skill into agent skill directories
-  ccua skill add           Alias for skill install
-  ccua skill uninstall    Remove installed ccua skill copies
+  opensky                     Start an interactive async REPL with sky preloaded
+  opensky repl                Same as above
+  opensky eval <code>         Evaluate async JavaScript (top-level await)
+  opensky -e <code>           Same as eval
+  opensky run <file>          Run a .js file as an async script
+  opensky serve              Start a persistent REPL server for multi-turn eval
+  opensky stop               Stop the persistent REPL server
+  opensky doctor             Check cua-driver + opensky status
+  opensky skill install      Copy the opensky skill into agent skill directories
+  opensky skill add           Alias for skill install
+  opensky skill uninstall    Remove installed opensky skill copies
 
 Options:
   --json                  Print eval results as JSON
   --no-serve              Do not reuse a running persistent REPL
   --global, -g            Install the skill into ~/.agent/skills (user-level)
-  --home <dir>            Override CCUA_HOME (default ~/.ccua)
+  --home <dir>            Override OPENSKY_HOME (default ~/.opensky)
   --driver <path>        Path to the cua-driver binary
   --help, -h              Show this help
   --version               Show version
 
 Environment:
-  CUA_DRIVER_PATH / CCUA_DRIVER   cua-driver binary
-  CCUA_HOME                       session/screenshot/repl state directory
-  CCUA_SESSION                    cua-driver session label (default ccua)
+  CUA_DRIVER_PATH / OPENSKY_DRIVER   cua-driver binary
+  OPENSKY_HOME                      session/screenshot/repl state directory
+  OPENSKY_SESSION                    cua-driver session label (default opensky)
 
 Examples:
-  ccua eval 'await sky.list_apps()'
-  ccua eval --json 'const s = await sky.get_app_state({app:"Calculator", disableDiff:true}); return s.text'
+  opensky eval 'await sky.list_apps()'
+  opensky eval --json 'const s = await sky.get_app_state({app:"Calculator", disableDiff:true}); return s.text'
 `;
 
 async function main(argv = process.argv.slice(2)): Promise<number> {
@@ -92,7 +92,7 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
 async function runEval(code: string, flags: Flags): Promise<number> {
   const source = code.trim() || (await readStdin());
   if (!source.trim()) {
-    process.stderr.write("ccua eval requires code or stdin\n");
+    process.stderr.write("opensky eval requires code or stdin\n");
     return 1;
   }
   const home = homeDir(flags.home);
@@ -113,7 +113,7 @@ async function runEval(code: string, flags: Flags): Promise<number> {
 
 async function runFile(file: string | undefined, flags: Flags): Promise<number> {
   if (!file) {
-    process.stderr.write("ccua run requires a file path\n");
+    process.stderr.write("opensky run requires a file path\n");
     return 1;
   }
   const source = await readFile(file, "utf8");
@@ -124,7 +124,7 @@ async function runRepl(flags: Flags): Promise<number> {
   const { sky, extra } = createContext(flags);
   startInteractiveRepl({
     context: { sky, ...extra },
-    prompt: "ccua> ",
+    prompt: "opensky> ",
   });
   return new Promise(() => undefined);
 }
@@ -135,7 +135,7 @@ async function runServe(flags: Flags): Promise<number> {
   const repl = new AsyncRepl({ context: { sky, ...extra } });
   const server = new ReplServer(repl, home);
   const info = await server.start();
-  process.stdout.write(`ccua REPL server listening on 127.0.0.1:${info.port} (pid ${info.pid})\n`);
+  process.stdout.write(`opensky REPL server listening on 127.0.0.1:${info.port} (pid ${info.pid})\n`);
   const shutdown = async () => {
     await server.stop();
     process.exit(0);
@@ -149,7 +149,7 @@ async function runStop(flags: Flags): Promise<number> {
   const home = homeDir(flags.home);
   const alive = await serverAlive(home);
   if (!alive) {
-    process.stdout.write("ccua REPL server is not running\n");
+    process.stdout.write("opensky REPL server is not running\n");
     return 0;
   }
   const { readServerInfo } = await import("./repl-server.js");
@@ -161,7 +161,7 @@ async function runStop(flags: Flags): Promise<number> {
       // already gone
     }
   }
-  process.stdout.write("stopped ccua REPL server\n");
+  process.stdout.write("stopped opensky REPL server\n");
   return 0;
 }
 
@@ -179,7 +179,7 @@ async function runDoctor(flags: Flags): Promise<number> {
     cuaDriver: binary,
     daemonRunning: status.running,
     daemonStatus: status.text,
-    ccuaHome: home,
+    openskyHome: home,
     replServer: repl,
   };
   process.stdout.write(`${inspect(report, { colors: false, depth: 4 })}\n`);
@@ -195,7 +195,7 @@ async function runSkill(args: string[], flags: Flags): Promise<number> {
   };
   if (action === "install" || action === "add") {
     const result = await installSkill(options);
-    process.stdout.write(`Installed ccua skill from ${result.source}\n`);
+    process.stdout.write(`Installed opensky skill from ${result.source}\n`);
     for (const destination of result.destinations) {
       process.stdout.write(`  ${destination}\n`);
     }
@@ -203,8 +203,8 @@ async function runSkill(args: string[], flags: Flags): Promise<number> {
       [
         "",
         "You can also add the skill with the Agent Skills CLI:",
-        "  npx skills add . --skill ccua",
-        "  npx skills add . --skill ccua -g",
+        "  npx skills add . --skill opensky",
+        "  npx skills add . --skill opensky -g",
         "",
       ].join("\n"),
     );
@@ -228,9 +228,9 @@ function createContext(flags: Flags) {
   const sky = createSky({
     homeDir: flags.home,
     driver: new CuaDriverClient({
-      binaryPath: flags.driver ?? process.env.CUA_DRIVER_PATH ?? process.env.CCUA_DRIVER,
-      session: process.env.CCUA_SESSION ?? "ccua",
-      autoStart: process.env.CCUA_AUTOSTART !== "0",
+      binaryPath: flags.driver ?? process.env.CUA_DRIVER_PATH ?? process.env.OPENSKY_DRIVER,
+      session: process.env.OPENSKY_SESSION ?? "opensky",
+      autoStart: process.env.OPENSKY_AUTOSTART !== "0",
     }),
   });
   const extra = {

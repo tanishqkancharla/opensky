@@ -93,7 +93,7 @@ export class CuaDriverClient implements DriverClient {
         [
           "cua-driver was not found on PATH.",
           'Install it with: /bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"',
-          "Or set CUA_DRIVER_PATH / CCUA_DRIVER.",
+          "Or set CUA_DRIVER_PATH / OPENSKY_DRIVER.",
         ].join(" "),
       );
     }
@@ -104,7 +104,7 @@ export class CuaDriverClient implements DriverClient {
     const candidates = [
       this.options.binaryPath,
       process.env.CUA_DRIVER_PATH,
-      process.env.CCUA_DRIVER,
+      process.env.OPENSKY_DRIVER,
       ...pathCandidates("cua-driver"),
       "/usr/local/bin/cua-driver",
       "/opt/homebrew/bin/cua-driver",

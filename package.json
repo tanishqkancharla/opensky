@@ -1,10 +1,10 @@
 {
-  "name": "ccua",
+  "name": "opensky",
   "version": "0.1.0",
-  "description": "Computer-use skill and async Node REPL that wraps Cua Driver with an @oai/sky-compatible API",
+  "description": "Open @oai/sky-compatible computer-use library and async REPL, backed by Cua Driver",
   "type": "module",
   "bin": {
-    "ccua": "./dist/cli.js"
+    "opensky": "./dist/cli.js"
   },
   "exports": {
     ".": "./dist/index.js",
@@ -22,13 +22,14 @@
   "scripts": {
     "build": "tsc",
     "test": "PATH=\"$HOME/.bun/bin:$PATH\" bun test",
-    "ccua": "bun src/cli.ts",
+    "opensky": "bun src/cli.ts",
     "prepare": "tsc"
   },
   "keywords": [
     "computer-use",
     "cua-driver",
     "sky",
+    "opensky",
     "repl",
     "skill",
     "accessibility"

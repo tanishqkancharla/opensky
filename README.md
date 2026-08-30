@@ -1,8 +1,11 @@
-# ccua
+# opensky
 
-`ccua` is a computer-use **skill** plus a **CLI that wraps the Node REPL with top-level await**. Inside the REPL, `sky` implements the OpenAI Computer [`@oai/sky`](https://openai.com) API, backed by the [Cua Driver](https://cua.ai/cua-driver) CLI (`cua-driver call …`) instead of the proprietary `@oai/sky` host module.
+`opensky` is an open implementation of the OpenAI Computer [`@oai/sky`](https://openai.com) API. It is a **library**, an **async Node REPL**, and an **agent skill**. Under the hood it calls [Cua Driver](https://cua.ai/cua-driver) (`cua-driver call …`) instead of the proprietary `@oai/sky` host module.
 
 ```js
+import { createSky } from "opensky";
+
+const sky = createSky();
 const apps = await sky.list_apps();
 const before = await sky.get_app_state({ app: "Calculator", disableDiff: true });
 await sky.click({ app: "Calculator", element_index: 13 });
@@ -11,7 +14,7 @@ const after = await sky.get_app_state({ app: "Calculator" });
 
 ## Install Cua Driver
 
-`ccua` is a wrapper. The native driver still has to be installed and granted OS permissions.
+`opensky` is a wrapper. The native driver still has to be installed and granted OS permissions.
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"
@@ -47,24 +50,21 @@ cua-driver doctor
 From this repo:
 
 ```bash
-npm install
-npm run build
-npm link
+bun install
+bun src/cli.ts doctor
 ```
 
-Or run it without linking:
+Or with Node, after `npm install` (the `prepare` script builds `dist/`):
 
 ```bash
-bun src/cli.ts doctor
-# or, after build:
-node dist/cli.js doctor
+npx opensky doctor
 ```
 
 Set `CUA_DRIVER_PATH` if the binary is not on `PATH`.
 
 ## Add / install the skill
 
-The skill lives at [`skills/ccua/SKILL.md`](skills/ccua/SKILL.md). Agents load it from `.agents/skills`, `.cursor/skills`, `.claude/skills`, or `.codex/skills`.
+The skill lives at [`skills/opensky/SKILL.md`](skills/opensky/SKILL.md). Agents load it from `.agents/skills`, `.cursor/skills`, `.claude/skills`, or `.codex/skills`.
 
 ### Agent Skills CLI (`npx skills add`)
 
@@ -72,16 +72,16 @@ From a checkout of this project:
 
 ```bash
 # project-level (committed with the repo)
-npx skills add . --skill ccua -a cursor -a claude-code -a copilot -y
+npx skills add . --skill opensky -a cursor -a claude-code -a copilot -y
 
 # user-level (every project on this machine)
-npx skills add . --skill ccua -g -y
+npx skills add . --skill opensky -g -y
 ```
 
 After the repo is on GitHub:
 
 ```bash
-npx skills add <owner>/ccua --skill ccua -g -y
+npx skills add <owner>/opensky --skill opensky -g -y
 ```
 
 List without installing:
@@ -90,18 +90,18 @@ List without installing:
 npx skills add . --list
 ```
 
-### `ccua skill add` / `ccua skill install`
+### `opensky skill add` / `opensky skill install`
 
-Copies `skills/ccua` into the local agent directories:
+Copies `skills/opensky` into the local agent directories:
 
 ```bash
-# project: ./.agents/skills/ccua, ./.cursor/skills/ccua, ...
-ccua skill add
-ccua skill install
+# project: ./.agents/skills/opensky, ./.cursor/skills/opensky, ...
+opensky skill add
+opensky skill install
 
-# user: ~/.agents/skills/ccua, ~/.cursor/skills/ccua, ...
-ccua skill install --global
-ccua skill add -g
+# user: ~/.agents/skills/opensky, ~/.cursor/skills/opensky, ...
+opensky skill install --global
+opensky skill add -g
 ```
 
 `skill add` is an alias for `skill install`.
@@ -110,21 +110,21 @@ Manual copy:
 
 ```bash
 mkdir -p .cursor/skills
-cp -R skills/ccua .cursor/skills/ccua
+cp -R skills/opensky .cursor/skills/opensky
 ```
 
-Then start a new agent session (or `/ccua`) so the skill is picked up.
+Then start a new agent session (or `/opensky`) so the skill is picked up.
 
 ## Usage
 
 ```bash
-ccua                  # interactive async REPL  (prompt: ccua>)
-ccua eval 'await sky.list_apps()'
-ccua eval --json 'return await sky.get_app_state({app:"Calculator", disableDiff:true})'
-ccua run script.js
-ccua serve            # persist context across evals
-ccua stop
-ccua doctor
+opensky                  # interactive async REPL  (prompt: opensky>)
+opensky eval 'await sky.list_apps()'
+opensky eval --json 'return await sky.get_app_state({app:"Calculator", disableDiff:true})'
+opensky run script.js
+opensky serve            # persist context across evals
+opensky stop
+opensky doctor
 ```
 
 The REPL evaluates each snippet as an async function body, so `await` works. A single expression is returned automatically; otherwise `return` the value you want printed.
@@ -148,15 +148,6 @@ Same contract as `@oai/sky`, implemented with Cua Driver:
 | `type_text` | `type_text` |
 
 `sky.target` is `"mac"`, `"win"`, or `"linux"`.
-
-Library use (same process, no CLI):
-
-```js
-import { createSky } from "ccua";
-
-const sky = createSky();
-await sky.list_apps();
-```
 
 ## Recommended action loop
 
@@ -183,6 +174,6 @@ curl -fsSL https://bun.sh/install | bash
 bun test
 ```
 
-`npm test` is an alias for `bun test`. `npm run build` still emits the Node-compatible `dist/` used by the published `ccua` bin.
+`npm test` is an alias for `bun test`. `npm run build` still emits the Node-compatible `dist/` used by the published `opensky` bin.
 
 Tests use a mock `cua-driver` so they run without a desktop or TCC grants.

@@ -9,7 +9,7 @@ import { createSky } from "../src/sky.js";
 const fixtureDriver = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "cua-driver.mjs");
 
 export async function makeHarness() {
-  const dir = await mkdtemp(join(tmpdir(), "ccua-"));
+  const dir = await mkdtemp(join(tmpdir(), "opensky-"));
   const statePath = join(dir, "state.json");
   const logPath = join(dir, "calls.json");
   const driverPath = join(dir, "cua-driver");
@@ -20,8 +20,8 @@ export async function makeHarness() {
     ...process.env,
     CUA_MOCK_STATE: statePath,
     CUA_MOCK_LOG: logPath,
-    CCUA_HOME: join(dir, "home"),
-    CCUA_AUTOSTART: "0",
+    OPENSKY_HOME: join(dir, "home"),
+    OPENSKY_AUTOSTART: "0",
   };
   const driver = new CuaDriverClient({
     binaryPath: driverPath,

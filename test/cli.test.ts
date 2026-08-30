@@ -9,7 +9,7 @@ import { makeHarness } from "./harness.ts";
 
 const cli = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 
-describe("ccua CLI", () => {
+describe("opensky CLI", () => {
   it("prints help and version", async () => {
     const help = await runCli(["--help"]);
     assert.equal(help.code, 0);
@@ -25,8 +25,8 @@ describe("ccua CLI", () => {
       env: {
         ...harness.env,
         CUA_DRIVER_PATH: harness.driverPath,
-        CCUA_HOME: join(harness.dir, "home"),
-        CCUA_AUTOSTART: "0",
+        OPENSKY_HOME: join(harness.dir, "home"),
+        OPENSKY_AUTOSTART: "0",
       },
     });
     assert.equal(result.code, 0, result.stderr);
@@ -47,8 +47,8 @@ describe("ccua CLI", () => {
       env: {
         ...harness.env,
         CUA_DRIVER_PATH: harness.driverPath,
-        CCUA_HOME: join(harness.dir, "home"),
-        CCUA_AUTOSTART: "0",
+        OPENSKY_HOME: join(harness.dir, "home"),
+        OPENSKY_AUTOSTART: "0",
       },
     });
     assert.equal(result.code, 0, `${result.stderr}\n${result.stdout}`);
@@ -67,10 +67,10 @@ describe("ccua CLI", () => {
     await mkdir(cwd, { recursive: true });
     const result = await runCli(["skill", "add"], { cwd, env: harness.env });
     assert.equal(result.code, 0, result.stderr);
-    assert.match(result.stdout, /Installed ccua skill/);
-    const skill = await readFile(join(cwd, ".cursor", "skills", "ccua", "SKILL.md"), "utf8");
-    assert.match(skill, /name: ccua/);
-    assert.match(skill, /ccua eval/);
+    assert.match(result.stdout, /Installed opensky skill/);
+    const skill = await readFile(join(cwd, ".cursor", "skills", "opensky", "SKILL.md"), "utf8");
+    assert.match(skill, /name: opensky/);
+    assert.match(skill, /opensky eval/);
   });
 });
 

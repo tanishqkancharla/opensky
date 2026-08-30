@@ -43,7 +43,7 @@ export class AsyncRepl {
     Object.assign(this.sandbox, values);
   }
 
-  async evaluate(code: string, filename = "ccua"): Promise<EvalResult> {
+  async evaluate(code: string, filename = "opensky"): Promise<EvalResult> {
     const run = async (): Promise<EvalResult> => {
       const logs: string[] = [];
       const previousConsole = this.sandbox.console;
@@ -99,7 +99,7 @@ export function startInteractiveRepl(options: {
 }): repl.REPLServer {
   const asyncRepl = new AsyncRepl({ context: options.context });
   const server = repl.start({
-    prompt: options.prompt ?? "ccua> ",
+    prompt: options.prompt ?? "opensky> ",
     input: options.input,
     output: options.output,
     preview: false,

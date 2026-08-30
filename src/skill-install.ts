@@ -2,6 +2,8 @@ import { cp, mkdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+export const SKILL_NAME = "opensky";
+
 export interface SkillInstallOptions {
   global?: boolean;
   cwd?: string;
@@ -16,7 +18,7 @@ export interface SkillInstallResult {
 
 export function skillSourceDir(from = import.meta.url): string {
   const here = dirname(fileURLToPath(from));
-  return join(here, "..", "skills", "ccua");
+  return join(here, "..", "skills", SKILL_NAME);
 }
 
 export function defaultAgents(): string[] {
@@ -30,11 +32,11 @@ export function skillDestinations(options: SkillInstallOptions = {}): string[] {
   const dirs: string[] = [];
   if (options.global) {
     for (const agent of agents) {
-      dirs.push(join(home, `.${agent}`, "skills", "ccua"));
+      dirs.push(join(home, `.${agent}`, "skills", SKILL_NAME));
     }
   } else {
     for (const agent of agents) {
-      dirs.push(join(cwd, `.${agent}`, "skills", "ccua"));
+      dirs.push(join(cwd, `.${agent}`, "skills", SKILL_NAME));
     }
   }
   return [...new Set(dirs)];
@@ -64,8 +66,8 @@ export async function uninstallSkill(options: SkillInstallOptions = {}): Promise
 async function resolveSkillSource(): Promise<string> {
   const candidates = [
     skillSourceDir(),
-    join(process.cwd(), "skills", "ccua"),
-    join(dirname(fileURLToPath(import.meta.url)), "..", "..", "skills", "ccua"),
+    join(process.cwd(), "skills", SKILL_NAME),
+    join(dirname(fileURLToPath(import.meta.url)), "..", "..", "skills", SKILL_NAME),
   ];
   for (const candidate of candidates) {
     try {
@@ -75,5 +77,5 @@ async function resolveSkillSource(): Promise<string> {
       // try next
     }
   }
-  throw new Error(`ccua skill source was not found. Expected skills/ccua/SKILL.md`);
+  throw new Error(`opensky skill source was not found. Expected skills/${SKILL_NAME}/SKILL.md`);
 }

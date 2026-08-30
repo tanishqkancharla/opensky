@@ -1,14 +1,14 @@
 ---
-name: ccua
+name: opensky
 description: Drive native desktop apps through an async Node REPL whose sky object matches the OpenAI Computer `@oai/sky` API, implemented on Cua Driver. Use when the user asks to operate, click, type, or automate a GUI application on macOS, Windows, or Linux.
 ---
 
-# ccua
+# opensky
 
-Use the `ccua` CLI. It is an **async Node REPL** with `sky` preloaded. Do not call `cua-driver` directly unless `ccua` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
+Use the `opensky` CLI. It is an **async Node REPL** with `sky` preloaded. Do not call `cua-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
 
 ```bash
-ccua eval --json 'await sky.list_apps()'
+opensky eval --json 'await sky.list_apps()'
 ```
 
 `await` works. The last expression is the result. Use `return` for multi-statement snippets.
@@ -16,7 +16,7 @@ ccua eval --json 'await sky.list_apps()'
 ## Setup check
 
 ```bash
-ccua doctor
+opensky doctor
 ```
 
 If `cuaDriver` is missing, tell the user to install Cua Driver and grant Accessibility + Screen Recording:
@@ -44,12 +44,12 @@ const after = await sky.get_app_state({ app: "Calculator" });
 return after.text;
 ```
 
-Prefer putting a whole loop in one `ccua eval` so the snapshot stays in-process. For multi-turn work:
+Prefer putting a whole loop in one `opensky eval` so the snapshot stays in-process. For multi-turn work:
 
 ```bash
-ccua serve
-ccua eval 'state.apps = await sky.list_apps()'
-ccua eval 'await sky.click({ app: "Calculator", element_index: 13 })'
+opensky serve
+opensky eval 'state.apps = await sky.list_apps()'
+opensky eval 'await sky.click({ app: "Calculator", element_index: 13 })'
 ```
 
 ## Targeting apps
@@ -138,9 +138,9 @@ Copy the action name from the latest tree (`Raise`, `Show Menu`, `Increment`, `D
 ## CLI cheat sheet
 
 ```bash
-ccua eval --json 'await sky.list_apps()'
-ccua eval --json 'return await sky.get_app_state({app:"Calculator", disableDiff:true})'
-ccua run script.js
-ccua serve          # persist JS + sky snapshot cache across evals
-ccua stop
+opensky eval --json 'await sky.list_apps()'
+opensky eval --json 'return await sky.get_app_state({app:"Calculator", disableDiff:true})'
+opensky run script.js
+opensky serve          # persist JS + sky snapshot cache across evals
+opensky stop
 ```

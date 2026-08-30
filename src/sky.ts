@@ -75,7 +75,7 @@ export class CuaSky implements Sky {
 
   constructor(options: SkyOptions = {}) {
     this.target = options.target ?? detectTarget();
-    this.driver = options.driver ?? new CuaDriverClient({ session: options.session ?? "ccua" });
+    this.driver = options.driver ?? new CuaDriverClient({ session: options.session ?? "opensky" });
     const home = homeDir(options.homeDir);
     this.store = new SessionStore(sessionFile(home));
     this.screenshotDir = options.screenshotDir ?? join(home, "screenshots");

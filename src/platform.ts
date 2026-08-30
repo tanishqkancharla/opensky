@@ -11,10 +11,10 @@ export function pasteModifierFor(target: SkyTarget): "cmd" | "ctrl" {
 }
 
 export function homeDir(override?: string): string {
-  return override ?? process.env.CCUA_HOME ?? defaultHome();
+  return override ?? process.env.OPENSKY_HOME ?? defaultHome();
 }
 
 function defaultHome(): string {
   const base = process.env.HOME || process.env.USERPROFILE || process.cwd();
-  return `${base}/.ccua`;
+  return `${base}/.opensky`;
 }
