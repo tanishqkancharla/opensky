@@ -86,6 +86,11 @@ export async function claimEvalVm(): Promise<EvalVm> {
         // The proxy may already be gone.
       }
       child.kill("SIGTERM");
+      await waitForExit(child, 20_000);
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill("SIGKILL");
+        await waitForExit(child, 5_000);
+      }
     },
   };
 }
@@ -94,6 +99,21 @@ function normalizeOs(value: string | undefined): OpenSkyTarget {
   if (value === "macos" || value === "mac" || value === "darwin") return "mac";
   if (value === "windows" || value === "win") return "win";
   return "linux";
+}
+
+function waitForExit(child: ChildProcess, timeoutMs: number): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      child.removeListener("close", onClose);
+      resolve();
+    }, timeoutMs);
+    const onClose = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    child.once("close", onClose);
+  });
 }
 
 function waitForReady(child: ChildProcess): Promise<{ port: number; name?: string; os?: string }> {

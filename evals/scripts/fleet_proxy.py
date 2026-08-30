@@ -22,6 +22,63 @@ def log(message: str) -> None:
     print(message, file=sys.stderr, flush=True)
 
 
+def _response_body(response: Any) -> bytes:
+    content = getattr(response, "content", None)
+    if isinstance(content, (bytes, bytearray)):
+        return bytes(content)
+    read = getattr(response, "read", None)
+    if read is None:
+        return b""
+    result = read()
+    if isinstance(result, (bytes, bytearray)):
+        return bytes(result)
+    text = getattr(response, "text", None)
+    if isinstance(text, str):
+        return text.encode("utf-8")
+    return b""
+
+
+def _response_status(response: Any) -> int:
+    for attr in ("status_code", "status", "code"):
+        value = getattr(response, attr, None)
+        if isinstance(value, int):
+            return value
+    return 500
+
+
+def _header_items(headers: Any) -> list[tuple[str, str]]:
+    items: list[tuple[str, str]] = []
+    if headers is None:
+        return items
+    mapping = getattr(headers, "items", None)
+    if callable(mapping):
+        try:
+            for key, value in mapping():
+                if key is not None and value is not None:
+                    items.append((str(key), str(value)))
+            return items
+        except Exception:
+            items = []
+    if isinstance(headers, (list, tuple)):
+        for item in headers:
+            name = getattr(item, "name", None)
+            value = getattr(item, "value", None)
+            if name is None and isinstance(item, dict):
+                name = item.get("name")
+                value = item.get("value")
+            if name is not None and value is not None:
+                items.append((str(name), str(value)))
+    return items
+
+
+def _response_header(response: Any, name: str) -> str | None:
+    wanted = name.lower()
+    for key, value in _header_items(getattr(response, "headers", None)):
+        if key.lower() == wanted and value:
+            return value
+    return None
+
+
 async def main() -> int:
     from cua_sandbox import Image, Pool
 
@@ -54,19 +111,27 @@ async def main() -> int:
         session_id = request.headers.get("mcp-session-id")
         if session_id:
             headers["mcp-session-id"] = session_id
+        try:
+            payload = json.loads(body.decode("utf-8") or "null")
+        except json.JSONDecodeError as error:
+            return web.Response(text=f"invalid MCP JSON: {error}", status=400)
         response = await sandbox.services.request(
             "mcp",
             method="POST",
             path="/mcp",
             headers=headers,
-            data=body,
+            json=payload,
         )
         out_headers = {}
         for key in ("mcp-session-id", "content-type"):
-            value = response.headers.get(key)
+            value = _response_header(response, key)
             if value:
                 out_headers[key] = value
-        return web.Response(body=await response.read(), status=response.status, headers=out_headers)
+        status = _response_status(response)
+        method = payload.get("method") if isinstance(payload, dict) else None
+        if method in {"initialize", "notifications/initialized"} or status >= 400:
+            log(f"mcp method={method} status={status} session={out_headers.get('mcp-session-id')!r}")
+        return web.Response(body=_response_body(response), status=status, headers=out_headers)
 
     async def handle_shell(request: web.Request) -> web.Response:
         sandbox = sandbox_box["sandbox"]

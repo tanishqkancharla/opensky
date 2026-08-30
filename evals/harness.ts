@@ -68,6 +68,13 @@ export class ComputerUseHarness implements EvalHarness {
       tools: toolNames,
       customTools,
     });
+    recordTranscriptMarkdown({
+      source: "agent",
+      prompt,
+      transcript: transcript || "(empty agent output)",
+      startedAt,
+      finishedAt,
+    });
 
     return this.response({
       prompt,
@@ -319,23 +326,12 @@ function parseCriteria(
   transcript: string,
   expected: string[],
 ): Array<{ criterion: string; pass: boolean; reason: string }> {
-  const start = transcript.indexOf("{");
-  const end = transcript.lastIndexOf("}");
-  if (start < 0 || end < start) {
+  const parsed = extractCriteriaPayload(transcript);
+  if (parsed === null) {
     return expected.map((criterion) => ({
       criterion,
       pass: false,
       reason: "Judge did not return JSON.",
-    }));
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(transcript.slice(start, end + 1));
-  } catch {
-    return expected.map((criterion) => ({
-      criterion,
-      pass: false,
-      reason: "Judge JSON was invalid.",
     }));
   }
   const items =
@@ -363,6 +359,59 @@ function parseCriteria(
       }
     );
   });
+}
+
+function extractCriteriaPayload(transcript: string): unknown | null {
+  const marker = "\n[Assistant]:";
+  const lastAssistant = transcript.lastIndexOf(marker);
+  const chunk = lastAssistant >= 0 ? transcript.slice(lastAssistant + marker.length) : transcript;
+  const candidates = [chunk, transcript];
+  for (const text of candidates) {
+    const parsed = firstJsonObject(text);
+    if (parsed && typeof parsed === "object" && Array.isArray((parsed as { criteria?: unknown }).criteria)) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+function firstJsonObject(text: string): unknown | null {
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === "\"") inString = false;
+      continue;
+    }
+    if (ch === "\"") {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          return JSON.parse(text.slice(start, i + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
 }
 
 function dirnameOf(path: string): string {

@@ -41,25 +41,28 @@ export class FleetMcpDriver implements DriverClient {
     if (!init) {
       throw new Error("Failed to initialize Cua Driver MCP on the Fleet VM.");
     }
-    await this.rpc("notifications/initialized", {});
+    try {
+      await this.rpc("notifications/initialized", {}, { notification: true });
+    } catch {
+      // Some servers do not implement notifications/initialized.
+    }
     this.initialized = true;
   }
 
   private async rpc(
     method: string,
     params: Record<string, unknown>,
-    options: { initialize?: boolean } = {},
+    options: { initialize?: boolean; notification?: boolean } = {},
   ): Promise<string> {
-    const id = this.nextId;
-    this.nextId += 1;
     const headers: Record<string, string> = {};
     if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
-    const response = await this.vm.mcp(
-      { jsonrpc: "2.0", id, method, params },
-      headers,
-    );
-    const session = response.headers.get("mcp-session-id");
+    const body = options.notification
+      ? { jsonrpc: "2.0", method, params }
+      : { jsonrpc: "2.0", id: this.nextId++, method, params };
+    const response = await this.vm.mcp(body, headers);
+    const session = response.headers.get("mcp-session-id") ?? response.headers.get("Mcp-Session-Id");
     if (session) this.sessionId = session;
+    if (options.notification) return "";
     if (response.status >= 400) {
       throw new Error(`MCP ${method} failed (${response.status}): ${response.text}`);
     }
