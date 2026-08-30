@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CuaDriverClient } from "../src/driver.js";
-import { createSky } from "../src/sky.js";
+import { createOpenSky } from "../src/opensky.js";
 
 const fixtureDriver = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "cua-driver.mjs");
 
@@ -29,7 +29,7 @@ export async function makeHarness() {
     env,
     timeoutMs: 8_000,
   });
-  const sky = createSky({
+  const opensky = createOpenSky({
     driver,
     homeDir: join(dir, "home"),
     screenshotDir: join(dir, "shots"),
@@ -37,5 +37,5 @@ export async function makeHarness() {
     target: "mac",
     pasteModifier: "cmd",
   });
-  return { dir, sky, driver, driverPath, env, statePath, logPath };
+  return { dir, opensky, driver, driverPath, env, statePath, logPath };
 }

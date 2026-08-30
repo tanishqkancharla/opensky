@@ -3,13 +3,13 @@
 `opensky` is an open implementation of the OpenAI Computer [`@oai/sky`](https://openai.com) API. It is a **library**, an **async Node REPL**, and an **agent skill**. Under the hood it calls [Cua Driver](https://cua.ai/cua-driver) (`cua-driver call …`) instead of the proprietary `@oai/sky` host module.
 
 ```js
-import { createSky } from "opensky";
+import { createOpenSky } from "opensky";
 
-const sky = createSky();
-const apps = await sky.list_apps();
-const before = await sky.get_app_state({ app: "Calculator", disableDiff: true });
-await sky.click({ app: "Calculator", element_index: 13 });
-const after = await sky.get_app_state({ app: "Calculator" });
+const opensky = createOpenSky();
+const apps = await opensky.list_apps();
+const before = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
+await opensky.click({ app: "Calculator", element_index: 13 });
+const after = await opensky.get_app_state({ app: "Calculator" });
 ```
 
 ## Install Cua Driver
@@ -119,8 +119,8 @@ Then start a new agent session (or `/opensky`) so the skill is picked up.
 
 ```bash
 opensky                  # interactive async REPL  (prompt: opensky>)
-opensky eval 'await sky.list_apps()'
-opensky eval --json 'return await sky.get_app_state({app:"Calculator", disableDiff:true})'
+opensky eval 'await opensky.list_apps()'
+opensky eval --json 'return await opensky.get_app_state({app:"Calculator", disableDiff:true})'
 opensky run script.js
 opensky serve            # persist context across evals
 opensky stop
@@ -129,9 +129,9 @@ opensky doctor
 
 The REPL evaluates each snippet as an async function body, so `await` works. A single expression is returned automatically; otherwise `return` the value you want printed.
 
-## `sky` API
+## `opensky` API
 
-Same contract as `@oai/sky`, implemented with Cua Driver:
+Same method contract as `@oai/sky`, implemented with Cua Driver:
 
 | Method | Cua Driver tools used |
 | --- | --- |
@@ -147,19 +147,19 @@ Same contract as `@oai/sky`, implemented with Cua Driver:
 | `set_value` | `set_value` |
 | `type_text` | `type_text` |
 
-`sky.target` is `"mac"`, `"win"`, or `"linux"`.
+`opensky.target` is `"mac"`, `"win"`, or `"linux"`.
 
 ## Recommended action loop
 
 ```js
-const before = await sky.get_app_state({
+const before = await opensky.get_app_state({
   app: "Calculator",
   disableDiff: true,
 });
 
-await sky.click({ app: "Calculator", element_index: 13 });
+await opensky.click({ app: "Calculator", element_index: 13 });
 
-const after = await sky.get_app_state({ app: "Calculator" });
+const after = await opensky.get_app_state({ app: "Calculator" });
 console.log(after.text);
 ```
 

@@ -19,9 +19,9 @@ describe("opensky CLI", () => {
     assert.match(version.stdout, /\d+\.\d+\.\d+/);
   });
 
-  it("evals sky.list_apps through the mock driver", async () => {
+  it("evals opensky.list_apps through the mock driver", async () => {
     const harness = await makeHarness();
-    const result = await runCli(["eval", "--json", "await sky.list_apps()"], {
+    const result = await runCli(["eval", "--json", "await opensky.list_apps()"], {
       env: {
         ...harness.env,
         CUA_DRIVER_PATH: harness.driverPath,
@@ -38,9 +38,9 @@ describe("opensky CLI", () => {
   it("runs a full calculator click loop in one eval", async () => {
     const harness = await makeHarness();
     const code = `
-      const before = await sky.get_app_state({ app: "Calculator", disableDiff: true });
-      await sky.click({ app: "Calculator", element_index: 13, mouse_button: 0 });
-      const after = await sky.get_app_state({ app: "Calculator" });
+      const before = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
+      await opensky.click({ app: "Calculator", element_index: 13, mouse_button: 0 });
+      const after = await opensky.get_app_state({ app: "Calculator" });
       return { before: before.text, after: after.text, shot: before.screenshot.url };
     `;
     const result = await runCli(["eval", "--json", code], {

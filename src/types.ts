@@ -1,4 +1,4 @@
-export type SkyTarget = "mac" | "win" | "linux";
+export type OpenSkyTarget = "mac" | "win" | "linux";
 
 export type Direction =
   | "up"
@@ -43,8 +43,8 @@ export interface AppState {
   text: string;
 }
 
-export interface Sky {
-  readonly target: SkyTarget;
+export interface OpenSky {
+  readonly target: OpenSkyTarget;
   list_apps(): Promise<App[]>;
   get_app_state(args: {
     app: string;
@@ -144,12 +144,12 @@ export interface WindowSnapshot {
   screenshotPath: string | null;
 }
 
-export interface SkyOptions {
+export interface OpenSkyOptions {
   driver?: DriverClient;
   homeDir?: string;
   screenshotDir?: string;
   session?: string;
   autoLaunch?: boolean;
   pasteModifier?: "cmd" | "ctrl";
-  target?: SkyTarget;
+  target?: OpenSkyTarget;
 }

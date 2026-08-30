@@ -7,13 +7,13 @@ import { AsyncRepl, startInteractiveRepl } from "./async-repl.js";
 import { CuaDriverClient } from "./driver.js";
 import { homeDir } from "./platform.js";
 import { evalOnServer, ReplServer, serverAlive } from "./repl-server.js";
-import { createSky } from "./sky.js";
+import { createOpenSky } from "./opensky.js";
 import { installSkill, skillDestinations, uninstallSkill } from "./skill-install.js";
 
 const HELP = `opensky — async Node REPL for computer-use, backed by Cua Driver
 
 Usage:
-  opensky                     Start an interactive async REPL with sky preloaded
+  opensky                     Start an interactive async REPL with opensky preloaded
   opensky repl                Same as above
   opensky eval <code>         Evaluate async JavaScript (top-level await)
   opensky -e <code>           Same as eval
@@ -40,8 +40,8 @@ Environment:
   OPENSKY_SESSION                    cua-driver session label (default opensky)
 
 Examples:
-  opensky eval 'await sky.list_apps()'
-  opensky eval --json 'const s = await sky.get_app_state({app:"Calculator", disableDiff:true}); return s.text'
+  opensky eval 'await opensky.list_apps()'
+  opensky eval --json 'const s = await opensky.get_app_state({app:"Calculator", disableDiff:true}); return s.text'
 `;
 
 async function main(argv = process.argv.slice(2)): Promise<number> {
@@ -100,8 +100,8 @@ async function runEval(code: string, flags: Flags): Promise<number> {
     const response = await evalOnServer(source, { homeDir: home });
     return printEval(response.ok, response.value, response.logs, response.error, flags);
   }
-  const { sky, extra } = createContext(flags);
-  const repl = new AsyncRepl({ context: { sky, ...extra } });
+  const { opensky, extra } = createContext(flags);
+  const repl = new AsyncRepl({ context: { opensky, ...extra } });
   try {
     const result = await repl.evaluate(source);
     return printEval(true, result.value, result.logs, undefined, flags);
@@ -121,9 +121,9 @@ async function runFile(file: string | undefined, flags: Flags): Promise<number> 
 }
 
 async function runRepl(flags: Flags): Promise<number> {
-  const { sky, extra } = createContext(flags);
+  const { opensky, extra } = createContext(flags);
   startInteractiveRepl({
-    context: { sky, ...extra },
+    context: { opensky, ...extra },
     prompt: "opensky> ",
   });
   return new Promise(() => undefined);
@@ -131,8 +131,8 @@ async function runRepl(flags: Flags): Promise<number> {
 
 async function runServe(flags: Flags): Promise<number> {
   const home = homeDir(flags.home);
-  const { sky, extra } = createContext(flags);
-  const repl = new AsyncRepl({ context: { sky, ...extra } });
+  const { opensky, extra } = createContext(flags);
+  const repl = new AsyncRepl({ context: { opensky, ...extra } });
   const server = new ReplServer(repl, home);
   const info = await server.start();
   process.stdout.write(`opensky REPL server listening on 127.0.0.1:${info.port} (pid ${info.pid})\n`);
@@ -225,7 +225,7 @@ async function runSkill(args: string[], flags: Flags): Promise<number> {
 }
 
 function createContext(flags: Flags) {
-  const sky = createSky({
+  const opensky = createOpenSky({
     homeDir: flags.home,
     driver: new CuaDriverClient({
       binaryPath: flags.driver ?? process.env.CUA_DRIVER_PATH ?? process.env.OPENSKY_DRIVER,
@@ -234,13 +234,13 @@ function createContext(flags: Flags) {
     }),
   });
   const extra = {
-    driver: sky.driver,
+    driver: opensky.driver,
     sleep: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
     state: {},
     readFile,
     pathToFileURL,
   };
-  return { sky, extra };
+  return { opensky, extra };
 }
 
 function printEval(

@@ -1,12 +1,12 @@
-export type SkyTarget = "mac" | "win" | "linux";
+export type OpenSkyTarget = "mac" | "win" | "linux";
 
-export function detectTarget(platform = process.platform): SkyTarget {
+export function detectTarget(platform = process.platform): OpenSkyTarget {
   if (platform === "darwin") return "mac";
   if (platform === "win32") return "win";
   return "linux";
 }
 
-export function pasteModifierFor(target: SkyTarget): "cmd" | "ctrl" {
+export function pasteModifierFor(target: OpenSkyTarget): "cmd" | "ctrl" {
   return target === "mac" ? "cmd" : "ctrl";
 }
 

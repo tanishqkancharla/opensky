@@ -5,7 +5,7 @@ import { delimiter, join } from "node:path";
 
 import { driverError } from "./errors.js";
 import { detectTarget } from "./platform.js";
-import type { DriverClient, DriverResult, SkyTarget } from "./types.js";
+import type { DriverClient, DriverResult, OpenSkyTarget } from "./types.js";
 
 export interface CuaDriverOptions {
   binaryPath?: string;
@@ -289,6 +289,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function platformTarget(): SkyTarget {
+export function platformTarget(): OpenSkyTarget {
   return detectTarget();
 }

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { asArray, asRecord, CuaDriverClient } from "./driver.js";
-import { invalidParams, SkyError } from "./errors.js";
+import { invalidParams, OpenSkyError } from "./errors.js";
 import { parseXdotoolKey, toHotkeyKeys } from "./keys.js";
 import { detectTarget, homeDir, pasteModifierFor } from "./platform.js";
 import { SessionStore, sessionFile } from "./session-store.js";
@@ -15,9 +15,9 @@ import type {
   MouseButton,
   PasteFormat,
   ResolvedApp,
-  Sky,
-  SkyOptions,
-  SkyTarget,
+  OpenSky as OpenSkyApi,
+  OpenSkyOptions,
+  OpenSkyTarget,
   SnapshotElement,
   WindowSnapshot,
 } from "./types.js";
@@ -60,8 +60,8 @@ const SECONDARY_ACTIONS: Record<string, { kind: "click" | "front" | "key"; actio
   delete: { kind: "key", key: "delete" },
 };
 
-export class CuaSky implements Sky {
-  readonly target: SkyTarget;
+export class OpenSky implements OpenSkyApi {
+  readonly target: OpenSkyTarget;
   readonly driver: DriverClient;
   private readonly store: SessionStore;
   private readonly screenshotDir: string;
@@ -73,7 +73,7 @@ export class CuaSky implements Sky {
   };
   private loaded = false;
 
-  constructor(options: SkyOptions = {}) {
+  constructor(options: OpenSkyOptions = {}) {
     this.target = options.target ?? detectTarget();
     this.driver = options.driver ?? new CuaDriverClient({ session: options.session ?? "opensky" });
     const home = homeDir(options.homeDir);
@@ -280,7 +280,7 @@ export class CuaSky implements Sky {
     const haystack = element?.value ?? snapshot?.tree ?? "";
     const index = findWithContext(haystack, args.text, args.prefix, args.suffix);
     if (index < 0) {
-      throw new SkyError(`Text ${JSON.stringify(args.text)} was not found in element ${args.element_index}`);
+      throw new OpenSkyError(`Text ${JSON.stringify(args.text)} was not found in element ${args.element_index}`);
     }
 
     await this.click({ app: args.app, element_index: args.element_index });
@@ -368,7 +368,7 @@ export class CuaSky implements Sky {
     }
 
     if (!options.launchIfNeeded) {
-      throw new SkyError(`Application ${JSON.stringify(app)} is not running`);
+      throw new OpenSkyError(`Application ${JSON.stringify(app)} is not running`);
     }
 
     const launchArgs = launchArgsFor(app, match);
@@ -376,7 +376,7 @@ export class CuaSky implements Sky {
     const structured = asRecord(launched.structured) ?? {};
     const pid = Number(structured.pid ?? match?.pid);
     if (!Number.isFinite(pid) || pid <= 0) {
-      throw new SkyError(`Failed to launch ${JSON.stringify(app)}`);
+      throw new OpenSkyError(`Failed to launch ${JSON.stringify(app)}`);
     }
     const windows = asArray<Record<string, unknown>>(structured.windows);
     const windowId = pickWindowId(windows) ?? (await this.pickWindow(pid, structured));
@@ -421,7 +421,7 @@ export class CuaSky implements Sky {
       resolved.windowId = await this.pickWindow(resolved.pid, {});
     }
     if (!resolved.windowId) {
-      throw new SkyError(`No window found for ${resolved.name} (pid ${resolved.pid})`);
+      throw new OpenSkyError(`No window found for ${resolved.name} (pid ${resolved.pid})`);
     }
     await mkdir(this.screenshotDir, { recursive: true });
     const screenshotPath = join(this.screenshotDir, `${slug(resolved.name)}-${resolved.windowId}.png`);
@@ -479,11 +479,11 @@ export class CuaSky implements Sky {
   }
 }
 
-export function createSky(options: SkyOptions = {}): CuaSky {
-  return new CuaSky(options);
+export function createOpenSky(options: OpenSkyOptions = {}): OpenSky {
+  return new OpenSky(options);
 }
 
-export const sky: Sky = new CuaSky();
+export const opensky = new OpenSky();
 
 export function mapApps(structured: unknown): App[] {
   const record = asRecord(structured);
@@ -508,7 +508,7 @@ export function normalizeMouseButton(button?: MouseButton): "left" | "right" | "
   if (button === undefined) return "left";
   const mapped = MOUSE_BUTTONS[String(button).toLowerCase()];
   if (!mapped) {
-    throw new SkyError("mouseButton must be left, right, middle, l, r, m, 0, 1, or 2");
+    throw new OpenSkyError("mouseButton must be left, right, middle, l, r, m, 0, 1, or 2");
   }
   return mapped;
 }
@@ -516,7 +516,7 @@ export function normalizeMouseButton(button?: MouseButton): "left" | "right" | "
 export function normalizeDirection(direction: Direction | string): "up" | "down" | "left" | "right" {
   const mapped = DIRECTIONS[String(direction).toLowerCase()];
   if (!mapped) {
-    throw new SkyError("direction must be up, down, left, or right");
+    throw new OpenSkyError("direction must be up, down, left, or right");
   }
   return mapped;
 }

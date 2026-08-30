@@ -9,19 +9,19 @@ describe("async REPL wrapper", () => {
   it("returns the value of an awaited expression", async () => {
     const repl = new AsyncRepl({
       context: {
-        sky: {
+        opensky: {
           async list_apps() {
             return [{ id: "com.apple.calculator" }];
           },
         },
       },
     });
-    const result = await repl.evaluate("await sky.list_apps()");
+    const result = await repl.evaluate("await opensky.list_apps()");
     assert.deepEqual(result.value, [{ id: "com.apple.calculator" }]);
   });
 
   it("captures console.log and supports return", async () => {
-    const repl = new AsyncRepl({ context: { sky: {} } });
+    const repl = new AsyncRepl({ context: { opensky: {} } });
     const result = await repl.evaluate(`console.log("hi"); return 42`);
     assert.equal(result.value, 42);
     assert.deepEqual(result.logs, ["hi"]);
@@ -35,19 +35,19 @@ describe("async REPL wrapper", () => {
   });
 
   it("wraps expressions vs statements", () => {
-    assert.match(wrapAsync("await sky.list_apps()"), /\(async \(\) => \(/);
+    assert.match(wrapAsync("await opensky.list_apps()"), /\(async \(\) => \(/);
     assert.match(wrapAsync("const x = 1; return x"), /\(async \(\) => \{/);
   });
 
   it("serves multi-turn eval over the persistent REPL", async () => {
-    const { sky, dir } = await makeHarness();
-    const repl = new AsyncRepl({ context: { sky } });
+    const { opensky, dir } = await makeHarness();
+    const repl = new AsyncRepl({ context: { opensky } });
     const server = new ReplServer(repl, `${dir}/home`);
     try {
       const info = await server.start();
       assert.ok(info.port > 0);
       assert.equal(await serverAlive(`${dir}/home`), true);
-      const first = await evalOnServer("apps = await sky.list_apps(); return apps.map(a => a.displayName)", {
+      const first = await evalOnServer("apps = await opensky.list_apps(); return apps.map(a => a.displayName)", {
         homeDir: `${dir}/home`,
       });
       assert.equal(first.ok, true, first.error);

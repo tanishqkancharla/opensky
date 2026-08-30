@@ -8,7 +8,7 @@
   },
   "exports": {
     ".": "./dist/index.js",
-    "./sky": "./dist/sky.js"
+    "./opensky": "./dist/opensky.js"
   },
   "files": [
     "dist",
@@ -28,7 +28,6 @@
   "keywords": [
     "computer-use",
     "cua-driver",
-    "sky",
     "opensky",
     "repl",
     "skill",

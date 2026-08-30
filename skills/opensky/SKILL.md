@@ -1,14 +1,14 @@
 ---
 name: opensky
-description: Drive native desktop apps through an async Node REPL whose sky object matches the OpenAI Computer `@oai/sky` API, implemented on Cua Driver. Use when the user asks to operate, click, type, or automate a GUI application on macOS, Windows, or Linux.
+description: Drive native desktop apps through an async Node REPL whose opensky object matches the OpenAI Computer `@oai/sky` API, implemented on Cua Driver. Use when the user asks to operate, click, type, or automate a GUI application on macOS, Windows, or Linux.
 ---
 
 # opensky
 
-Use the `opensky` CLI. It is an **async Node REPL** with `sky` preloaded. Do not call `cua-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
+Use the `opensky` CLI. It is an **async Node REPL** with `opensky` preloaded. Do not call `cua-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
 
 ```bash
-opensky eval --json 'await sky.list_apps()'
+opensky eval --json 'await opensky.list_apps()'
 ```
 
 `await` works. The last expression is the result. Use `return` for multi-statement snippets.
@@ -32,15 +32,15 @@ cua-driver permissions grant
 Refresh state after every action (or a short related group). Element indices are snapshots and go stale when the UI changes.
 
 ```js
-const before = await sky.get_app_state({
+const before = await opensky.get_app_state({
   app: "Calculator",
   disableDiff: true,
 });
 console.log(before.text);
 
-await sky.click({ app: "Calculator", element_index: 13 });
+await opensky.click({ app: "Calculator", element_index: 13 });
 
-const after = await sky.get_app_state({ app: "Calculator" });
+const after = await opensky.get_app_state({ app: "Calculator" });
 return after.text;
 ```
 
@@ -48,8 +48,8 @@ Prefer putting a whole loop in one `opensky eval` so the snapshot stays in-proce
 
 ```bash
 opensky serve
-opensky eval 'state.apps = await sky.list_apps()'
-opensky eval 'await sky.click({ app: "Calculator", element_index: 13 })'
+opensky eval 'state.apps = await opensky.list_apps()'
+opensky eval 'await opensky.click({ app: "Calculator", element_index: 13 })'
 ```
 
 ## Targeting apps
@@ -60,24 +60,24 @@ opensky eval 'await sky.click({ app: "Calculator", element_index: 13 })'
 
 Prefer display names for actions when a bundle id looks ineffective. Always re-snapshot after an action that seems to no-op, then retry with the other identifier.
 
-## `sky` API
+## `opensky` API
 
-`sky` is already in scope. Do not import `@oai/sky`.
+`opensky` is already in scope. Do not import `@oai/sky`.
 
 ```js
-sky.target                    // "mac" | "win" | "linux"
+opensky.target                    // "mac" | "win" | "linux"
 
-await sky.list_apps()
-await sky.get_app_state({ app, disableDiff? })
-await sky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
-await sky.drag({ app, from_x, from_y, to_x, to_y })
-await sky.paste({ app, text, format: "text" | "md" | "html" })
-await sky.perform_secondary_action({ app, element_index, action })
-await sky.press_key({ app, key })
-await sky.scroll({ app, element_index, direction, pages? })
-await sky.select_text({ app, element_index, text, prefix?, suffix?, selection_type? })
-await sky.set_value({ app, element_index, value })
-await sky.type_text({ app, text })
+await opensky.list_apps()
+await opensky.get_app_state({ app, disableDiff? })
+await opensky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
+await opensky.drag({ app, from_x, from_y, to_x, to_y })
+await opensky.paste({ app, text, format: "text" | "md" | "html" })
+await opensky.perform_secondary_action({ app, element_index, action })
+await opensky.press_key({ app, key })
+await opensky.scroll({ app, element_index, direction, pages? })
+await opensky.select_text({ app, element_index, text, prefix?, suffix?, selection_type? })
+await opensky.set_value({ app, element_index, value })
+await opensky.type_text({ app, text })
 ```
 
 Helpers also in scope: `sleep(ms)`, `state`, `readFile`, `pathToFileURL`.
@@ -138,9 +138,9 @@ Copy the action name from the latest tree (`Raise`, `Show Menu`, `Increment`, `D
 ## CLI cheat sheet
 
 ```bash
-opensky eval --json 'await sky.list_apps()'
-opensky eval --json 'return await sky.get_app_state({app:"Calculator", disableDiff:true})'
+opensky eval --json 'await opensky.list_apps()'
+opensky eval --json 'return await opensky.get_app_state({app:"Calculator", disableDiff:true})'
 opensky run script.js
-opensky serve          # persist JS + sky snapshot cache across evals
+opensky serve          # persist JS + opensky snapshot cache across evals
 opensky stop
 ```
