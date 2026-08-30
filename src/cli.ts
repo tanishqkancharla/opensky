@@ -10,7 +10,7 @@ import { evalOnServer, ReplServer, serverAlive } from "./repl-server.js";
 import { createOpenSky } from "./opensky.js";
 import { installSkill, skillDestinations, uninstallSkill } from "./skill-install.js";
 
-const HELP = `opensky — async Node REPL for computer-use, backed by Cua Driver
+const HELP = `opensky — async Node REPL for computer-use
 
 Usage:
   opensky                     Start an interactive async REPL with opensky preloaded
@@ -20,7 +20,7 @@ Usage:
   opensky run <file>          Run a .js file as an async script
   opensky serve              Start a persistent REPL server for multi-turn eval
   opensky stop               Stop the persistent REPL server
-  opensky doctor             Check cua-driver + opensky status
+  opensky doctor             Install the desktop helper if needed and check status
   opensky skill install      Copy the opensky skill into agent skill directories
   opensky skill add           Alias for skill install
   opensky skill uninstall    Remove installed opensky skill copies
@@ -30,14 +30,15 @@ Options:
   --no-serve              Do not reuse a running persistent REPL
   --global, -g            Install the skill into ~/.agent/skills (user-level)
   --home <dir>            Override OPENSKY_HOME (default ~/.opensky)
-  --driver <path>        Path to the cua-driver binary
+  --driver <path>        Path to the desktop helper binary
   --help, -h              Show this help
   --version               Show version
 
 Environment:
-  CUA_DRIVER_PATH / OPENSKY_DRIVER   cua-driver binary
   OPENSKY_HOME                      session/screenshot/repl state directory
-  OPENSKY_SESSION                    cua-driver session label (default opensky)
+  OPENSKY_SESSION                    helper session label (default opensky)
+  OPENSKY_AUTOINSTALL=0             do not download the desktop helper
+  OPENSKY_DRIVER                    override helper binary path
 
 Examples:
   opensky eval 'await opensky.list_apps()'
@@ -168,22 +169,40 @@ async function runStop(flags: Flags): Promise<number> {
 async function runDoctor(flags: Flags): Promise<number> {
   const driver = new CuaDriverClient({
     binaryPath: flags.driver,
-    autoStart: false,
+    autoStart: true,
   });
+  let helperError: string | undefined;
+  try {
+    await driver.ensureHelper();
+    await driver.ensureDaemon();
+    if (process.platform === "darwin") {
+      await driver.grantPermissions();
+    }
+  } catch (error) {
+    helperError = error instanceof Error ? error.message : String(error);
+  }
   const binary = await driver.resolveBinary();
   const status = await driver.status();
   const home = homeDir(flags.home);
   const repl = await serverAlive(home);
   const report = {
     target: process.platform,
-    cuaDriver: binary,
-    daemonRunning: status.running,
-    daemonStatus: status.text,
+    desktopHelper: binary,
+    helperRunning: status.running,
+    helperStatus: status.text,
     openskyHome: home,
     replServer: repl,
+    ...(helperError ? { error: helperError } : {}),
   };
   process.stdout.write(`${inspect(report, { colors: false, depth: 4 })}\n`);
-  if (!binary) return 1;
+  if (helperError || !binary || !status.running) {
+    if (process.platform === "darwin") {
+      process.stderr.write(
+        "If the helper is installed but not running, enable Accessibility and Screen Recording in System Settings for the app that appeared (it may be labeled CuaDriver), then run `opensky doctor` again.\n",
+      );
+    }
+    return 1;
+  }
   return 0;
 }
 

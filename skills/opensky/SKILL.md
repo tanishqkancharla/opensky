@@ -19,13 +19,13 @@ opensky eval --json 'await opensky.list_apps()'
 opensky doctor
 ```
 
-If `cuaDriver` is missing, tell the user to install Cua Driver and grant Accessibility + Screen Recording:
+If `opensky doctor` reports the helper is missing or not running, tell the user to run:
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"
-open -n -g -a CuaDriver --args serve   # macOS
-cua-driver permissions grant
+opensky doctor
 ```
+
+On macOS they must enable **Accessibility** and **Screen Recording** in System Settings for the helper app that appears (it may be labeled CuaDriver), then run `opensky doctor` again. Do not ask them to install cua-driver separately.
 
 ## Canonical loop
 

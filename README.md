@@ -12,55 +12,21 @@ await opensky.click({ app: "Calculator", element_index: 13 });
 const after = await opensky.get_app_state({ app: "Calculator" });
 ```
 
-## Install Cua Driver
-
-`opensky` is a wrapper. The native driver still has to be installed and granted OS permissions.
+## Install
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"
+npm install -g opensky-cua
+opensky doctor
 ```
 
-**macOS** (keep TCC attribution on `CuaDriver.app`):
+`opensky doctor` downloads the native desktop helper if needed and starts it. On macOS, System Settings will ask for **Accessibility** and **Screen Recording**. Enable both for the helper app that appears (it may be labeled CuaDriver), then run `opensky doctor` again.
 
-```bash
-open -n -g -a CuaDriver --args serve
-cua-driver permissions grant
-cua-driver doctor
-```
-
-Grant **Accessibility** and **Screen Recording** to `CuaDriver.app`.
-
-**Windows**
-
-```powershell
-irm https://cua.ai/driver/install.ps1 | iex
-cua-driver autostart kick
-```
-
-**Linux** (X11 / XWayland + AT-SPI):
-
-```bash
-/bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"
-cua-driver serve
-cua-driver doctor
-```
-
-## Install the CLI
-
-From this repo:
+From this repo instead of npm:
 
 ```bash
 bun install
 bun src/cli.ts doctor
 ```
-
-Or with Node, after `npm install` (the `prepare` script builds `dist/`):
-
-```bash
-npx opensky doctor
-```
-
-Set `CUA_DRIVER_PATH` if the binary is not on `PATH`.
 
 ## Add / install the skill
 
@@ -81,7 +47,7 @@ npx skills add . --skill opensky -g -y
 After the repo is on GitHub:
 
 ```bash
-npx skills add <owner>/opensky --skill opensky -g -y
+npx skills add tanishqkancharla/opensky --skill opensky -g -y
 ```
 
 List without installing:

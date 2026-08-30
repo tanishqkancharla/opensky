@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
+import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 
 import { driverError } from "./errors.js";
@@ -12,11 +13,17 @@ export interface CuaDriverOptions {
   appPath?: string;
   timeoutMs?: number;
   autoStart?: boolean;
+  autoInstall?: boolean;
   startTimeoutMs?: number;
   session?: string;
   socket?: string;
   env?: NodeJS.ProcessEnv;
 }
+
+const INSTALL_SH = "https://cua.ai/driver/install.sh";
+const INSTALL_PS1 = "https://cua.ai/driver/install.ps1";
+const PERMISSION_HELP =
+  "In System Settings, enable Accessibility and Screen Recording for the desktop helper that appeared (it may be labeled CuaDriver), then run `opensky doctor` again.";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -45,7 +52,7 @@ export class CuaDriverClient implements DriverClient {
   async status(): Promise<{ running: boolean; text: string }> {
     const binary = await this.resolveBinary();
     if (!binary) {
-      return { running: false, text: "cua-driver binary not found" };
+      return { running: false, text: "desktop helper not found" };
     }
     const result = await this.exec(binary, this.withSocket(["status"]), 4_000);
     return {
@@ -54,13 +61,43 @@ export class CuaDriverClient implements DriverClient {
     };
   }
 
+  async ensureHelper(): Promise<string> {
+    const existing = await this.resolveBinary();
+    if (existing) return existing;
+    if (!this.autoInstallEnabled()) {
+      throw driverError("opensky desktop helper is not installed. Run `opensky doctor`.");
+    }
+
+    process.stderr.write("Installing opensky desktop helper…\n");
+    const installed = await runOfficialInstaller(detectTarget(), this.driverEnv());
+    if (installed.code !== 0) {
+      throw driverError(
+        [
+          "opensky could not install the desktop helper.",
+          (installed.stderr || installed.stdout).trim() || `installer exited ${installed.code}`,
+          "Check your network and retry `opensky doctor`.",
+        ].join(" "),
+      );
+    }
+
+    const binary = await this.resolveBinary();
+    if (!binary) {
+      throw driverError("opensky installed the desktop helper but could not find it. Retry `opensky doctor`.");
+    }
+    return binary;
+  }
+
+  async grantPermissions(): Promise<{ stdout: string; stderr: string; code: number }> {
+    const binary = await this.ensureHelper();
+    return this.exec(binary, this.withSocket(["permissions", "grant"]), 120_000);
+  }
+
   async ensureDaemon(): Promise<void> {
+    await this.ensureHelper();
     const status = await this.status();
     if (status.running) return;
     if (this.options.autoStart === false) {
-      throw driverError(
-        "cua-driver daemon is not running. Start it with `cua-driver serve` or `open -n -g -a CuaDriver --args serve`.",
-      );
+      throw driverError("opensky desktop helper is not running. Run `opensky doctor`.");
     }
 
     const binary = await this.requireBinary();
@@ -69,6 +106,12 @@ export class CuaDriverClient implements DriverClient {
       const appPath = this.options.appPath ?? "/Applications/CuaDriver.app";
       const opened = await this.exec("/usr/bin/open", ["-n", "-g", appPath, "--args", "serve", "--no-overlay"], 3_000);
       if (opened.code !== 0) {
+        await this.spawnDetached(binary, ["serve", "--no-overlay"]);
+      }
+    } else if (target === "win") {
+      await this.exec(binary, this.withSocket(["autostart", "kick"]), 15_000);
+      const afterKick = await this.status();
+      if (!afterKick.running) {
         await this.spawnDetached(binary, ["serve", "--no-overlay"]);
       }
     } else {
@@ -81,40 +124,46 @@ export class CuaDriverClient implements DriverClient {
       if (next.running) return;
       await sleep(200);
     }
-    throw driverError(
-      "Timed out waiting for cua-driver daemon. Run `cua-driver doctor` and grant Accessibility + Screen Recording.",
-    );
+    throw driverError(`Timed out waiting for the opensky desktop helper. ${PERMISSION_HELP}`);
   }
 
   async requireBinary(): Promise<string> {
-    const binary = await this.resolveBinary();
-    if (!binary) {
-      throw driverError(
-        [
-          "cua-driver was not found on PATH.",
-          'Install it with: /bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"',
-          "Or set CUA_DRIVER_PATH / OPENSKY_DRIVER.",
-        ].join(" "),
-      );
-    }
-    return binary;
+    return this.ensureHelper();
   }
 
   async resolveBinary(): Promise<string | null> {
+    if (this.options.binaryPath) {
+      return (await isExecutable(this.options.binaryPath)) ? this.options.binaryPath : null;
+    }
     const candidates = [
-      this.options.binaryPath,
-      process.env.CUA_DRIVER_PATH,
-      process.env.OPENSKY_DRIVER,
-      ...pathCandidates("cua-driver"),
-      "/usr/local/bin/cua-driver",
-      "/opt/homebrew/bin/cua-driver",
-      join(this.options.appPath ?? "/Applications/CuaDriver.app", "Contents/MacOS/cua-driver"),
+      this.options.env?.CUA_DRIVER_PATH ?? process.env.CUA_DRIVER_PATH,
+      this.options.env?.OPENSKY_DRIVER ?? process.env.OPENSKY_DRIVER,
+      ...pathCandidates("cua-driver", this.driverEnv().PATH),
+      ...defaultHelperPaths(this.options.appPath),
     ].filter((value): value is string => Boolean(value));
 
     for (const candidate of candidates) {
       if (await isExecutable(candidate)) return candidate;
     }
     return null;
+  }
+
+  private autoInstallEnabled(): boolean {
+    if (this.options.autoInstall === false) return false;
+    if (this.options.binaryPath) return false;
+    const env = this.options.env ?? process.env;
+    if (env.OPENSKY_AUTOINSTALL === "0") return false;
+    return true;
+  }
+
+  private driverEnv(): NodeJS.ProcessEnv {
+    const env = { ...(this.options.env ?? process.env) };
+    const localBin = join(homedir(), ".local", "bin");
+    const current = env.PATH ?? "";
+    if (!current.split(delimiter).includes(localBin)) {
+      env.PATH = current ? `${localBin}${delimiter}${current}` : localBin;
+    }
+    return env;
   }
 
   private callArgs(tool: string, args: Record<string, unknown>): string[] {
@@ -136,7 +185,7 @@ export class CuaDriverClient implements DriverClient {
     args: string[],
     timeoutMs: number,
   ): Promise<{ stdout: string; stderr: string; code: number }> {
-    const env = this.options.env ?? process.env;
+    const env = this.driverEnv();
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         env,
@@ -154,7 +203,7 @@ export class CuaDriverClient implements DriverClient {
       });
       const timer = setTimeout(() => {
         child.kill("SIGKILL");
-        reject(driverError(`cua-driver timed out after ${timeoutMs}ms (${args.join(" ")})`));
+        reject(driverError(`desktop helper timed out after ${timeoutMs}ms`));
       }, timeoutMs);
       child.on("error", (error) => {
         clearTimeout(timer);
@@ -171,7 +220,7 @@ export class CuaDriverClient implements DriverClient {
     const child = spawn(binary, args, {
       detached: true,
       stdio: "ignore",
-      env: this.options.env ?? process.env,
+      env: this.driverEnv(),
     });
     child.unref();
   }
@@ -211,7 +260,7 @@ export function parseDriverOutput(stdout: string): {
     const isError = parsed.isError === true;
     return {
       isError,
-      message: isError ? text || "cua-driver returned an error" : "",
+      message: isError ? text || "desktop helper returned an error" : "",
       result: { structured: structured ?? null, text, raw: parsed },
     };
   }
@@ -276,13 +325,75 @@ async function isExecutable(path: string): Promise<boolean> {
   }
 }
 
-function pathCandidates(binaryName: string): string[] {
-  const pathValue = process.env.PATH;
+function defaultHelperPaths(appPath?: string): string[] {
+  const home = homedir();
+  const app = appPath ?? "/Applications/CuaDriver.app";
+  return [
+    join(home, ".local", "bin", "cua-driver"),
+    join(home, ".local", "bin", "cua-driver.exe"),
+    "/usr/local/bin/cua-driver",
+    "/opt/homebrew/bin/cua-driver",
+    join(app, "Contents/MacOS/cua-driver"),
+  ];
+}
+
+function pathCandidates(binaryName: string, pathValue = process.env.PATH): string[] {
   if (!pathValue) return [];
   return pathValue
     .split(delimiter)
     .filter(Boolean)
     .map((entry) => join(entry, binaryName));
+}
+
+function runOfficialInstaller(
+  target: OpenSkyTarget,
+  env: NodeJS.ProcessEnv,
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  if (target === "win") {
+    return execCommand(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", `irm ${INSTALL_PS1} | iex`],
+      env,
+      180_000,
+    );
+  }
+  return execCommand("bash", ["-lc", `curl -fsSL ${INSTALL_SH} | bash`], env, 180_000);
+}
+
+function execCommand(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  timeoutMs: number,
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(driverError(`desktop helper installer timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr, code: code ?? 1 });
+    });
+  });
 }
 
 function sleep(ms: number): Promise<void> {
