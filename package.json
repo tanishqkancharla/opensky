@@ -1,6 +1,6 @@
 {
   "name": "opensky-cua",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Open @oai/sky-compatible computer-use library and async REPL, backed by Cua Driver",
   "type": "module",
   "bin": {
