@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "bun:test";
 
-import { AsyncRepl, wrapAsync } from "../dist/async-repl.js";
-import { evalOnServer, ReplServer, serverAlive } from "../dist/repl-server.js";
-import { makeHarness } from "./harness.js";
+import { AsyncRepl, wrapAsync } from "../src/async-repl.js";
+import { evalOnServer, ReplServer, serverAlive } from "../src/repl-server.js";
+import { makeHarness } from "./harness.ts";
 
 describe("async REPL wrapper", () => {
   it("returns the value of an awaited expression", async () => {
@@ -51,10 +51,10 @@ describe("async REPL wrapper", () => {
         homeDir: `${dir}/home`,
       });
       assert.equal(first.ok, true, first.error);
-      assert.ok(first.value.includes("Calculator"));
+      assert.ok(Array.isArray(first.value) && first.value.includes("Calculator"));
       const second = await evalOnServer("return apps.length", { homeDir: `${dir}/home` });
       assert.equal(second.ok, true, second.error);
-      assert.ok(second.value >= 1);
+      assert.ok(typeof second.value === "number" && second.value >= 1);
     } finally {
       await server.stop();
     }

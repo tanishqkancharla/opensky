@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
+import { describe, it } from "bun:test";
 
 import {
   diffTrees,
@@ -9,8 +9,9 @@ import {
   mapApps,
   normalizeDirection,
   normalizeMouseButton,
-} from "../dist/sky.js";
-import { makeHarness } from "./harness.js";
+} from "../src/sky.js";
+import type { SnapshotElement } from "../src/types.js";
+import { makeHarness } from "./harness.ts";
 
 describe("sky helpers", () => {
   it("maps list_apps records onto the sky App shape", () => {
@@ -34,7 +35,7 @@ describe("sky helpers", () => {
     assert.equal(normalizeMouseButton(0), "left");
     assert.equal(normalizeMouseButton("r"), "right");
     assert.equal(normalizeMouseButton("middle"), "middle");
-    assert.throws(() => normalizeMouseButton("thumb"), /mouseButton must be left, right, middle/);
+    assert.throws(() => normalizeMouseButton("thumb" as never), /mouseButton must be left, right, middle/);
   });
 
   it("validates scroll directions including one-letter aliases", () => {
@@ -49,8 +50,8 @@ describe("sky helpers", () => {
   });
 
   it("diffs accessibility snapshots", () => {
-    const previous = [{ element_index: 13, role: "AXButton", label: "7", value: "" }];
-    const next = [
+    const previous: SnapshotElement[] = [{ element_index: 13, role: "AXButton", label: "7", value: "" }];
+    const next: SnapshotElement[] = [
       { element_index: 13, role: "AXButton", label: "7", value: "pressed" },
       { element_index: 14, role: "AXButton", label: "8", value: "" },
     ];
@@ -114,7 +115,10 @@ describe("CuaSky against cua-driver", () => {
     const raw = await driver.call("list_apps", {});
     assert.ok(raw.structured);
 
-    await assert.rejects(() => sky.paste({ app: "TextEdit", text: "x", format: "rtf" }), /Invalid params/);
+    await assert.rejects(
+      () => sky.paste({ app: "TextEdit", text: "x", format: "rtf" as never }),
+      /Invalid params/,
+    );
     await assert.rejects(
       () => sky.select_text({ app: "TextEdit", element_index: 2, text: "alpha", selection_type: "range" }),
       /Invalid params/,
@@ -123,10 +127,7 @@ describe("CuaSky against cua-driver", () => {
       () => sky.scroll({ app: "TextEdit", element_index: 1, direction: "sideways" }),
       /direction must be up, down, left, or right/,
     );
-    await assert.rejects(
-      () => sky.click({ app: "TextEdit", x: -4, y: -4 }),
-      /windowNotFoundAtPosition/,
-    );
+    await assert.rejects(() => sky.click({ app: "TextEdit", x: -4, y: -4 }), /windowNotFoundAtPosition/);
   });
 
   it("resolves display name, bundle id, and path", async () => {
@@ -145,6 +146,7 @@ describe("CuaSky against cua-driver", () => {
   it("writes screenshot bytes to a file: URL", async () => {
     const { sky } = await makeHarness();
     const state = await sky.get_app_state({ app: "Calculator", disableDiff: true });
+    assert.ok(state.screenshot);
     const bytes = await readFile(fileURLToPath(state.screenshot.url));
     assert.ok(bytes.length > 10);
     assert.equal(bytes[0], 0x89);

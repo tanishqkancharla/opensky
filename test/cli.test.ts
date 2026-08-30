@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
+import { describe, it } from "bun:test";
 
-import { makeHarness } from "./harness.js";
+import { makeHarness } from "./harness.ts";
 
-const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+const cli = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 
 describe("ccua CLI", () => {
   it("prints help and version", async () => {
@@ -30,7 +30,7 @@ describe("ccua CLI", () => {
       },
     });
     assert.equal(result.code, 0, result.stderr);
-    const payload = JSON.parse(result.stdout);
+    const payload = JSON.parse(result.stdout) as { ok: boolean; value: Array<{ displayName?: string }> };
     assert.equal(payload.ok, true);
     assert.ok(payload.value.some((app) => app.displayName === "Calculator"));
   });
@@ -52,7 +52,10 @@ describe("ccua CLI", () => {
       },
     });
     assert.equal(result.code, 0, `${result.stderr}\n${result.stdout}`);
-    const payload = JSON.parse(result.stdout);
+    const payload = JSON.parse(result.stdout) as {
+      ok: boolean;
+      value: { before: string; after: string; shot: string };
+    };
     assert.equal(payload.ok, true);
     assert.match(payload.value.before, /\[13]/);
     assert.ok(payload.value.shot.startsWith("file:"));
@@ -65,15 +68,14 @@ describe("ccua CLI", () => {
     const result = await runCli(["skill", "add"], { cwd, env: harness.env });
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /Installed ccua skill/);
-    const { readFile } = await import("node:fs/promises");
     const skill = await readFile(join(cwd, ".cursor", "skills", "ccua", "SKILL.md"), "utf8");
     assert.match(skill, /name: ccua/);
     assert.match(skill, /ccua eval/);
   });
 });
 
-function runCli(args, options = {}) {
-  return new Promise((resolve, reject) => {
+function runCli(args: string[], options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}) {
+  return new Promise<{ code: number; stdout: string; stderr: string }>((resolve, reject) => {
     const child = spawn(process.execPath, [cli, ...args], {
       cwd: options.cwd ?? process.cwd(),
       env: { ...process.env, ...(options.env ?? {}) },
@@ -83,10 +85,10 @@ function runCli(args, options = {}) {
     let stderr = "";
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => {
+    child.stdout.on("data", (chunk: string) => {
       stdout += chunk;
     });
-    child.stderr.on("data", (chunk) => {
+    child.stderr.on("data", (chunk: string) => {
       stderr += chunk;
     });
     child.on("error", reject);

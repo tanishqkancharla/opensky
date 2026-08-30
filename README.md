@@ -55,6 +55,8 @@ npm link
 Or run it without linking:
 
 ```bash
+bun src/cli.ts doctor
+# or, after build:
 node dist/cli.js doctor
 ```
 
@@ -174,9 +176,13 @@ Element indices are snapshots. Some identifiers fail silently. An action can tak
 
 ## Development
 
+Tests are TypeScript and run with [Bun](https://bun.sh) (`bun test`), which executes `src/` directly — no `tsc` step required for the suite.
+
 ```bash
-npm install
-npm test
+curl -fsSL https://bun.sh/install | bash
+bun test
 ```
+
+`npm test` is an alias for `bun test`. `npm run build` still emits the Node-compatible `dist/` used by the published `ccua` bin.
 
 Tests use a mock `cua-driver` so they run without a desktop or TCC grants.

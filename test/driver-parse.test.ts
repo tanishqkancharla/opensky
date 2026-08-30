@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "bun:test";
 
-import { parseDriverOutput } from "../dist/driver.js";
+import { parseDriverOutput } from "../src/driver.js";
 
 describe("parseDriverOutput", () => {
   it("reads MCP envelopes", () => {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "bun:test";
 
-import { parseXdotoolKey, toHotkeyKeys } from "../dist/keys.js";
+import { parseXdotoolKey, toHotkeyKeys } from "../src/keys.js";
 
 describe("parseXdotoolKey", () => {
   it("maps Return and keypad aliases", () => {

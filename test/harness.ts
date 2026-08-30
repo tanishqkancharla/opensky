@@ -1,10 +1,10 @@
-import { chmod, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CuaDriverClient } from "../dist/driver.js";
-import { createSky } from "../dist/sky.js";
+import { CuaDriverClient } from "../src/driver.js";
+import { createSky } from "../src/sky.js";
 
 const fixtureDriver = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "cua-driver.mjs");
 
@@ -13,7 +13,7 @@ export async function makeHarness() {
   const statePath = join(dir, "state.json");
   const logPath = join(dir, "calls.json");
   const driverPath = join(dir, "cua-driver");
-  const source = await (await import("node:fs/promises")).readFile(fixtureDriver, "utf8");
+  const source = await readFile(fixtureDriver, "utf8");
   await writeFile(driverPath, source, { mode: 0o755 });
   await chmod(driverPath, 0o755);
   const env = {
