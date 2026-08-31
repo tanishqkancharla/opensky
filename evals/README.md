@@ -44,11 +44,26 @@ Return the score. The runner writes `evals/runs/<id>/summary.json` and `cases/<i
 | --- | --- |
 | `FLEETS_TOKEN` or `CUA_CLIENT_ID` + `CUA_CLIENT_SECRET` | Cua Fleet |
 | `CUA_POOL_NAME` | Pool name (default `opensky-evals`) |
-| `CUA_EVAL_IMAGE` | Image ref. Default is Linux Omarchy |
+| `CUA_EVAL_IMAGE` | Image ref. Default is Linux Omarchy; macOS defaults to `ghcr.io/trycua/macos-tahoe-cua:latest` |
 | `CUA_EVAL_OS` | `linux` (default), `macos`, or `windows` |
+| `CUA_EVAL_CPU` | vCPU count (default 4) |
+| `CUA_EVAL_MEMORY_MB` | Memory in MiB (default 6144 linux / 8192 macos) |
 | `EVAL_DELETE_POOL=1` | Delete the pool when the case VM exits |
 | `OPENAI_API_KEY` | Pi / judge |
 
 The default Fleet image is **Linux Omarchy** (Hyprland + Foot). Cases must use apps that exist there — Foot does; Calculator and Chromium do not on the current image.
 
-The three-way compare including `codex` needs a **macOS** Fleet image with a terminal, `cua-driver`, and Codex CLI + Computer Use installed.
+```bash
+export CUA_EVAL_OS=macos
+export CUA_POOL_NAME=opensky-macos-evals
+bun evals/macos-compat.ts
+```
+
+Cua Fleet cloud currently boots **Linux** (Omarchy) and has a pinned Windows containerDisk; `Image.macos()` is a local Lume/Apple Virtualization image, not a KubeVirt `containerDisk`. `bun evals/macos-compat.ts` claims `ghcr.io/trycua/macos-tahoe-cua:latest` with `CUA_EVAL_OS=macos`. A 2026-08-31 run created pool `opensky-macos-evals` with `ready_replicas=0` and ended in `ClaimTimeout` after ~10 minutes — Fleet never adopted a sandbox. Re-run when you have a macOS containerDisk digest:
+
+```bash
+export CUA_EVAL_OS=macos
+export CUA_EVAL_IMAGE='…macos containerDisk digest…'
+export CUA_POOL_NAME=opensky-macos-evals
+bun evals/macos-compat.ts
+```

@@ -12,10 +12,11 @@ from typing import Any
 
 from aiohttp import web
 
-DEFAULT_IMAGE = (
+DEFAULT_LINUX_IMAGE = (
     "public.ecr.aws/k5j5w0x5/cua-omarchy-workspace"
     "@sha256:d9b7be06beac425084eaa99eb912589b38b5cc86ae3e3ec45c9c5d59d4b3a7ab"
 )
+DEFAULT_MACOS_IMAGE = "ghcr.io/trycua/macos-tahoe-cua:latest"
 
 
 def log(message: str) -> None:
@@ -82,18 +83,26 @@ def _response_header(response: Any, name: str) -> str | None:
 async def main() -> int:
     from cua_sandbox import Image, Pool
 
-    pool_name = os.environ.get("CUA_POOL_NAME") or "opensky-evals"
-    image_ref = os.environ.get("CUA_EVAL_IMAGE") or DEFAULT_IMAGE
-    os_type = os.environ.get("CUA_EVAL_OS") or "linux"
+    os_type = (os.environ.get("CUA_EVAL_OS") or "linux").strip().lower()
+    if os_type in {"mac", "darwin"}:
+        os_type = "macos"
+    default_image = DEFAULT_MACOS_IMAGE if os_type == "macos" else DEFAULT_LINUX_IMAGE
+    pool_name = os.environ.get("CUA_POOL_NAME") or (
+        "opensky-macos-evals" if os_type == "macos" else "opensky-evals"
+    )
+    image_ref = os.environ.get("CUA_EVAL_IMAGE") or default_image
     delete_pool = os.environ.get("EVAL_DELETE_POOL") == "1"
+    cpu = int(os.environ.get("CUA_EVAL_CPU") or ("4" if os_type == "macos" else "4"))
+    memory_mb = int(os.environ.get("CUA_EVAL_MEMORY_MB") or ("8192" if os_type == "macos" else "6144"))
 
+    log(f"claiming Fleet pool={pool_name} os={os_type} image={image_ref} cpu={cpu} memory_mb={memory_mb}")
     image = Image.from_registry(image_ref, os_type=os_type, kind="vm")
     pool = await Pool.apply(
         image,
         name=pool_name,
         replicas=1,
-        cpu=4,
-        memory_mb=6144,
+        cpu=cpu,
+        memory_mb=memory_mb,
         services={"server": 8000, "mcp": 3000},
         ttl_seconds_after_created=21600,
     )
