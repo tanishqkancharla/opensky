@@ -6,7 +6,7 @@ Compare computer-use harnesses on a **fresh Cua Fleet VM per case**. The agent a
 export FLEETS_TOKEN=...          # or CUA_CLIENT_ID + CUA_CLIENT_SECRET
 export OPENAI_API_KEY=...
 bun run evals -- --harness opensky,cua-driver
-bun run evals -- calculator-6x7.eval.ts --harness opensky
+bun run evals -- terminal-echo.eval.ts --harness opensky
 ```
 
 `--harness` values:
@@ -24,12 +24,14 @@ Pi built-in coding tools are off for the first two arms.
 ```ts
 import { evalCase } from "./eval-case.js";
 
-evalCase({ name: "calculator computes 6 × 7" }, async ({ harness }) => {
-  const response = await harness.send("Open Calculator, compute 6 × 7, and leave the result visible.");
+evalCase({ name: "terminal echoes OPENSKY-OK" }, async ({ harness }) => {
+  const response = await harness.send(
+    "Open the Foot terminal, run `echo OPENSKY-OK`, and leave the output visible.",
+  );
   return response.score([
-    "Calculator's display shows 42.",
+    "A Foot/terminal window artifact shows OPENSKY-OK.",
     "Used the computer-use harness, not osascript/cliclick.",
-    "Efficient path: target Calculator once, snapshot, 6 × 7 =, re-snapshot.",
+    "Efficient path: target Foot once, snapshot, type the command, Enter, re-snapshot.",
   ]);
 });
 ```
@@ -47,4 +49,6 @@ Return the score. The runner writes `evals/runs/<id>/summary.json` and `cases/<i
 | `EVAL_DELETE_POOL=1` | Delete the pool when the case VM exits |
 | `OPENAI_API_KEY` | Pi / judge |
 
-The three-way compare including `codex` needs a **macOS** Fleet image with Calculator, `cua-driver`, and Codex CLI + Computer Use installed.
+The default Fleet image is **Linux Omarchy** (Hyprland + Foot). Cases must use apps that exist there — Foot does; Calculator and Chromium do not on the current image.
+
+The three-way compare including `codex` needs a **macOS** Fleet image with a terminal, `cua-driver`, and Codex CLI + Computer Use installed.

@@ -33,7 +33,7 @@ const HELP = `opensky evals — compare computer-use harnesses on Cua Fleet VMs
 
 Usage:
   bun run evals -- [--harness opensky,cua-driver,codex] [--model openai/gpt-5.6-sol]
-  bun run evals -- calculator-6x7.eval.ts --harness opensky
+  bun run evals -- terminal-echo.eval.ts --harness opensky
 
 Options:
   --harness <id[,id]>   opensky | cua-driver | codex   (default: all three)

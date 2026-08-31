@@ -160,13 +160,15 @@ function agentSystemPrompt(harness: EvalHarnessName): string {
       "You operate a remote desktop through the opensky tools only.",
       "Do not use bash, osascript, cliclick, or any other computer-control path.",
       "Canonical loop: get_app_state({ app, disableDiff: true }) → act with element_index → get_app_state again.",
-      "Prefer display names. Refresh state after every action.",
+      "Prefer display names from list_apps. On Linux Omarchy the terminal is Foot.",
+      "Refresh state after every action. Do not invent macOS app names.",
     ].join(" ");
   }
   return [
     "You operate a remote desktop through cua_driver_call only, matching `cua-driver call --raw TOOL JSON`.",
     "Do not use bash, osascript, or cliclick.",
     "Typical loop: launch_app or list_apps → list_windows → get_window_state → click/type with pid and window_id → get_window_state again.",
+    "On Linux Omarchy launch Foot for a terminal. Use launch_path from list_apps; do not invent Calculator or Chromium if they are missing.",
   ].join(" ");
 }
 
