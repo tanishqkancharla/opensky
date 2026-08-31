@@ -58,7 +58,39 @@ describe("opensky CLI", () => {
     };
     assert.equal(payload.ok, true);
     assert.match(payload.value.before, /\[13]/);
+    assert.match(payload.value.after, /Changed:/);
+    assert.doesNotMatch(payload.value.after, /No accessibility changes/);
     assert.ok(payload.value.shot.startsWith("file:"));
+  });
+
+  it("evals Date/Number globals and TextEdit document selection", async () => {
+    const harness = await makeHarness();
+    const env = {
+      ...harness.env,
+      CUA_DRIVER_PATH: harness.driverPath,
+      OPENSKY_HOME: join(harness.dir, "home"),
+      OPENSKY_AUTOSTART: "0",
+    };
+    const globals = await runCli(["eval", "--json", "return { n: Number('2'), t: typeof Date }"], { env });
+    assert.equal(globals.code, 0, globals.stderr);
+    const globalPayload = JSON.parse(globals.stdout) as { ok: boolean; value: { n: number; t: string } };
+    assert.equal(globalPayload.ok, true);
+    assert.equal(globalPayload.value.n, 2);
+    assert.equal(globalPayload.value.t, "function");
+
+    const textEdit = await runCli(
+      ["eval", "--json", 'return await opensky.get_app_state({ app: "TextEdit", disableDiff: true })'],
+      { env },
+    );
+    assert.equal(textEdit.code, 0, textEdit.stderr);
+    const state = JSON.parse(textEdit.stdout) as {
+      ok: boolean;
+      value: { app: string; text: string; screenshot: { width?: number; height?: number } };
+    };
+    assert.equal(state.ok, true);
+    assert.match(state.value.app, /TextEdit/);
+    assert.match(state.value.text, /AXTextArea/);
+    assert.doesNotMatch(state.value.text, /AXMenuBar/);
   });
 
   it("installs the skill into a temp project", async () => {

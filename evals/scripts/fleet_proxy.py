@@ -80,6 +80,27 @@ def _response_header(response: Any, name: str) -> str | None:
     return None
 
 
+def _patch_macos_runtime() -> None:
+    """Pool.apply defaults to KubeVirt. Fleet also has a macOS runtime (Lume)."""
+    from cua_sandbox.transport.fleet_cloud import FleetCloudTransport
+    from fleet_sdk import Firmware, RuntimeKind
+
+    original = FleetCloudTransport._template_request
+
+    def patched(self):  # type: ignore[no-untyped-def]
+        request = original(self)
+        if getattr(self._image, "os_type", None) != "macos":
+            return request
+        vm = request.spec.vm_template
+        vm.runtime = RuntimeKind.MACOS
+        if getattr(vm, "firmware", None) is None:
+            vm.firmware = Firmware.EFI
+        log("patched Fleet template runtime=MACOS firmware=EFI")
+        return request
+
+    FleetCloudTransport._template_request = patched  # type: ignore[method-assign]
+
+
 async def main() -> int:
     from cua_sandbox import Image, Pool
 
@@ -96,6 +117,8 @@ async def main() -> int:
     memory_mb = int(os.environ.get("CUA_EVAL_MEMORY_MB") or ("8192" if os_type == "macos" else "6144"))
 
     log(f"claiming Fleet pool={pool_name} os={os_type} image={image_ref} cpu={cpu} memory_mb={memory_mb}")
+    if os_type == "macos":
+        _patch_macos_runtime()
     image = Image.from_registry(image_ref, os_type=os_type, kind="vm")
     pool = await Pool.apply(
         image,

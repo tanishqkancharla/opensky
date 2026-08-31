@@ -53,13 +53,7 @@ Return the score. The runner writes `evals/runs/<id>/summary.json` and `cases/<i
 
 The default Fleet image is **Linux Omarchy** (Hyprland + Foot). Cases must use apps that exist there — Foot does; Calculator and Chromium do not on the current image.
 
-```bash
-export CUA_EVAL_OS=macos
-export CUA_POOL_NAME=opensky-macos-evals
-bun evals/macos-compat.ts
-```
-
-Cua Fleet cloud currently boots **Linux** (Omarchy) and has a pinned Windows containerDisk; `Image.macos()` is a local Lume/Apple Virtualization image, not a KubeVirt `containerDisk`. `bun evals/macos-compat.ts` claims `ghcr.io/trycua/macos-tahoe-cua:latest` with `CUA_EVAL_OS=macos`. A 2026-08-31 run created pool `opensky-macos-evals` with `ready_replicas=0` and ended in `ClaimTimeout` after ~10 minutes — Fleet never adopted a sandbox. Re-run when you have a macOS containerDisk digest:
+Cua Fleet cloud currently boots Linux (Omarchy). `Image.macos()` is local Lume. A 2026-08-31 KubeVirt claim of `ghcr.io/trycua/macos-tahoe-cua:latest` stayed at `ready_replicas=0` and `ClaimTimeout`. Patching the template to `RuntimeKind.MACOS` was rejected with HTTP 403 `k8s request is not allowed` on this account. Re-run when you have a macOS containerDisk digest and macOS-runtime access:
 
 ```bash
 export CUA_EVAL_OS=macos
