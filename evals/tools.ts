@@ -127,10 +127,12 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
     defineTool({
       name: "scroll",
       label: "scroll",
-      description: "Scroll an element. direction: up|down|left|right or u|d|l|r.",
+      description: "Scroll. Prefer element_index; omit it or pass x/y to scroll the window.",
       parameters: Type.Object({
         app: Type.String(),
-        element_index: Type.Number(),
+        element_index: Type.Optional(Type.Number()),
+        x: Type.Optional(Type.Number()),
+        y: Type.Optional(Type.Number()),
         direction: Type.String(),
         pages: Type.Optional(Type.Number()),
       }),

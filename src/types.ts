@@ -35,6 +35,10 @@ export interface App {
 
 export interface Screenshot {
   url: string;
+  width?: number;
+  height?: number;
+  scale?: number;
+  format?: "png" | "jpeg";
 }
 
 export interface AppState {
@@ -78,7 +82,9 @@ export interface OpenSky {
   press_key(args: { app: string; key: string }): Promise<void>;
   scroll(args: {
     app: string;
-    element_index: number;
+    element_index?: number;
+    x?: number;
+    y?: number;
     direction: Direction;
     pages?: number;
   }): Promise<void>;
@@ -142,6 +148,8 @@ export interface WindowSnapshot {
   tree: string;
   elements: SnapshotElement[];
   screenshotPath: string | null;
+  screenshot?: Screenshot;
+  frame?: { width: number; height: number };
 }
 
 export interface OpenSkyOptions {
@@ -152,4 +160,6 @@ export interface OpenSkyOptions {
   autoLaunch?: boolean;
   pasteModifier?: "cmd" | "ctrl";
   target?: OpenSkyTarget;
+  screenshotFormat?: "png" | "jpeg";
+  screenshotScale?: number;
 }

@@ -82,10 +82,27 @@ async function dispatch(command, state) {
     case "scroll":
       return envelope(scroll(state, args));
     case "clipboard_read":
-      return envelope({ text: state.clipboard, types: ["public.utf8-plain-text"] });
+      return envelope({
+        text: state.clipboard,
+        html: state.clipboardHtml,
+        markdown: state.clipboardMarkdown,
+        types: [
+          "public.utf8-plain-text",
+          ...(state.clipboardHtml ? ["public.html"] : []),
+          ...(state.clipboardMarkdown ? ["public.markdown"] : []),
+        ],
+      });
     case "clipboard_write":
       state.clipboard = String(args.text ?? "");
-      return envelope({ types: ["public.utf8-plain-text"] });
+      state.clipboardHtml = args.html;
+      state.clipboardMarkdown = args.markdown;
+      return envelope({
+        types: [
+          "public.utf8-plain-text",
+          ...(args.html ? ["public.html"] : []),
+          ...(args.markdown ? ["public.markdown"] : []),
+        ],
+      });
     case "bring_to_front":
       return envelope({ effect: "confirmed", pid: args.pid });
     default:
@@ -122,7 +139,8 @@ async function getWindowState(state, args) {
   if (!window) throw new Error(`window_id_not_found`);
   state.snapshotSeq += 1;
   const snapshotId = `s${String(state.snapshotSeq).padStart(8, "0")}`;
-  const elements = app.elements.map((element) => ({
+  const source = elementsForWindow(app, window);
+  const elements = source.map((element) => ({
     ...element,
     element_token: `${snapshotId}:${element.element_index}`,
   }));
@@ -140,8 +158,16 @@ async function getWindowState(state, args) {
     snapshot_id: snapshotId,
     tree_markdown: tree,
     elements,
+    frame: window.frame,
     screenshot_file_path: args.screenshot_out_file ?? undefined,
   };
+}
+
+function elementsForWindow(app, window) {
+  if (Array.isArray(window.elements)) return window.elements;
+  const height = window.frame?.height ?? window.frame?.h;
+  if (typeof height === "number" && height < 40) return [];
+  return app.elements;
 }
 
 function click(state, args, tool) {
@@ -309,6 +335,8 @@ function defaultState() {
     nextPid: 900,
     snapshotSeq: 0,
     clipboard: "",
+    clipboardHtml: undefined,
+    clipboardMarkdown: undefined,
     calls: [],
     snapshots: {},
     apps: [
@@ -319,6 +347,7 @@ function defaultState() {
         launch_path: "/System/Applications/Calculator.app",
         running: true,
         last_used: "2026-05-15T12:34:56Z",
+        use_count: 42,
         windows: [
           {
             window_id: 10725,
@@ -327,12 +356,22 @@ function defaultState() {
             z_index: 12,
             is_on_screen: true,
             on_current_space: true,
+            is_main: true,
+            frame: { x: 40, y: 80, width: 198, height: 350 },
           },
         ],
         elements: [
           { element_index: 0, role: "AXWindow", label: "Calculator", value: "", actions: ["Raise"] },
           { element_index: 13, role: "AXButton", label: "7", value: "", actions: ["Press"] },
           { element_index: 20, role: "AXButton", label: "×", value: "", actions: ["Press"] },
+          {
+            element_index: 100,
+            role: "AXMenuBar",
+            label: "Apple",
+            value: "",
+            frame: { x: 0, y: 0, w: 1440, h: 24 },
+          },
+          { element_index: 101, role: "AXMenuBarItem", label: "Calculator", value: "" },
         ],
         actions: [],
       },
@@ -345,12 +384,24 @@ function defaultState() {
         last_used: 809740800,
         windows: [
           {
+            window_id: 2000,
+            pid: 900,
+            title: "",
+            z_index: 20,
+            is_on_screen: true,
+            on_current_space: true,
+            frame: { x: 0, y: 22, width: 1022, height: 25 },
+            elements: [],
+          },
+          {
             window_id: 2001,
             pid: 900,
             title: "Untitled",
             z_index: 8,
             is_on_screen: true,
             on_current_space: true,
+            is_main: true,
+            frame: { x: 120, y: 80, width: 800, height: 600 },
           },
         ],
         elements: [
@@ -375,6 +426,15 @@ function defaultState() {
         last_used: null,
         windows: [],
         elements: [{ element_index: 0, role: "AXWindow", label: "Notes", value: "" }],
+        actions: [],
+      },
+      {
+        pid: 1,
+        name: "init",
+        running: true,
+        last_used: null,
+        windows: [],
+        elements: [],
         actions: [],
       },
     ],

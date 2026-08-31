@@ -23,6 +23,8 @@ export class AsyncReplError extends Error {
 export interface AsyncReplOptions {
   context?: Record<string, unknown>;
   timeoutMs?: number;
+  /** When false, omit `process` and `require` from the sandbox (used by `opensky serve`). */
+  allowNodeApis?: boolean;
 }
 
 export class AsyncRepl {
@@ -32,7 +34,7 @@ export class AsyncRepl {
 
   constructor(options: AsyncReplOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? 60_000;
-    this.sandbox = vm.createContext(createSandbox(options.context ?? {}));
+    this.sandbox = vm.createContext(createSandbox(options.context ?? {}, options.allowNodeApis !== false));
   }
 
   get context(): vm.Context {
@@ -143,10 +145,64 @@ export function createHeadlessStreams(): { input: PassThrough; output: Writable;
   return { input, output, chunks };
 }
 
-function createSandbox(context: Record<string, unknown>): Record<string, unknown> {
+const SANDBOX_BUILTINS: Record<string, unknown> = {
+  Date,
+  Number,
+  String,
+  Boolean,
+  Array,
+  Object,
+  Function,
+  JSON,
+  Math,
+  Error,
+  TypeError,
+  RangeError,
+  SyntaxError,
+  URIError,
+  ReferenceError,
+  Promise,
+  Map,
+  Set,
+  WeakMap,
+  WeakSet,
+  Symbol,
+  Proxy,
+  Reflect,
+  parseInt,
+  parseFloat,
+  isNaN,
+  isFinite,
+  encodeURI,
+  decodeURI,
+  encodeURIComponent,
+  decodeURIComponent,
+  undefined,
+  NaN,
+  Infinity,
+  Intl,
+  BigInt,
+  ArrayBuffer,
+  DataView,
+  Uint8Array,
+  Int8Array,
+  Uint16Array,
+  Int16Array,
+  Uint32Array,
+  Int32Array,
+  Float32Array,
+  Float64Array,
+  TextEncoder,
+  TextDecoder,
+  atob,
+  btoa,
+  structuredClone,
+};
+
+function createSandbox(context: Record<string, unknown>, allowNodeApis: boolean): Record<string, unknown> {
   const store: Record<string | symbol, unknown> = {
+    ...SANDBOX_BUILTINS,
     console,
-    process,
     Buffer,
     setTimeout,
     clearTimeout,
@@ -156,13 +212,17 @@ function createSandbox(context: Record<string, unknown>): Record<string, unknown
     clearImmediate,
     URL,
     URLSearchParams,
-    require: createRequire(import.meta.url),
     state: {},
     ...context,
   };
+  if (allowNodeApis) {
+    store.process = process;
+    store.require = createRequire(import.meta.url);
+  }
   return new Proxy(store, {
-    has() {
-      return true;
+    has(target, prop) {
+      if (prop === Symbol.unscopables) return false;
+      return prop in target;
     },
     get(target, prop) {
       if (prop === Symbol.unscopables) return undefined;
@@ -174,11 +234,14 @@ function createSandbox(context: Record<string, unknown>): Record<string, unknown
     },
     getOwnPropertyDescriptor(target, prop) {
       if (prop in target) return Object.getOwnPropertyDescriptor(target, prop);
-      return { configurable: true, enumerable: true, writable: true, value: undefined };
+      return undefined;
     },
     defineProperty(target, prop, descriptor) {
       Object.defineProperty(target, prop, descriptor);
       return true;
+    },
+    ownKeys(target) {
+      return Reflect.ownKeys(target);
     },
   }) as unknown as Record<string, unknown>;
 }

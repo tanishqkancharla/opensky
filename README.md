@@ -88,12 +88,14 @@ opensky                  # interactive async REPL  (prompt: opensky>)
 opensky eval 'await opensky.list_apps()'
 opensky eval --json 'return await opensky.get_app_state({app:"Calculator", disableDiff:true})'
 opensky run script.js
-opensky serve            # persist context across evals
+opensky serve            # persist context across evals (token in OPENSKY_HOME/repl.json)
 opensky stop
 opensky doctor
 ```
 
-The REPL evaluates each snippet as an async function body, so `await` works. A single expression is returned automatically; otherwise `return` the value you want printed.
+The REPL evaluates each snippet as an async function body, so `await` works. A single expression is returned automatically; otherwise `return` the value you want printed. `Date`, `Number`, and other standard JS globals are in scope.
+
+`opensky serve` binds 127.0.0.1 and requires the token stored in `repl.json` (mode 0600). The serve sandbox does not expose `process` or `require`. `OPENSKY_HOME` (default `~/.opensky`) is created mode 0700; `session.json` is mode 0600.
 
 ## `opensky` API
 
@@ -105,10 +107,10 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | `get_app_state({app, disableDiff?})` | `launch_app` if needed, `list_windows`, `get_window_state` |
 | `click` | `click` / `double_click` |
 | `drag` | `drag` |
-| `paste` | `clipboard_read` / `clipboard_write` + `hotkey` (cmd/ctrl+v), clipboard restored |
-| `perform_secondary_action` | `click` `action`, `bring_to_front`, or `press_key` |
+| `paste` | `clipboard_read` / `clipboard_write` (text, html, or markdown) + `hotkey` (cmd/ctrl+v), clipboard restored |
+| `perform_secondary_action` | `click` `action` (`increment`/`decrement`/`press`/…), `bring_to_front`, or `press_key` |
 | `press_key` | `press_key` / `hotkey` (xdotool-style strings) |
-| `scroll` | `scroll` |
+| `scroll` | `scroll` (element, coordinates, or the window) |
 | `select_text` | focus + Home/arrows (prefix/suffix disambiguation) |
 | `set_value` | `set_value` |
 | `type_text` | `type_text` |

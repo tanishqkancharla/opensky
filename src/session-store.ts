@@ -1,6 +1,7 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import { mkdirPrivate, writeFilePrivate } from "./secure-fs.js";
 import type { ResolvedApp, SnapshotElement } from "./types.js";
 
 export interface PersistedSession {
@@ -25,8 +26,8 @@ export class SessionStore {
   }
 
   async save(session: PersistedSession): Promise<void> {
-    await mkdir(dirname(this.filePath), { recursive: true });
-    await writeFile(this.filePath, JSON.stringify(session, null, 2));
+    await mkdirPrivate(dirname(this.filePath));
+    await writeFilePrivate(this.filePath, JSON.stringify(session, null, 2));
   }
 }
 

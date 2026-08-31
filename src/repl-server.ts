@@ -1,14 +1,17 @@
 import { createServer, connect, type Server, type Socket } from "node:net";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import { inspect } from "node:util";
 
 import { AsyncRepl } from "./async-repl.js";
 import { homeDir } from "./platform.js";
+import { mkdirPrivate, writeFilePrivate } from "./secure-fs.js";
 
 export interface ReplEvalRequest {
   code: string;
   filename?: string;
+  token?: string;
 }
 
 export interface ReplEvalResponse {
@@ -19,8 +22,16 @@ export interface ReplEvalResponse {
   error?: string;
 }
 
+export interface ReplServerInfo {
+  host: string;
+  port: number;
+  pid: number;
+  token?: string;
+}
+
 export class ReplServer {
   private server: Server | null = null;
+  private token = "";
   constructor(
     private readonly repl: AsyncRepl,
     private readonly home: string,
@@ -30,8 +41,9 @@ export class ReplServer {
     return join(this.home, "repl.json");
   }
 
-  async start(port = 0): Promise<{ port: number; pid: number }> {
-    await mkdir(this.home, { recursive: true });
+  async start(port = 0): Promise<{ port: number; pid: number; token: string }> {
+    await mkdirPrivate(this.home);
+    this.token = process.env.OPENSKY_REPL_TOKEN || randomBytes(32).toString("base64url");
     this.server = createServer((socket) => {
       this.handle(socket);
     });
@@ -43,9 +55,14 @@ export class ReplServer {
     if (!address || typeof address === "string") {
       throw new Error("Failed to bind opensky REPL server");
     }
-    const info = { port: address.port, pid: process.pid, host: "127.0.0.1" };
-    await writeFile(this.infoPath, JSON.stringify(info, null, 2));
-    return info;
+    const info: ReplServerInfo = {
+      port: address.port,
+      pid: process.pid,
+      host: "127.0.0.1",
+      token: this.token,
+    };
+    await writeFilePrivate(this.infoPath, JSON.stringify(info, null, 2));
+    return { ...info, token: this.token };
   }
 
   async stop(): Promise<void> {
@@ -86,7 +103,15 @@ export class ReplServer {
   }
 
   private async evaluate(raw: string): Promise<ReplEvalResponse> {
-    const request = JSON.parse(raw) as ReplEvalRequest;
+    let request: ReplEvalRequest;
+    try {
+      request = JSON.parse(raw) as ReplEvalRequest;
+    } catch {
+      return { ok: false, logs: [], error: "invalid request" };
+    }
+    if (!authorized(request.token, this.token)) {
+      return { ok: false, logs: [], error: "unauthorized" };
+    }
     try {
       const result = await this.repl.evaluate(request.code, request.filename ?? "opensky-eval");
       return {
@@ -107,14 +132,12 @@ export class ReplServer {
 
 export async function evalOnServer(
   code: string,
-  options: { homeDir?: string; filename?: string } = {},
+  options: { homeDir?: string; filename?: string; token?: string | null } = {},
 ): Promise<ReplEvalResponse> {
   const home = homeDir(options.homeDir);
-  const info = JSON.parse(await readFile(join(home, "repl.json"), "utf8")) as {
-    host: string;
-    port: number;
-  };
-  const payload = `${JSON.stringify({ code, filename: options.filename ?? "opensky-eval" })}\n`;
+  const info = JSON.parse(await readFile(join(home, "repl.json"), "utf8")) as ReplServerInfo;
+  const token = options.token === undefined ? info.token : options.token ?? undefined;
+  const payload = `${JSON.stringify({ code, filename: options.filename ?? "opensky-eval", token })}\n`;
   return new Promise((resolve, reject) => {
     const socket = connect(info.port, info.host);
     socket.setEncoding("utf8");
@@ -145,13 +168,9 @@ export async function evalOnServer(
   });
 }
 
-export async function readServerInfo(home = homeDir()): Promise<{ host: string; port: number; pid: number } | null> {
+export async function readServerInfo(home = homeDir()): Promise<ReplServerInfo | null> {
   try {
-    return JSON.parse(await readFile(join(home, "repl.json"), "utf8")) as {
-      host: string;
-      port: number;
-      pid: number;
-    };
+    return JSON.parse(await readFile(join(home, "repl.json"), "utf8")) as ReplServerInfo;
   } catch {
     return null;
   }
@@ -170,8 +189,17 @@ export async function serverAlive(home = homeDir()): Promise<boolean> {
 }
 
 export async function ensureHome(dir = homeDir()): Promise<string> {
-  await mkdir(dir, { recursive: true });
+  await mkdirPrivate(dir);
   return dir;
+}
+
+function authorized(provided: string | undefined, expected: string): boolean {
+  if (!expected) return false;
+  if (typeof provided !== "string" || !provided) return false;
+  const left = Buffer.from(provided);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
 }
 
 function jsonSafe(value: unknown): unknown {

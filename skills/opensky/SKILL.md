@@ -74,7 +74,7 @@ await opensky.drag({ app, from_x, from_y, to_x, to_y })
 await opensky.paste({ app, text, format: "text" | "md" | "html" })
 await opensky.perform_secondary_action({ app, element_index, action })
 await opensky.press_key({ app, key })
-await opensky.scroll({ app, element_index, direction, pages? })
+await opensky.scroll({ app, element_index?, x?, y?, direction, pages? })
 await opensky.select_text({ app, element_index, text, prefix?, suffix?, selection_type? })
 await opensky.set_value({ app, element_index, value })
 await opensky.type_text({ app, text })
@@ -84,14 +84,17 @@ Helpers also in scope: `sleep(ms)`, `state`, `readFile`, `pathToFileURL`.
 
 ### `list_apps()`
 
-Returns `{ id, displayName, lastUsedDate, isRunning }[]`.
+Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
+
+`id` is the bundle id when the helper provides one, otherwise the launch path. Kernel/system processes without app metadata are omitted. `lastUsedDate` is unix seconds. `useCount` is included when the helper reports it.
 
 ### `get_app_state({ app, disableDiff? })`
 
 Returns `{ app, text, screenshot }`.
 
-- `text` is the accessibility tree. With `disableDiff: true` this is always the full tree. Repeated calls without that flag may return a diff of added/changed/removed indices plus the full tree.
-- `screenshot` is `{ url }` using a `file:` URL, or `null`.
+- `app` is the launch path when known, otherwise the display name.
+- `text` is the accessibility tree for the **main document window**. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a diff of added/changed/removed indices plus the full tree. Global menu-bar chrome is omitted.
+- `screenshot` is `{ url, width?, height?, scale?, format? }` using a `file:` URL, or `null`. `scale` is `2` for typical Retina captures when the window frame is known.
 - Read PNG bytes with `await readFile(pathToFileURL(state.screenshot.url))`.
 
 ### `click`
@@ -106,7 +109,7 @@ xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targ
 
 ### `paste`
 
-`format` must be `text`, `md`, or `html`. The previous clipboard is restored after paste.
+`format` must be `text`, `md`, or `html`. HTML is written to the HTML clipboard plus a plain-text fallback; markdown is written as markdown plus plain text. Unsupported formats are rejected. The previous clipboard is restored after paste.
 
 ### `select_text`
 
@@ -125,6 +128,20 @@ Copy the action name from the latest tree (`Raise`, `Show Menu`, `Increment`, `D
 
 `direction`: `up` | `down` | `left` | `right` or `u` | `d` | `l` | `r`. `pages` defaults to 1.
 
+Prefer `element_index` from the latest tree. You may omit it (or pass `x`/`y`) to scroll the window itself.
+
+## Confirmation policy
+
+Treat the user's desktop as a real computer. Stop and ask before actions that are hard to undo:
+
+- Deleting files, emptying trash, or overwriting documents
+- Sending messages, email, or payments
+- Installing or uninstalling software, or changing system settings
+- Clicking purchase, submit, publish, or share
+- Granting permissions or revealing secrets
+
+Do not click through OS permission prompts, password dialogs, or "are you sure" sheets unless the user already asked for that exact action. Prefer `get_app_state` and describe what you see over guessing.
+
 ## Rules
 
 - Prefer element-index actions over coordinates.
@@ -141,6 +158,8 @@ Copy the action name from the latest tree (`Raise`, `Show Menu`, `Increment`, `D
 opensky eval --json 'await opensky.list_apps()'
 opensky eval --json 'return await opensky.get_app_state({app:"Calculator", disableDiff:true})'
 opensky run script.js
-opensky serve          # persist JS + opensky snapshot cache across evals
+opensky serve          # persist JS + opensky snapshot cache across evals (token in ~/.opensky/repl.json)
 opensky stop
 ```
+
+`opensky serve` listens on 127.0.0.1 only. Each eval must present the token from `repl.json` (mode 0600). The serve sandbox does not expose `process` or `require`. Session files under `OPENSKY_HOME` (default `~/.opensky`) are created mode 0700/0600.

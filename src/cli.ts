@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { inspect } from "node:util";
 import { pathToFileURL } from "node:url";
 
@@ -35,8 +36,9 @@ Options:
   --version               Show version
 
 Environment:
-  OPENSKY_HOME                      session/screenshot/repl state directory
+  OPENSKY_HOME                      session/screenshot/repl state directory (mode 0700)
   OPENSKY_SESSION                    helper session label (default opensky)
+  OPENSKY_REPL_TOKEN                 token for opensky serve (generated into repl.json)
   OPENSKY_AUTOINSTALL=0             do not download the desktop helper
   OPENSKY_DRIVER                    override helper binary path
 
@@ -133,10 +135,12 @@ async function runRepl(flags: Flags): Promise<number> {
 async function runServe(flags: Flags): Promise<number> {
   const home = homeDir(flags.home);
   const { opensky, extra } = createContext(flags);
-  const repl = new AsyncRepl({ context: { opensky, ...extra } });
+  const repl = new AsyncRepl({ context: { opensky, ...extra }, allowNodeApis: false });
   const server = new ReplServer(repl, home);
   const info = await server.start();
-  process.stdout.write(`opensky REPL server listening on 127.0.0.1:${info.port} (pid ${info.pid})\n`);
+  process.stdout.write(
+    `opensky REPL server listening on 127.0.0.1:${info.port} (pid ${info.pid})\nAuth token stored in ${join(home, "repl.json")} (mode 0600)\n`,
+  );
   const shutdown = async () => {
     await server.stop();
     process.exit(0);

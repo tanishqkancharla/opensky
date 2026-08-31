@@ -1,11 +1,13 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { chmod, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { asArray, asRecord, CuaDriverClient } from "./driver.js";
 import { invalidParams, OpenSkyError } from "./errors.js";
+import { inferScreenshotScale, readImageMeta } from "./image-meta.js";
 import { parseXdotoolKey, toHotkeyKeys } from "./keys.js";
 import { detectTarget, homeDir, pasteModifierFor } from "./platform.js";
+import { mkdirPrivate, writeFilePrivate } from "./secure-fs.js";
 import { SessionStore, sessionFile } from "./session-store.js";
 import type {
   App,
@@ -15,6 +17,7 @@ import type {
   MouseButton,
   PasteFormat,
   ResolvedApp,
+  Screenshot,
   OpenSky as OpenSkyApi,
   OpenSkyOptions,
   OpenSkyTarget,
@@ -55,8 +58,8 @@ const SECONDARY_ACTIONS: Record<string, { kind: "click" | "front" | "key"; actio
   pick: { kind: "click", action: "pick" },
   confirm: { kind: "click", action: "confirm" },
   cancel: { kind: "click", action: "cancel" },
-  increment: { kind: "click", action: "press" },
-  decrement: { kind: "click", action: "press" },
+  increment: { kind: "click", action: "increment" },
+  decrement: { kind: "click", action: "decrement" },
   delete: { kind: "key", key: "delete" },
 };
 
@@ -67,6 +70,8 @@ export class OpenSky implements OpenSkyApi {
   private readonly screenshotDir: string;
   private readonly autoLaunch: boolean;
   private readonly pasteModifier: "cmd" | "ctrl";
+  private readonly screenshotFormat?: "png" | "jpeg";
+  private readonly screenshotScale?: number;
   private readonly memory = {
     apps: {} as Record<string, ResolvedApp>,
     trees: {} as Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>,
@@ -81,6 +86,8 @@ export class OpenSky implements OpenSkyApi {
     this.screenshotDir = options.screenshotDir ?? join(home, "screenshots");
     this.autoLaunch = options.autoLaunch !== false;
     this.pasteModifier = options.pasteModifier ?? pasteModifierFor(this.target);
+    this.screenshotFormat = options.screenshotFormat;
+    this.screenshotScale = options.screenshotScale;
   }
 
   async list_apps(): Promise<App[]> {
@@ -91,8 +98,8 @@ export class OpenSky implements OpenSkyApi {
   async get_app_state(args: { app: string; disableDiff?: boolean }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
     const resolved = await this.resolveApp(args.app, { launchIfNeeded: true });
-    const snapshot = await this.snapshotWindow(resolved, { includeScreenshot: true });
     const previous = this.memory.trees[windowKey(resolved)];
+    const snapshot = await this.snapshotWindow(resolved, { includeScreenshot: true });
     const text =
       args.disableDiff || !previous ? snapshot.tree : diffTrees(previous.tree, previous.elements, snapshot.tree, snapshot.elements);
     this.memory.trees[windowKey(resolved)] = {
@@ -102,8 +109,8 @@ export class OpenSky implements OpenSkyApi {
     };
     await this.persist();
     return {
-      app: resolved.name || args.app,
-      screenshot: snapshot.screenshotPath ? { url: pathToFileURL(snapshot.screenshotPath).href } : null,
+      app: resolved.launchPath || resolved.name || args.app,
+      screenshot: snapshot.screenshot ?? (snapshot.screenshotPath ? { url: pathToFileURL(snapshot.screenshotPath).href } : null),
       text,
     };
   }
@@ -169,23 +176,23 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
-    let previous: string | undefined;
+    let previous: Record<string, unknown> | undefined;
     try {
-      const read = await this.driver.call("clipboard_read", { include_text: true });
-      previous = extractClipboardText(read.structured);
+      const read = await this.driver.call("clipboard_read", { include_text: true, include_html: true });
+      previous = extractClipboard(read.structured);
     } catch {
       previous = undefined;
     }
     try {
-      await this.driver.call("clipboard_write", { text: args.text });
+      await this.driver.call("clipboard_write", clipboardWritePayload(args.format, args.text));
       await this.driver.call("hotkey", {
         pid: resolved.pid,
         window_id: resolved.windowId,
         keys: [this.pasteModifier, "v"],
       });
     } finally {
-      if (previous !== undefined) {
-        await this.driver.call("clipboard_write", { text: previous }).catch(() => undefined);
+      if (previous) {
+        await this.driver.call("clipboard_write", previous).catch(() => undefined);
       }
     }
   }
@@ -242,21 +249,29 @@ export class OpenSky implements OpenSkyApi {
 
   async scroll(args: {
     app: string;
-    element_index: number;
+    element_index?: number;
+    x?: number;
+    y?: number;
     direction: Direction;
     pages?: number;
   }): Promise<void> {
-    if (!args?.app || typeof args.element_index !== "number") throw invalidParams();
+    if (!args?.app) throw invalidParams();
+    if (args.element_index !== undefined && typeof args.element_index !== "number") throw invalidParams();
     const direction = normalizeDirection(args.direction);
     const resolved = await this.requireResolved(args.app);
-    await this.driver.call("scroll", {
+    const payload: Record<string, unknown> = {
       pid: resolved.pid,
       window_id: resolved.windowId,
       direction,
       by: "page",
       amount: args.pages ?? 1,
-      ...this.elementTarget(resolved, args.element_index),
-    });
+    };
+    if (typeof args.element_index === "number") {
+      Object.assign(payload, this.elementTarget(resolved, args.element_index));
+    }
+    if (typeof args.x === "number") payload.x = args.x;
+    if (typeof args.y === "number") payload.y = args.y;
+    await this.driver.call("scroll", payload);
   }
 
   async select_text(args: {
@@ -405,45 +420,79 @@ export class OpenSky implements OpenSkyApi {
     return [];
   }
 
-  private async pickWindow(pid: number, source: Record<string, unknown>): Promise<number | undefined> {
-    const fromSource = pickWindowId(asArray<Record<string, unknown>>(source.windows));
+  private async pickWindow(
+    pid: number,
+    source: Record<string, unknown>,
+    excludeIds: Set<number> = new Set(),
+  ): Promise<number | undefined> {
+    const fromSource = pickWindowId(
+      asArray<Record<string, unknown>>(source.windows).filter((window) => {
+        const id = window.window_id;
+        return typeof id !== "number" || !excludeIds.has(id);
+      }),
+    );
     if (fromSource) return fromSource;
     const listed = await this.driver.call("list_windows", { pid });
-    const windows = windowsFrom(listed.structured);
-    return pickWindowId(windows);
+    return pickWindowId(
+      windowsFrom(listed.structured).filter((window) => {
+        const id = window.window_id;
+        return typeof id !== "number" || !excludeIds.has(id);
+      }),
+    );
   }
 
   private async snapshotWindow(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean },
+    options: { includeScreenshot: boolean; triedWindowIds?: Set<number> },
   ): Promise<WindowSnapshot> {
+    const tried = options.triedWindowIds ?? new Set<number>();
     if (!resolved.windowId) {
-      resolved.windowId = await this.pickWindow(resolved.pid, {});
+      resolved.windowId = await this.pickWindow(resolved.pid, {}, tried);
     }
     if (!resolved.windowId) {
       throw new OpenSkyError(`No window found for ${resolved.name} (pid ${resolved.pid})`);
     }
-    await mkdir(this.screenshotDir, { recursive: true });
+    await mkdirPrivate(this.screenshotDir);
     const screenshotPath = join(this.screenshotDir, `${slug(resolved.name)}-${resolved.windowId}.png`);
     const result = await this.driver.call("get_window_state", {
       pid: resolved.pid,
       window_id: resolved.windowId,
       include_screenshot: options.includeScreenshot,
       screenshot_out_file: options.includeScreenshot ? screenshotPath : undefined,
+      screenshot_format: this.screenshotFormat,
+      screenshot_scale: this.screenshotScale,
     });
     const structured = asRecord(result.structured) ?? {};
-    const elements = normalizeElements(structured.elements);
-    const tree =
+    const rawElements = normalizeElements(structured.elements);
+    const elements = rawElements.filter((element) => !isGlobalChrome(element));
+    const rawTree =
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
       (typeof structured.text === "string" && structured.text) ||
-      renderTree(elements);
+      "";
+    const tree = elements.length !== rawElements.length ? renderTree(elements) : rawTree || renderTree(elements);
     const snapshotId = optionalString(structured.snapshot_id);
     const filePath =
       optionalString(structured.screenshot_file_path) ??
       (options.includeScreenshot ? await maybeWriteScreenshot(structured, screenshotPath) : null);
+    const frame = frameOf(structured);
+    const screenshot = filePath ? await screenshotFromFile(filePath, frame) : undefined;
+    if (filePath) await chmod(filePath, 0o600).catch(() => undefined);
     resolved.snapshotId = snapshotId;
     this.memory.apps[normalizeAppKey(resolved.query)] = resolved;
-    this.memory.trees[windowKey(resolved)] = { tree, elements, snapshotId };
+    if (elements.length === 0) {
+      tried.add(resolved.windowId);
+      const listed = await this.driver.call("list_windows", { pid: resolved.pid });
+      const nextId = pickWindowId(
+        windowsFrom(listed.structured).filter((window) => {
+          const id = window.window_id;
+          return typeof id === "number" && !tried.has(id);
+        }),
+      );
+      if (nextId) {
+        resolved.windowId = nextId;
+        return this.snapshotWindow(resolved, { ...options, triedWindowIds: tried });
+      }
+    }
     return {
       pid: resolved.pid,
       windowId: resolved.windowId,
@@ -451,6 +500,8 @@ export class OpenSky implements OpenSkyApi {
       tree,
       elements,
       screenshotPath: filePath,
+      screenshot: screenshot ?? (filePath ? { url: pathToFileURL(filePath).href } : undefined),
+      frame,
     };
   }
 
@@ -487,20 +538,33 @@ export const opensky = new OpenSky();
 
 export function mapApps(structured: unknown): App[] {
   const record = asRecord(structured);
-  const records = Array.isArray(structured)
-    ? structured
-    : asArray(record?.apps).length > 0
-      ? asArray(record?.apps)
-      : asArray(record?.processes);
-  return records.map((item) => {
-    const record = asRecord(item) ?? {};
-    const lastUsed = record.last_used ?? record.lastUsedDate;
-    return {
-      id: String(record.bundle_id ?? record.id ?? record.launch_path ?? record.name ?? ""),
-      displayName: optionalString(record.name ?? record.displayName),
-      lastUsedDate: normalizeLastUsed(lastUsed),
-      isRunning: Boolean(record.running ?? record.isRunning ?? (Number(record.pid) > 0)),
-    };
+  const fromApps = Array.isArray(structured) ? structured : asArray(record?.apps);
+  const fromProcesses = asArray(record?.processes);
+  const fromAppsArray = fromApps.length > 0;
+  const records = fromAppsArray ? fromApps : fromProcesses;
+  const hasGuiHints = records.some((item) => {
+    const rec = asRecord(item) ?? {};
+    return Boolean(
+      optionalString(rec.bundle_id) ||
+        optionalString(rec.launch_path) ||
+        optionalString(rec.path) ||
+        (Array.isArray(rec.windows) && rec.windows.length > 0),
+    );
+  });
+  return records.flatMap((item) => {
+    const rec = asRecord(item) ?? {};
+    if (!isApplicationRecord(rec, { fromAppsArray, hasGuiHints })) return [];
+    const lastUsed = rec.last_used ?? rec.lastUsedDate;
+    const useCount = Number(rec.use_count ?? rec.useCount);
+    return [
+      {
+        id: String(rec.bundle_id ?? rec.launch_path ?? rec.path ?? rec.id ?? rec.name ?? ""),
+        displayName: optionalString(rec.name ?? rec.displayName),
+        lastUsedDate: normalizeLastUsed(lastUsed),
+        useCount: Number.isFinite(useCount) ? useCount : undefined,
+        isRunning: Boolean(rec.running ?? rec.isRunning ?? Number(rec.pid) > 0),
+      },
+    ];
   });
 }
 
@@ -609,17 +673,36 @@ function windowsFrom(structured: unknown): Record<string, unknown>[] {
   return [];
 }
 
-function pickWindowId(windows: Record<string, unknown>[]): number | undefined {
+export function pickWindowId(windows: Record<string, unknown>[]): number | undefined {
   if (windows.length === 0) return undefined;
-  const eligible = windows.filter((window) => window.on_current_space !== false);
+  const eligible = windows.filter((window) => window.on_current_space !== false && window.is_on_screen !== false);
   const pool = eligible.length > 0 ? eligible : windows;
-  const scored = [...pool].sort((a, b) => {
-    const za = typeof a.z_index === "number" ? a.z_index : -1;
-    const zb = typeof b.z_index === "number" ? b.z_index : -1;
-    return zb - za;
-  });
+  const scored = [...pool].sort((a, b) => windowScore(b) - windowScore(a));
   const id = scored[0]?.window_id;
   return typeof id === "number" ? id : undefined;
+}
+
+export function windowScore(window: Record<string, unknown>): number {
+  const frame = frameOf(window);
+  const width = frame?.width ?? 0;
+  const height = frame?.height ?? 0;
+  const area = width * height;
+  const title = String(window.title ?? window.name ?? "");
+  let score = 0;
+  if (window.is_main === true || window.main === true || window.is_document === true) score += 1e8;
+  const role = String(window.role ?? window.window_role ?? "").toLowerCase();
+  if (role.includes("document") || role === "axwindow" || role === "window") score += 1e6;
+  if (window.on_current_space === false || window.is_on_screen === false) score -= 1e9;
+  if (height > 0 && height < 40) score -= 1e8;
+  if (width > 0 && width < 80) score -= 1e6;
+  score += Math.min(area, 4_000_000);
+  if (!title.trim()) score -= 5e5;
+  if (/aux(iliary)?|palette|inspector|toolbar|menu|popup|tooltip|hud|status/i.test(title)) score -= 1e6;
+  if (/\.(rtf|txt|md|doc|docx|html)$/i.test(title) || /^untitled/i.test(title) || /document/i.test(title)) {
+    score += 1e5;
+  }
+  score += (typeof window.z_index === "number" ? window.z_index : 0) * 10;
+  return score;
 }
 
 function normalizeElements(value: unknown): SnapshotElement[] {
@@ -644,27 +727,109 @@ function renderTree(elements: SnapshotElement[]): string {
   return elements.map((element) => formatElement(element)).join("\n");
 }
 
-function extractClipboardText(structured: unknown): string | undefined {
+function extractClipboard(structured: unknown): Record<string, unknown> | undefined {
   const record = asRecord(structured);
   if (!record) return undefined;
-  if (typeof record.text === "string") return record.text;
-  if (typeof record.plain_text === "string") return record.plain_text;
-  return undefined;
+  const payload: Record<string, unknown> = {};
+  const text = optionalString(record.text) ?? optionalString(record.plain_text);
+  const html = optionalString(record.html) ?? optionalString(record.html_text);
+  const markdown = optionalString(record.markdown) ?? optionalString(record.md);
+  if (text) payload.text = text;
+  if (html) payload.html = html;
+  if (markdown) payload.markdown = markdown;
+  return Object.keys(payload).length > 0 ? payload : undefined;
+}
+
+function clipboardWritePayload(format: PasteFormat, text: string): Record<string, unknown> {
+  if (format === "html") {
+    return { text: stripHtml(text) || text, html: text };
+  }
+  if (format === "md") {
+    return { text, markdown: text };
+  }
+  return { text };
+}
+
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]+>/g, "").trim();
+}
+
+function isGlobalChrome(element: SnapshotElement): boolean {
+  const role = (element.role ?? "").toLowerCase();
+  if (role === "axmenubar" || role === "axmenubaritem") return true;
+  const label = (element.label ?? "").toLowerCase();
+  if (label === "apple" && role.includes("menu")) return true;
+  const frame = element.frame;
+  if (frame && frame.y <= 0 && frame.h <= 28 && frame.w > 400 && role.includes("menu")) return true;
+  return false;
+}
+
+function isApplicationRecord(
+  record: Record<string, unknown>,
+  options: { fromAppsArray: boolean; hasGuiHints: boolean },
+): boolean {
+  if (isKernelProcess(record)) return false;
+  const bundle = optionalString(record.bundle_id);
+  const path = optionalString(record.launch_path) ?? optionalString(record.path);
+  const hasWindows = Array.isArray(record.windows) && record.windows.length > 0;
+  if (bundle || path || hasWindows) return true;
+  if (record.has_gui === true || record.is_app === true) return true;
+  if (options.hasGuiHints) return false;
+  return options.fromAppsArray || Boolean(optionalString(record.name) ?? optionalString(record.displayName));
+}
+
+function isKernelProcess(record: Record<string, unknown>): boolean {
+  const name = (optionalString(record.name) ?? optionalString(record.displayName) ?? "").trim();
+  if (!name) return true;
+  if (name.startsWith("[")) return true;
+  return /^(init|kthreadd|kworker\/|ksoftirqd|migration\/|rcu_|systemd|kernel_task)$/i.test(name);
+}
+
+function frameOf(record: Record<string, unknown>): { width: number; height: number } | undefined {
+  const frame = asRecord(record.frame) ?? asRecord(record.bounds) ?? record;
+  const width = Number(frame.width ?? frame.w);
+  const height = Number(frame.height ?? frame.h);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return undefined;
+  return { width, height };
+}
+
+async function screenshotFromFile(
+  path: string,
+  frame?: { width: number; height: number },
+): Promise<Screenshot | undefined> {
+  try {
+    const bytes = await readFile(path);
+    const meta = readImageMeta(bytes);
+    return {
+      url: pathToFileURL(path).href,
+      width: meta?.width,
+      height: meta?.height,
+      format: meta?.format,
+      scale: meta ? inferScreenshotScale(meta, frame) : undefined,
+    };
+  } catch {
+    return { url: pathToFileURL(path).href };
+  }
 }
 
 async function maybeWriteScreenshot(structured: Record<string, unknown>, fallbackPath: string): Promise<string | null> {
   if (typeof structured.screenshot_file_path === "string") return structured.screenshot_file_path;
   const b64 = optionalString(structured.screenshot_png_b64);
   if (!b64) return null;
-  await writeFile(fallbackPath, Buffer.from(b64, "base64"));
+  await writeFilePrivate(fallbackPath, Buffer.from(b64, "base64"));
   return fallbackPath;
 }
 
 function normalizeLastUsed(value: unknown): string | number | undefined {
-  if (typeof value === "number") return value;
+  if (typeof value === "number") {
+    if (value > 1e12) return Math.floor(value / 1000);
+    return value;
+  }
   if (typeof value !== "string" || !value) return undefined;
   const asNumber = Number(value);
-  if (Number.isFinite(asNumber) && /^\d+(\.\d+)?$/.test(value)) return asNumber;
+  if (Number.isFinite(asNumber) && /^\d+(\.\d+)?$/.test(value)) {
+    return asNumber > 1e12 ? Math.floor(asNumber / 1000) : asNumber;
+  }
   const parsed = Date.parse(value);
   if (!Number.isNaN(parsed)) return Math.floor(parsed / 1000);
   return value;
