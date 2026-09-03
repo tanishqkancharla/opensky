@@ -72,6 +72,17 @@ export class CuaDriverClient implements DriverClient {
     if (parsed.isError || result.code !== 0) {
       throw driverError(parsed.message || result.stderr.trim() || `${tool} failed.`);
     }
+    const structured = parsed.result.structured;
+    if (
+      structured &&
+      typeof structured === "object" &&
+      (structured as { effect?: unknown }).effect === "refused"
+    ) {
+      const refusal = structured as { reason?: unknown; code?: unknown };
+      throw driverError(
+        String(refusal.reason ?? refusal.code ?? parsed.message ?? `${tool} was refused by the desktop helper.`),
+      );
+    }
     return parsed.result;
   }
 

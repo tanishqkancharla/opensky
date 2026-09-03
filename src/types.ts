@@ -141,6 +141,11 @@ export interface SnapshotElement {
   value?: string;
   identifier?: string;
   actions?: string[];
+  enabled?: boolean;
+  selected?: boolean;
+  checked?: boolean;
+  focused?: boolean;
+  expanded?: boolean;
   frame?: { x: number; y: number; w: number; h: number };
 }
 

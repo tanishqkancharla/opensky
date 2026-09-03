@@ -6,10 +6,12 @@ import { describe, it } from "bun:test";
 
 import {
   diffTrees,
+  enrichTreeSemantics,
   findWithContext,
   mapApps,
   normalizeDirection,
   normalizeMouseButton,
+  pickUsableWindowId,
   pickWindowId,
 } from "../src/opensky.js";
 import type { SnapshotElement } from "../src/types.js";
@@ -72,6 +74,16 @@ describe("opensky helpers", () => {
     assert.equal(id, 2001);
   });
 
+  it("does not bind actions to off-space or tiny proxy windows", () => {
+    assert.equal(pickUsableWindowId([
+      { window_id: 1, frame: { width: 1000, height: 700 }, on_current_space: false, is_on_screen: false },
+      { window_id: 2, frame: { width: 54, height: 54 }, on_current_space: true, is_on_screen: true },
+    ]), undefined);
+    assert.equal(pickUsableWindowId([
+      { window_id: 3, frame: { width: 640, height: 480 }, on_current_space: true, is_on_screen: true },
+    ]), 3);
+  });
+
   it("validates mouse buttons including numeric aliases", () => {
     assert.equal(normalizeMouseButton(0), "left");
     assert.equal(normalizeMouseButton("r"), "right");
@@ -97,8 +109,38 @@ describe("opensky helpers", () => {
       { element_index: 14, role: "AXButton", label: "8", value: "" },
     ];
     const text = diffTrees("", previous, "tree", next);
-    assert.match(text, /Added:/);
-    assert.match(text, /Changed:/);
+    assert.match(text, /^\+ /m);
+    assert.match(text, /^~ /m);
+  });
+
+  it("enriches trees with generic structured AX state", () => {
+    const text = enrichTreeSemantics(
+      [
+        '- [7] AXRadioButton (World Clock) [actions=[press]]',
+        '- [8] AXButton (Save) [actions=[press]]',
+        '- AXButton (Lap)',
+      ].join("\n"),
+      [
+        { element_index: 7, role: "AXRadioButton", label: "World Clock", value: "1", selected: true },
+        { element_index: 8, role: "AXButton", label: "Save", enabled: false },
+      ],
+    );
+    assert.match(text, /World Clock.*value="1"/);
+    assert.match(text, /Save.*disabled/);
+    assert.match(text, /Lap.*unavailable/);
+  });
+
+  it("diffs structured AX semantics even when labels do not change", () => {
+    const previous: SnapshotElement[] = [
+      { element_index: 7, role: "AXRadioButton", label: "World Clock", value: "0", enabled: true },
+    ];
+    const next: SnapshotElement[] = [
+      { element_index: 7, role: "AXRadioButton", label: "World Clock", value: "1", enabled: false },
+    ];
+    const text = diffTrees("", previous, "", next);
+    assert.match(text, /^~ /m);
+    assert.match(text, /value="1"/);
+    assert.match(text, /disabled/);
   });
 });
 
@@ -128,9 +170,11 @@ describe("OpenSky against cua-driver", () => {
     const first = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
     assert.match(first.text, /\[13]/);
     assert.match(first.text, /AXMenuBar/);
+    assert.match(first.text, /Scientific.*value="0"/);
+    assert.match(first.text, /Unavailable.*disabled/);
     await opensky.click({ app: "Calculator", element_index: 13, mouse_button: 0 });
     const second = await opensky.get_app_state({ app: "Calculator" });
-    assert.match(second.text, /Changed:/);
+    assert.match(second.text, /^~ /m);
     assert.doesNotMatch(second.text, /No accessibility changes/);
   });
 

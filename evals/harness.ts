@@ -159,9 +159,13 @@ function agentSystemPrompt(harness: EvalHarnessName): string {
     return [
       "You operate a remote desktop through the opensky tools only.",
       "Do not use bash, osascript, cliclick, or any other computer-control path.",
-      "Canonical loop: get_app_state({ app, disableDiff: true }) → act with element_index → get_app_state again.",
-      "Prefer display names from list_apps. On Linux Omarchy the terminal is Foot.",
-      "Refresh state after every action. Do not invent macOS app names.",
+      "Call get_app_state directly when the task names or clearly implies an app; it resolves and launches display names, paths, or bundle ids.",
+      "Use list_apps only after direct resolution fails or when the task itself requires app discovery.",
+      "Use open_target when the task supplies a file, folder, or URL to open; get_app_state.app identifies an application, not a document.",
+      "Actions return settled post-action AX state by default; derive fresh indices from it instead of immediately calling get_app_state again.",
+      "Use get_app_state separately for initial state, recovery, or an explicitly needed screenshot. First state is full and later states are compact diffs.",
+      "Request include_screenshot only when pixels are needed to answer or AX is insufficient.",
+      "Interact only with applications named or required by the task.",
     ].join(" ");
   }
   return [

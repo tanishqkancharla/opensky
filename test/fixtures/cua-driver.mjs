@@ -153,6 +153,10 @@ async function getWindowState(state, args) {
   }));
   if (state.degradedSnapshots > 0 || state.degradedAlways) {
     state.degradedSnapshots = Math.max(0, (state.degradedSnapshots ?? 0) - 1);
+    if (args.screenshot_out_file) {
+      await mkdir(dirname(args.screenshot_out_file), { recursive: true });
+      await writeFile(args.screenshot_out_file, Buffer.from(PNG_1X1, "base64"));
+    }
     return {
       pid: app.pid,
       window_id: window.window_id,
@@ -160,6 +164,7 @@ async function getWindowState(state, args) {
       degraded_reason: "ax_window_unresolved",
       elements: [],
       tree_markdown: "",
+      screenshot_file_path: args.screenshot_out_file ?? undefined,
     };
   }
   state.snapshots[`${app.pid}:${window.window_id}`] = { snapshotId, elements };
@@ -385,6 +390,8 @@ function defaultState() {
           { element_index: 0, role: "AXWindow", label: "Calculator", value: "", actions: ["Raise"] },
           { element_index: 13, role: "AXButton", label: "7", value: "", actions: ["Press"] },
           { element_index: 20, role: "AXButton", label: "×", value: "", actions: ["Press"] },
+          { element_index: 30, role: "AXRadioButton", label: "Scientific", value: 0, selected: false, enabled: true, actions: ["Press"] },
+          { element_index: 31, role: "AXButton", label: "Unavailable", enabled: false, actions: [] },
           {
             element_index: 100,
             role: "AXMenuBar",
