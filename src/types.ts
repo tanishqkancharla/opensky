@@ -10,7 +10,7 @@ export type Direction =
   | "l"
   | "r";
 
-export type SelectionType = "text" | "cursor_before" | "cursor_after";
+export type SelectionType = "text" | "exact" | "cursor_before" | "cursor_after";
 
 export type MouseButton =
   | "left"

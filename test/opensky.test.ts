@@ -202,7 +202,7 @@ describe("OpenSky against cua-driver", () => {
       text: "alpha",
       prefix: "alpha beta ",
       suffix: "\nsecond line",
-      selection_type: "text",
+      selection_type: "exact",
     });
     await opensky.click({ app: "TextEdit", element_index: 2, mouse_button: "l" });
     await opensky.type_text({ app: "TextEdit", element_index: 2, text: "hello" });
@@ -239,6 +239,10 @@ describe("OpenSky against cua-driver", () => {
     assert.ok(persisted.calls.some((call) => call.tool === "clipboard_write" && call.args.text === "plain default"));
     assert.ok(persisted.calls.some((call) => call.tool === "bring_to_front" && call.args.window_id === 2001));
     assert.ok(
+      persisted.calls.filter((call) => call.tool === "list_windows" && call.args.pid === 900).length >= 2,
+      "bring_to_front should verify that its exact bound window is usable after raising it",
+    );
+    assert.ok(
       persisted.calls.some(
         (call) => call.tool === "hotkey" && call.args.delivery_mode === "foreground" &&
           JSON.stringify(call.args.keys) === JSON.stringify(["cmd", "a"]),
@@ -249,10 +253,17 @@ describe("OpenSky against cua-driver", () => {
         (call) => call.tool === "press_key" && call.args.delivery_mode === "foreground" && call.args.key === "up",
       ),
     );
-    assert.ok(
-      persisted.calls.filter((call) => call.tool === "press_key" && ["home", "right"].includes(String(call.args.key)))
-        .every((call) => call.args.delivery_mode === "foreground"),
+    const selectionKeys = persisted.calls.filter(
+      (call) => call.tool === "press_key" && call.args.delivery_mode === "background" &&
+        call.args.element_index === 2,
     );
+    assert.ok(selectionKeys.some((call) => call.args.key === "home"));
+    assert.ok(selectionKeys.some(
+      (call) => call.args.key === "right" && JSON.stringify(call.args.modifiers) === JSON.stringify(["shift"]),
+    ));
+    assert.ok(selectionKeys.every(
+      (call) => typeof call.args.element_token === "string" && typeof call.args.snapshot_id === "string",
+    ));
     assert.ok(
       persisted.calls.some(
         (call) => call.tool === "type_text" && call.args.element_index === 2 &&
@@ -311,8 +322,13 @@ describe("OpenSky against cua-driver", () => {
       opensky.type_text({ app: "TextEdit", text: "must not be sent" }),
       /off the current desktop; no input was sent/,
     );
+    await assert.rejects(
+      opensky.bring_to_front({ app: "TextEdit" }),
+      /off the current desktop; no input was sent/,
+    );
     const after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
     assert.equal(after.calls.filter((call) => call.tool === "type_text").length, typeCallsBefore);
+    assert.equal(after.calls.filter((call) => call.tool === "bring_to_front").length, 1);
   });
 
   it("never silently rebinds keyboard input to a sibling window", async () => {

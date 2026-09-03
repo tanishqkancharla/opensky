@@ -70,16 +70,17 @@ Prefer display names for actions when a bundle id looks ineffective. Always re-s
 opensky.target                    // "mac" | "win" | "linux"
 
 await opensky.list_apps()
-await opensky.get_app_state({ app, disableDiff? })
+await opensky.get_app_state({ app, disableDiff?, includeScreenshot? })
+await opensky.bring_to_front({ app })
 await opensky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
 await opensky.drag({ app, from_x, from_y, to_x, to_y })
-await opensky.paste({ app, text, format: "text" | "md" | "html" })
+await opensky.paste({ app, text, format?: "text" | "md" | "html" })
 await opensky.perform_secondary_action({ app, element_index, action })
-await opensky.press_key({ app, key })
+await opensky.press_key({ app, key, element_index?, x?, y? })
 await opensky.scroll({ app, element_index?, x?, y?, direction, pages? })
 await opensky.select_text({ app, element_index, text, prefix?, suffix?, selection_type? })
 await opensky.set_value({ app, element_index, value })
-await opensky.type_text({ app, text })
+await opensky.type_text({ app, text, element_index?, x?, y? })
 ```
 
 Helpers also in scope: `sleep(ms)`, `state`, `readFile`, `pathToFileURL`.
@@ -90,13 +91,13 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 
 `id` is the bundle id when the helper provides one, otherwise the launch path. Kernel/system processes without app metadata are omitted. `lastUsedDate` is unix seconds. `useCount` is included when the helper reports it.
 
-### `get_app_state({ app, disableDiff? })`
+### `get_app_state({ app, disableDiff?, includeScreenshot? })`
 
 Returns `{ app, text, screenshot }`.
 
 - `app` is the launch path when known, otherwise the display name.
 - `text` is the accessibility tree for the **main document window**, including menu-bar elements exposed by the helper. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a compact native-style diff with stable public element indices.
-- `screenshot` is `{ url, width?, height?, scale?, format? }` using a `file:` URL, or `null`. `scale` is `2` for typical Retina captures when the window frame is known.
+- `screenshot` is `{ url, width?, height?, scale?, format? }` using a `file:` URL, or `null`. Pass `includeScreenshot: false` when AX alone is sufficient. `scale` is `2` for typical Retina captures when the window frame is known.
 - Read PNG bytes with `await readFile(pathToFileURL(state.screenshot.url))`.
 - OpenSky automatically waits briefly after actions, revives expired helper sessions, and retries temporary degraded AX snapshots. If AX remains unavailable, use coordinates from the returned screenshot or bring the window onto the current desktop and call `get_app_state` again.
 
@@ -106,26 +107,30 @@ Prefer `element_index` from the latest `get_app_state().text`. Use `x, y` only f
 
 `mouse_button`: `left` | `right` | `middle` | `l` | `r` | `m` | `0` | `1` | `2`.
 
+### `bring_to_front`
+
+Brings the exact bound ordinary window onto the current desktop. Use it after an off-desktop input refusal, then observe again before addressing elements.
+
 ### `press_key`
 
-xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targeted; cannot invoke global OS shortcuts.
+xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targeted; cannot invoke global OS shortcuts. Prefer a fresh `element_index` for atomic focus+key on sliders and other controls; use `x`/`y` only for custom surfaces.
 
 ### `paste`
 
-`format` must be `text`, `md`, or `html`. HTML is written to the HTML clipboard plus a plain-text fallback; markdown is written as markdown plus plain text. Unsupported formats are rejected. The previous clipboard is restored after paste.
+`format` defaults to `text`; it may also be `md` or `html`. HTML is written to the HTML clipboard plus a plain-text fallback; markdown is written as markdown plus plain text. Unsupported formats are rejected. The previous clipboard is restored after paste.
 
 ### `select_text`
 
-`selection_type`: `text` (default), `cursor_before`, `cursor_after`. `prefix` / `suffix` disambiguate repeated matches.
+`selection_type`: `text` (default), `exact` (alias), `cursor_before`, `cursor_after`. `prefix` / `suffix` disambiguate repeated matches.
 
 ### `set_value` vs `type_text`
 
-- `set_value` replaces the whole AX value (multiline safe, does not send Return).
-- `type_text` types into the focused field. Newlines may submit/send.
+- `set_value` replaces the whole AX value (multiline safe, does not send Return) and is the preferred exact path for sliders, steppers, and date pickers.
+- `type_text` types into a fresh `element_index`, an `x`/`y` field, or the already-verified focused field. Newlines may submit/send.
 
 ### `perform_secondary_action`
 
-Copy the action name from the latest tree (`Raise`, `Show Menu`, `Increment`, `Delete`, app-specific). Do not guess.
+Copy a supported action name from the latest tree (`Raise`, `Show Menu`, `Press`, `Delete`, app-specific). `Increment` and `Decrement` are not click actions; use `set_value` or an element-targeted arrow key. Do not guess.
 
 ### `scroll`
 

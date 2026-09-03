@@ -366,7 +366,8 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
     defineTool({
       name: "select_text",
       label: "select_text",
-      description: "Select text in an element. prefix/suffix disambiguate repeats.",
+      description:
+        "Select exact text in an element. prefix/suffix disambiguate repeats. selection_type defaults to text; exact is an alias, and cursor_before/cursor_after place the caret.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -374,7 +375,10 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
         text: Type.String(),
         prefix: Type.Optional(Type.String()),
         suffix: Type.Optional(Type.String()),
-        selection_type: Type.Optional(Type.String()),
+        selection_type: Type.Optional(Type.Union([
+          Type.Literal("text"), Type.Literal("exact"),
+          Type.Literal("cursor_before"), Type.Literal("cursor_after"),
+        ])),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
       }),

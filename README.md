@@ -107,16 +107,17 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | Method | Cua Driver tools used |
 | --- | --- |
 | `list_apps()` | `list_apps` |
-| `get_app_state({app, disableDiff?})` | `launch_app` if needed, `list_windows`, `get_window_state` |
+| `get_app_state({app, disableDiff?, includeScreenshot?})` | `launch_app` if needed, `list_windows`, `get_window_state` |
+| `bring_to_front({app})` | `bring_to_front`, followed by exact-window usability verification |
 | `click` | `click` / `double_click` |
 | `drag` | `drag` |
 | `paste` | `clipboard_read` / `clipboard_write` (text, html, or markdown) + `hotkey` (cmd/ctrl+v), clipboard restored |
 | `perform_secondary_action` | Supported `click` actions (`press`/`show_menu`/`open`/…), `bring_to_front`, or Delete |
 | `press_key` | `press_key` / `hotkey` (xdotool-style strings) |
 | `scroll` | `scroll` (element, coordinates, or the window) |
-| `select_text` | focus + Home/arrows (prefix/suffix disambiguation) |
-| `set_value` | `set_value` |
-| `type_text` | `type_text` |
+| `select_text` | Element-targeted background Home/arrows (`exact` alias; prefix/suffix disambiguation) |
+| `set_value` | `set_value` (including exact slider/stepper values) |
+| `type_text` | `type_text` (element, coordinates, or verified focus) |
 
 `opensky.target` is `"mac"`, `"win"`, or `"linux"`.
 

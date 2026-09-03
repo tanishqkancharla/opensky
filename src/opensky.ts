@@ -188,6 +188,8 @@ export class OpenSky implements OpenSkyApi {
     }
     await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: boundWindow });
     this.markAction(resolved);
+    await this.settleAfterAction(resolved);
+    await this.requireUsableInputWindow(resolved);
   }
 
   async drag(args: {
@@ -392,7 +394,7 @@ export class OpenSky implements OpenSkyApi {
     if (!args?.app || typeof args.element_index !== "number" || typeof args.text !== "string") {
       throw invalidParams();
     }
-    const selectionType = args.selection_type ?? "text";
+    const selectionType = args.selection_type === "exact" ? "text" : (args.selection_type ?? "text");
     if (selectionType !== "text" && selectionType !== "cursor_before" && selectionType !== "cursor_after") {
       throw invalidParams();
     }
@@ -406,20 +408,22 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(`Text ${JSON.stringify(args.text)} was not found in element ${args.element_index}`);
     }
 
-    await this.click({ app: args.app, element_index: args.element_index });
+    const target = this.elementTarget(resolved, args.element_index);
     await this.driver.call("press_key", {
       pid: resolved.pid,
       window_id: resolved.windowId,
       key: "home",
       modifiers: this.target === "mac" ? ["cmd"] : ["ctrl"],
-      delivery_mode: "foreground",
+      delivery_mode: "background",
+      ...target,
     });
     for (let i = 0; i < index; i += 1) {
       await this.driver.call("press_key", {
         pid: resolved.pid,
         window_id: resolved.windowId,
         key: "right",
-        delivery_mode: "foreground",
+        delivery_mode: "background",
+        ...target,
       });
     }
     if (selectionType === "cursor_before") return;
@@ -430,7 +434,8 @@ export class OpenSky implements OpenSkyApi {
           pid: resolved.pid,
           window_id: resolved.windowId,
           key: "right",
-          delivery_mode: "foreground",
+          delivery_mode: "background",
+          ...target,
         });
       }
       return;
@@ -441,7 +446,8 @@ export class OpenSky implements OpenSkyApi {
         window_id: resolved.windowId,
         key: "right",
         modifiers: ["shift"],
-        delivery_mode: "foreground",
+        delivery_mode: "background",
+        ...target,
       });
     }
   }
