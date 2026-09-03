@@ -127,7 +127,7 @@ describe("OpenSky against cua-driver", () => {
     const { opensky } = await makeHarness();
     const first = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
     assert.match(first.text, /\[13]/);
-    assert.doesNotMatch(first.text, /AXMenuBar/);
+    assert.match(first.text, /AXMenuBar/);
     await opensky.click({ app: "Calculator", element_index: 13, mouse_button: 0 });
     const second = await opensky.get_app_state({ app: "Calculator" });
     assert.match(second.text, /Changed:/);
@@ -221,5 +221,45 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(state.screenshot.format, "png");
     const session = await stat(join(dir, "home", "session.json"));
     assert.equal(session.mode & 0o777, 0o600);
+  });
+
+  it("revives an expired helper session transparently", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.sessionEnded = true;
+    await Bun.write(statePath, JSON.stringify(state));
+
+    const apps = await opensky.list_apps();
+    assert.ok(apps.some((app) => app.displayName === "Calculator"));
+    const after = JSON.parse(await readFile(statePath, "utf8")) as {
+      sessionEnded: boolean;
+      calls: Array<{ tool: string }>;
+    };
+    assert.equal(after.sessionEnded, false);
+    assert.ok(after.calls.some((call) => call.tool === "start_session"));
+  });
+
+  it("retries helper-reported degraded AX snapshots", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.degradedSnapshots = 1;
+    await Bun.write(statePath, JSON.stringify(state));
+
+    const snapshot = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
+    assert.match(snapshot.text, /AXWindow/);
+  });
+
+  it("keeps the screenshot and gives coordinate guidance for persistent AX degradation", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.degradedAlways = true;
+    await Bun.write(statePath, JSON.stringify(state));
+
+    const snapshot = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
+    assert.match(snapshot.text, /Use screenshot coordinates/);
+    assert.ok(snapshot.screenshot?.url.startsWith("file:"));
   });
 });

@@ -28,6 +28,8 @@ const PERMISSION_HELP =
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class CuaDriverClient implements DriverClient {
+  private daemonReady = false;
+
   constructor(private readonly options: CuaDriverOptions = {}) {}
 
   async call(tool: string, args: Record<string, unknown> = {}): Promise<DriverResult> {
@@ -37,12 +39,36 @@ export class CuaDriverClient implements DriverClient {
       payload.session = this.options.session;
     }
 
-    const result = await this.execDriver(this.callArgs(tool, payload), this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    let result = await this.execDriver(this.callArgs(tool, payload), this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    let parsed = parseDriverOutput(result.stdout);
+
+    // Long-lived REPLs and one-shot CLI calls may reuse a session that the
+    // daemon has expired. Native Computer Use hides this lifecycle detail, so
+    // revive an explicitly named session once and replay the rejected call.
+    // The rejected call did not run, making this retry safe even for actions.
+    if (
+      tool !== "start_session" &&
+      this.options.session &&
+      isEndedSessionResult(result, parsed)
+    ) {
+      const revived = await this.execDriver(
+        this.callArgs("start_session", { session: this.options.session }),
+        this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      );
+      const revivedParsed = parseDriverOutput(revived.stdout);
+      if (revived.code !== 0 || revivedParsed.isError) {
+        throw driverError(
+          revivedParsed.message || revived.stderr.trim() || "desktop helper session could not be revived.",
+        );
+      }
+      result = await this.execDriver(this.callArgs(tool, payload), this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+      parsed = parseDriverOutput(result.stdout);
+    }
+
     if (result.code !== 0 && !result.stdout.trim()) {
       throw driverError((result.stderr || result.stdout || `${tool} failed with exit ${result.code}`).trim());
     }
 
-    const parsed = parseDriverOutput(result.stdout);
     if (parsed.isError || result.code !== 0) {
       throw driverError(parsed.message || result.stderr.trim() || `${tool} failed.`);
     }
@@ -92,10 +118,27 @@ export class CuaDriverClient implements DriverClient {
     return this.exec(binary, this.withSocket(["permissions", "grant"]), 120_000);
   }
 
+  async permissionStatus(): Promise<Record<string, unknown> | null> {
+    const binary = await this.resolveBinary();
+    if (!binary) return null;
+    const result = await this.exec(binary, this.withSocket(["permissions", "status", "--json"]), 4_000);
+    try {
+      return JSON.parse(result.stdout) as Record<string, unknown>;
+    } catch {
+      return result.stdout || result.stderr
+        ? { status: (result.stdout || result.stderr).trim(), exitCode: result.code }
+        : null;
+    }
+  }
+
   async ensureDaemon(): Promise<void> {
+    if (this.daemonReady) return;
     await this.ensureHelper();
     const status = await this.status();
-    if (status.running) return;
+    if (status.running) {
+      this.daemonReady = true;
+      return;
+    }
     if (this.options.autoStart === false) {
       throw driverError("opensky desktop helper is not running. Run `opensky doctor`.");
     }
@@ -104,24 +147,33 @@ export class CuaDriverClient implements DriverClient {
     const target = detectTarget();
     if (target === "mac") {
       const appPath = this.options.appPath ?? "/Applications/CuaDriver.app";
-      const opened = await this.exec("/usr/bin/open", ["-n", "-g", appPath, "--args", "serve", "--no-overlay"], 3_000);
+      // Reuse an in-flight helper launch. `open -n` creates competing daemon
+      // instances when multiple first-run commands arrive together.
+      const opened = await this.exec(
+        "/usr/bin/open",
+        ["-g", appPath, "--args", ...this.withSocket(["serve", "--no-overlay"])],
+        3_000,
+      );
       if (opened.code !== 0) {
-        await this.spawnDetached(binary, ["serve", "--no-overlay"]);
+        await this.spawnDetached(binary, this.withSocket(["serve", "--no-overlay"]));
       }
     } else if (target === "win") {
       await this.exec(binary, this.withSocket(["autostart", "kick"]), 15_000);
       const afterKick = await this.status();
       if (!afterKick.running) {
-        await this.spawnDetached(binary, ["serve", "--no-overlay"]);
+        await this.spawnDetached(binary, this.withSocket(["serve", "--no-overlay"]));
       }
     } else {
-      await this.spawnDetached(binary, ["serve", "--no-overlay"]);
+      await this.spawnDetached(binary, this.withSocket(["serve", "--no-overlay"]));
     }
 
     const deadline = Date.now() + (this.options.startTimeoutMs ?? 10_000);
     while (Date.now() < deadline) {
       const next = await this.status();
-      if (next.running) return;
+      if (next.running) {
+        this.daemonReady = true;
+        return;
+      }
       await sleep(200);
     }
     throw driverError(`Timed out waiting for the opensky desktop helper. ${PERMISSION_HELP}`);
@@ -224,6 +276,22 @@ export class CuaDriverClient implements DriverClient {
     });
     child.unref();
   }
+}
+
+function isEndedSessionResult(
+  result: { stdout: string; stderr: string; code: number },
+  parsed: ReturnType<typeof parseDriverOutput>,
+): boolean {
+  if (!parsed.isError && result.code === 0) return false;
+  const message = `${parsed.message}\n${result.stderr}`.toLowerCase();
+  return (
+    message.includes("session") &&
+    (message.includes("has ended") ||
+      message.includes("ended session") ||
+      message.includes("session_not_started") ||
+      message.includes("start_session") ||
+      message.includes("revive"))
+  );
 }
 
 export function parseDriverOutput(stdout: string): {

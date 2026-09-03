@@ -57,6 +57,13 @@ async function dispatch(command, state) {
   }
   const { tool, args } = command;
   state.calls.push({ tool, args });
+  if (tool === "start_session") {
+    state.sessionEnded = false;
+    return envelope({ active: true, revived: true, session: args.session });
+  }
+  if (state.sessionEnded) {
+    throw new Error(`session '${args.session}' has ended; call start_session to revive it`);
+  }
   switch (tool) {
     case "list_apps":
       return envelope({ apps: state.apps });
@@ -144,6 +151,17 @@ async function getWindowState(state, args) {
     ...element,
     element_token: `${snapshotId}:${element.element_index}`,
   }));
+  if (state.degradedSnapshots > 0 || state.degradedAlways) {
+    state.degradedSnapshots = Math.max(0, (state.degradedSnapshots ?? 0) - 1);
+    return {
+      pid: app.pid,
+      window_id: window.window_id,
+      degraded: true,
+      degraded_reason: "ax_window_unresolved",
+      elements: [],
+      tree_markdown: "",
+    };
+  }
   state.snapshots[`${app.pid}:${window.window_id}`] = { snapshotId, elements };
   const tree = elements
     .map((element) => `[${element.element_index}] ${element.role} ${element.label}${element.value ? ` value=${JSON.stringify(element.value)}` : ""}`)
@@ -339,6 +357,9 @@ function defaultState() {
     clipboardMarkdown: undefined,
     calls: [],
     snapshots: {},
+    sessionEnded: false,
+    degradedSnapshots: 0,
+    degradedAlways: false,
     apps: [
       {
         pid: 844,

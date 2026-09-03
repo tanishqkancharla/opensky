@@ -19,6 +19,9 @@ npm install -g opensky-cua
 opensky doctor
 ```
 
+If the helper runs on a non-default or sandbox-exposed socket, set
+`CUA_DRIVER_SOCKET=/path/to/cua-driver.sock` or pass `--socket <path>`.
+
 `opensky doctor` downloads the native desktop helper if needed and starts it. On macOS, System Settings will ask for **Accessibility** and **Screen Recording**. Enable both for the helper app that appears (it may be labeled CuaDriver), then run `opensky doctor` again.
 
 From this repo instead of npm:
@@ -116,6 +119,18 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | `type_text` | `type_text` |
 
 `opensky.target` is `"mac"`, `"win"`, or `"linux"`.
+
+OpenSky also mirrors the native runtime's ergonomics around helper lifecycle and
+observation timing: expired named sessions are revived transparently, state
+capture waits briefly after actions, and helper-reported degraded AX snapshots
+are retried for up to four seconds. If the helper still cannot resolve AX for an
+off-space or custom-drawn window, `get_app_state` preserves its screenshot and
+returns explicit coordinate-fallback guidance instead of a silent empty tree.
+AX output keeps top-level menu-bar context while pruning
+closed menu contents, and public element indices remain stable across snapshots
+so compact diffs stay useful after the helper renumbers its AX walk. Screenshot
+paths are unique per capture, and indexed actions fail fast if the latest
+snapshot no longer contains that element; coordinate actions remain available.
 
 ## Recommended action loop
 

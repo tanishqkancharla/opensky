@@ -133,10 +133,13 @@ export interface ResolvedApp {
 
 export interface SnapshotElement {
   element_index: number;
+  /** Current helper index; element_index is OpenSky's stable public index. */
+  driver_index?: number;
   element_token?: string;
   role?: string;
   label?: string;
   value?: string;
+  identifier?: string;
   actions?: string[];
   frame?: { x: number; y: number; w: number; h: number };
 }
@@ -150,6 +153,8 @@ export interface WindowSnapshot {
   screenshotPath: string | null;
   screenshot?: Screenshot;
   frame?: { width: number; height: number };
+  degraded?: boolean;
+  degradedReason?: string;
 }
 
 export interface OpenSkyOptions {
@@ -162,4 +167,8 @@ export interface OpenSkyOptions {
   target?: OpenSkyTarget;
   screenshotFormat?: "png" | "jpeg";
   screenshotScale?: number;
+  /** Delay after an action/launch before observing the next state. Defaults to 800ms. */
+  settleDelayMs?: number;
+  /** Maximum time to retry a helper-reported degraded AX snapshot. Defaults to 4s. */
+  degradedRetryMs?: number;
 }

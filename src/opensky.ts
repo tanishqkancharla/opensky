@@ -72,6 +72,11 @@ export class OpenSky implements OpenSkyApi {
   private readonly pasteModifier: "cmd" | "ctrl";
   private readonly screenshotFormat?: "png" | "jpeg";
   private readonly screenshotScale?: number;
+  private readonly settleDelayMs: number;
+  private readonly degradedRetryMs: number;
+  private readonly lastActionAt = new Map<string, number>();
+  private readonly resolvedThisProcess = new Set<string>();
+  private screenshotSequence = 0;
   private readonly memory = {
     apps: {} as Record<string, ResolvedApp>,
     trees: {} as Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>,
@@ -88,6 +93,8 @@ export class OpenSky implements OpenSkyApi {
     this.pasteModifier = options.pasteModifier ?? pasteModifierFor(this.target);
     this.screenshotFormat = options.screenshotFormat;
     this.screenshotScale = options.screenshotScale;
+    this.settleDelayMs = options.settleDelayMs ?? 800;
+    this.degradedRetryMs = options.degradedRetryMs ?? 4_000;
   }
 
   async list_apps(): Promise<App[]> {
@@ -97,9 +104,11 @@ export class OpenSky implements OpenSkyApi {
 
   async get_app_state(args: { app: string; disableDiff?: boolean }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
-    const resolved = await this.resolveApp(args.app, { launchIfNeeded: true });
+    const resolved = await this.requireResolved(args.app);
+    await this.settleAfterAction(resolved);
+    await this.refreshWindowAfterAction(resolved);
     const previous = this.memory.trees[windowKey(resolved)];
-    const snapshot = await this.snapshotWindow(resolved, { includeScreenshot: true });
+    const snapshot = await this.snapshotSettled(resolved, { includeScreenshot: true });
     const text =
       args.disableDiff || !previous ? snapshot.tree : diffTrees(previous.tree, previous.elements, snapshot.tree, snapshot.elements);
     this.memory.trees[windowKey(resolved)] = {
@@ -143,9 +152,11 @@ export class OpenSky implements OpenSkyApi {
         window_id: resolved.windowId,
         ...this.elementTarget(resolved, args.element_index),
       });
+      this.markAction(resolved);
       return;
     }
     await this.driver.call("click", payload);
+    this.markAction(resolved);
   }
 
   async drag(args: {
@@ -168,6 +179,7 @@ export class OpenSky implements OpenSkyApi {
       to_x: args.to_x,
       to_y: args.to_y,
     });
+    this.markAction(resolved);
   }
 
   async paste(args: { app: string; text: string; format: PasteFormat }): Promise<void> {
@@ -190,6 +202,7 @@ export class OpenSky implements OpenSkyApi {
         window_id: resolved.windowId,
         keys: [this.pasteModifier, "v"],
       });
+      this.markAction(resolved);
     } finally {
       if (previous) {
         await this.driver.call("clipboard_write", previous).catch(() => undefined);
@@ -209,6 +222,7 @@ export class OpenSky implements OpenSkyApi {
     const mapped = SECONDARY_ACTIONS[args.action.trim().toLowerCase()];
     if (mapped?.kind === "front") {
       await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: resolved.windowId });
+      this.markAction(resolved);
       return;
     }
     if (mapped?.kind === "key" && mapped.key) {
@@ -218,6 +232,7 @@ export class OpenSky implements OpenSkyApi {
         key: mapped.key,
         ...this.elementTarget(resolved, args.element_index),
       });
+      this.markAction(resolved);
       return;
     }
     await this.driver.call("click", {
@@ -226,6 +241,7 @@ export class OpenSky implements OpenSkyApi {
       action: mapped?.action ?? args.action,
       ...this.elementTarget(resolved, args.element_index),
     });
+    this.markAction(resolved);
   }
 
   async press_key(args: { app: string; key: string }): Promise<void> {
@@ -238,6 +254,7 @@ export class OpenSky implements OpenSkyApi {
         window_id: resolved.windowId,
         keys: toHotkeyKeys(parsed),
       });
+      this.markAction(resolved);
       return;
     }
     await this.driver.call("press_key", {
@@ -245,6 +262,7 @@ export class OpenSky implements OpenSkyApi {
       window_id: resolved.windowId,
       key: parsed.key,
     });
+    this.markAction(resolved);
   }
 
   async scroll(args: {
@@ -272,6 +290,7 @@ export class OpenSky implements OpenSkyApi {
     if (typeof args.x === "number") payload.x = args.x;
     if (typeof args.y === "number") payload.y = args.y;
     await this.driver.call("scroll", payload);
+    this.markAction(resolved);
   }
 
   async select_text(args: {
@@ -337,6 +356,7 @@ export class OpenSky implements OpenSkyApi {
       value: args.value,
       ...this.elementTarget(resolved, args.element_index),
     });
+    this.markAction(resolved);
   }
 
   async type_text(args: { app: string; text: string }): Promise<void> {
@@ -347,6 +367,7 @@ export class OpenSky implements OpenSkyApi {
       window_id: resolved.windowId,
       text: args.text,
     });
+    this.markAction(resolved);
   }
 
   async invoke(tool: string, args: Record<string, unknown> = {}) {
@@ -356,7 +377,7 @@ export class OpenSky implements OpenSkyApi {
   private async requireResolved(app: string): Promise<ResolvedApp> {
     await this.ensureLoaded();
     const cached = this.memory.apps[normalizeAppKey(app)];
-    if (cached?.pid) return cached;
+    if (cached?.pid && this.resolvedThisProcess.has(normalizeAppKey(app))) return cached;
     return this.resolveApp(app, { launchIfNeeded: this.autoLaunch });
   }
 
@@ -378,6 +399,7 @@ export class OpenSky implements OpenSkyApi {
       this.memory.apps[normalizeAppKey(app)] = resolved;
       if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
       if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
+      this.markResolved(resolved);
       await this.persist();
       return resolved;
     }
@@ -403,9 +425,11 @@ export class OpenSky implements OpenSkyApi {
       pid,
       windowId,
     };
+    this.markAction(resolved);
     this.memory.apps[normalizeAppKey(app)] = resolved;
     if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
     if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
+    this.markResolved(resolved);
     await this.persist();
     return resolved;
   }
@@ -443,17 +467,16 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotWindow(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; triedWindowIds?: Set<number> },
+    options: { includeScreenshot: boolean; screenshotPath?: string },
   ): Promise<WindowSnapshot> {
-    const tried = options.triedWindowIds ?? new Set<number>();
     if (!resolved.windowId) {
-      resolved.windowId = await this.pickWindow(resolved.pid, {}, tried);
+      resolved.windowId = await this.pickWindow(resolved.pid, {});
     }
     if (!resolved.windowId) {
       throw new OpenSkyError(`No window found for ${resolved.name} (pid ${resolved.pid})`);
     }
     await mkdirPrivate(this.screenshotDir);
-    const screenshotPath = join(this.screenshotDir, `${slug(resolved.name)}-${resolved.windowId}.png`);
+    const screenshotPath = options.screenshotPath ?? join(this.screenshotDir, `${slug(resolved.name)}-${resolved.windowId}.png`);
     const result = await this.driver.call("get_window_state", {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -464,12 +487,17 @@ export class OpenSky implements OpenSkyApi {
     });
     const structured = asRecord(result.structured) ?? {};
     const rawElements = normalizeElements(structured.elements);
-    const elements = rawElements.filter((element) => !isGlobalChrome(element));
     const rawTree =
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
       (typeof structured.text === "string" && structured.text) ||
       "";
-    const tree = elements.length !== rawElements.length ? renderTree(elements) : rawTree || renderTree(elements);
+    const pruned = pruneMenuSubtrees(sanitizeTreeText(rawTree));
+    const visibleElements = pruned.hiddenIndices.size
+      ? rawElements.filter((element) => !pruned.hiddenIndices.has(element.element_index))
+      : rawElements;
+    const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
+    const elements = stabilizeElementIndices(previousElements, visibleElements, pruned.hiddenIndices.size > 0);
+    const tree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
     const snapshotId = optionalString(structured.snapshot_id);
     const filePath =
       optionalString(structured.screenshot_file_path) ??
@@ -479,20 +507,6 @@ export class OpenSky implements OpenSkyApi {
     if (filePath) await chmod(filePath, 0o600).catch(() => undefined);
     resolved.snapshotId = snapshotId;
     this.memory.apps[normalizeAppKey(resolved.query)] = resolved;
-    if (elements.length === 0) {
-      tried.add(resolved.windowId);
-      const listed = await this.driver.call("list_windows", { pid: resolved.pid });
-      const nextId = pickWindowId(
-        windowsFrom(listed.structured).filter((window) => {
-          const id = window.window_id;
-          return typeof id === "number" && !tried.has(id);
-        }),
-      );
-      if (nextId) {
-        resolved.windowId = nextId;
-        return this.snapshotWindow(resolved, { ...options, triedWindowIds: tried });
-      }
-    }
     return {
       pid: resolved.pid,
       windowId: resolved.windowId,
@@ -502,15 +516,76 @@ export class OpenSky implements OpenSkyApi {
       screenshotPath: filePath,
       screenshot: screenshot ?? (filePath ? { url: pathToFileURL(filePath).href } : undefined),
       frame,
+      degraded: structured.degraded === true,
+      degradedReason: optionalString(structured.degraded_reason),
     };
+  }
+
+  private async snapshotSettled(
+    resolved: ResolvedApp,
+    options: { includeScreenshot: boolean },
+  ): Promise<WindowSnapshot> {
+    const deadline = Date.now() + this.degradedRetryMs;
+    let delayMs = 150;
+    const screenshotPath = join(
+      this.screenshotDir,
+      `${slug(resolved.name)}-${resolved.windowId}-${Date.now()}-${++this.screenshotSequence}.png`,
+    );
+    const captureOptions = { ...options, screenshotPath };
+    let snapshot = await this.snapshotWindow(resolved, captureOptions);
+    while (snapshot.degraded && Date.now() < deadline) {
+      await sleep(Math.min(delayMs, Math.max(0, deadline - Date.now())));
+      delayMs = Math.min(delayMs * 2, 800);
+      snapshot = await this.snapshotWindow(resolved, captureOptions);
+    }
+    if (snapshot.degraded) {
+      const detail = snapshot.degradedReason ? `: ${snapshot.degradedReason}` : "";
+      snapshot.tree =
+        `Accessibility tree unavailable for ${JSON.stringify(resolved.name)}${detail.replace(/\.$/, "")}. ` +
+        "Use screenshot coordinates for this state, or bring the window onto the current desktop and retry.";
+    }
+    return snapshot;
+  }
+
+  private markAction(resolved: ResolvedApp): void {
+    this.lastActionAt.set(windowKey(resolved), Date.now());
+  }
+
+  private async settleAfterAction(resolved: ResolvedApp): Promise<void> {
+    if (this.settleDelayMs <= 0) return;
+    const actionAt = this.lastActionAt.get(windowKey(resolved));
+    if (actionAt === undefined) return;
+    const remaining = this.settleDelayMs - (Date.now() - actionAt);
+    if (remaining > 0) await sleep(remaining);
+  }
+
+  private async refreshWindowAfterAction(resolved: ResolvedApp): Promise<void> {
+    const key = windowKey(resolved);
+    if (!this.lastActionAt.has(key)) return;
+    const nextWindowId = await this.pickWindow(resolved.pid, {});
+    if (nextWindowId) resolved.windowId = nextWindowId;
+    this.lastActionAt.delete(key);
+  }
+
+  private markResolved(resolved: ResolvedApp): void {
+    this.resolvedThisProcess.add(normalizeAppKey(resolved.query));
+    this.resolvedThisProcess.add(normalizeAppKey(resolved.name));
+    if (resolved.bundleId) this.resolvedThisProcess.add(normalizeAppKey(resolved.bundleId));
+    if (resolved.launchPath) this.resolvedThisProcess.add(normalizeAppKey(resolved.launchPath));
   }
 
   private elementTarget(resolved: ResolvedApp, elementIndex: number): Record<string, unknown> {
     const snapshot = this.memory.trees[windowKey(resolved)];
     const element = snapshot?.elements.find((item) => item.element_index === elementIndex);
+    if (!snapshot || !element) {
+      throw new OpenSkyError(
+        `Element index ${elementIndex} is not present in the latest accessibility snapshot for ` +
+          `${JSON.stringify(resolved.name)}. Call get_app_state again, or use screenshot coordinates when AX is unavailable.`,
+      );
+    }
     const target: Record<string, unknown> = {
       window_id: resolved.windowId,
-      element_index: elementIndex,
+      element_index: element.driver_index ?? elementIndex,
     };
     if (element?.element_token) target.element_token = element.element_token;
     if (snapshot?.snapshotId) target.snapshot_id = snapshot.snapshotId;
@@ -612,7 +687,12 @@ export function diffTrees(
       added.push(formatElement(element));
       continue;
     }
-    if (before.label !== element.label || before.value !== element.value || before.role !== element.role) {
+    if (
+      before.label !== element.label ||
+      before.value !== element.value ||
+      before.role !== element.role ||
+      before.identifier !== element.identifier
+    ) {
       changed.push(`${formatElement(before)} -> ${formatElement(element)}`);
     }
   }
@@ -623,20 +703,61 @@ export function diffTrees(
   if (added.length === 0 && changed.length === 0 && removed.length === 0) {
     return "No accessibility changes.";
   }
+  const removedIndices = previousElements
+    .filter((element) => !next.has(element.element_index))
+    .map((element) => element.element_index);
   return [
-    added.length ? `Added:\n${added.map((line) => `- ${line}`).join("\n")}` : "",
-    changed.length ? `Changed:\n${changed.map((line) => `- ${line}`).join("\n")}` : "",
-    removed.length ? `Removed:\n${removed.map((line) => `- ${line}`).join("\n")}` : "",
-    "",
-    "Full tree:",
-    nextTree,
+    "The following is a diff from the previous accessibility tree; + marks added elements and ~ marks changed elements.",
+    removedIndices.length ? `Removed element IDs: ${formatIndexRanges(removedIndices)}` : "",
+    added.length
+      ? nextElements
+          .filter((element) => !prev.has(element.element_index))
+          .map((element) => `+ ${treeLineForIndex(nextTree, element.element_index) ?? formatElement(element)}`)
+          .join("\n")
+      : "",
+    changed.length
+      ? nextElements
+          .filter((element) => {
+            const before = prev.get(element.element_index);
+            return before && (
+              before.label !== element.label ||
+              before.value !== element.value ||
+              before.role !== element.role ||
+              before.identifier !== element.identifier
+            );
+          })
+          .map((element) => `~ ${formatElement(element)}`)
+          .join("\n")
+      : "",
   ]
     .filter(Boolean)
-    .join("\n\n");
+    .join("\n");
+}
+
+function treeLineForIndex(tree: string, index: number): string | undefined {
+  const marker = `[${index}]`;
+  return tree.split("\n").find((line) => line.includes(marker))?.trim().replace(/^-\s+/, "");
+}
+
+function formatIndexRanges(indices: number[]): string {
+  const sorted = [...new Set(indices)].sort((a, b) => a - b);
+  const ranges: string[] = [];
+  for (let start = 0; start < sorted.length; start += 1) {
+    let end = start;
+    while (end + 1 < sorted.length && sorted[end + 1] === sorted[end] + 1) end += 1;
+    ranges.push(start === end ? String(sorted[start]) : `${sorted[start]}-${sorted[end]}`);
+    start = end;
+  }
+  return ranges.join(", ");
 }
 
 function formatElement(element: SnapshotElement): string {
-  return `[${element.element_index}] ${element.role ?? "AXUnknown"} ${JSON.stringify(element.label ?? element.value ?? "")}`;
+  const primary = JSON.stringify(element.label ?? element.value ?? "");
+  const value = element.value !== undefined && element.value !== element.label
+    ? ` value=${JSON.stringify(element.value)}`
+    : "";
+  const identifier = element.identifier ? ` id=${JSON.stringify(element.identifier)}` : "";
+  return `[${element.element_index}] ${element.role ?? "AXUnknown"} ${primary}${value}${identifier}`;
 }
 
 function findApp(apps: Record<string, unknown>[], query: string): Record<string, unknown> | undefined {
@@ -711,14 +832,106 @@ function normalizeElements(value: unknown): SnapshotElement[] {
     return [
       {
         element_index: item.element_index,
+        driver_index: item.element_index,
         element_token: optionalString(item.element_token),
         role: optionalString(item.role),
         label: optionalString(item.label),
         value: optionalString(item.value),
+        identifier: optionalString(item.identifier ?? item.id),
         actions: asArray<string>(item.actions),
         frame: asRecord(item.frame) as SnapshotElement["frame"],
       },
     ];
+  });
+}
+
+/** Keep top-level menu-bar context while dropping enormous, closed menu trees. */
+export function pruneMenuSubtrees(tree: string): { tree: string; hiddenIndices: Set<number> } {
+  if (!tree) return { tree, hiddenIndices: new Set() };
+  const kept: string[] = [];
+  const hiddenIndices = new Set<number>();
+  let menuBarIndent: number | undefined;
+  for (const line of tree.split("\n")) {
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
+    if (/^\s*-\s+(?:\[\d+\]\s+)?AXMenuBar\b/.test(line)) {
+      menuBarIndent = indent;
+      kept.push(line);
+      continue;
+    }
+    if (menuBarIndent !== undefined) {
+      if (indent <= menuBarIndent) {
+        menuBarIndent = undefined;
+      } else if (indent > menuBarIndent + 2 || !/\bAXMenuBarItem\b/.test(line)) {
+        const index = line.match(/\[(\d+)\]/)?.[1];
+        if (index !== undefined) hiddenIndices.add(Number(index));
+        continue;
+      }
+    }
+    kept.push(line);
+  }
+  return { tree: kept.join("\n"), hiddenIndices };
+}
+
+/** Flatten Cua's multi-line custom-action descriptor into one readable action. */
+export function sanitizeTreeText(tree: string): string {
+  return tree.replace(
+    /,name:([^\n\]]+)\ntarget:[^\n]*\nselector:[^\]]*/g,
+    (_match, name: string) => `,${name.trim()}`,
+  );
+}
+
+/** Reuse public element indices across snapshots even when the helper renumbers its walk. */
+export function stabilizeElementIndices(
+  previous: SnapshotElement[],
+  current: SnapshotElement[],
+  compactInitial = false,
+): SnapshotElement[] {
+  if (previous.length === 0) {
+    return current.map((element, index) => ({
+      ...element,
+      driver_index: element.driver_index ?? element.element_index,
+      element_index: compactInitial ? index : element.element_index,
+    }));
+  }
+  const unused = new Set(previous.map((element) => element.element_index));
+  let nextIndex = Math.max(-1, ...previous.map((element) => element.element_index)) + 1;
+  return current.map((element) => {
+    const candidates = previous.filter((prior) => unused.has(prior.element_index));
+    const prior =
+      (element.identifier
+        ? candidates.find(
+            (candidate) => candidate.role === element.role && candidate.identifier === element.identifier,
+          )
+        : undefined) ??
+      (element.label
+        ? candidates.find((candidate) => elementIdentity(candidate) === elementIdentity(element))
+        : undefined) ??
+      candidates.find(
+        (candidate) =>
+          candidate.role === element.role &&
+          candidate.driver_index === element.driver_index,
+      ) ??
+      candidates.find((candidate) => elementIdentity(candidate) === elementIdentity(element));
+    if (prior) unused.delete(prior.element_index);
+    return {
+      ...element,
+      driver_index: element.driver_index ?? element.element_index,
+      element_index: prior?.element_index ?? nextIndex++,
+    };
+  });
+}
+
+function elementIdentity(element: SnapshotElement): string {
+  return element.identifier
+    ? [element.role ?? "", "id", element.identifier].join("\u0000")
+    : [element.role ?? "", "label", element.label ?? ""].join("\u0000");
+}
+
+function remapTreeIndices(tree: string, elements: SnapshotElement[]): string {
+  const indices = new Map(elements.map((element) => [element.driver_index ?? element.element_index, element.element_index]));
+  return tree.replace(/\[(\d+)\]/g, (match, raw: string) => {
+    const stable = indices.get(Number(raw));
+    return stable === undefined ? match : `[${stable}]`;
   });
 }
 
@@ -752,16 +965,6 @@ function clipboardWritePayload(format: PasteFormat, text: string): Record<string
 
 function stripHtml(value: string): string {
   return value.replace(/<[^>]+>/g, "").trim();
-}
-
-function isGlobalChrome(element: SnapshotElement): boolean {
-  const role = (element.role ?? "").toLowerCase();
-  if (role === "axmenubar" || role === "axmenubaritem") return true;
-  const label = (element.label ?? "").toLowerCase();
-  if (label === "apple" && role.includes("menu")) return true;
-  const frame = element.frame;
-  if (frame && frame.y <= 0 && frame.h <= 28 && frame.w > 400 && role.includes("menu")) return true;
-  return false;
 }
 
 function isApplicationRecord(
@@ -849,4 +1052,8 @@ function windowKey(resolved: ResolvedApp): string {
 
 function slug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app";
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

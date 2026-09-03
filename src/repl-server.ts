@@ -182,7 +182,12 @@ export async function serverAlive(home = homeDir()): Promise<boolean> {
   try {
     process.kill(info.pid, 0);
     return true;
-  } catch {
+  } catch (error) {
+    // Sandboxed sibling processes may be allowed to connect to the loopback
+    // server but denied process inspection. EPERM means the PID exists.
+    if (error && typeof error === "object" && "code" in error && error.code === "EPERM") {
+      return true;
+    }
     await rm(join(home, "repl.json"), { force: true });
     return false;
   }

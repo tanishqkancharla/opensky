@@ -28,6 +28,7 @@ export async function makeHarness() {
     autoStart: false,
     env,
     timeoutMs: 8_000,
+    session: "opensky",
   });
   const opensky = createOpenSky({
     driver,
@@ -36,6 +37,8 @@ export async function makeHarness() {
     autoLaunch: true,
     target: "mac",
     pasteModifier: "cmd",
+    settleDelayMs: 0,
+    degradedRetryMs: 50,
   });
   return { dir, opensky, driver, driverPath, env, statePath, logPath };
 }

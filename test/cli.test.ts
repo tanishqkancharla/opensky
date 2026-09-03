@@ -90,7 +90,6 @@ describe("opensky CLI", () => {
     assert.equal(state.ok, true);
     assert.match(state.value.app, /TextEdit/);
     assert.match(state.value.text, /AXTextArea/);
-    assert.doesNotMatch(state.value.text, /AXMenuBar/);
   });
 
   it("installs the skill into a temp project", async () => {

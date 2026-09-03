@@ -19,6 +19,8 @@ opensky eval --json 'await opensky.list_apps()'
 opensky doctor
 ```
 
+For a helper on an explicit socket, set `CUA_DRIVER_SOCKET` or pass `--socket <path>`.
+
 If `opensky doctor` reports the helper is missing or not running, tell the user to run:
 
 ```bash
@@ -93,9 +95,10 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 Returns `{ app, text, screenshot }`.
 
 - `app` is the launch path when known, otherwise the display name.
-- `text` is the accessibility tree for the **main document window**. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a diff of added/changed/removed indices plus the full tree. Global menu-bar chrome is omitted.
+- `text` is the accessibility tree for the **main document window**, including menu-bar elements exposed by the helper. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a compact native-style diff with stable public element indices.
 - `screenshot` is `{ url, width?, height?, scale?, format? }` using a `file:` URL, or `null`. `scale` is `2` for typical Retina captures when the window frame is known.
 - Read PNG bytes with `await readFile(pathToFileURL(state.screenshot.url))`.
+- OpenSky automatically waits briefly after actions, revives expired helper sessions, and retries temporary degraded AX snapshots. If AX remains unavailable, use coordinates from the returned screenshot or bring the window onto the current desktop and call `get_app_state` again.
 
 ### `click`
 

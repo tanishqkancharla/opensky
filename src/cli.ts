@@ -32,6 +32,7 @@ Options:
   --global, -g            Install the skill into ~/.agent/skills (user-level)
   --home <dir>            Override OPENSKY_HOME (default ~/.opensky)
   --driver <path>        Path to the desktop helper binary
+  --socket <path>        Path to an existing desktop-helper socket
   --help, -h              Show this help
   --version               Show version
 
@@ -41,6 +42,7 @@ Environment:
   OPENSKY_REPL_TOKEN                 token for opensky serve (generated into repl.json)
   OPENSKY_AUTOINSTALL=0             do not download the desktop helper
   OPENSKY_DRIVER                    override helper binary path
+  CUA_DRIVER_SOCKET                 connect to an existing helper socket
 
 Examples:
   opensky eval 'await opensky.list_apps()'
@@ -173,6 +175,7 @@ async function runStop(flags: Flags): Promise<number> {
 async function runDoctor(flags: Flags): Promise<number> {
   const driver = new CuaDriverClient({
     binaryPath: flags.driver,
+    socket: flags.socket ?? process.env.CUA_DRIVER_SOCKET,
     autoStart: true,
   });
   let helperError: string | undefined;
@@ -187,6 +190,7 @@ async function runDoctor(flags: Flags): Promise<number> {
   }
   const binary = await driver.resolveBinary();
   const status = await driver.status();
+  const permissions = await driver.permissionStatus();
   const home = homeDir(flags.home);
   const repl = await serverAlive(home);
   const report = {
@@ -194,6 +198,7 @@ async function runDoctor(flags: Flags): Promise<number> {
     desktopHelper: binary,
     helperRunning: status.running,
     helperStatus: status.text,
+    permissions,
     openskyHome: home,
     replServer: repl,
     ...(helperError ? { error: helperError } : {}),
@@ -253,6 +258,7 @@ function createContext(flags: Flags) {
     driver: new CuaDriverClient({
       binaryPath: flags.driver ?? process.env.CUA_DRIVER_PATH ?? process.env.OPENSKY_DRIVER,
       session: process.env.OPENSKY_SESSION ?? "opensky",
+      socket: flags.socket ?? process.env.CUA_DRIVER_SOCKET,
       autoStart: process.env.OPENSKY_AUTOSTART !== "0",
     }),
   });
@@ -296,6 +302,7 @@ interface Flags {
   version: boolean;
   home?: string;
   driver?: string;
+  socket?: string;
 }
 
 function parseArgs(argv: string[]): { command?: string; args: string[]; flags: Flags } {
@@ -310,6 +317,7 @@ function parseArgs(argv: string[]): { command?: string; args: string[]; flags: F
     else if (arg === "--version") flags.version = true;
     else if (arg === "--home") flags.home = argv[++i];
     else if (arg === "--driver") flags.driver = argv[++i];
+    else if (arg === "--socket") flags.socket = argv[++i];
     else if (arg === "-e" || arg === "--eval") {
       positional.push("eval", argv[++i] ?? "");
     } else {
