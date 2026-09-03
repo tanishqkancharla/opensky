@@ -58,8 +58,6 @@ const SECONDARY_ACTIONS: Record<string, { kind: "click" | "front" | "key"; actio
   pick: { kind: "click", action: "pick" },
   confirm: { kind: "click", action: "confirm" },
   cancel: { kind: "click", action: "cancel" },
-  increment: { kind: "click", action: "increment" },
-  decrement: { kind: "click", action: "decrement" },
   delete: { kind: "key", key: "delete" },
 };
 
@@ -102,11 +100,12 @@ export class OpenSky implements OpenSkyApi {
     return mapApps(result.structured);
   }
 
-  async get_app_state(args: { app: string; disableDiff?: boolean }): Promise<AppState> {
+  async get_app_state(args: { app: string; disableDiff?: boolean; includeScreenshot?: boolean }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
     const resolved = await this.requireResolved(args.app);
     await this.settleAfterAction(resolved);
     await this.refreshWindowAfterAction(resolved);
+    if (!resolved.windowId) await this.adoptWindowForObservation(resolved);
     if (!resolved.windowId) {
       return {
         app: resolved.launchPath || resolved.name || args.app,
@@ -117,7 +116,7 @@ export class OpenSky implements OpenSkyApi {
       };
     }
     const previous = this.memory.trees[windowKey(resolved)];
-    const snapshot = await this.snapshotSettled(resolved, { includeScreenshot: true });
+    const snapshot = await this.snapshotSettled(resolved, { includeScreenshot: args.includeScreenshot !== false });
     const text =
       snapshot.degraded || args.disableDiff || !previous
         ? snapshot.tree
@@ -148,6 +147,7 @@ export class OpenSky implements OpenSkyApi {
     if (!args?.app) throw invalidParams("app is required");
     const button = normalizeMouseButton(args.mouse_button);
     const resolved = await this.requireResolved(args.app);
+    await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -177,6 +177,19 @@ export class OpenSky implements OpenSkyApi {
     this.markAction(resolved);
   }
 
+  async bring_to_front(args: { app: string }): Promise<void> {
+    if (!args?.app) throw invalidParams("app is required");
+    const resolved = await this.requireResolved(args.app);
+    const boundWindow = await this.refreshBoundWindow(resolved);
+    if (!boundWindow) {
+      throw new OpenSkyError(
+        `Application ${JSON.stringify(resolved.name)} has no exact ordinary window to bring forward. Observe again first.`,
+      );
+    }
+    await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: boundWindow });
+    this.markAction(resolved);
+  }
+
   async drag(args: {
     app: string;
     from_x: number;
@@ -189,6 +202,7 @@ export class OpenSky implements OpenSkyApi {
       if (typeof args[key] !== "number") throw invalidParams(`${key} is required`);
     }
     const resolved = await this.requireResolved(args.app);
+    await this.requireUsableInputWindow(resolved);
     await this.driver.call("drag", {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -200,12 +214,14 @@ export class OpenSky implements OpenSkyApi {
     this.markAction(resolved);
   }
 
-  async paste(args: { app: string; text: string; format: PasteFormat }): Promise<void> {
+  async paste(args: { app: string; text: string; format?: PasteFormat }): Promise<void> {
     if (!args?.app || typeof args.text !== "string") throw invalidParams();
-    if (args.format !== "text" && args.format !== "md" && args.format !== "html") {
+    const format = args.format ?? "text";
+    if (format !== "text" && format !== "md" && format !== "html") {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
+    await this.requireUsableInputWindow(resolved);
     let previous: Record<string, unknown> | undefined;
     try {
       const read = await this.driver.call("clipboard_read", { include_text: true, include_html: true });
@@ -214,11 +230,12 @@ export class OpenSky implements OpenSkyApi {
       previous = undefined;
     }
     try {
-      await this.driver.call("clipboard_write", clipboardWritePayload(args.format, args.text));
+      await this.driver.call("clipboard_write", clipboardWritePayload(format, args.text));
       await this.driver.call("hotkey", {
         pid: resolved.pid,
         window_id: resolved.windowId,
         keys: [this.pasteModifier, "v"],
+        delivery_mode: "foreground",
       });
       this.markAction(resolved);
     } finally {
@@ -237,17 +254,25 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
-    const mapped = SECONDARY_ACTIONS[args.action.trim().toLowerCase()];
+    const normalizedAction = args.action.trim().toLowerCase();
+    if (normalizedAction === "increment" || normalizedAction === "decrement") {
+      throw new OpenSkyError(
+        `${JSON.stringify(args.action)} is not a supported click action. ` +
+          "Use set_value for an exact slider/stepper value, or press_key with element_index and Left/Right/Up/Down.",
+      );
+    }
+    const mapped = SECONDARY_ACTIONS[normalizedAction];
     if (mapped?.kind === "front") {
-      await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: resolved.windowId });
-      this.markAction(resolved);
+      await this.bring_to_front({ app: args.app });
       return;
     }
+    await this.requireUsableInputWindow(resolved);
     if (mapped?.kind === "key" && mapped.key) {
       await this.driver.call("press_key", {
         pid: resolved.pid,
         window_id: resolved.windowId,
         key: mapped.key,
+        delivery_mode: "foreground",
         ...this.elementTarget(resolved, args.element_index),
       });
       this.markAction(resolved);
@@ -262,57 +287,50 @@ export class OpenSky implements OpenSkyApi {
     this.markAction(resolved);
   }
 
-  async press_key(args: { app: string; key: string }): Promise<void> {
+  async press_key(args: {
+    app: string;
+    key: string;
+    element_index?: number;
+    x?: number;
+    y?: number;
+  }): Promise<void> {
     if (!args?.app || !args.key) throw invalidParams();
+    if (args.element_index !== undefined && typeof args.element_index !== "number") {
+      throw invalidParams("element_index must be a number");
+    }
+    const hasX = typeof args.x === "number";
+    const hasY = typeof args.y === "number";
+    if (hasX !== hasY) throw invalidParams("x and y must be provided together");
+    if (args.element_index !== undefined && hasX) {
+      throw invalidParams("element_index cannot be combined with x/y");
+    }
     const resolved = await this.requireResolved(args.app);
     const parsed = parseXdotoolKey(args.key);
-    const previousWindow = resolved.windowId;
-    const usableWindow = await this.refreshUsableWindow(resolved);
-    if (!usableWindow) {
-      if (previousWindow) {
-        try {
-          if (parsed.modifiers.length > 0) {
-            await this.driver.call("hotkey", {
-              pid: resolved.pid,
-              window_id: previousWindow,
-              keys: toHotkeyKeys(parsed),
-              delivery_mode: "foreground",
-            });
-          } else {
-            await this.driver.call("press_key", {
-              pid: resolved.pid,
-              window_id: previousWindow,
-              key: parsed.key,
-              delivery_mode: "foreground",
-            });
-          }
-          resolved.windowId = previousWindow;
-          this.markAction(resolved);
-          await this.settleAfterAction(resolved);
-          await this.refreshWindowAfterAction(resolved);
-          return;
-        } catch (error) {
-          if (!isFocusRoutingError(error)) throw error;
-        }
-      }
-      const listed = await this.driver.call("list_windows", { pid: resolved.pid });
-      const focusProxy = pickWindowId(windowsFrom(listed.structured));
-      const activation = await this.driver.call("bring_to_front", {
+    const boundWindow = await this.refreshBoundWindow(resolved);
+    if (!boundWindow) {
+      throw new OpenSkyError(
+        `Application ${JSON.stringify(resolved.name)} has no exact ordinary window for safe keyboard input. ` +
+          "Refresh after a window exists; global input was not sent.",
+      );
+    }
+    await this.requireUsableInputWindow(resolved);
+    const target: Record<string, unknown> = {};
+    if (args.element_index !== undefined) {
+      Object.assign(target, this.elementTarget(resolved, args.element_index));
+    } else if (hasX) {
+      target.x = args.x;
+      target.y = args.y;
+    }
+    if (Object.keys(target).length > 0) {
+      await this.driver.call("press_key", {
         pid: resolved.pid,
-        ...(focusProxy ? { window_id: focusProxy } : {}),
+        window_id: resolved.windowId,
+        key: parsed.key,
+        ...(parsed.modifiers.length > 0 ? { modifiers: parsed.modifiers } : {}),
+        delivery_mode: "foreground",
+        ...target,
       });
-      const activated = asRecord(activation.structured);
-      if (activated?.process_activated !== true && activated?.front_process_matches_target !== true) {
-        throw new OpenSkyError(`Could not activate ${JSON.stringify(resolved.name)} for keyboard input.`);
-      }
-      if (parsed.modifiers.length > 0) {
-        await this.driver.call("hotkey", { keys: toHotkeyKeys(parsed), scope: "desktop" });
-      } else {
-        await this.driver.call("press_key", { key: parsed.key, scope: "desktop" });
-      }
       this.markAction(resolved);
-      await this.settleAfterAction(resolved);
-      await this.refreshWindowAfterAction(resolved);
       return;
     }
     if (parsed.modifiers.length > 0) {
@@ -320,6 +338,7 @@ export class OpenSky implements OpenSkyApi {
         pid: resolved.pid,
         window_id: resolved.windowId,
         keys: toHotkeyKeys(parsed),
+        delivery_mode: "foreground",
       });
       this.markAction(resolved);
       return;
@@ -328,6 +347,7 @@ export class OpenSky implements OpenSkyApi {
       pid: resolved.pid,
       window_id: resolved.windowId,
       key: parsed.key,
+      delivery_mode: "foreground",
     });
     this.markAction(resolved);
   }
@@ -344,6 +364,7 @@ export class OpenSky implements OpenSkyApi {
     if (args.element_index !== undefined && typeof args.element_index !== "number") throw invalidParams();
     const direction = normalizeDirection(args.direction);
     const resolved = await this.requireResolved(args.app);
+    await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -376,6 +397,7 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
+    await this.requireUsableInputWindow(resolved);
     const snapshot = this.memory.trees[windowKey(resolved)];
     const element = snapshot?.elements.find((item) => item.element_index === args.element_index);
     const haystack = element?.value ?? snapshot?.tree ?? "";
@@ -390,15 +412,26 @@ export class OpenSky implements OpenSkyApi {
       window_id: resolved.windowId,
       key: "home",
       modifiers: this.target === "mac" ? ["cmd"] : ["ctrl"],
+      delivery_mode: "foreground",
     });
     for (let i = 0; i < index; i += 1) {
-      await this.driver.call("press_key", { pid: resolved.pid, window_id: resolved.windowId, key: "right" });
+      await this.driver.call("press_key", {
+        pid: resolved.pid,
+        window_id: resolved.windowId,
+        key: "right",
+        delivery_mode: "foreground",
+      });
     }
     if (selectionType === "cursor_before") return;
     const moves = args.text.length;
     if (selectionType === "cursor_after") {
       for (let i = 0; i < moves; i += 1) {
-        await this.driver.call("press_key", { pid: resolved.pid, window_id: resolved.windowId, key: "right" });
+        await this.driver.call("press_key", {
+          pid: resolved.pid,
+          window_id: resolved.windowId,
+          key: "right",
+          delivery_mode: "foreground",
+        });
       }
       return;
     }
@@ -408,6 +441,7 @@ export class OpenSky implements OpenSkyApi {
         window_id: resolved.windowId,
         key: "right",
         modifiers: ["shift"],
+        delivery_mode: "foreground",
       });
     }
   }
@@ -417,6 +451,7 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
+    await this.requireUsableInputWindow(resolved);
     await this.driver.call("set_value", {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -426,14 +461,37 @@ export class OpenSky implements OpenSkyApi {
     this.markAction(resolved);
   }
 
-  async type_text(args: { app: string; text: string }): Promise<void> {
+  async type_text(args: {
+    app: string;
+    text: string;
+    element_index?: number;
+    x?: number;
+    y?: number;
+  }): Promise<void> {
     if (!args?.app || typeof args.text !== "string") throw invalidParams();
+    if (args.element_index !== undefined && typeof args.element_index !== "number") {
+      throw invalidParams("element_index must be a number");
+    }
+    const hasX = typeof args.x === "number";
+    const hasY = typeof args.y === "number";
+    if (hasX !== hasY) throw invalidParams("x and y must be provided together");
+    if (args.element_index !== undefined && hasX) {
+      throw invalidParams("element_index cannot be combined with x/y");
+    }
     const resolved = await this.requireResolved(args.app);
-    await this.driver.call("type_text", {
+    await this.requireUsableInputWindow(resolved);
+    const payload: Record<string, unknown> = {
       pid: resolved.pid,
       window_id: resolved.windowId,
       text: args.text,
-    });
+    };
+    if (args.element_index !== undefined) {
+      Object.assign(payload, this.elementTarget(resolved, args.element_index));
+    } else if (hasX) {
+      payload.x = args.x;
+      payload.y = args.y;
+    }
+    await this.driver.call("type_text", payload);
     this.markAction(resolved);
   }
 
@@ -516,7 +574,7 @@ export class OpenSky implements OpenSkyApi {
     source: Record<string, unknown>,
     excludeIds: Set<number> = new Set(),
   ): Promise<number | undefined> {
-    const fromSource = pickUsableWindowId(
+    const fromSource = pickOrdinaryWindowId(
       asArray<Record<string, unknown>>(source.windows).filter((window) => {
         const id = window.window_id;
         return typeof id !== "number" || !excludeIds.has(id);
@@ -524,7 +582,7 @@ export class OpenSky implements OpenSkyApi {
     );
     if (fromSource) return fromSource;
     const listed = await this.driver.call("list_windows", { pid });
-    return pickUsableWindowId(
+    return pickOrdinaryWindowId(
       windowsFrom(listed.structured).filter((window) => {
         const id = window.window_id;
         return typeof id !== "number" || !excludeIds.has(id);
@@ -601,24 +659,6 @@ export class OpenSky implements OpenSkyApi {
     );
     const captureOptions = { ...options, screenshotPath };
     let snapshot = await this.snapshotWindow(resolved, captureOptions);
-    if (snapshot.degraded && /ax_window_unresolved|off.?space/i.test(snapshot.degradedReason ?? "")) {
-      const failedWindow = resolved.windowId!;
-      await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: failedWindow }).catch(() => undefined);
-      const rebound = await this.pickWindow(resolved.pid, {}, new Set([failedWindow]));
-      if (rebound) {
-        resolved.windowId = rebound;
-        captureOptions.screenshotPath = join(
-          this.screenshotDir,
-          `${slug(resolved.name)}-${rebound}-${Date.now()}-${++this.screenshotSequence}.png`,
-        );
-        snapshot = await this.snapshotWindow(resolved, captureOptions);
-      } else {
-        // The helper can transiently report unresolved AX for an otherwise
-        // valid sole window. Preserve the ordinary bounded retry even when
-        // activation/listing consumed the nominal retry budget.
-        snapshot = await this.snapshotWindow(resolved, captureOptions);
-      }
-    }
     while (snapshot.degraded && Date.now() < deadline) {
       await sleep(Math.min(delayMs, Math.max(0, deadline - Date.now())));
       delayMs = Math.min(delayMs * 2, 800);
@@ -648,16 +688,49 @@ export class OpenSky implements OpenSkyApi {
   private async refreshWindowAfterAction(resolved: ResolvedApp): Promise<void> {
     const key = windowKey(resolved);
     if (!this.lastActionAt.has(key)) return;
-    const nextWindowId = await this.pickWindow(resolved.pid, {});
-    if (nextWindowId) resolved.windowId = nextWindowId;
+    const listed = await this.driver.call("list_windows", { pid: resolved.pid });
+    const windows = windowsFrom(listed.structured);
+    const currentStillExists = resolved.windowId !== undefined && windows.some((window) =>
+      window.window_id === resolved.windowId && isOrdinaryWindow(window),
+    );
+    resolved.windowId = currentStillExists ? resolved.windowId : undefined;
     this.lastActionAt.delete(key);
   }
 
-  private async refreshUsableWindow(resolved: ResolvedApp): Promise<number | undefined> {
+  private async refreshBoundWindow(resolved: ResolvedApp): Promise<number | undefined> {
     const listed = await this.driver.call("list_windows", { pid: resolved.pid });
-    const next = pickUsableWindowId(windowsFrom(listed.structured));
+    const windows = windowsFrom(listed.structured);
+    const retained = resolved.windowId !== undefined && windows.some((window) =>
+      window.window_id === resolved.windowId && isOrdinaryWindow(window),
+    ) ? resolved.windowId : undefined;
+    resolved.windowId = retained;
+    return retained;
+  }
+
+  private async adoptWindowForObservation(resolved: ResolvedApp): Promise<number | undefined> {
+    const listed = await this.driver.call("list_windows", { pid: resolved.pid });
+    const windows = windowsFrom(listed.structured);
+    const next = pickUsableWindowId(windows) ?? pickOrdinaryWindowId(windows);
     resolved.windowId = next;
     return next;
+  }
+
+  private async requireUsableInputWindow(resolved: ResolvedApp): Promise<void> {
+    const listed = await this.driver.call("list_windows", { pid: resolved.pid });
+    const windows = windowsFrom(listed.structured);
+    const exact = windows.find((window) => window.window_id === resolved.windowId);
+    if (!exact || !isOrdinaryWindow(exact)) {
+      throw new OpenSkyError(
+        `The exact bound window for ${JSON.stringify(resolved.name)} no longer exists; no input was sent. ` +
+          "Observe again before addressing a replacement window.",
+      );
+    }
+    if (exact.on_current_space === false || exact.is_on_screen === false) {
+      throw new OpenSkyError(
+        `The exact bound window ${resolved.windowId} for ${JSON.stringify(resolved.name)} is off the current desktop; ` +
+          "no input was sent. Bring that window onto the current desktop and retry.",
+      );
+    }
   }
 
   private markResolved(resolved: ResolvedApp): void {
@@ -909,13 +982,20 @@ export function pickWindowId(windows: Record<string, unknown>[]): number | undef
 
 /** Return only an ordinary, visible window that can safely ground AX actions. */
 export function pickUsableWindowId(windows: Record<string, unknown>[]): number | undefined {
-  const usable = windows.filter((window) => {
-    if (window.on_current_space === false || window.is_on_screen === false) return false;
-    const frame = frameOf(window);
-    if (!frame) return false;
-    return frame.width >= 120 && frame.height >= 80;
-  });
+  const usable = windows.filter((window) =>
+    window.on_current_space !== false && window.is_on_screen !== false && isOrdinaryWindow(window),
+  );
   return pickWindowId(usable);
+}
+
+/** Ordinary app windows remain valid targets across transient Space/focus churn. */
+export function pickOrdinaryWindowId(windows: Record<string, unknown>[]): number | undefined {
+  return pickWindowId(windows.filter(isOrdinaryWindow));
+}
+
+function isOrdinaryWindow(window: Record<string, unknown>): boolean {
+  const frame = frameOf(window);
+  return Boolean(frame && frame.width >= 120 && frame.height >= 80);
 }
 
 export function windowScore(window: Record<string, unknown>): number {
@@ -1066,7 +1146,13 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
         const element = byIndex.get(Number(rawIndex));
         if (!element) return line;
         const additions: string[] = [];
-        if (element.value !== undefined && !/\bvalue\s*[:=]/i.test(line)) {
+        const renderedValue = element.value === undefined ? undefined : JSON.stringify(element.value);
+        if (
+          element.value !== undefined &&
+          !/\bvalue\s*[:=]/i.test(line) &&
+          !/\s=\s["'\d-]/.test(line) &&
+          !(renderedValue && line.includes(`= ${renderedValue}`))
+        ) {
           additions.push(`value=${JSON.stringify(element.value)}`);
         }
         if (element.enabled === false && !/\bdisabled\b/i.test(line)) additions.push("disabled");

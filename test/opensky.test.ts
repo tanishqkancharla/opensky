@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "bun:test";
@@ -11,6 +11,7 @@ import {
   mapApps,
   normalizeDirection,
   normalizeMouseButton,
+  pickOrdinaryWindowId,
   pickUsableWindowId,
   pickWindowId,
 } from "../src/opensky.js";
@@ -82,6 +83,9 @@ describe("opensky helpers", () => {
     assert.equal(pickUsableWindowId([
       { window_id: 3, frame: { width: 640, height: 480 }, on_current_space: true, is_on_screen: true },
     ]), 3);
+    assert.equal(pickOrdinaryWindowId([
+      { window_id: 4, frame: { width: 640, height: 480 }, on_current_space: false, is_on_screen: false },
+    ]), 4);
   });
 
   it("validates mouse buttons including numeric aliases", () => {
@@ -128,6 +132,13 @@ describe("opensky helpers", () => {
     assert.match(text, /World Clock.*value="1"/);
     assert.match(text, /Save.*disabled/);
     assert.match(text, /Lap.*unavailable/);
+  });
+
+  it("does not duplicate a multiline value already rendered after an equals sign", () => {
+    const value = "first line\nsecond line";
+    const tree = `[1] AXTextArea = "first line\nsecond line"`;
+    const enriched = enrichTreeSemantics(tree, [{ element_index: 1, role: "AXTextArea", value }]);
+    assert.equal(enriched, tree);
   });
 
   it("diffs structured AX semantics even when labels do not change", () => {
@@ -184,6 +195,7 @@ describe("OpenSky against cua-driver", () => {
     assert.match(textEdit.text, /AXTextArea/);
     assert.doesNotMatch(textEdit.text, /^$/);
 
+    await opensky.bring_to_front({ app: "TextEdit" });
     await opensky.select_text({
       app: "TextEdit",
       element_index: 2,
@@ -193,11 +205,14 @@ describe("OpenSky against cua-driver", () => {
       selection_type: "text",
     });
     await opensky.click({ app: "TextEdit", element_index: 2, mouse_button: "l" });
-    await opensky.type_text({ app: "TextEdit", text: "hello" });
+    await opensky.type_text({ app: "TextEdit", element_index: 2, text: "hello" });
     await opensky.set_value({ app: "TextEdit", element_index: 2, value: "Replacement text" });
+    await opensky.paste({ app: "TextEdit", text: "plain default" });
     await opensky.paste({ app: "TextEdit", text: "<strong>Hello</strong>", format: "html" });
     await opensky.press_key({ app: "TextEdit", key: "super+a" });
     await opensky.press_key({ app: "TextEdit", key: "Up" });
+    await opensky.press_key({ app: "TextEdit", key: "super+a", element_index: 2 });
+    await opensky.press_key({ app: "TextEdit", key: "Right", element_index: 2 });
     await opensky.scroll({ app: "TextEdit", element_index: 1, direction: "d", pages: 1 });
     await opensky.scroll({ app: "TextEdit", direction: "down" });
     await opensky.drag({
@@ -209,8 +224,10 @@ describe("OpenSky against cua-driver", () => {
     });
     await opensky.perform_secondary_action({ app: "TextEdit", element_index: 0, action: "Raise" });
     await opensky.perform_secondary_action({ app: "TextEdit", element_index: 2, action: "Show Menu" });
-    await opensky.perform_secondary_action({ app: "TextEdit", element_index: 2, action: "Increment" });
-    await opensky.perform_secondary_action({ app: "TextEdit", element_index: 2, action: "Decrement" });
+    await assert.rejects(
+      opensky.perform_secondary_action({ app: "TextEdit", element_index: 2, action: "Increment" }),
+      /not a supported click action/,
+    );
 
     const raw = await driver.call("list_apps", {});
     assert.ok(raw.structured);
@@ -219,9 +236,34 @@ describe("OpenSky against cua-driver", () => {
       apps: Array<{ name: string; actions: Array<{ tool: string; args: Record<string, unknown> }> }>;
     };
     assert.ok(persisted.calls.some((call) => call.tool === "clipboard_write" && call.args.html === "<strong>Hello</strong>"));
+    assert.ok(persisted.calls.some((call) => call.tool === "clipboard_write" && call.args.text === "plain default"));
+    assert.ok(persisted.calls.some((call) => call.tool === "bring_to_front" && call.args.window_id === 2001));
+    assert.ok(
+      persisted.calls.some(
+        (call) => call.tool === "hotkey" && call.args.delivery_mode === "foreground" &&
+          JSON.stringify(call.args.keys) === JSON.stringify(["cmd", "a"]),
+      ),
+    );
+    assert.ok(
+      persisted.calls.some(
+        (call) => call.tool === "press_key" && call.args.delivery_mode === "foreground" && call.args.key === "up",
+      ),
+    );
+    assert.ok(
+      persisted.calls.filter((call) => call.tool === "press_key" && ["home", "right"].includes(String(call.args.key)))
+        .every((call) => call.args.delivery_mode === "foreground"),
+    );
+    assert.ok(
+      persisted.calls.some(
+        (call) => call.tool === "type_text" && call.args.element_index === 2 &&
+          typeof call.args.element_token === "string" && typeof call.args.snapshot_id === "string",
+      ),
+    );
     const textEditActions = persisted.apps.find((app) => app.name === "TextEdit")?.actions ?? [];
-    assert.ok(textEditActions.some((action) => action.args?.action === "increment"));
-    assert.ok(textEditActions.some((action) => action.args?.action === "decrement"));
+    assert.ok(textEditActions.some(
+      (action) => action.tool === "press_key" && action.args?.element_index === 2 &&
+        action.args?.key === "a" && JSON.stringify(action.args?.modifiers) === JSON.stringify(["cmd"]),
+    ));
     assert.ok(
       textEditActions.some((action) => action.tool === "scroll" && action.args?.element_index === undefined && action.args?.direction === "down"),
     );
@@ -229,6 +271,14 @@ describe("OpenSky against cua-driver", () => {
     await assert.rejects(
       () => opensky.paste({ app: "TextEdit", text: "x", format: "rtf" as never }),
       /Invalid params/,
+    );
+    await assert.rejects(
+      () => opensky.type_text({ app: "TextEdit", text: "x", x: 10 }),
+      /x and y must be provided together/,
+    );
+    await assert.rejects(
+      () => opensky.type_text({ app: "TextEdit", text: "x", element_index: 2, x: 10, y: 20 }),
+      /element_index cannot be combined with x\/y/,
     );
     await assert.rejects(
       () => opensky.select_text({ app: "TextEdit", element_index: 2, text: "alpha", selection_type: "range" }),
@@ -239,6 +289,92 @@ describe("OpenSky against cua-driver", () => {
       /direction must be up, down, left, or right/,
     );
     await assert.rejects(() => opensky.click({ app: "TextEdit", x: -4, y: -4 }), /windowNotFoundAtPosition/);
+  });
+
+  it("refuses input when the exact bound window moves off the current desktop", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.get_app_state({ app: "TextEdit", disableDiff: true, includeScreenshot: false });
+    const state = JSON.parse(await readFile(statePath, "utf8")) as {
+      apps: Array<{ name: string; windows: Array<Record<string, unknown>> }>;
+      calls: Array<{ tool: string }>;
+    };
+    const textEdit = state.apps.find((app) => app.name === "TextEdit");
+    assert.ok(textEdit);
+    for (const window of textEdit.windows) {
+      window.on_current_space = false;
+      window.is_on_screen = false;
+    }
+    const typeCallsBefore = state.calls.filter((call) => call.tool === "type_text").length;
+    await writeFile(statePath, JSON.stringify(state));
+
+    await assert.rejects(
+      opensky.type_text({ app: "TextEdit", text: "must not be sent" }),
+      /off the current desktop; no input was sent/,
+    );
+    const after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
+    assert.equal(after.calls.filter((call) => call.tool === "type_text").length, typeCallsBefore);
+  });
+
+  it("never silently rebinds keyboard input to a sibling window", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.get_app_state({ app: "TextEdit", disableDiff: true, includeScreenshot: false });
+    const state = JSON.parse(await readFile(statePath, "utf8")) as {
+      apps: Array<{ name: string; windows: Array<Record<string, unknown>> }>;
+      calls: Array<{ tool: string }>;
+    };
+    const textEdit = state.apps.find((app) => app.name === "TextEdit");
+    const original = textEdit?.windows.find((window) => {
+      const frame = window.frame as { width?: number; height?: number } | undefined;
+      return Number(frame?.width) >= 120 && Number(frame?.height) >= 80;
+    });
+    assert.ok(original);
+    const replacement = { ...original, window_id: Number(original.window_id) + 999, title: "Sibling.txt" };
+    textEdit.windows = [replacement];
+    const hotkeysBefore = state.calls.filter((call) => call.tool === "hotkey").length;
+    await writeFile(statePath, JSON.stringify(state));
+
+    await assert.rejects(opensky.press_key({ app: "TextEdit", key: "cmd+f" }), /no exact ordinary window/);
+    await assert.rejects(
+      opensky.perform_secondary_action({ app: "TextEdit", element_index: 0, action: "Raise" }),
+      /no exact ordinary window/,
+    );
+    let after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
+    assert.equal(after.calls.filter((call) => call.tool === "hotkey").length, hotkeysBefore);
+
+    await opensky.get_app_state({ app: "TextEdit", disableDiff: true, includeScreenshot: false });
+    await opensky.press_key({ app: "TextEdit", key: "cmd+f" });
+    after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
+    assert.equal(after.calls.filter((call) => call.tool === "hotkey").length, hotkeysBefore + 1);
+  });
+
+  it("fails targeted typing closed when its snapshot becomes stale", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.get_app_state({ app: "TextEdit", disableDiff: true, includeScreenshot: false });
+    const state = JSON.parse(await readFile(statePath, "utf8")) as {
+      snapshots: Record<string, { snapshotId: string }>;
+      apps: Array<{
+        name: string;
+        elements: Array<{ element_index: number; value?: string }>;
+        actions: Array<{ tool: string }>;
+      }>;
+    };
+    for (const snapshot of Object.values(state.snapshots)) snapshot.snapshotId = "s99999999";
+    const textEdit = state.apps.find((app) => app.name === "TextEdit");
+    const beforeValue = textEdit?.elements.find((element) => element.element_index === 2)?.value;
+    const beforeActions = textEdit?.actions.filter((action) => action.tool === "type_text").length ?? 0;
+    await writeFile(statePath, JSON.stringify(state));
+
+    await assert.rejects(
+      opensky.type_text({ app: "TextEdit", element_index: 2, text: "must not be sent" }),
+      /stale snapshot_id/,
+    );
+    const after = JSON.parse(await readFile(statePath, "utf8")) as typeof state;
+    const afterTextEdit = after.apps.find((app) => app.name === "TextEdit");
+    assert.equal(afterTextEdit?.elements.find((element) => element.element_index === 2)?.value, beforeValue);
+    assert.equal(
+      afterTextEdit?.actions.filter((action) => action.tool === "type_text").length ?? 0,
+      beforeActions,
+    );
   });
 
   it("resolves display name, bundle id, and path", async () => {
@@ -265,6 +401,22 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(state.screenshot.format, "png");
     const session = await stat(join(dir, "home", "session.json"));
     assert.equal(session.mode & 0o777, 0o600);
+  });
+
+  it("skips screenshot capture when the caller requests AX only", async () => {
+    const { opensky, statePath } = await makeHarness();
+    const snapshot = await opensky.get_app_state({
+      app: "Calculator",
+      disableDiff: true,
+      includeScreenshot: false,
+    });
+    assert.equal(snapshot.screenshot, null);
+    const state = JSON.parse(await readFile(statePath, "utf8")) as {
+      calls: Array<{ tool: string; args: Record<string, unknown> }>;
+    };
+    const call = state.calls.findLast((item) => item.tool === "get_window_state");
+    assert.equal(call?.args.include_screenshot, false);
+    assert.equal(call?.args.screenshot_out_file, undefined);
   });
 
   it("revives an expired helper session transparently", async () => {

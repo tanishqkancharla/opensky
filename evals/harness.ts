@@ -163,8 +163,9 @@ function agentSystemPrompt(harness: EvalHarnessName): string {
       "Use list_apps only after direct resolution fails or when the task itself requires app discovery.",
       "Use open_target when the task supplies a file, folder, or URL to open; get_app_state.app identifies an application, not a document.",
       "Actions return settled post-action AX state by default; derive fresh indices from it instead of immediately calling get_app_state again.",
+      "Use perform_actions for a short deterministic sequence when no intermediate result is needed to choose the next target; it settles and observes once after the sequence.",
       "Use get_app_state separately for initial state, recovery, or an explicitly needed screenshot. First state is full and later states are compact diffs.",
-      "Request include_screenshot only when pixels are needed to answer or AX is insufficient.",
+      "Choose an action screenshot only when its visual result matters; avoid repeated screenshots once AX answers the question, and reuse the prior image when told it is unchanged.",
       "Interact only with applications named or required by the task.",
     ].join(" ");
   }

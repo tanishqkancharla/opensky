@@ -129,6 +129,7 @@ function launchApp(state, args) {
       z_index: 10,
       is_on_screen: true,
       on_current_space: true,
+      frame: { x: 120, y: 80, width: 800, height: 600 },
     });
   }
   return {
@@ -219,7 +220,15 @@ function drag(state, args) {
 
 function typeText(state, args) {
   const app = byPid(state, args.pid);
-  const field = app.elements.find((element) => element.role === "AXTextArea" || element.role === "AXTextField") ?? app.elements[app.elements.length - 1];
+  let field;
+  if (args.element_index !== undefined) {
+    const snapshot = currentSnapshot(state, app, args);
+    const element = requireElement(snapshot, args);
+    field = app.elements.find((item) => item.element_index === element.element_index);
+  } else {
+    field = app.elements.find((element) => element.role === "AXTextArea" || element.role === "AXTextField") ?? app.elements[app.elements.length - 1];
+  }
+  if (!field) throw new Error("No editable element");
   field.value = `${field.value ?? ""}${args.text}`;
   app.actions.push({ tool: "type_text", args });
   return { effect: "confirmed", route: "accessibility" };
@@ -302,6 +311,9 @@ function requireElement(snapshot, args) {
   if (!element) throw new Error("No cached AX state");
   if (args.snapshot_id && snapshot.snapshotId && args.snapshot_id !== snapshot.snapshotId) {
     throw new Error("stale snapshot_id");
+  }
+  if (args.element_token && args.element_token !== element.element_token) {
+    throw new Error("stale element_token");
   }
   return element;
 }

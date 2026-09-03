@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Type } from "typebox";
@@ -19,7 +20,11 @@ function stringify(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
-async function stateResult(state: AppState, includeScreenshot = false) {
+async function stateResult(
+  state: AppState,
+  includeScreenshot = false,
+  emittedImageHashes?: Map<string, string>,
+) {
   const content: Array<
     | { type: "text"; text: string }
     | { type: "image"; data: string; mimeType: "image/png" | "image/jpeg" }
@@ -28,11 +33,17 @@ async function stateResult(state: AppState, includeScreenshot = false) {
   if (includeScreenshot && state.screenshot) {
     try {
       const bytes = await readFile(fileURLToPath(state.screenshot.url));
-      content.push({
-        type: "image",
-        data: bytes.toString("base64"),
-        mimeType: state.screenshot.format === "jpeg" ? "image/jpeg" : "image/png",
-      });
+      const hash = createHash("sha256").update(bytes).digest("hex");
+      if (emittedImageHashes?.get(state.app) === hash) {
+        content.push({ type: "text", text: "Screenshot unchanged from the previous attached image." });
+      } else {
+        content.push({
+          type: "image",
+          data: bytes.toString("base64"),
+          mimeType: state.screenshot.format === "jpeg" ? "image/jpeg" : "image/png",
+        });
+        emittedImageHashes?.set(state.app, hash);
+      }
     } catch (error) {
       screenshotWarning = `Screenshot could not be attached: ${error instanceof Error ? error.message : String(error)}`;
       content.push({ type: "text", text: screenshotWarning });
@@ -49,11 +60,16 @@ async function actionResult(
   app: string,
   action: () => Promise<void>,
   options: { observe?: boolean; includeScreenshot?: boolean },
+  emittedImageHashes?: Map<string, string>,
 ) {
   await action();
   if (options.observe === false) return textResult({ ok: true });
   try {
-    return await stateResult(await opensky.get_app_state({ app }), options.includeScreenshot === true);
+    return await stateResult(
+      await opensky.get_app_state({ app, includeScreenshot: options.includeScreenshot === true }),
+      options.includeScreenshot === true,
+      emittedImageHashes,
+    );
   } catch (error) {
     return textResult({
       ok: true,
@@ -65,6 +81,7 @@ async function actionResult(
 }
 
 export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
+  const emittedImageHashes = new Map<string, string>();
   const opensky = createOpenSky({
     driver,
     target,
@@ -113,8 +130,13 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
           : { name: params.app };
         await driver.call("launch_app", { ...launchKey, urls: params.targets });
         return stateResult(
-          await opensky.get_app_state({ app: params.app, disableDiff: true }),
+          await opensky.get_app_state({
+            app: params.app,
+            disableDiff: true,
+            includeScreenshot: params.include_screenshot === true,
+          }),
           params.include_screenshot === true,
+          emittedImageHashes,
         );
       },
     }),
@@ -131,7 +153,94 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       }),
       async execute(_id, params) {
         const { include_screenshot, ...stateArgs } = params;
-        return stateResult(await opensky.get_app_state(stateArgs), include_screenshot === true);
+        return stateResult(
+          await opensky.get_app_state({ ...stateArgs, includeScreenshot: include_screenshot === true }),
+          include_screenshot === true,
+          emittedImageHashes,
+        );
+      },
+    }),
+    defineTool({
+      name: "bring_to_front",
+      label: "bring_to_front",
+      description:
+        "Bring the app's exact bound ordinary window onto the current desktop and make it frontmost. Use after an off-desktop input refusal; then observe before addressing elements.",
+      executionMode: "sequential",
+      parameters: Type.Object({ app: Type.String() }),
+      async execute(_id, params) {
+        return actionResult(opensky, params.app, () => opensky.bring_to_front(params), {
+          observe: true,
+          includeScreenshot: false,
+        }, emittedImageHashes);
+      },
+    }),
+    defineTool({
+      name: "perform_actions",
+      label: "perform_actions",
+      description:
+        "Dispatch a short deterministic sequence in one app, then settle and observe once. Batch only steps that do not require an intermediate result to choose the next target. Focus-changing input may not precede ambient typing or paste in the same batch; observe first or use stale-checked element-targeted typing. A failed prefix is never retried automatically.",
+      executionMode: "sequential",
+      parameters: Type.Object({
+        app: Type.String(),
+        actions: Type.Array(Type.Object({
+          type: Type.Union([
+            Type.Literal("click"), Type.Literal("drag"), Type.Literal("paste"),
+            Type.Literal("perform_secondary_action"), Type.Literal("press_key"),
+            Type.Literal("scroll"), Type.Literal("select_text"), Type.Literal("set_value"),
+            Type.Literal("type_text"),
+          ]),
+          element_index: Type.Optional(Type.Number()),
+          x: Type.Optional(Type.Number()),
+          y: Type.Optional(Type.Number()),
+          mouse_button: Type.Optional(Type.Union([Type.String(), Type.Number()])),
+          click_count: Type.Optional(Type.Number()),
+          from_x: Type.Optional(Type.Number()),
+          from_y: Type.Optional(Type.Number()),
+          to_x: Type.Optional(Type.Number()),
+          to_y: Type.Optional(Type.Number()),
+          key: Type.Optional(Type.String()),
+          text: Type.Optional(Type.String()),
+          format: Type.Optional(Type.Union([Type.Literal("text"), Type.Literal("md"), Type.Literal("html")])),
+          action: Type.Optional(Type.String()),
+          direction: Type.Optional(Type.String()),
+          pages: Type.Optional(Type.Number()),
+          prefix: Type.Optional(Type.String()),
+          suffix: Type.Optional(Type.String()),
+          selection_type: Type.Optional(Type.String()),
+          value: Type.Optional(Type.String()),
+        }), { minItems: 1, maxItems: 20 }),
+        observation: Type.Optional(Type.Union([
+          Type.Literal("ax"), Type.Literal("ax+screenshot"), Type.Literal("none"),
+        ])),
+      }),
+      async execute(_id, params) {
+        validateBatchActions(params.actions);
+        let completed = 0;
+        try {
+          for (const action of params.actions) {
+            await runBatchAction(opensky, params.app, action);
+            completed += 1;
+          }
+        } catch (error) {
+          throw new Error(
+            `perform_actions stopped after ${completed}/${params.actions.length} dispatched action(s): ` +
+              (error instanceof Error ? error.message : String(error)),
+          );
+        }
+        if (params.observation === "none") {
+          return textResult({ dispatched_actions: completed, verification: "not_requested" });
+        }
+        const withScreenshot = params.observation === "ax+screenshot";
+        const result = await stateResult(
+          await opensky.get_app_state({ app: params.app, includeScreenshot: withScreenshot }),
+          withScreenshot,
+          emittedImageHashes,
+        );
+        result.content.unshift({
+          type: "text",
+          text: `Dispatched ${completed}/${params.actions.length} actions; settled post-action state follows. Verify requested effects in that state.`,
+        });
+        return result;
       },
     }),
     defineTool({
@@ -155,7 +264,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
         return actionResult(opensky, params.app, () => opensky.click(action as Parameters<typeof opensky.click>[0]), {
           observe,
           includeScreenshot: include_screenshot,
-        });
+        }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -174,24 +283,24 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       }),
       async execute(_id, params) {
         const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.drag(action), { observe, includeScreenshot: include_screenshot });
+        return actionResult(opensky, params.app, () => opensky.drag(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
       },
     }),
     defineTool({
       name: "paste",
       label: "paste",
-      description: "Paste text/md/html into the app. Clipboard is restored afterwards.",
+      description: "Paste into the app. format defaults to plain text; use md or html when needed. Clipboard is restored afterwards.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
         text: Type.String(),
-        format: Type.Union([Type.Literal("text"), Type.Literal("md"), Type.Literal("html")]),
+        format: Type.Optional(Type.Union([Type.Literal("text"), Type.Literal("md"), Type.Literal("html")])),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
       }),
       async execute(_id, params) {
         const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.paste(action), { observe, includeScreenshot: include_screenshot });
+        return actionResult(opensky, params.app, () => opensky.paste(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -208,23 +317,27 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       }),
       async execute(_id, params) {
         const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.perform_secondary_action(action), { observe, includeScreenshot: include_screenshot });
+        return actionResult(opensky, params.app, () => opensky.perform_secondary_action(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
       },
     }),
     defineTool({
       name: "press_key",
       label: "press_key",
-      description: "Press an xdotool-style key, e.g. Return, super+a, Up.",
+      description:
+        "Press an xdotool-style key, e.g. Return, super+a, Up. Prefer element_index for atomic focus+key on controls such as sliders; x/y is available for canvas surfaces.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
         key: Type.String(),
+        element_index: Type.Optional(Type.Number()),
+        x: Type.Optional(Type.Number()),
+        y: Type.Optional(Type.Number()),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
       }),
       async execute(_id, params) {
         const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.press_key(action), { observe, includeScreenshot: include_screenshot });
+        return actionResult(opensky, params.app, () => opensky.press_key(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -247,7 +360,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
         return actionResult(opensky, params.app, () => opensky.scroll(action as Parameters<typeof opensky.scroll>[0]), {
           observe,
           includeScreenshot: include_screenshot,
-        });
+        }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -270,13 +383,14 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
         return actionResult(opensky, params.app, () => opensky.select_text(action as Parameters<typeof opensky.select_text>[0]), {
           observe,
           includeScreenshot: include_screenshot,
-        });
+        }, emittedImageHashes);
       },
     }),
     defineTool({
       name: "set_value",
       label: "set_value",
-      description: "Replace the entire AX value of an element. Prefer this over type_text for exact replacement.",
+      description:
+        "Set an element's AX value directly. Prefer this for exact replacement and supported controls such as sliders, steppers, and date pickers.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -287,23 +401,27 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       }),
       async execute(_id, params) {
         const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.set_value(action), { observe, includeScreenshot: include_screenshot });
+        return actionResult(opensky, params.app, () => opensky.set_value(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
       },
     }),
     defineTool({
       name: "type_text",
       label: "type_text",
-      description: "Type into the focused field. Newlines may submit.",
+      description:
+        "Type text. Prefer element_index from fresh state for atomic focus+type; x/y is available for canvas surfaces. Omit both only when the focused field was already verified. Newlines may submit.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
         text: Type.String(),
+        element_index: Type.Optional(Type.Number()),
+        x: Type.Optional(Type.Number()),
+        y: Type.Optional(Type.Number()),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
       }),
       async execute(_id, params) {
         const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.type_text(action), { observe, includeScreenshot: include_screenshot });
+        return actionResult(opensky, params.app, () => opensky.type_text(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
       },
     }),
   ];
@@ -333,6 +451,8 @@ export const OPENSKY_TOOL_NAMES = [
   "list_apps",
   "open_target",
   "get_app_state",
+  "bring_to_front",
+  "perform_actions",
   "click",
   "drag",
   "paste",
@@ -343,5 +463,48 @@ export const OPENSKY_TOOL_NAMES = [
   "set_value",
   "type_text",
 ] as const;
+
+export function validateBatchActions(
+  actions: Array<Record<string, unknown> & { type: string }>,
+): void {
+  const unverifiedFocusTypes = new Set([
+    "click", "drag", "perform_secondary_action", "press_key", "scroll",
+  ]);
+  for (let index = 1; index < actions.length; index += 1) {
+    const action = actions[index];
+    const ambientType = action.type === "type_text" && typeof action.element_index !== "number";
+    const ambientContent = action.type === "paste" || ambientType;
+    if (
+      ambientContent &&
+      actions.slice(0, index).some((prior) => unverifiedFocusTypes.has(prior.type))
+    ) {
+      throw new Error(
+        `Unsafe batch: ${action.type} follows unverified focus-changing input. ` +
+          "Dispatch the focus/shortcut action separately and observe first, or use an atomic element/coordinate target when supported.",
+      );
+    }
+  }
+}
+
+async function runBatchAction(
+  opensky: ReturnType<typeof createOpenSky>,
+  app: string,
+  action: Record<string, unknown> & { type: string },
+) {
+  const { type, ...args } = action;
+  const payload = { app, ...args };
+  switch (type) {
+    case "click": return opensky.click(payload as Parameters<typeof opensky.click>[0]);
+    case "drag": return opensky.drag(payload as Parameters<typeof opensky.drag>[0]);
+    case "paste": return opensky.paste(payload as Parameters<typeof opensky.paste>[0]);
+    case "perform_secondary_action": return opensky.perform_secondary_action(payload as Parameters<typeof opensky.perform_secondary_action>[0]);
+    case "press_key": return opensky.press_key(payload as Parameters<typeof opensky.press_key>[0]);
+    case "scroll": return opensky.scroll(payload as Parameters<typeof opensky.scroll>[0]);
+    case "select_text": return opensky.select_text(payload as Parameters<typeof opensky.select_text>[0]);
+    case "set_value": return opensky.set_value(payload as Parameters<typeof opensky.set_value>[0]);
+    case "type_text": return opensky.type_text(payload as Parameters<typeof opensky.type_text>[0]);
+    default: throw new Error(`Unsupported action type: ${type}`);
+  }
+}
 
 export const CUA_DRIVER_TOOL_NAMES = ["cua_driver_call"] as const;

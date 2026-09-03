@@ -111,7 +111,7 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | `click` | `click` / `double_click` |
 | `drag` | `drag` |
 | `paste` | `clipboard_read` / `clipboard_write` (text, html, or markdown) + `hotkey` (cmd/ctrl+v), clipboard restored |
-| `perform_secondary_action` | `click` `action` (`increment`/`decrement`/`press`/…), `bring_to_front`, or `press_key` |
+| `perform_secondary_action` | Supported `click` actions (`press`/`show_menu`/`open`/…), `bring_to_front`, or Delete |
 | `press_key` | `press_key` / `hotkey` (xdotool-style strings) |
 | `scroll` | `scroll` (element, coordinates, or the window) |
 | `select_text` | focus + Home/arrows (prefix/suffix disambiguation) |

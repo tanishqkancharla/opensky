@@ -53,7 +53,9 @@ export interface OpenSky {
   get_app_state(args: {
     app: string;
     disableDiff?: boolean;
+    includeScreenshot?: boolean;
   }): Promise<AppState>;
+  bring_to_front(args: { app: string }): Promise<void>;
   click(args: {
     app: string;
     element_index?: number;
@@ -72,14 +74,20 @@ export interface OpenSky {
   paste(args: {
     app: string;
     text: string;
-    format: PasteFormat;
+    format?: PasteFormat;
   }): Promise<void>;
   perform_secondary_action(args: {
     app: string;
     element_index: number;
     action: string;
   }): Promise<void>;
-  press_key(args: { app: string; key: string }): Promise<void>;
+  press_key(args: {
+    app: string;
+    key: string;
+    element_index?: number;
+    x?: number;
+    y?: number;
+  }): Promise<void>;
   scroll(args: {
     app: string;
     element_index?: number;
@@ -101,7 +109,13 @@ export interface OpenSky {
     element_index: number;
     value: string;
   }): Promise<void>;
-  type_text(args: { app: string; text: string }): Promise<void>;
+  type_text(args: {
+    app: string;
+    text: string;
+    element_index?: number;
+    x?: number;
+    y?: number;
+  }): Promise<void>;
 }
 
 export interface DriverCall {
