@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it } from "bun:test";
 
 import {
+  createOpenSky,
   diffTrees,
   compactTreeActionHints,
   enrichTreeSemantics,
@@ -349,10 +350,14 @@ describe("OpenSky against cua-driver", () => {
       { element_index: 3, role: "AXLink", label: "Go to B", actions: ["press"] },
     ];
     await writeFile(statePath, JSON.stringify(fixture));
-    await opensky.open_target({ app: "Calculator", targets: ["https://example.com/a"], includeScreenshot: false });
+    const opened = await opensky.open_target({ app: "Calculator", targets: ["https://example.com/a"], includeScreenshot: false });
 
     const navigated = JSON.parse(await readFile(statePath, "utf8"));
-    navigated.apps[0].elements = [
+    const target = navigated.apps.find((app: { windows: Array<{ window_id: number }> }) =>
+      app.windows.some((window) => window.window_id === opened.target?.window.id)
+    );
+    assert.ok(target);
+    target.elements = [
       { element_index: 30, role: "AXWindow", label: "Browser" },
       { element_index: 31, role: "AXWebArea", label: "Page B", url: "https://example.com/b" },
       { element_index: 32, role: "AXHeading", label: "Destination" },
@@ -435,7 +440,7 @@ describe("OpenSky against cua-driver", () => {
     ));
   });
 
-  it("retries an acknowledged target launch once when no ordinary window appears", async () => {
+  it("polls the fresh pid instead of replaying a delayed new-instance launch", async () => {
     const { opensky, statePath } = await makeHarness();
     await opensky.list_apps();
     const fixture = JSON.parse(await readFile(statePath, "utf8"));
@@ -452,9 +457,9 @@ describe("OpenSky against cua-driver", () => {
     assert.match(state.text, /AXTextArea/);
     const after = JSON.parse(await readFile(statePath, "utf8"));
     const launches = after.calls.filter((call: { tool: string }) => call.tool === "launch_app");
-    assert.equal(launches.length, 2);
+    assert.equal(launches.length, 1);
     assert.deepEqual(launches[0].args.urls, ["/tmp/delayed-target.txt"]);
-    assert.deepEqual(launches[1].args.urls, ["/tmp/delayed-target.txt"]);
+    assert.equal(launches[0].args.creates_new_application_instance, true);
   });
 
   it("does not loop or recommend unsafe input after a refused target dispatch", async () => {
@@ -474,7 +479,9 @@ describe("OpenSky against cua-driver", () => {
     const after = JSON.parse(await readFile(statePath, "utf8"));
     assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "launch_app").length, 2);
     const session = JSON.parse(await readFile(join(dir, "home", "session.json"), "utf8"));
-    const textEditBindings = Object.values(session.targets).filter((binding: any) => binding.pid === 900) as any[];
+    const textEditBindings = Object.values(session.targets).filter((binding: any) =>
+      binding.targetRequest?.requested?.[0] === "/tmp/prior.txt"
+    ) as any[];
     assert.ok(textEditBindings.length > 0);
     assert.ok(textEditBindings.some((binding) => binding.targetRequest?.requested?.[0] === "/tmp/prior.txt"));
   });
@@ -716,7 +723,9 @@ describe("OpenSky against cua-driver", () => {
       apps: Array<{ name: string; windows: Array<Record<string, unknown>> }>;
       calls: Array<{ tool: string; args: Record<string, unknown> }>;
     };
-    const textEdit = state.apps.find((app) => app.name === "TextEdit");
+    const textEdit = state.apps.find((app) =>
+      app.windows.some((window) => Number(window.window_id) === opened.target?.window.id)
+    );
     const original = textEdit?.windows.find((window) => Number(window.window_id) === opened.target?.window.id);
     assert.ok(original);
     textEdit.windows = [{ ...original, window_id: Number(original.window_id) + 999, title: "Sibling.txt" }];
@@ -731,6 +740,149 @@ describe("OpenSky against cua-driver", () => {
       snapshotsBefore,
       "an exact handle must not snapshot the replacement sibling",
     );
+  });
+
+  it("closes only the exact owned native sibling and repoints its app alias", async () => {
+    const { opensky, statePath, dir } = await makeHarness();
+    const first = await opensky.open_target({
+      app: "TextEdit",
+      targets: ["/tmp/first-owned.txt"],
+      includeScreenshot: false,
+    });
+    const second = await opensky.open_target({
+      app: "TextEdit",
+      targets: ["/tmp/second-owned.txt"],
+      includeScreenshot: false,
+    });
+    const before = JSON.parse(await readFile(statePath, "utf8")) as {
+      apps: Array<{ pid: number; name: string; windows: Array<{ window_id: number }> }>;
+    };
+    const originalUserPid = 900;
+    const originalUserWindows = before.apps.find((app) => app.pid === originalUserPid)?.windows.map((window) => window.window_id);
+    assert.ok(originalUserWindows?.length);
+
+    await opensky.close_target({ app: "TextEdit" });
+
+    const after = JSON.parse(await readFile(statePath, "utf8")) as {
+      apps: Array<{ pid: number; windows: Array<{ window_id: number }> }>;
+      calls: Array<{ tool: string; args: Record<string, unknown> }>;
+    };
+    const close = after.calls.findLast((call) => call.tool === "close_window");
+    assert.equal(close?.args.window_id, second.target?.window.id);
+    assert.deepEqual(
+      after.apps.find((app) => app.pid === originalUserPid)?.windows.map((window) => window.window_id),
+      originalUserWindows,
+      "pre-existing user windows must be untouched",
+    );
+    assert.ok(after.apps.some((app) => app.windows.some((window) => window.window_id === first.target?.window.id)));
+    assert.equal(after.apps.some((app) => app.windows.some((window) => window.window_id === second.target?.window.id)), false);
+    assert.equal(after.calls.some((call) => ["hotkey", "press_key", "invoke_menu", "kill_app"].includes(call.tool)), false);
+
+    const session = JSON.parse(await readFile(join(dir, "home", "session.json"), "utf8"));
+    assert.equal(session.aliases.textedit, first.targetHandle);
+    assert.equal(session.targets[second.targetHandle], undefined);
+    assert.ok(session.targets[first.targetHandle]?.nativeCloseAuthority);
+  });
+
+  it("retains exact native close authority across a structured refusal and retry", async () => {
+    const { opensky, statePath, dir, driver } = await makeHarness();
+    const opened = await opensky.open_target({
+      app: "TextEdit",
+      targets: ["/tmp/needs-confirmation.txt"],
+      includeScreenshot: false,
+    });
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.closeWindowResponses = ["confirmation_required", "closed"];
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    await assert.rejects(
+      opensky.close_target({ app: opened.targetHandle }),
+      (error: any) => {
+        assert.equal(error.code, "close_confirmation_required");
+        assert.match(error.message, /remain available for retry/);
+        return true;
+      },
+    );
+    let session = JSON.parse(await readFile(join(dir, "home", "session.json"), "utf8"));
+    assert.ok(session.targets[opened.targetHandle]?.nativeCloseAuthority);
+
+    // A new runtime can recover the canonical capability from the durable
+    // target record; it never reconstructs authority from a title or alias.
+    const resumed = createOpenSky({
+      driver,
+      homeDir: join(dir, "home"),
+      screenshotDir: join(dir, "resumed-shots"),
+      target: "mac",
+      settleDelayMs: 0,
+    });
+    await resumed.close_target({ app: opened.targetHandle });
+    session = JSON.parse(await readFile(join(dir, "home", "session.json"), "utf8"));
+    assert.equal(session.targets[opened.targetHandle], undefined);
+
+    const after = JSON.parse(await readFile(statePath, "utf8")) as {
+      calls: Array<{ tool: string; args: Record<string, unknown> }>;
+    };
+    const closes = after.calls.filter((call) => call.tool === "close_window");
+    assert.equal(closes.length, 2);
+    assert.deepEqual(closes[0]?.args, closes[1]?.args);
+  });
+
+  it("refuses to adopt an existing process when fresh native ownership is unproven", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.newInstanceReuseExisting = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    await assert.rejects(
+      opensky.open_target({ app: "TextEdit", targets: ["/tmp/not-owned.txt"], includeScreenshot: false }),
+      /could not prove.*fresh.*request-correlated.*No existing or title-matched window was adopted/,
+    );
+    await assert.rejects(
+      opensky.close_target({ app: "TextEdit" }),
+      /No driver-owned exact target.*No user-owned app, window, or tab was closed/,
+    );
+    const after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
+    assert.equal(after.calls.some((call) => call.tool === "close_window"), false);
+  });
+
+  it("refuses fresh native authority when the launched application identity mismatches", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.newInstanceIdentityMismatch = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    await assert.rejects(
+      opensky.open_target({ app: "TextEdit", targets: ["/tmp/wrong-app.txt"], includeScreenshot: false }),
+      /could not prove.*fresh.*request-correlated/,
+    );
+    const after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
+    assert.equal(after.calls.some((call) => call.tool === "get_window_state"), false);
+    assert.equal(after.calls.some((call) => call.tool === "close_window"), false);
+  });
+
+  it("fails closed when a fresh process exposes ambiguous sibling windows", async () => {
+    const { opensky, statePath, dir } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.newInstanceExtraWindow = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    await assert.rejects(
+      opensky.open_target({ app: "TextEdit", targets: ["/tmp/ambiguous.txt"], includeScreenshot: false }),
+      /could not prove.*one fresh, uniquely request-correlated native window/,
+    );
+    const sessionText = await readFile(join(dir, "home", "session.json"), "utf8").catch(() => undefined);
+    if (sessionText) {
+      const session = JSON.parse(sessionText);
+      assert.equal(Object.values(session.targets).some((target: any) =>
+        target.targetRequest?.requested?.includes("/tmp/ambiguous.txt")
+      ), false);
+    }
+    const after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
+    assert.equal(after.calls.some((call) => call.tool === "get_window_state"), false);
+    assert.equal(after.calls.some((call) => call.tool === "close_window"), false);
   });
 
   it("fails targeted typing closed when its snapshot becomes stale", async () => {

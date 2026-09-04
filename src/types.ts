@@ -114,7 +114,7 @@ export interface OpenSky {
     /** Narrow the settled destination observation. */
     query?: string;
   }): Promise<AppState>;
-  /** Close one exact target owned by this instance without touching user-owned app state. */
+  /** Cooperatively close one exact browser tab or native window owned by open_target. */
   close_target(args: { app: string }): Promise<void>;
   bring_to_front(args: { app: string }): Promise<void>;
   click(args: {
@@ -213,8 +213,17 @@ export interface ResolvedApp {
   /** URL targets default to their primary AXWebArea, matching a native Tab binding. */
   contentScope?: "web";
   targetRequest?: TargetRequestIdentity;
+  /** Proof that this process created and may cooperatively close one exact native window. */
+  nativeCloseAuthority?: NativeCloseAuthority;
   /** Exact typed-browser binding for driver-owned Chromium page content. */
   browser?: BrowserBinding;
+}
+
+export interface NativeCloseAuthority {
+  kind: "request_created_exact_window";
+  proof: "macos_new_application_instance";
+  pid: number;
+  windowId: number;
 }
 
 export interface BrowserBinding {

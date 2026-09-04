@@ -30,29 +30,10 @@
       }
     },
     {
-      "tool": "list_windows",
-      "args": { "pid": 772 },
-      "result": {
-        "structured": {
-          "windows": [
-            {
-              "window_id": 94001,
-              "pid": 772,
-              "title": "New Tab",
-              "on_current_space": true,
-              "is_on_screen": true,
-              "frame": { "x": 0, "y": 38, "width": 1512, "height": 944 }
-            }
-          ]
-        },
-        "text": "",
-        "raw": null
-      }
-    },
-    {
       "tool": "launch_app",
       "args": {
         "bundle_id": "com.google.Chrome",
+        "creates_new_application_instance": true,
         "urls": ["https://github.com/openai/codex"]
       },
       "result": {
@@ -60,18 +41,23 @@
           "name": "Google Chrome",
           "bundle_id": "com.google.Chrome",
           "launch_path": "/Applications/Google Chrome.app",
-          "pid": 772,
+          "pid": 773,
           "windows": [
             {
               "window_id": 94052,
-              "pid": 772,
+              "pid": 773,
               "title": "GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub",
               "is_main": true,
               "on_current_space": true,
               "is_on_screen": true,
               "frame": { "x": 0, "y": 38, "width": 1512, "height": 944 }
             }
-          ]
+          ],
+          "launch_state": {
+            "requested": true,
+            "process_running": true,
+            "window_ready": true
+          }
         },
         "text": "",
         "raw": null
@@ -79,13 +65,13 @@
     },
     {
       "tool": "list_windows",
-      "args": { "pid": 772 },
+      "args": { "pid": 773 },
       "result": {
         "structured": {
           "windows": [
             {
               "window_id": 94052,
-              "pid": 772,
+              "pid": 773,
               "title": "GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub",
               "is_main": true,
               "on_current_space": true,
@@ -102,12 +88,12 @@
       "tool": "get_window_state",
       "args": {
         "include_screenshot": false,
-        "pid": 772,
+        "pid": 773,
         "window_id": 94052
       },
       "result": {
         "structured": {
-          "pid": 772,
+          "pid": 773,
           "window_id": 94052,
           "snapshot_id": "s00000001",
           "tree_markdown": "- [0] AXWindow \"GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub - Google Chrome\" [actions=[raise]]\n  - [21] AXWebArea \"GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub\"\n    - [110] AXHeading \"Folders and files\" [value=\"2\"]\n    - [112] AXTable \"Folders and files\"\n      - [120] AXRow [actions=[press]]\n        - [121] AXCell\n          - [122] AXLink (.codex, (Directory)) [actions=[press]]\n        - [123] AXCell\n          - [124] AXLink (Format Python scripts across the repository () [help=\"Format Python scripts across the repository (#42109) ## Why The root Python formatting pass only covered `scripts/`, leaving Python utilities elsewhere in the repository outside `just fmt` and `just fmt-check`. ## What changed - Run the scripts Ruff formatter from the repository root. - Exclude `sdk/python`, which has its own formatter pass, and `codex-rs/vendor`. - Apply Ruff formatting to the newly covered Python files and update the formatter coverage test. GitOrigin-RevId: 73ac82b8bb9c713d589724f6c4f926399febb513 plus additional auxiliary metadata that is intentionally long enough to exercise bounded help rendering in the replay corpus\" actions=[press,showmenu,scrolltovisible]]\n      - [148] AXRow \"README.md\" [actions=[press]]\n        - [149] AXStaticText = \"README.md\"",
@@ -138,12 +124,12 @@
       "args": {
         "include_screenshot": false,
         "max_depth": 5,
-        "pid": 772,
+        "pid": 773,
         "window_id": 94052
       },
       "result": {
         "structured": {
-          "pid": 772,
+          "pid": 773,
           "window_id": 94052,
           "snapshot_id": "s00000002",
           "tree_markdown": "- [0] AXWindow \"GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub - Google Chrome\" [actions=[raise]]\n  - [21] AXWebArea \"GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub\"\n    - [110] AXHeading \"Folders and files\" [value=\"2\"]\n    - [112] AXTable \"Folders and files\"\n      - [120] AXRow [actions=[press]]\n        - [122] AXLink (.codex, (Directory)) [actions=[press]]\n      - [148] AXRow \"README.md\" [actions=[press]]\n        - [149] AXStaticText = \"README.md\"",

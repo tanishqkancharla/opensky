@@ -32,7 +32,7 @@
     }
   ],
   "metrics": {
-    "driverCalls": 6,
+    "driverCalls": 5,
     "rawTreeCharacters": 1873,
     "projectedCharacters": 760,
     "reductionRatio": 0.4058

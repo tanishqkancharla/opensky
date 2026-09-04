@@ -85,7 +85,7 @@ describe("driver tapes", () => {
     const first = await replayScenario(scenario);
     const second = await replayScenario(scenario);
     assert.deepEqual(first, second);
-    assert.equal(first.metrics.driverCalls, 6);
+    assert.equal(first.metrics.driverCalls, 5);
     assert.equal(first.metrics.reductionRatio, 0.4058);
     assert.match(first.states[0]?.text ?? "", /Accessibility projection:/);
     assert.match(first.states[0]?.text ?? "", /README\.md/);

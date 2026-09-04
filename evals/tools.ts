@@ -155,7 +155,7 @@ export function createOpenSkyToolRuntime(
       name: "open_target",
       label: "open_target",
       description:
-        "Open one or more file paths or URLs with a named app, bind the resulting window/tab, then return its settled AX state and opaque target handle. Use the handle as app when multiple targets of one app coexist. For one Chromium URL, query can narrow the initial observation. Do not create a blank tab or observe the browser first.",
+        "Open one or more file paths or URLs with a named app, bind the resulting exact window/tab, then return its settled AX state and opaque target handle. On macOS a native target is owned only after a fresh process and unique window are proven; existing/title-matched siblings are never adopted. Use the handle as app when multiple targets of one app coexist. For one Chromium URL, query can narrow the initial observation. Do not create a blank tab or observe the browser first.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String({ description: "Application display name or bundle id" }),
@@ -205,7 +205,7 @@ export function createOpenSkyToolRuntime(
       name: "close_target",
       label: "close_target",
       description:
-        "Close the exact driver-owned browser target selected by app name or target handle. A name selects the newest live target; a handle selects its exact sibling. This never closes ordinary user-owned state.",
+        "Close the exact driver-owned browser tab or proven-owned native window selected by app name or target handle. A name selects the newest live target; a handle selects its exact sibling. Native confirmation/refusal leaves the target retryable. This never closes ordinary user-owned state and has no hotkey, menu, coordinate, or process-kill fallback.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String({ description: "Application display name or bundle id used with open_target" }),

@@ -123,7 +123,11 @@ siblings coexist; this needs no selection or switching call.
 
 For that exact typed browser route, pass `query` to make known semantic content addressable in the initial settled observation. Query is rejected before any mutation for native targets, multiple targets, or non-URL targets.
 
-Open files or URLs with a named app and return the settled full state of the returned, newly created, or title-matching ordinary window. Prefer this over launching a document and then separately resolving the app; the binding prevents an older sibling document from being mistaken for the requested target.
+Open files or URLs with a named app and return settled full state. On macOS,
+native targets use a fresh app instance and bind only after the driver proves a
+new request-correlated pid with exactly one ordinary window. OpenSky never
+claims or adopts an existing/title-matched/sibling window as an owned native
+target. Prefer the returned opaque handle for every later action.
 
 ### `navigate({ app, url, includeScreenshot?, query? })`
 
@@ -138,7 +142,14 @@ primitives for them; do not emulate them with native keyboard shortcuts.
 
 ### `close_target({ app })`
 
-Close the exact driver-owned browser target created by `open_target` when the task asks for cleanup. It refuses ordinary user-owned app, window, and tab state. Hosts should still call `opensky.close()` as an idempotent final cleanup fallback.
+Close the exact driver-owned browser target or proven-owned macOS native window
+created by `open_target`. Native close is cooperative and exact: it uses the
+recorded pid/window id and never falls back to hotkeys, menus, coordinates, or
+terminating the app. If a save/confirmation sheet appears or close cannot be
+verified, the call fails with its structured recovery code and keeps the handle
+available for retry. It refuses ordinary user-owned app, window, and tab state.
+Hosts should still call `opensky.close()` as an idempotent browser-session
+cleanup fallback.
 
 ### `click`
 

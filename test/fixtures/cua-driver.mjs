@@ -74,6 +74,8 @@ async function dispatch(command, state) {
       return envelope(launchApp(state, args));
     case "list_windows":
       return envelope({ windows: windowsFor(state, args.pid) });
+    case "close_window":
+      return envelope(closeWindow(state, args));
     case "get_window_state":
       return envelope(await getWindowState(state, args));
     case "click":
@@ -121,40 +123,109 @@ async function dispatch(command, state) {
 }
 
 function launchApp(state, args) {
-  const app = findApp(state, args) ?? createApp(state, args);
-  app.running = true;
-  if (!app.pid) app.pid = nextPid(state);
+  const existing = findApp(state, args) ?? createApp(state, args);
   if (state.launchRefuse) {
     return { error: "LAUNCH_FAILED", launch_state: { process_running: true, requested: false, window_ready: false } };
   }
+  const app = args.creates_new_application_instance === true && !state.newInstanceReuseExisting
+    ? cloneAppInstance(state, existing, args)
+    : existing;
+  app.running = true;
+  if (!app.pid) app.pid = nextPid(state);
   if (state.launchNoWindowsOnce > 0) {
     state.launchNoWindowsOnce -= 1;
+    if (args.creates_new_application_instance === true) {
+      state.pendingWindowPids ??= [];
+      state.pendingWindowPids.push(app.pid);
+    }
     return {
       pid: app.pid,
       name: app.name,
       bundle_id: app.bundle_id,
       launch_path: app.launch_path,
       windows: [],
+      launch_state: { process_running: true, requested: true, window_ready: false },
     };
   }
-  if (app.windows.length === 0) {
-    app.windows.push({
-      window_id: 1000 + app.pid,
-      pid: app.pid,
-      title: app.name,
-      z_index: 10,
-      is_on_screen: true,
-      on_current_space: true,
-      frame: { x: 120, y: 80, width: 800, height: 600 },
-    });
+  ensureOrdinaryWindow(app);
+  if (state.newInstanceExtraWindow && args.creates_new_application_instance === true) {
+    app.windows.push(makeWindow(app, 2000 + app.pid, "Sibling"));
   }
   return {
     pid: app.pid,
-    name: app.name,
-    bundle_id: app.bundle_id,
+    name: state.newInstanceIdentityMismatch ? "Different App" : app.name,
+    bundle_id: state.newInstanceIdentityMismatch ? "com.example.different" : app.bundle_id,
     launch_path: app.launch_path,
     windows: app.windows,
+    launch_state: { process_running: true, requested: true, window_ready: app.windows.length > 0 },
   };
+}
+
+function cloneAppInstance(state, source, args) {
+  const pid = nextPid(state);
+  const app = {
+    ...source,
+    pid,
+    name: args.name ?? source.name,
+    bundle_id: args.bundle_id ?? source.bundle_id,
+    launch_path: args.launch_path ?? source.launch_path,
+    running: true,
+    windows: [],
+    elements: structuredClone(source.elements ?? []),
+    actions: [],
+  };
+  state.apps.push(app);
+  return app;
+}
+
+function makeWindow(app, windowId = 1000 + app.pid, title = app.name) {
+  return {
+    window_id: windowId,
+    pid: app.pid,
+    title,
+    z_index: 10,
+    is_on_screen: true,
+    on_current_space: true,
+    frame: { x: 120, y: 80, width: 800, height: 600 },
+  };
+}
+
+function ensureOrdinaryWindow(app) {
+  if (app.windows.length === 0) app.windows.push(makeWindow(app));
+}
+
+function closeWindow(state, args) {
+  const app = byPid(state, args.pid);
+  const window = app.windows.find((item) => item.window_id === args.window_id);
+  if (!window) {
+    return {
+      status: "missing",
+      effect: "refused",
+      code: "window_not_found",
+      pid: args.pid,
+      window_id: args.window_id,
+      message: "the exact window is missing",
+    };
+  }
+  const response = state.closeWindowResponses?.shift() ?? "closed";
+  if (response !== "closed") {
+    const codes = {
+      confirmation_required: "close_confirmation_required",
+      noop: "close_unconfirmed",
+      disabled: "close_button_disabled",
+      delivery_failed: "close_action_failed",
+    };
+    return {
+      status: response,
+      effect: "refused",
+      code: codes[response] ?? String(response),
+      pid: args.pid,
+      window_id: args.window_id,
+      message: `close refused: ${response}`,
+    };
+  }
+  app.windows = app.windows.filter((item) => item.window_id !== args.window_id);
+  return { status: "closed", pid: args.pid, window_id: args.window_id };
 }
 
 async function getWindowState(state, args) {
@@ -311,7 +382,13 @@ function createApp(state, args) {
 }
 
 function windowsFor(state, pid) {
-  return byPid(state, pid).windows;
+  const app = byPid(state, pid);
+  const pending = state.pendingWindowPids?.indexOf(pid) ?? -1;
+  if (pending >= 0) {
+    state.pendingWindowPids.splice(pending, 1);
+    ensureOrdinaryWindow(app);
+  }
+  return app.windows;
 }
 
 function byPid(state, pid) {
@@ -399,6 +476,8 @@ function defaultState() {
     sessionEnded: false,
     degradedSnapshots: 0,
     degradedAlways: false,
+    pendingWindowPids: [],
+    closeWindowResponses: [],
     apps: [
       {
         pid: 844,

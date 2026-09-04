@@ -109,9 +109,9 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | --- | --- |
 | `list_apps()` | `list_apps` |
 | `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?, query?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` narrows a large page to matching semantic content/current refs. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
-| `open_target({app, targets, includeScreenshot?, query?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; `query` narrows that initial exact-browser observation. Other targets use the native app/window route |
+| `open_target({app, targets, includeScreenshot?, query?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; `query` narrows that initial exact-browser observation. On macOS, native targets request a fresh app instance and bind only after proving a new pid with one uniquely revalidated ordinary window |
 | `navigate({app, url, includeScreenshot?, query?})` | Navigates an existing exact driver-owned typed browser tab with `browser_navigate` and returns its settled destination state; refuses native, unverified, and user-owned targets without falling back to browser chrome input |
-| `close_target({app})` | Closes one exact driver-owned browser target; refuses to close ordinary user-owned app/window/tab state |
+| `close_target({app})` | Closes one exact driver-owned browser target or proven-owned macOS native window; refuses to close ordinary user-owned app/window/tab state |
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |
 | `click` | `click` / `double_click` |
 | `drag` | `drag` |
@@ -197,6 +197,21 @@ Owned isolated-browser session identifiers are durably reserved before launch
 and cleared only after `end_session` succeeds, so a later OpenSky process using
 the same home can reap a target left by a host crash. Ordinary user-owned
 browser state is never added to this ledger.
+
+For a native macOS target, `open_target` asks LaunchServices for a distinct app
+instance and grants close authority only when the launch response proves the
+request was dispatched, the returned pid did not exist before the request, the
+returned app identity matches, and an independent window inventory contains
+exactly one ordinary window with the same id. It does not infer ownership from
+a title, reuse an existing process, or adopt a sibling. `close_target` passes
+that exact `(pid, window_id)` to Cua Driver's cooperative `close_window`; there
+is no keyboard, menu, coordinate, or process-kill fallback. A save/confirmation
+sheet, disabled close control, delivery failure, no-op, stale identity, or
+unverified response leaves the canonical target and authority intact for an
+explicit retry. Only a verified `closed` result removes the target and repoints
+the app-name alias to its newest surviving sibling. Other platforms remain
+observable but are not granted native close authority until their driver route
+can provide equivalent proof.
 
 The version-2 session file migrates older copied app bindings into canonical
 target records and alias pointers. Phase one deliberately does not provide

@@ -238,8 +238,14 @@ export class OpenSky implements OpenSkyApi {
     }
     const typed = await this.tryOpenTypedBrowser(args, match);
     if (typed) return typed;
+    // Cua Driver's close_window is intentionally exact and cooperative. On
+    // macOS, request a distinct application instance so ownership can be
+    // proven from a new PID plus one freshly verified ordinary window. Other
+    // platforms do not currently support this launch/close contract.
+    const requestFreshNativeInstance = this.target === "mac";
+    const preLaunchPids = listedPids(listed);
     const previousPid = Number(match?.pid);
-    const previousWindows = Number.isFinite(previousPid) && previousPid > 0
+    const previousWindows = !requestFreshNativeInstance && Number.isFinite(previousPid) && previousPid > 0
       ? windowsFrom((await this.driver.call("list_windows", { pid: previousPid })).structured)
       : [];
     const previousIds = new Set(previousWindows
@@ -248,6 +254,7 @@ export class OpenSky implements OpenSkyApi {
     const launchArgs = {
       ...launchArgsFor(args.app, match),
       urls: args.targets,
+      ...(requestFreshNativeInstance ? { creates_new_application_instance: true } : {}),
     };
     let launched = await this.driver.call("launch_app", launchArgs);
     let structured = asRecord(launched.structured) ?? {};
@@ -262,11 +269,28 @@ export class OpenSky implements OpenSkyApi {
     if (windows.length === 0) {
       windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured);
     }
+    // A new process may be visible before WindowServer publishes its first
+    // ordinary window. Poll the exact returned pid once; never replay the
+    // non-idempotent `open -n` request and accidentally create two instances.
+    if (
+      requestFreshNativeInstance &&
+      pickOrdinaryWindowId(windows) === undefined &&
+      launchRequestWasSent(structured) &&
+      !preLaunchPids.has(pid)
+    ) {
+      await sleep(this.settleDelayMs);
+      windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured);
+      windowSource = "post_launch_list";
+    }
     // Some native launch services acknowledge a document/path request before
     // publishing its ordinary window. Native Computer Use hides that race.
     // Repeat the identical request once only while no ordinary window exists;
     // never replay after a usable or off-Space document window is observable.
-    if (pickOrdinaryWindowId(windows) === undefined && !launchDispatchRefused(structured)) {
+    if (
+      pickOrdinaryWindowId(windows) === undefined &&
+      !launchDispatchRefused(structured) &&
+      !requestFreshNativeInstance
+    ) {
       await sleep(this.settleDelayMs);
       launched = await this.driver.call("launch_app", launchArgs);
       structured = { ...structured, ...(asRecord(launched.structured) ?? {}) };
@@ -288,15 +312,35 @@ export class OpenSky implements OpenSkyApi {
     );
     const matchingWindows = windows.filter((window) => windowMatchesTargets(window, args.targets));
     const candidates = newWindows.length > 0 ? newWindows : matchingWindows.length > 0 ? matchingWindows : windows;
-    const windowId = pickUsableWindowId(candidates) ?? pickOrdinaryWindowId(candidates);
+    const freshOrdinaryWindows = windows.filter(isOrdinaryWindow);
+    const freshWindowId = freshOrdinaryWindows.length === 1 &&
+        typeof freshOrdinaryWindows[0]?.window_id === "number" && freshOrdinaryWindows[0].window_id > 0
+      ? freshOrdinaryWindows[0].window_id
+      : undefined;
+    const windowId = requestFreshNativeInstance
+      ? freshWindowId
+      : pickUsableWindowId(candidates) ?? pickOrdinaryWindowId(candidates);
     if (windows.length === 0 || windowId === undefined) windowSource = "none";
     const correlation: TargetRequestIdentity["window"]["correlation"] = windowId === undefined
       ? "none"
-      : newWindows.some((window) => window.window_id === windowId)
+      : requestFreshNativeInstance || newWindows.some((window) => window.window_id === windowId)
         ? "new_since_request"
         : matchingWindows.some((window) => window.window_id === windowId)
           ? "title_match"
           : "uncorrelated";
+    const nativeCloseAuthority = requestFreshNativeInstance &&
+      launchRequestWasSent(structured) &&
+      !preLaunchPids.has(pid) &&
+      launchIdentityMatches(args.app, match, structured) &&
+      windowId !== undefined
+      ? await this.verifyNativeCloseAuthority(pid, windowId)
+      : undefined;
+    if (requestFreshNativeInstance && !nativeCloseAuthority) {
+      throw new OpenSkyError(
+        `The desktop helper could not prove that ${JSON.stringify(args.app)} created one fresh, uniquely ` +
+          "request-correlated native window. No existing or title-matched window was adopted, and no keyboard or pointer input was sent.",
+      );
+    }
     const resolved: ResolvedApp = {
       handle: newTargetHandle(),
       openedAt: this.nextOpenedAt(),
@@ -307,19 +351,27 @@ export class OpenSky implements OpenSkyApi {
       pid,
       windowId,
       contentScope: args.targets.some(isHttpUrl) ? "web" : undefined,
+      nativeCloseAuthority,
       targetRequest: {
         requested: [...args.targets],
         resourceKind: targetResourceKind(args.targets),
-        requestDispatch: "unknown",
+        requestDispatch: launchRequestWasSent(structured) ? "sent" : "unknown",
         window: { id: windowId, source: windowSource, correlation },
       },
     };
     this.registerTarget(resolved);
     this.markResolved(resolved);
-    this.markAction(resolved);
+    if (requestFreshNativeInstance) {
+      // The independent authority check already refreshed this exact window;
+      // retain native-style settling without paying for a redundant inventory
+      // in get_app_state immediately afterward.
+      if (this.settleDelayMs > 0) await sleep(this.settleDelayMs);
+    } else {
+      this.markAction(resolved);
+    }
     await this.persist();
     return this.get_app_state({
-      app: args.app,
+      app: resolved.handle,
       disableDiff: true,
       includeScreenshot: args.includeScreenshot,
       query: args.query,
@@ -332,13 +384,54 @@ export class OpenSky implements OpenSkyApi {
     await this.ensureLoaded();
     const resolved = this.targetForSelector(args.app);
     const browser = resolved?.browser;
-    if (!resolved || !browser?.managed || !this.managedBrowserSessions.has(browser.session)) {
+    if (resolved && browser?.managed && this.managedBrowserSessions.has(browser.session)) {
+      await this.closeResolvedTarget(resolved);
+      return;
+    }
+    const authority = resolved?.nativeCloseAuthority;
+    if (
+      !resolved ||
+      !authority ||
+      authority.pid !== resolved.pid ||
+      authority.windowId !== resolved.windowId
+    ) {
       throw new OpenSkyError(
         `No driver-owned exact target is open for ${JSON.stringify(args.app)}. ` +
           "No user-owned app, window, or tab was closed.",
       );
     }
-    await this.closeResolvedTarget(resolved);
+    let closed;
+    try {
+      closed = await this.driver.call("close_window", {
+        pid: authority.pid,
+        window_id: authority.windowId,
+      });
+    } catch (error) {
+      // Exact close is cooperative. A confirmation sheet, delivery failure,
+      // permission issue, or unconfirmed close must retain authority so the
+      // caller can resolve the condition and retry the same target.
+      throw new OpenSkyError(
+        `Exact native window close was not completed: ${error instanceof Error ? error.message : String(error)}. ` +
+          "The exact target and close authority remain available for retry.",
+        error instanceof OpenSkyError ? error.code : undefined,
+      );
+    }
+    const status = asRecord(closed.structured);
+    if (
+      status?.status !== "closed" ||
+      Number(status.pid) !== authority.pid ||
+      Number(status.window_id) !== authority.windowId
+    ) {
+      const detail = typeof status?.message === "string"
+        ? status.message
+        : `desktop helper returned status ${JSON.stringify(status?.status ?? "unknown")}`;
+      throw new OpenSkyError(
+        `Exact native window close was not verified: ${detail}. The target remains available for retry.`,
+        typeof status?.code === "string" ? status.code : undefined,
+      );
+    }
+    this.removeTarget(resolved.handle);
+    await this.persist();
   }
 
   /** Navigate only an exact typed-browser tab and return its settled destination state. */
@@ -1140,6 +1233,9 @@ export class OpenSky implements OpenSkyApi {
         windowId,
         contentScope: cached?.pid === pid ? cached.contentScope : undefined,
         targetRequest: cached?.pid === pid ? cached.targetRequest : undefined,
+        nativeCloseAuthority: cached?.pid === pid && cached.windowId === windowId
+          ? cached.nativeCloseAuthority
+          : undefined,
       };
       this.registerTarget(resolved);
       this.markResolved(resolved);
@@ -1240,6 +1336,21 @@ export class OpenSky implements OpenSkyApi {
     this.managedBrowserSessions.delete(session);
     this.removeTarget(resolved.handle);
     await this.persist();
+  }
+
+  private async verifyNativeCloseAuthority(
+    pid: number,
+    windowId: number,
+  ): Promise<ResolvedApp["nativeCloseAuthority"]> {
+    const verified = windowsFrom((await this.driver.call("list_windows", { pid })).structured)
+      .filter(isOrdinaryWindow);
+    if (verified.length !== 1 || verified[0]?.window_id !== windowId) return undefined;
+    return {
+      kind: "request_created_exact_window",
+      proof: "macos_new_application_instance",
+      pid,
+      windowId,
+    };
   }
 
   private async pickWindow(
@@ -1964,6 +2075,37 @@ function windowMatchesTargets(window: Record<string, unknown>, targets: string[]
 function launchDispatchRefused(structured: Record<string, unknown>): boolean {
   const state = asRecord(structured.launch_state);
   return typeof structured.error === "string" && state?.requested === false;
+}
+
+function launchRequestWasSent(structured: Record<string, unknown>): boolean {
+  return asRecord(structured.launch_state)?.requested === true;
+}
+
+function listedPids(apps: Record<string, unknown>[]): Set<number> {
+  return new Set(apps.flatMap((app) => {
+    const pid = Number(app.pid);
+    return Number.isFinite(pid) && pid > 0 ? [pid] : [];
+  }));
+}
+
+function launchIdentityMatches(
+  query: string,
+  match: Record<string, unknown> | undefined,
+  launched: Record<string, unknown>,
+): boolean {
+  // Require the strongest catalog identity available; a coincidentally equal
+  // display name/path must not override a mismatched bundle id.
+  const requestedBundle = optionalString(match?.bundle_id) ??
+    (looksLikeBundleId(query) ? query : undefined);
+  if (requestedBundle) {
+    return optionalString(launched.bundle_id)?.toLowerCase() === requestedBundle.toLowerCase();
+  }
+  const requestedPath = optionalString(match?.launch_path) ?? (looksLikePath(query) ? query : undefined);
+  if (requestedPath) {
+    return optionalString(launched.launch_path)?.toLowerCase() === requestedPath.toLowerCase();
+  }
+  const requestedName = optionalString(match?.name) ?? query;
+  return optionalString(launched.name)?.toLowerCase() === requestedName.trim().toLowerCase();
 }
 
 export function pickWindowId(windows: Record<string, unknown>[]): number | undefined {

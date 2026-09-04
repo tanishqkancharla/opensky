@@ -19,6 +19,14 @@ bun run evals -- terminal-echo.eval.ts --harness opensky
 
 Pi built-in coding tools are off for the first two arms.
 
+For OpenSky cases, retain every `open_target` handle and call `close_target`
+with that handle during evaluator cleanup. Browser profiles are isolated and
+native macOS cleanup is admitted only for a fresh request-created process with
+one exact window; structured confirmation/refusal outcomes must be reported and
+retried after resolution, never replaced with a hotkey, menu, coordinate, or
+process-kill fallback. This makes cleanup behavior part of the harness evidence
+without granting authority over pre-existing user windows.
+
 ## Writing a case
 
 ```ts
