@@ -109,7 +109,7 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | --- | --- |
 | `list_apps()` | `list_apps` |
 | `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?, query?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` narrows a large page to matching semantic content/current refs. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
-| `open_target({app, targets, includeScreenshot?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; other targets use the native app/window route |
+| `open_target({app, targets, includeScreenshot?, query?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; `query` narrows that initial exact-browser observation. Other targets use the native app/window route |
 | `close_target({app})` | Closes one exact driver-owned browser target; refuses to close ordinary user-owned app/window/tab state |
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |
 | `click` | `click` / `double_click` |
@@ -158,6 +158,8 @@ console.log(after.text);
 Element indices are snapshots. Some identifiers fail silently. An action can take effect even if a later screenshot capture rejects. Refresh state before retrying.
 
 `perform_actions` never retries a completed prefix. If a DOM/UI mutation makes a later element stale, the stopped result includes a fresh settled AX state so the next action can use new indices without a separate observation call.
+
+Evaluator action tools accept `observation_query` to narrow their settled post-action exact-browser state. This composes navigation and discovery without a redundant `get_app_state` call. It is invalid when observation is disabled.
 
 URL targets return page-scoped semantic state by default, omitting restored tabs,
 favorites, toolbars, and application menus. Chromium URLs use a driver-owned

@@ -201,6 +201,7 @@ export class OpenSky implements OpenSkyApi {
     app: string;
     targets: string[];
     includeScreenshot?: boolean;
+    query?: string;
   }): Promise<AppState> {
     if (!args?.app || !Array.isArray(args.targets) || args.targets.length === 0) {
       throw invalidParams("app and at least one target are required");
@@ -208,6 +209,18 @@ export class OpenSky implements OpenSkyApi {
     await this.ensureLoaded();
     const listed = await this.listRawApps();
     const match = findApp(listed, args.app);
+    if (args.query !== undefined && (
+      !args.query.trim() ||
+      !this.preferTypedBrowser ||
+      args.targets.length !== 1 ||
+      !isHttpUrl(args.targets[0] ?? "") ||
+      !isChromiumApp(args.app, match)
+    )) {
+      throw new OpenSkyError(
+        "query requires non-empty text and one URL opened through an exact typed Chromium binding. " +
+          "No target was opened and no native app input was sent.",
+      );
+    }
     await this.clearTargetBindings([
       args.app,
       optionalString(match?.name),
@@ -300,6 +313,7 @@ export class OpenSky implements OpenSkyApi {
       app: args.app,
       disableDiff: true,
       includeScreenshot: args.includeScreenshot,
+      query: args.query,
     });
   }
 
@@ -349,7 +363,7 @@ export class OpenSky implements OpenSkyApi {
   }
 
   private async tryOpenTypedBrowser(
-    args: { app: string; targets: string[]; includeScreenshot?: boolean },
+    args: { app: string; targets: string[]; includeScreenshot?: boolean; query?: string },
     match?: Record<string, unknown>,
   ): Promise<AppState | null> {
     if (
@@ -435,6 +449,7 @@ export class OpenSky implements OpenSkyApi {
         app: args.app,
         disableDiff: true,
         includeScreenshot: args.includeScreenshot,
+        query: args.query,
       });
     } catch (error) {
       if (prepared) {
@@ -449,7 +464,15 @@ export class OpenSky implements OpenSkyApi {
         }
         throw error;
       }
-      if (isTypedBrowserUnavailable(error)) return null;
+      if (isTypedBrowserUnavailable(error)) {
+        if (args.query !== undefined) {
+          throw new OpenSkyError(
+            "The exact typed browser route is unavailable, so query could not be applied. " +
+              "No legacy browser fallback was attempted and no native app input was sent.",
+          );
+        }
+        return null;
+      }
       throw error;
     }
   }

@@ -71,7 +71,7 @@ opensky.target                    // "mac" | "win" | "linux"
 
 await opensky.list_apps()
 await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query? })
-await opensky.open_target({ app, targets, includeScreenshot? })
+await opensky.open_target({ app, targets, includeScreenshot?, query? })
 await opensky.close_target({ app })
 await opensky.bring_to_front({ app })
 await opensky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
@@ -106,9 +106,11 @@ For an exact typed browser on a large page, pass `query` when the outline names 
 - Read PNG bytes with `await readFile(pathToFileURL(state.screenshot.url))`.
 - OpenSky automatically waits briefly after actions, rechecks typed browser semantics with a bounded stability budget, revives expired helper sessions, and retries temporary degraded AX snapshots. If AX remains unavailable, use coordinates from the returned screenshot or bring the window onto the current desktop and call `get_app_state` again.
 
-### `open_target({ app, targets, includeScreenshot? })`
+### `open_target({ app, targets, includeScreenshot?, query? })`
 
 Use this as the first call when the task supplies a URL or file. For one HTTP(S) URL in Chrome/Edge/Chromium it creates a driver-owned isolated profile and exact typed tab binding; do not create a blank tab or observe the browser first. URL observations are page-scoped by default so restored tabs, favorites, toolbars, and application menus do not consume context. `includeAppChrome` is unavailable for an exact typed binding and fails closed rather than crossing into native input.
+
+For that exact typed browser route, pass `query` to make known semantic content addressable in the initial settled observation. Query is rejected before any mutation for native targets, multiple targets, or non-URL targets.
 
 Open files or URLs with a named app and return the settled full state of the returned, newly created, or title-matching ordinary window. Prefer this over launching a document and then separately resolving the app; the binding prevents an older sibling document from being mistaken for the requested target.
 

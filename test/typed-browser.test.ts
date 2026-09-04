@@ -287,6 +287,39 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(state.target?.document.requestRelation, "exact");
   });
 
+  it("composes a semantic query into the initial exact-browser observation", async () => {
+    const { opensky, driver } = await harness();
+
+    const state = await opensky.open_target({
+      app: "Google Chrome",
+      targets: [URL],
+      includeScreenshot: false,
+      query: "Releases",
+    });
+
+    const snapshot = driver.calls.findLast((call) =>
+      call.tool === "get_browser_state" && call.args.target_id === TARGET_ID
+    );
+    assert.equal(snapshot?.args.query, "Releases");
+    assert.match(state.text, /^Semantic query "Releases"; fresh accessibility state:/);
+    assert.equal(driver.calls.some((call) => call.tool === "launch_app"), false);
+  });
+
+  it("rejects an initial query for a non-browser target before mutation", async () => {
+    const { opensky, driver } = await harness();
+
+    await assert.rejects(
+      () => opensky.open_target({
+        app: "Calculator",
+        targets: ["https://example.com/"],
+        query: "Releases",
+      }),
+      /query requires.*exact typed Chromium binding/,
+    );
+    assert.equal(driver.calls.some((call) => call.tool === "launch_app"), false);
+    assert.equal(driver.calls.some((call) => call.tool === "browser_prepare"), false);
+  });
+
   it("rechecks semantic browser state after input until it is stable", async () => {
     const { opensky, driver } = await harness({ browserStabilityTimeoutMs: 20 });
 

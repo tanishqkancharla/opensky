@@ -71,9 +71,12 @@ async function actionResult(
   opensky: ReturnType<typeof createOpenSky>,
   app: string,
   action: () => Promise<void>,
-  options: { observe?: boolean; includeScreenshot?: boolean },
+  options: { observe?: boolean; includeScreenshot?: boolean; query?: string },
   emittedImageHashes?: Map<string, string>,
 ) {
+  if (options.observe === false && options.query !== undefined) {
+    throw new Error("observation_query requires a post-action observation; omit observe or set it to true");
+  }
   try {
     await action();
   } catch (error) {
@@ -90,7 +93,11 @@ async function actionResult(
   if (options.observe === false) return textResult({ ok: true });
   try {
     return await stateResult(
-      await opensky.get_app_state({ app, includeScreenshot: options.includeScreenshot === true }),
+      await opensky.get_app_state({
+        app,
+        includeScreenshot: options.includeScreenshot === true,
+        query: options.query,
+      }),
       options.includeScreenshot === true,
       emittedImageHashes,
     );
@@ -145,12 +152,13 @@ export function createOpenSkyToolRuntime(
       name: "open_target",
       label: "open_target",
       description:
-        "Open one or more file paths or URLs with a named app, bind the resulting window/tab, then return its settled AX state. Use this as the first call for task-supplied documents/folders/URLs. For a browser URL it performs the open itself; do not create a blank tab or observe the browser first. app in get_app_state is an application identifier, not a document path.",
+        "Open one or more file paths or URLs with a named app, bind the resulting window/tab, then return its settled AX state. Use this as the first call for task-supplied documents/folders/URLs. For one Chromium URL, query can narrow the initial observation to a known semantic target. Do not create a blank tab or observe the browser first. app in get_app_state is an application identifier, not a document path.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String({ description: "Application display name or bundle id" }),
         targets: Type.Array(Type.String(), { minItems: 1, maxItems: 20 }),
         include_screenshot: Type.Optional(Type.Boolean()),
+        query: Type.Optional(Type.String({ minLength: 1, description: "Exact typed browser only: narrow the settled initial state" })),
       }),
       async execute(_id, params) {
         return stateResult(
@@ -158,6 +166,7 @@ export function createOpenSkyToolRuntime(
             app: params.app,
             targets: params.targets,
             includeScreenshot: params.include_screenshot === true,
+            query: params.query,
           }),
           params.include_screenshot === true,
           emittedImageHashes,
@@ -256,8 +265,12 @@ export function createOpenSkyToolRuntime(
         observation: Type.Optional(Type.Union([
           Type.Literal("ax"), Type.Literal("ax+screenshot"), Type.Literal("none"),
         ])),
+        observation_query: Type.Optional(Type.String({ minLength: 1, description: "Narrow the settled exact-browser observation after the batch" })),
       }),
       async execute(_id, params) {
+        if (params.observation === "none" && params.observation_query !== undefined) {
+          throw new Error("observation_query requires a post-action observation; use ax or ax+screenshot");
+        }
         validateBatchActions(params.actions);
         const batch = await dispatchBatchActions(opensky, params.app, params.actions);
         const completed = batch.completed;
@@ -279,7 +292,11 @@ export function createOpenSkyToolRuntime(
           const withScreenshot = params.observation === "ax+screenshot";
           try {
             const result = await stateResult(
-              await opensky.get_app_state({ app: params.app, includeScreenshot: withScreenshot }),
+              await opensky.get_app_state({
+                app: params.app,
+                includeScreenshot: withScreenshot,
+                query: params.observation_query,
+              }),
               withScreenshot,
               emittedImageHashes,
             );
@@ -305,7 +322,11 @@ export function createOpenSkyToolRuntime(
         }
         const withScreenshot = params.observation === "ax+screenshot";
         const result = await stateResult(
-          await opensky.get_app_state({ app: params.app, includeScreenshot: withScreenshot }),
+          await opensky.get_app_state({
+            app: params.app,
+            includeScreenshot: withScreenshot,
+            query: params.observation_query,
+          }),
           withScreenshot,
           emittedImageHashes,
         );
@@ -331,12 +352,14 @@ export function createOpenSkyToolRuntime(
         click_count: Type.Optional(Type.Number()),
         observe: Type.Optional(Type.Boolean({ description: "Return post-action state; defaults true" })),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
+        const { observe, include_screenshot, observation_query, ...action } = params;
         return actionResult(opensky, params.app, () => opensky.click(action as Parameters<typeof opensky.click>[0]), {
           observe,
           includeScreenshot: include_screenshot,
+          query: observation_query,
         }, emittedImageHashes);
       },
     }),
@@ -353,10 +376,11 @@ export function createOpenSkyToolRuntime(
         to_y: Type.Number(),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.drag(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
+        const { observe, include_screenshot, observation_query, ...action } = params;
+        return actionResult(opensky, params.app, () => opensky.drag(action), { observe, includeScreenshot: include_screenshot, query: observation_query }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -370,10 +394,11 @@ export function createOpenSkyToolRuntime(
         format: Type.Optional(Type.Union([Type.Literal("text"), Type.Literal("md"), Type.Literal("html")])),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.paste(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
+        const { observe, include_screenshot, observation_query, ...action } = params;
+        return actionResult(opensky, params.app, () => opensky.paste(action), { observe, includeScreenshot: include_screenshot, query: observation_query }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -387,10 +412,11 @@ export function createOpenSkyToolRuntime(
         action: Type.String(),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.perform_secondary_action(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
+        const { observe, include_screenshot, observation_query, ...action } = params;
+        return actionResult(opensky, params.app, () => opensky.perform_secondary_action(action), { observe, includeScreenshot: include_screenshot, query: observation_query }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -407,10 +433,11 @@ export function createOpenSkyToolRuntime(
         y: Type.Optional(Type.Number()),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.press_key(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
+        const { observe, include_screenshot, observation_query, ...action } = params;
+        return actionResult(opensky, params.app, () => opensky.press_key(action), { observe, includeScreenshot: include_screenshot, query: observation_query }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -427,12 +454,14 @@ export function createOpenSkyToolRuntime(
         pages: Type.Optional(Type.Number()),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
+        const { observe, include_screenshot, observation_query, ...action } = params;
         return actionResult(opensky, params.app, () => opensky.scroll(action as Parameters<typeof opensky.scroll>[0]), {
           observe,
           includeScreenshot: include_screenshot,
+          query: observation_query,
         }, emittedImageHashes);
       },
     }),
@@ -454,12 +483,14 @@ export function createOpenSkyToolRuntime(
         ])),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
+        const { observe, include_screenshot, observation_query, ...action } = params;
         return actionResult(opensky, params.app, () => opensky.select_text(action as Parameters<typeof opensky.select_text>[0]), {
           observe,
           includeScreenshot: include_screenshot,
+          query: observation_query,
         }, emittedImageHashes);
       },
     }),
@@ -475,10 +506,11 @@ export function createOpenSkyToolRuntime(
         value: Type.String(),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.set_value(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
+        const { observe, include_screenshot, observation_query, ...action } = params;
+        return actionResult(opensky, params.app, () => opensky.set_value(action), { observe, includeScreenshot: include_screenshot, query: observation_query }, emittedImageHashes);
       },
     }),
     defineTool({
@@ -495,10 +527,11 @@ export function createOpenSkyToolRuntime(
         y: Type.Optional(Type.Number()),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        observation_query: Type.Optional(Type.String({ minLength: 1 })),
       }),
       async execute(_id, params) {
-        const { observe, include_screenshot, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.type_text(action), { observe, includeScreenshot: include_screenshot }, emittedImageHashes);
+        const { observe, include_screenshot, observation_query, ...action } = params;
+        return actionResult(opensky, params.app, () => opensky.type_text(action), { observe, includeScreenshot: include_screenshot, query: observation_query }, emittedImageHashes);
       },
     }),
   ];

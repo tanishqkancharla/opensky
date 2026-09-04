@@ -96,6 +96,8 @@ export interface OpenSky {
     app: string;
     targets: string[];
     includeScreenshot?: boolean;
+    /** Narrow the initial exact typed browser observation. */
+    query?: string;
   }): Promise<AppState>;
   /** Close one exact target owned by this instance without touching user-owned app state. */
   close_target(args: { app: string }): Promise<void>;
