@@ -616,11 +616,26 @@ export class OpenSky implements OpenSkyApi {
       let windowId = await this.pickWindow(pid, match);
       let relaunched = false;
       if (!windowId && options.launchIfNeeded) {
-        const launched = await this.driver.call("launch_app", launchArgsFor(app, match));
+        const launchArgs = launchArgsFor(app, match);
+        let launched = await this.driver.call("launch_app", launchArgs);
         source = { ...match, ...(asRecord(launched.structured) ?? {}) };
         const nextPid = Number(source.pid);
         if (Number.isFinite(nextPid) && nextPid > 0) pid = nextPid;
         windowId = await this.pickWindow(pid, source);
+        if (!windowId && !launchDispatchRefused(source)) {
+          await sleep(this.settleDelayMs);
+          launched = await this.driver.call("launch_app", launchArgs);
+          source = { ...source, ...(asRecord(launched.structured) ?? {}) };
+          const retryPid = Number(source.pid);
+          if (Number.isFinite(retryPid) && retryPid > 0) pid = retryPid;
+          windowId = await this.pickWindow(pid, source);
+        }
+        if (!windowId && launchDispatchRefused(source)) {
+          throw new OpenSkyError(
+            `The desktop helper could not reveal an ordinary window for ${JSON.stringify(app)} ` +
+            `(${String(source.error)}). No keyboard or pointer input was sent.`,
+          );
+        }
         relaunched = true;
       }
       const resolved: ResolvedApp = {
@@ -649,6 +664,12 @@ export class OpenSky implements OpenSkyApi {
     const launchArgs = launchArgsFor(app, match);
     const launched = await this.driver.call("launch_app", launchArgs);
     const structured = asRecord(launched.structured) ?? {};
+    if (launchDispatchRefused(structured)) {
+      throw new OpenSkyError(
+        `The desktop helper could not launch ${JSON.stringify(app)} (${String(structured.error)}). ` +
+        "No keyboard or pointer input was sent.",
+      );
+    }
     const pid = Number(structured.pid ?? match?.pid);
     if (!Number.isFinite(pid) || pid <= 0) {
       throw new OpenSkyError(`Failed to launch ${JSON.stringify(app)}`);

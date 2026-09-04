@@ -300,6 +300,21 @@ describe("OpenSky against cua-driver", () => {
     ));
   });
 
+  it("retries an acknowledged app reveal once when its window is delayed", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const calculator = fixture.apps.find((app: { name: string }) => app.name === "Calculator");
+    calculator.windows = [];
+    fixture.launchNoWindowsOnce = 1;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.match(state.text, /AXWindow/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "launch_app").length, 2);
+  });
+
   it("opens and binds a supplied target through the core API", async () => {
     const { opensky, statePath } = await makeHarness();
     const state = await opensky.open_target({
