@@ -25,12 +25,15 @@ async function stateResult(
   includeScreenshot = false,
   emittedImageHashes?: Map<string, string>,
 ) {
+  const targetSummary = state.target
+    ? formatTargetIdentity(state.target)
+    : `Target ${state.targetHandle}: app=${JSON.stringify(state.app)}`;
   const content: Array<
     | { type: "text"; text: string }
     | { type: "image"; data: string; mimeType: "image/png" | "image/jpeg" }
   > = [{
     type: "text",
-    text: state.target ? `${formatTargetIdentity(state.target)}\n${state.text}` : state.text,
+    text: `${targetSummary}\n${state.text}`,
   }];
   if (state.degraded) {
     content.push({
@@ -46,7 +49,7 @@ async function stateResult(
     try {
       const bytes = await readFile(fileURLToPath(state.screenshot.url));
       const hash = createHash("sha256").update(bytes).digest("hex");
-      if (emittedImageHashes?.get(state.app) === hash) {
+      if (emittedImageHashes?.get(state.targetHandle) === hash) {
         content.push({ type: "text", text: "Screenshot unchanged from the previous attached image." });
       } else {
         content.push({
@@ -54,7 +57,7 @@ async function stateResult(
           data: bytes.toString("base64"),
           mimeType: state.screenshot.format === "jpeg" ? "image/jpeg" : "image/png",
         });
-        emittedImageHashes?.set(state.app, hash);
+        emittedImageHashes?.set(state.targetHandle, hash);
       }
     } catch (error) {
       screenshotWarning = `Screenshot could not be attached: ${error instanceof Error ? error.message : String(error)}`;
@@ -63,7 +66,7 @@ async function stateResult(
   }
   return {
     content,
-    details: { app: state.app, target: state.target, screenshot: state.screenshot, degraded: state.degraded, degradedReason: state.degradedReason, screenshotWarning },
+    details: { app: state.app, targetHandle: state.targetHandle, target: state.target, screenshot: state.screenshot, degraded: state.degraded, degradedReason: state.degradedReason, screenshotWarning },
   };
 }
 
@@ -152,7 +155,7 @@ export function createOpenSkyToolRuntime(
       name: "open_target",
       label: "open_target",
       description:
-        "Open one or more file paths or URLs with a named app, bind the resulting window/tab, then return its settled AX state. Use this as the first call for task-supplied documents/folders/URLs. For one Chromium URL, query can narrow the initial observation to a known semantic target. Do not create a blank tab or observe the browser first. app in get_app_state is an application identifier, not a document path.",
+        "Open one or more file paths or URLs with a named app, bind the resulting window/tab, then return its settled AX state and opaque target handle. Use the handle as app when multiple targets of one app coexist. For one Chromium URL, query can narrow the initial observation. Do not create a blank tab or observe the browser first.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String({ description: "Application display name or bundle id" }),
@@ -177,7 +180,7 @@ export function createOpenSkyToolRuntime(
       name: "navigate",
       label: "navigate",
       description:
-        "Navigate the exact driver-owned typed browser tab created by open_target, then return its settled destination state in the same call. Use this instead of closing/reopening the browser target or typing into browser chrome. It fails closed for native apps and unverified/user-owned tabs. query can narrow the destination observation.",
+        "Navigate the exact driver-owned typed browser tab selected by app name or target handle, then return its settled destination state. Use this instead of closing/reopening the target or typing into browser chrome. query can narrow the destination observation.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String({ description: "Application identifier used with open_target" }),
@@ -202,7 +205,7 @@ export function createOpenSkyToolRuntime(
       name: "close_target",
       label: "close_target",
       description:
-        "Close the exact driver-owned browser target previously created by open_target for this app. Use when the task asks you to close your evaluator tab/session. This never closes an ordinary user-owned app, window, or tab; the host also retries owned-session cleanup on exit.",
+        "Close the exact driver-owned browser target selected by app name or target handle. A name selects the newest live target; a handle selects its exact sibling. This never closes ordinary user-owned state.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String({ description: "Application display name or bundle id used with open_target" }),
@@ -216,7 +219,7 @@ export function createOpenSkyToolRuntime(
       name: "get_app_state",
       label: "get_app_state",
       description:
-        "Resolve/launch an app and return fresh accessibility state. First state is full; later states are compact diffs unless disableDiff is true. For an exact typed browser, set query to narrow a large page to matching semantic content and current actionable refs; use it when the outline names an item whose action was omitted. Set include_screenshot only when pixels are needed.",
+        "Resolve an app name or exact target handle and return fresh accessibility state. First state is full; later states are compact diffs unless disableDiff is true. For an exact typed browser, query narrows a large page to matching content/current refs. Set include_screenshot only when pixels are needed.",
       promptSnippet: "get_app_state: initial/recovery observation for a known app; actions observe by default.",
       parameters: Type.Object({
         app: Type.String({ description: "Display name, bundle id, or path" }),

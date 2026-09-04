@@ -1,5 +1,8 @@
 export type OpenSkyTarget = "mac" | "win" | "linux";
 
+/** Opaque exact-target selector returned by OpenSky. Pass it anywhere `app` is accepted. */
+export type TargetHandle = `tgt_${string}`;
+
 export type Direction =
   | "up"
   | "down"
@@ -43,6 +46,8 @@ export interface Screenshot {
 
 export interface AppState {
   app: string;
+  /** Opaque exact-target selector. Pass it anywhere `app` is accepted. */
+  targetHandle: TargetHandle;
   screenshot: Screenshot | null;
   text: string;
   /** True when the exact window was observed but its AX tree could not be resolved. */
@@ -68,6 +73,8 @@ export interface TargetRequestIdentity {
 }
 
 export interface TargetIdentity extends TargetRequestIdentity {
+  /** Opaque selector for this exact window/tab. Pass it as `app` to address this target again. */
+  handle: TargetHandle;
   document: {
     freshness: "current" | "unavailable";
     title?: string;
@@ -192,6 +199,10 @@ export interface DriverClient {
 }
 
 export interface ResolvedApp {
+  /** Canonical opaque identity. App names and bundle ids are only aliases to this record. */
+  handle: TargetHandle;
+  /** Monotonic-enough ordering used to restore an app alias after its newest target closes. */
+  openedAt: number;
   query: string;
   name: string;
   bundleId?: string;

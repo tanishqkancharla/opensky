@@ -70,6 +70,10 @@ export async function replayScenario(scenarioPath: string): Promise<ReplayReport
   );
   const canonicalStates = states.map((state) => ({
     ...state,
+    targetHandle: "<TARGET_HANDLE>" as AppState["targetHandle"],
+    target: state.target
+      ? { ...state.target, handle: "<TARGET_HANDLE>" as AppState["targetHandle"] }
+      : undefined,
     screenshot: state.screenshot ? "<SCREENSHOT>" : null,
   }));
   const projectedCharacters = canonicalStates.reduce((sum, state) => sum + state.text.length, 0);

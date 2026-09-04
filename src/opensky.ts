@@ -23,6 +23,7 @@ import type {
   OpenSkyOptions,
   OpenSkyTarget,
   SnapshotElement,
+  TargetHandle,
   TargetIdentity,
   TargetRequestIdentity,
   WindowSnapshot,
@@ -81,11 +82,13 @@ export class OpenSky implements OpenSkyApi {
   private readonly managedBrowserSessions = new Set<string>();
   private baseSessionEnded = false;
   private browserSequence = 0;
+  private lastOpenedAt = 0;
   private readonly lastActionAt = new Map<string, number>();
-  private readonly resolvedThisProcess = new Set<string>();
+  private readonly resolvedThisProcess = new Set<TargetHandle>();
   private screenshotSequence = 0;
   private readonly memory = {
-    apps: {} as Record<string, ResolvedApp>,
+    targets: {} as Record<TargetHandle, ResolvedApp>,
+    aliases: {} as Record<string, TargetHandle>,
     trees: {} as Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>,
     managedBrowserSessions: [] as string[],
   };
@@ -121,10 +124,11 @@ export class OpenSky implements OpenSkyApi {
     query?: string;
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
+    const exactTargetRequested = looksLikeTargetHandle(args.app);
     let resolved: ResolvedApp;
     if (args.query !== undefined) {
       await this.ensureLoaded();
-      const bound = this.memory.apps[normalizeAppKey(args.app)];
+      const bound = this.targetForSelector(args.app);
       if (!args.query.trim() || !bound?.browser) {
         throw new OpenSkyError(
           "query requires non-empty text and an exact typed browser binding. " +
@@ -143,7 +147,7 @@ export class OpenSky implements OpenSkyApi {
     }
     if (args.includeAppChrome === true && resolved.contentScope === "web") {
       resolved.contentScope = undefined;
-      this.memory.apps[normalizeAppKey(resolved.query)] = resolved;
+      this.memory.targets[resolved.handle] = resolved;
       await this.persist();
     }
     const hadPendingAction = this.lastActionAt.has(windowKey(resolved));
@@ -156,10 +160,11 @@ export class OpenSky implements OpenSkyApi {
     } else {
       await this.refreshWindowAfterAction(resolved);
     }
-    if (!resolved.windowId) await this.adoptWindowForObservation(resolved);
+    if (!resolved.windowId && !exactTargetRequested) await this.adoptWindowForObservation(resolved);
     if (!resolved.windowId) {
       return {
         app: resolved.launchPath || resolved.name || args.app,
+        targetHandle: resolved.handle,
         screenshot: null,
         text:
           `Application ${JSON.stringify(resolved.name)} is running but has no usable ordinary window on the current desktop. ` +
@@ -190,6 +195,7 @@ export class OpenSky implements OpenSkyApi {
     await this.persist();
     return {
       app: resolved.launchPath || resolved.name || args.app,
+      targetHandle: resolved.handle,
       screenshot: snapshot.screenshot ?? (snapshot.screenshotPath ? { url: pathToFileURL(snapshot.screenshotPath).href } : null),
       text,
       degraded: snapshot.degraded,
@@ -208,6 +214,14 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams("app and at least one target are required");
     }
     await this.ensureLoaded();
+    if (looksLikeTargetHandle(args.app)) {
+      const source = this.targetForSelector(args.app);
+      if (!source) throw unknownTargetHandle(args.app);
+      args = {
+        ...args,
+        app: source.launchPath || source.bundleId || source.name,
+      };
+    }
     const listed = await this.listRawApps();
     const match = findApp(listed, args.app);
     if (args.query !== undefined && (
@@ -222,12 +236,6 @@ export class OpenSky implements OpenSkyApi {
           "No target was opened and no native app input was sent.",
       );
     }
-    await this.clearTargetBindings([
-      args.app,
-      optionalString(match?.name),
-      optionalString(match?.bundle_id),
-      optionalString(match?.launch_path),
-    ]);
     const typed = await this.tryOpenTypedBrowser(args, match);
     if (typed) return typed;
     const previousPid = Number(match?.pid);
@@ -290,6 +298,8 @@ export class OpenSky implements OpenSkyApi {
           ? "title_match"
           : "uncorrelated";
     const resolved: ResolvedApp = {
+      handle: newTargetHandle(),
+      openedAt: this.nextOpenedAt(),
       query: args.app,
       name: String(structured.name ?? match?.name ?? args.app),
       bundleId: optionalString(structured.bundle_id) ?? optionalString(match?.bundle_id),
@@ -304,9 +314,7 @@ export class OpenSky implements OpenSkyApi {
         window: { id: windowId, source: windowSource, correlation },
       },
     };
-    this.memory.apps[normalizeAppKey(args.app)] = resolved;
-    if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
-    if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
+    this.registerTarget(resolved);
     this.markResolved(resolved);
     this.markAction(resolved);
     await this.persist();
@@ -322,7 +330,7 @@ export class OpenSky implements OpenSkyApi {
   async close_target(args: { app: string }): Promise<void> {
     if (!args?.app) throw invalidParams("app is required");
     await this.ensureLoaded();
-    const resolved = this.memory.apps[normalizeAppKey(args.app)];
+    const resolved = this.targetForSelector(args.app);
     const browser = resolved?.browser;
     if (!resolved || !browser?.managed || !this.managedBrowserSessions.has(browser.session)) {
       throw new OpenSkyError(
@@ -330,13 +338,7 @@ export class OpenSky implements OpenSkyApi {
           "No user-owned app, window, or tab was closed.",
       );
     }
-    await this.clearTargetBindings([
-      args.app,
-      resolved.query,
-      resolved.name,
-      resolved.bundleId,
-      resolved.launchPath,
-    ]);
+    await this.closeResolvedTarget(resolved);
   }
 
   /** Navigate only an exact typed-browser tab and return its settled destination state. */
@@ -389,16 +391,23 @@ export class OpenSky implements OpenSkyApi {
     if (!this.baseSessionEnded) sessions.push(this.session);
     this.managedBrowserSessions.clear();
     const failures: Array<{ session: string; error: unknown }> = [];
+    const endedManagedSessions = new Set<string>();
     await Promise.all(sessions.map(async (session) => {
       try {
         await this.driver.call("end_session", { session });
         if (session === this.session) this.baseSessionEnded = true;
+        else endedManagedSessions.add(session);
       } catch (error) {
         // The caller may retry close(); keep the failed session owned here.
         if (session !== this.session) this.managedBrowserSessions.add(session);
         failures.push({ session, error });
       }
     }));
+    for (const resolved of Object.values(this.memory.targets)) {
+      if (resolved.browser && endedManagedSessions.has(resolved.browser.session)) {
+        this.removeTarget(resolved.handle);
+      }
+    }
     if (hadManagedBrowserSessions) {
       try {
         await this.persist();
@@ -478,6 +487,8 @@ export class OpenSky implements OpenSkyApi {
         session,
       });
       const resolved: ResolvedApp = {
+        handle: newTargetHandle(),
+        openedAt: this.nextOpenedAt(),
         query: args.app,
         name: String(match?.name ?? args.app),
         bundleId: optionalString(match?.bundle_id),
@@ -493,9 +504,7 @@ export class OpenSky implements OpenSkyApi {
           window: { id: windowId, source: "launch_result", correlation: "new_since_request" },
         },
       };
-      this.memory.apps[normalizeAppKey(args.app)] = resolved;
-      if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
-      if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
+      this.registerTarget(resolved);
       this.markResolved(resolved);
       this.markAction(resolved);
       await this.persist();
@@ -1049,14 +1058,19 @@ export class OpenSky implements OpenSkyApi {
 
   private async requireResolved(app: string): Promise<ResolvedApp> {
     await this.ensureLoaded();
-    const cached = this.memory.apps[normalizeAppKey(app)];
-    if (cached?.pid && this.resolvedThisProcess.has(normalizeAppKey(app))) return cached;
+    const cached = this.targetForSelector(app);
+    if (looksLikeTargetHandle(app)) {
+      if (!cached) throw unknownTargetHandle(app);
+      return cached;
+    }
+    if (cached?.pid && this.resolvedThisProcess.has(cached.handle)) return cached;
     return this.resolveApp(app, { launchIfNeeded: this.autoLaunch });
   }
 
   private async requireExactTypedBrowser(app: string, operation: string): Promise<ResolvedApp> {
     await this.ensureLoaded();
-    const resolved = this.memory.apps[normalizeAppKey(app)];
+    const resolved = this.targetForSelector(app);
+    if (looksLikeTargetHandle(app) && !resolved) throw unknownTargetHandle(app);
     const browser = resolved?.browser;
     if (!resolved || !browser?.managed || !this.managedBrowserSessions.has(browser.session)) {
       throw new OpenSkyError(
@@ -1069,7 +1083,8 @@ export class OpenSky implements OpenSkyApi {
 
   private async resolveApp(app: string, options: { launchIfNeeded: boolean }): Promise<ResolvedApp> {
     await this.ensureLoaded();
-    const cached = this.memory.apps[normalizeAppKey(app)];
+    if (looksLikeTargetHandle(app)) throw unknownTargetHandle(app);
+    const cached = this.targetForSelector(app);
     const listed = await this.listRawApps();
     const match = findApp(listed, app);
     if (match && (match.running || match.pid)) {
@@ -1115,6 +1130,8 @@ export class OpenSky implements OpenSkyApi {
         relaunched = true;
       }
       const resolved: ResolvedApp = {
+        handle: cached?.pid === pid ? cached.handle : newTargetHandle(),
+        openedAt: cached?.pid === pid ? cached.openedAt : this.nextOpenedAt(),
         query: app,
         name: String(source.name ?? match.name ?? app),
         bundleId: optionalString(source.bundle_id) ?? optionalString(match.bundle_id),
@@ -1124,9 +1141,7 @@ export class OpenSky implements OpenSkyApi {
         contentScope: cached?.pid === pid ? cached.contentScope : undefined,
         targetRequest: cached?.pid === pid ? cached.targetRequest : undefined,
       };
-      this.memory.apps[normalizeAppKey(app)] = resolved;
-      if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
-      if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
+      this.registerTarget(resolved);
       this.markResolved(resolved);
       if (relaunched) this.markAction(resolved);
       await this.persist();
@@ -1153,6 +1168,8 @@ export class OpenSky implements OpenSkyApi {
     const windows = asArray<Record<string, unknown>>(structured.windows);
     const windowId = pickWindowId(windows) ?? (await this.pickWindow(pid, structured));
     const resolved: ResolvedApp = {
+      handle: newTargetHandle(),
+      openedAt: this.nextOpenedAt(),
       query: app,
       name: String(structured.name ?? match?.name ?? app),
       bundleId: optionalString(structured.bundle_id) ?? optionalString(match?.bundle_id),
@@ -1161,9 +1178,7 @@ export class OpenSky implements OpenSkyApi {
       windowId,
     };
     this.markAction(resolved);
-    this.memory.apps[normalizeAppKey(app)] = resolved;
-    if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
-    if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
+    this.registerTarget(resolved);
     this.markResolved(resolved);
     await this.persist();
     return resolved;
@@ -1179,26 +1194,52 @@ export class OpenSky implements OpenSkyApi {
     return [];
   }
 
-  private async clearTargetBindings(identities: Array<string | undefined>): Promise<void> {
-    const keys = new Set(identities.filter((value): value is string => Boolean(value)).map(normalizeAppKey));
-    const sessionsToEnd = new Set<string>();
-    let changed = false;
-    for (const [key, resolved] of Object.entries(this.memory.apps)) {
-      const aliases = [key, resolved.query, resolved.name, resolved.bundleId, resolved.launchPath]
-        .filter((value): value is string => Boolean(value))
-        .map(normalizeAppKey);
-      if (!aliases.some((alias) => keys.has(alias))) continue;
-      if (resolved.targetRequest || resolved.contentScope || resolved.browser) changed = true;
-      if (resolved.browser?.managed) sessionsToEnd.add(resolved.browser.session);
-      resolved.targetRequest = undefined;
-      resolved.contentScope = undefined;
-      resolved.browser = undefined;
+  private targetForSelector(selector: string): ResolvedApp | undefined {
+    const trimmed = selector.trim();
+    if (looksLikeTargetHandle(trimmed)) {
+      return this.memory.targets[trimmed as TargetHandle];
     }
-    for (const session of sessionsToEnd) {
-      await this.driver.call("end_session", { session });
-      this.managedBrowserSessions.delete(session);
+    const handle = this.memory.aliases[normalizeAppKey(trimmed)];
+    return handle ? this.memory.targets[handle] : undefined;
+  }
+
+  private registerTarget(resolved: ResolvedApp): void {
+    this.lastOpenedAt = Math.max(this.lastOpenedAt, resolved.openedAt);
+    this.memory.targets[resolved.handle] = resolved;
+    for (const alias of targetAliases(resolved)) {
+      this.memory.aliases[alias] = resolved.handle;
     }
-    if (changed) await this.persist();
+  }
+
+  private nextOpenedAt(): number {
+    this.lastOpenedAt = Math.max(Date.now(), this.lastOpenedAt + 1);
+    return this.lastOpenedAt;
+  }
+
+  private removeTarget(handle: TargetHandle): void {
+    const removed = this.memory.targets[handle];
+    if (!removed) return;
+    delete this.memory.targets[handle];
+    delete this.memory.trees[handle];
+    this.lastActionAt.delete(handle);
+    this.resolvedThisProcess.delete(handle);
+    for (const [alias, current] of Object.entries(this.memory.aliases)) {
+      if (current !== handle) continue;
+      const replacement = Object.values(this.memory.targets)
+        .filter((candidate) => targetAliases(candidate).includes(alias))
+        .sort((a, b) => b.openedAt - a.openedAt)[0];
+      if (replacement) this.memory.aliases[alias] = replacement.handle;
+      else delete this.memory.aliases[alias];
+    }
+  }
+
+  private async closeResolvedTarget(resolved: ResolvedApp): Promise<void> {
+    const session = resolved.browser?.session;
+    if (!session) return;
+    await this.driver.call("end_session", { session });
+    this.managedBrowserSessions.delete(session);
+    this.removeTarget(resolved.handle);
+    await this.persist();
   }
 
   private async pickWindow(
@@ -1283,7 +1324,7 @@ export class OpenSky implements OpenSkyApi {
       optionalFiniteNumber(structured.element_count) ?? returnedElementCount;
     if (filePath) await chmod(filePath, 0o600).catch(() => undefined);
     resolved.snapshotId = snapshotId;
-    this.memory.apps[normalizeAppKey(resolved.query)] = resolved;
+    this.memory.targets[resolved.handle] = resolved;
     return {
       pid: resolved.pid,
       windowId: resolved.windowId,
@@ -1521,10 +1562,7 @@ export class OpenSky implements OpenSkyApi {
   }
 
   private markResolved(resolved: ResolvedApp): void {
-    this.resolvedThisProcess.add(normalizeAppKey(resolved.query));
-    this.resolvedThisProcess.add(normalizeAppKey(resolved.name));
-    if (resolved.bundleId) this.resolvedThisProcess.add(normalizeAppKey(resolved.bundleId));
-    if (resolved.launchPath) this.resolvedThisProcess.add(normalizeAppKey(resolved.launchPath));
+    this.resolvedThisProcess.add(resolved.handle);
   }
 
   private elementTarget(resolved: ResolvedApp, elementIndex: number): Record<string, unknown> {
@@ -1656,8 +1694,39 @@ export class OpenSky implements OpenSkyApi {
   private async ensureLoaded(): Promise<void> {
     if (this.loaded) return;
     const persisted = await this.store.load();
-    this.memory.apps = persisted.apps;
-    this.memory.trees = persisted.trees;
+    if ("apps" in persisted) {
+      const byBinding = new Map<string, TargetHandle>();
+      for (const [alias, legacy] of Object.entries(persisted.apps)) {
+        const fingerprint = legacy.browser?.session
+          ? `browser:${legacy.browser.session}`
+          : `native:${legacy.pid}:${legacy.windowId ?? 0}`;
+        let handle = byBinding.get(fingerprint);
+        if (!handle) {
+          handle = legacy.handle && looksLikeTargetHandle(legacy.handle)
+            ? legacy.handle as TargetHandle
+            : newTargetHandle();
+          byBinding.set(fingerprint, handle);
+          const resolved = {
+            ...legacy,
+            handle,
+            openedAt: legacy.openedAt ?? Date.now(),
+          } as ResolvedApp;
+          this.lastOpenedAt = Math.max(this.lastOpenedAt, resolved.openedAt);
+          this.memory.targets[handle] = resolved;
+          const oldTree = persisted.trees[legacyWindowKey(legacy)];
+          if (oldTree) this.memory.trees[handle] = oldTree;
+        }
+        this.memory.aliases[alias] = handle;
+      }
+    } else {
+      this.memory.targets = persisted.targets;
+      this.memory.aliases = persisted.aliases;
+      this.memory.trees = persisted.trees;
+      this.lastOpenedAt = Object.values(persisted.targets).reduce(
+        (latest, target) => Math.max(latest, target.openedAt),
+        this.lastOpenedAt,
+      );
+    }
     for (const session of persisted.managedBrowserSessions) {
       this.managedBrowserSessions.add(session);
     }
@@ -1666,7 +1735,13 @@ export class OpenSky implements OpenSkyApi {
 
   private async persist(): Promise<void> {
     this.memory.managedBrowserSessions = [...this.managedBrowserSessions].sort();
-    await this.store.save(this.memory);
+    await this.store.save({
+      version: 2,
+      targets: this.memory.targets,
+      aliases: this.memory.aliases,
+      trees: this.memory.trees,
+      managedBrowserSessions: this.memory.managedBrowserSessions,
+    });
   }
 }
 
@@ -2175,6 +2250,7 @@ function targetIdentityFor(resolved: ResolvedApp, snapshot?: WindowSnapshot): Ta
   };
   if (resolved.browser && snapshot && !snapshot.degraded) {
     return {
+      handle: resolved.handle,
       ...request,
       window,
       document: {
@@ -2189,6 +2265,7 @@ function targetIdentityFor(resolved: ResolvedApp, snapshot?: WindowSnapshot): Ta
   }
   if (!snapshot || snapshot.degraded) {
     return {
+      handle: resolved.handle,
       ...request,
       window,
       document: { freshness: "unavailable", requestRelation: "unknown" },
@@ -2201,6 +2278,7 @@ function targetIdentityFor(resolved: ResolvedApp, snapshot?: WindowSnapshot): Ta
   const observed = candidates[0];
   const url = observed?.url;
   return {
+    handle: resolved.handle,
     ...request,
     window,
     document: {
@@ -2257,7 +2335,7 @@ export function formatTargetIdentity(target: TargetIdentity): string {
       : unresolvedKind;
   const window = target.window.correlation.replaceAll("_", "-");
   const tab = target.tab ? `; tab=${target.tab.status}` : "";
-  return `Target: ${target.resourceKind} ${subject} [${freshness}; request=${document.requestRelation}; window=${window}${tab}]`;
+  return `Target ${target.handle}: ${target.resourceKind} ${subject} [${freshness}; request=${document.requestRelation}; window=${window}${tab}]`;
 }
 
 /** Flatten Cua's multi-line custom-action descriptor into one readable action. */
@@ -2605,6 +2683,26 @@ function normalizeAppKey(app: string): string {
   return app.trim().toLowerCase();
 }
 
+function newTargetHandle(): TargetHandle {
+  return `tgt_${randomUUID().replaceAll("-", "").slice(0, 20)}`;
+}
+
+function looksLikeTargetHandle(value: string): boolean {
+  return value.trim().toLowerCase().startsWith("tgt_");
+}
+
+function unknownTargetHandle(value: string): OpenSkyError {
+  return new OpenSkyError(
+    `Target handle ${JSON.stringify(value)} is unknown or stale. No app was resolved or launched and no input was sent.`,
+  );
+}
+
+function targetAliases(resolved: ResolvedApp): string[] {
+  return [...new Set([resolved.query, resolved.name, resolved.bundleId, resolved.launchPath]
+    .filter((value): value is string => Boolean(value))
+    .map(normalizeAppKey))];
+}
+
 function browserStabilitySignature(
   snapshot: WindowSnapshot,
   browser: ResolvedApp["browser"],
@@ -2626,6 +2724,10 @@ function browserStabilitySignature(
 }
 
 function windowKey(resolved: ResolvedApp): string {
+  return resolved.handle;
+}
+
+function legacyWindowKey(resolved: { pid: number; windowId?: number }): string {
   return `${resolved.pid}:${resolved.windowId ?? 0}`;
 }
 

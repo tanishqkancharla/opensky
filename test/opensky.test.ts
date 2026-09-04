@@ -474,9 +474,9 @@ describe("OpenSky against cua-driver", () => {
     const after = JSON.parse(await readFile(statePath, "utf8"));
     assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "launch_app").length, 2);
     const session = JSON.parse(await readFile(join(dir, "home", "session.json"), "utf8"));
-    const textEditBindings = Object.values(session.apps).filter((binding: any) => binding.pid === 900) as any[];
+    const textEditBindings = Object.values(session.targets).filter((binding: any) => binding.pid === 900) as any[];
     assert.ok(textEditBindings.length > 0);
-    assert.ok(textEditBindings.every((binding) => binding.targetRequest === undefined && binding.contentScope === undefined));
+    assert.ok(textEditBindings.some((binding) => binding.targetRequest?.requested?.[0] === "/tmp/prior.txt"));
   });
 
   it("reports current document identity without claiming a verified tab", async () => {
@@ -509,7 +509,7 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(state.target?.window.correlation, "new_since_request");
     assert.deepEqual(state.target?.tab, { status: "unverified" });
     const rendered = formatTargetIdentity(state.target!);
-    assert.match(rendered, /^Target: url url=https:\/\/example\.com\//);
+    assert.match(rendered, /^Target tgt_[a-f0-9]+: url url=https:\/\/example\.com\//);
     assert.match(rendered, /request=exact/);
     assert.match(rendered, /tab=unverified/);
     assert.doesNotMatch(rendered, /new tab|opened tab/i);
@@ -702,6 +702,35 @@ describe("OpenSky against cua-driver", () => {
     await opensky.press_key({ app: "TextEdit", key: "cmd+f" });
     after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
     assert.equal(after.calls.filter((call) => call.tool === "hotkey").length, hotkeysBefore + 1);
+  });
+
+  it("never adopts a sibling while an opaque native target handle is requested", async () => {
+    const { opensky, statePath } = await makeHarness();
+    const opened = await opensky.open_target({
+      app: "TextEdit",
+      targets: ["/tmp/exact-handle.txt"],
+      includeScreenshot: false,
+    });
+    await opensky.press_key({ app: opened.targetHandle, key: "Return" });
+    const state = JSON.parse(await readFile(statePath, "utf8")) as {
+      apps: Array<{ name: string; windows: Array<Record<string, unknown>> }>;
+      calls: Array<{ tool: string; args: Record<string, unknown> }>;
+    };
+    const textEdit = state.apps.find((app) => app.name === "TextEdit");
+    const original = textEdit?.windows.find((window) => Number(window.window_id) === opened.target?.window.id);
+    assert.ok(original);
+    textEdit.windows = [{ ...original, window_id: Number(original.window_id) + 999, title: "Sibling.txt" }];
+    const snapshotsBefore = state.calls.filter((call) => call.tool === "get_window_state").length;
+    await writeFile(statePath, JSON.stringify(state));
+
+    const missing = await opensky.get_app_state({ app: opened.targetHandle, includeScreenshot: false });
+    assert.match(missing.text, /has no usable ordinary window/);
+    const after = JSON.parse(await readFile(statePath, "utf8")) as typeof state;
+    assert.equal(
+      after.calls.filter((call) => call.tool === "get_window_state").length,
+      snapshotsBefore,
+      "an exact handle must not snapshot the replacement sibling",
+    );
   });
 
   it("fails targeted typing closed when its snapshot becomes stale", async () => {

@@ -65,6 +65,9 @@ async function dispatch(command, state) {
     throw new Error(`session '${args.session}' has ended; call start_session to revive it`);
   }
   switch (tool) {
+    case "end_session":
+      state.sessionEnded = true;
+      return envelope({ status: "ok", effect: "confirmed", session: args.session });
     case "list_apps":
       return envelope({ apps: state.apps });
     case "launch_app":

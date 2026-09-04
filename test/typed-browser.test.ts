@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "bun:test";
@@ -617,6 +617,105 @@ describe("OpenSky typed-browser contract", () => {
     assert.deepEqual(ended.map((call) => call.args.session).sort(), [SESSION, browserSession].sort());
     assert.equal(ended.filter((call) => call.args.session === browserSession).length, 1);
   });
+
+  it("keeps same-app targets independently addressable while shorthand selects the newest", async () => {
+    const { opensky, driver } = await harness();
+    const first = await opensky.open_target({
+      app: "Google Chrome",
+      targets: ["https://example.com/first"],
+      includeScreenshot: false,
+    });
+    const firstHandle = first.target?.handle;
+    const firstSession = String(driver.calls.filter((call) => call.tool === "browser_prepare")[0]?.args.session);
+    assert.match(firstHandle ?? "", /^tgt_[a-f0-9]{20}$/);
+    assert.equal(first.targetHandle, firstHandle);
+
+    const second = await opensky.open_target({
+      app: firstHandle!,
+      targets: ["https://example.com/second"],
+      includeScreenshot: false,
+    });
+    const secondHandle = second.target?.handle;
+    const secondSession = String(driver.calls.filter((call) => call.tool === "browser_prepare")[1]?.args.session);
+    assert.match(secondHandle ?? "", /^tgt_[a-f0-9]{20}$/);
+    assert.equal(second.targetHandle, secondHandle);
+    assert.notEqual(firstHandle, secondHandle);
+    assert.notEqual(firstSession, secondSession);
+    assert.equal(driver.calls.some((call) => call.tool === "end_session"), false);
+
+    await opensky.get_app_state({ app: firstHandle!, includeScreenshot: false });
+    assert.equal(driver.calls.filter((call) => call.tool === "get_browser_state").at(-1)?.args.session, firstSession);
+    await opensky.click({ app: firstHandle!, element_index: 1 });
+    assert.equal(driver.calls.filter((call) => call.tool === "browser_click").at(-1)?.args.session, firstSession);
+
+    await opensky.get_app_state({ app: "Google Chrome", includeScreenshot: false });
+    assert.equal(driver.calls.filter((call) => call.tool === "get_browser_state").at(-1)?.args.session, secondSession);
+
+    await opensky.close_target({ app: "Google Chrome" });
+    assert.deepEqual(
+      driver.calls.filter((call) => call.tool === "end_session").map((call) => call.args.session),
+      [secondSession],
+    );
+    await opensky.click({ app: "Google Chrome", element_index: 1 });
+    assert.equal(driver.calls.filter((call) => call.tool === "browser_click").at(-1)?.args.session, firstSession);
+    await opensky.get_app_state({ app: "Google Chrome", includeScreenshot: false });
+    assert.equal(driver.calls.filter((call) => call.tool === "get_browser_state").at(-1)?.args.session, firstSession);
+
+    await opensky.close_target({ app: firstHandle! });
+    assert.deepEqual(
+      driver.calls.filter((call) => call.tool === "end_session").map((call) => call.args.session),
+      [secondSession, firstSession],
+    );
+  });
+
+  it("fails unknown and stale reserved handles closed before every driver call", async () => {
+    const { opensky, driver } = await harness();
+    const opened = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const handle = opened.target!.handle;
+    await opensky.close_target({ app: handle });
+    const before = driver.calls.length;
+
+    await assert.rejects(() => opensky.get_app_state({ app: handle }), /unknown or stale.*No app was resolved or launched/s);
+    await assert.rejects(() => opensky.click({ app: handle, element_index: 1 }), /unknown or stale/);
+    await assert.rejects(() => opensky.navigate({ app: "tgt_00000000000000000000", url: URL }), /unknown or stale/);
+    await assert.rejects(
+      () => opensky.open_target({ app: "tgt_00000000000000000000", targets: [URL] }),
+      /unknown or stale/,
+    );
+    await assert.rejects(() => opensky.close_target({ app: handle }), /No driver-owned exact target/);
+    assert.equal(driver.calls.length, before);
+  });
+
+  it("migrates legacy alias copies into one canonical target record", async () => {
+    const driver = new TypedBrowserDriver();
+    const home = await mkdtemp(join(tmpdir(), "opensky-legacy-targets-"));
+    const legacy = {
+      apps: {
+        "google chrome": legacyBrowserBinding("Google Chrome"),
+        "com.google.chrome": legacyBrowserBinding("com.google.Chrome"),
+      },
+      trees: {},
+      managedBrowserSessions: ["legacy-browser-session"],
+    };
+    await writeFile(join(home, "session.json"), JSON.stringify(legacy));
+    const opensky = createOpenSky({
+      driver,
+      homeDir: home,
+      session: SESSION,
+      target: "mac",
+      settleDelayMs: 0,
+      degradedRetryMs: 0,
+      browserStabilityTimeoutMs: 0,
+    });
+
+    const state = await opensky.get_app_state({ app: "Google Chrome", query: "Submit", includeScreenshot: false });
+    assert.match(state.target?.handle ?? "", /^tgt_[a-f0-9]{20}$/);
+    const persisted = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
+    assert.equal(persisted.version, 2);
+    assert.equal(Object.keys(persisted.targets).length, 1);
+    assert.equal(persisted.aliases["google chrome"], persisted.aliases["com.google.chrome"]);
+    await opensky.close();
+  });
 });
 
 async function harness(options: { browserStabilityTimeoutMs?: number } = {}) {
@@ -644,6 +743,30 @@ function ordinaryWindow() {
     is_on_screen: true,
     on_current_space: true,
     frame: { x: 80, y: 60, width: 1_200, height: 800 },
+  };
+}
+
+function legacyBrowserBinding(query: string) {
+  return {
+    query,
+    name: "Google Chrome",
+    bundleId: "com.google.Chrome",
+    launchPath: "/Applications/Google Chrome.app",
+    pid: PID,
+    windowId: WINDOW_ID,
+    contentScope: "web",
+    browser: {
+      session: "legacy-browser-session",
+      targetId: TARGET_ID,
+      tabId: TAB_ID,
+      managed: true,
+    },
+    targetRequest: {
+      requested: [URL],
+      resourceKind: "url",
+      requestDispatch: "sent",
+      window: { id: WINDOW_ID, source: "launch_result", correlation: "new_since_request" },
+    },
   };
 }
 

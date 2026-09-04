@@ -126,6 +126,23 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 
 `opensky.target` is `"mac"`, `"win"`, or `"linux"`.
 
+Every state includes a short opaque `targetHandle` (also available as
+`state.target.handle` for an explicitly opened resource). Pass that handle as
+the existing `app` value to address the exact same window or tab:
+
+```js
+const first = await opensky.open_target({ app: "Google Chrome", targets: [firstUrl] });
+const second = await opensky.open_target({ app: "Google Chrome", targets: [secondUrl] });
+await opensky.click({ app: first.targetHandle, element_index: 4 });
+await opensky.close_target({ app: second.targetHandle });
+```
+
+Opening another target in the same app does not replace or close its siblings.
+The app name remains convenient shorthand for the newest live target; a handle
+is exact and an unknown or closed `tgt_…` handle fails before app discovery,
+launch, or input. Handles also scope snapshot indices and action settling, so an
+index observed from one sibling cannot silently address another.
+
 OpenSky also mirrors the native runtime's ergonomics around helper lifecycle and
 observation timing: expired named sessions are revived transparently, state
 capture waits briefly after actions, typed browser state is rechecked for semantic
@@ -180,6 +197,12 @@ Owned isolated-browser session identifiers are durably reserved before launch
 and cleared only after `end_session` succeeds, so a later OpenSky process using
 the same home can reap a target left by a host crash. Ordinary user-owned
 browser state is never added to this ledger.
+
+The version-2 session file migrates older copied app bindings into canonical
+target records and alias pointers. Phase one deliberately does not provide
+cross-process leases or transactional multi-writer persistence: use one OpenSky
+runtime (normally `opensky serve`) per `OPENSKY_HOME`. Separate concurrent
+runtimes should use separate homes until per-target leases land.
 
 `open_target` and later observations also return optional structured `target`
 identity. It distinguishes the requested resource, exact bound native window,

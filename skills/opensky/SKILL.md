@@ -58,6 +58,11 @@ opensky eval 'await opensky.click({ app: "Calculator", element_index: 13 })'
 
 `app` may be a display name (`"Calculator"`), bundle id (`"com.apple.calculator"`), or path (`"/System/Applications/Calculator.app"`).
 
+Every returned state has a short opaque `targetHandle`. Pass it as `app` to
+keep addressing that exact window or tab. This matters when multiple targets of
+one app coexist; the ordinary app name selects the newest live target. Never
+edit or guess a handle. Unknown and closed `tgt_…` handles fail closed.
+
 `get_app_state()` launches the app when it is not running.
 
 Prefer display names for actions when a bundle id looks ineffective. Always re-snapshot after an action that seems to no-op, then retry with the other identifier.
@@ -97,7 +102,7 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 
 ### `get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query? })`
 
-Returns `{ app, text, screenshot, target? }`. `target` truthfully separates requested resources, native-window correlation, current AX document identity, and browser-tab verification. Treat `tab.status: "unverified"` literally; a new native window does not prove a new browser tab.
+Returns `{ app, targetHandle, text, screenshot, target? }`. `target` truthfully separates requested resources, native-window correlation, current AX document identity, and browser-tab verification. For an explicit resource, `target.handle` equals `targetHandle`. Treat `tab.status: "unverified"` literally; a new native window does not prove a new browser tab.
 
 For an exact typed browser on a large page, pass `query` when the outline names a needed item but its action was omitted by the semantic budget. The result is a fresh, narrowed state with current actionable indices; use those indices instead of guessing. Query is read-only and unavailable for native app bindings.
 Semantic link entries may include safe resolved `url=` metadata. Use it to understand destinations without unnecessary navigation; continue to act through the opaque current-state element index.
@@ -111,6 +116,10 @@ Semantic link entries may include safe resolved `url=` metadata. Use it to under
 ### `open_target({ app, targets, includeScreenshot?, query? })`
 
 Use this as the first call when the task supplies a URL or file. For one HTTP(S) URL in Chrome/Edge/Chromium it creates a driver-owned isolated profile and exact typed tab binding; do not create a blank tab or observe the browser first. URL observations are page-scoped by default so restored tabs, favorites, toolbars, and application menus do not consume context. `includeAppChrome` is unavailable for an exact typed binding and fails closed rather than crossing into native input.
+
+The returned handle remains exact if another target is later opened with the
+same app. Use it for actions, navigation, observation, and cleanup whenever
+siblings coexist; this needs no selection or switching call.
 
 For that exact typed browser route, pass `query` to make known semantic content addressable in the initial settled observation. Query is rejected before any mutation for native targets, multiple targets, or non-URL targets.
 

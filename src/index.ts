@@ -11,4 +11,5 @@ export type {
   OpenSkyOptions,
   OpenSkyTarget,
   SelectionType,
+  TargetHandle,
 } from "./types.js";

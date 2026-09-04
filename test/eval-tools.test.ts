@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "bun:test";
 
 import { createOpenSkyToolRuntime, dispatchBatchActions, OPENSKY_TOOL_NAMES, validateBatchActions } from "../evals/tools.js";
@@ -15,7 +18,9 @@ describe("OpenSky tool runtime lifecycle", () => {
         return { structured: { status: "ok" }, text: "ok", raw: {} };
       },
     };
-    const runtime = createOpenSkyToolRuntime(driver, "mac");
+    const runtime = createOpenSkyToolRuntime(driver, "mac", {
+      homeDir: await mkdtemp(join(tmpdir(), "opensky-eval-tools-")),
+    });
 
     await runtime.close();
     await runtime.close();
@@ -38,7 +43,9 @@ describe("OpenSky tool runtime lifecycle", () => {
         return { structured: { status: "ok" }, text: "ok", raw: {} };
       },
     };
-    const runtime = createOpenSkyToolRuntime(driver, "mac");
+    const runtime = createOpenSkyToolRuntime(driver, "mac", {
+      homeDir: await mkdtemp(join(tmpdir(), "opensky-eval-tools-")),
+    });
     const click = runtime.tools.find((tool) => tool.name === "click");
     const batch = runtime.tools.find((tool) => tool.name === "perform_actions");
     assert.ok(click);
