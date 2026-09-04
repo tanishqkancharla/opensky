@@ -197,6 +197,10 @@ async function getWindowState(state, args) {
     elements,
     frame: window.frame,
     screenshot_file_path: args.screenshot_out_file ?? undefined,
+    elements_complete: !(state.saturateDefault && args.max_depth === undefined),
+    total_element_count: state.saturateDefault && args.max_depth === undefined ? 4000 : elements.length,
+    returned_element_count: state.saturateDefault && args.max_depth === undefined ? 2000 : elements.length,
+    element_count: state.saturateDefault && args.max_depth === undefined ? 2000 : elements.length,
   };
 }
 

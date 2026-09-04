@@ -218,6 +218,9 @@ export interface WindowSnapshot {
   frame?: { width: number; height: number };
   degraded?: boolean;
   degradedReason?: string;
+  truncated?: boolean;
+  totalElementCount?: number;
+  returnedElementCount?: number;
 }
 
 export interface OpenSkyOptions {

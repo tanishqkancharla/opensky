@@ -284,6 +284,23 @@ describe("OpenSky against cua-driver", () => {
     assert.doesNotMatch(second.text, /No accessibility changes/);
   });
 
+  it("projects a saturated native tree shallowly so later controls stay visible", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.saturateDefault = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.match(state.text, /^Accessibility projection:/);
+    assert.match(state.text, /Scientific/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const observations = after.calls.filter((call: { tool: string }) => call.tool === "get_window_state");
+    assert.equal(observations.length, 2);
+    assert.equal(observations[0].args.max_depth, undefined);
+    assert.equal(observations[1].args.max_depth, 3);
+  });
+
   it("relaunches a running UI app when it has no ordinary window", async () => {
     const { opensky, statePath } = await makeHarness();
     await opensky.list_apps();

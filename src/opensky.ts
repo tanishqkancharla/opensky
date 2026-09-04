@@ -761,7 +761,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotWindow(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; screenshotPath?: string },
+    options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number },
   ): Promise<WindowSnapshot> {
     if (!resolved.windowId) {
       resolved.windowId = await this.pickWindow(resolved.pid, {});
@@ -778,6 +778,7 @@ export class OpenSky implements OpenSkyApi {
       screenshot_out_file: options.includeScreenshot ? screenshotPath : undefined,
       screenshot_format: this.screenshotFormat,
       screenshot_scale: this.screenshotScale,
+      max_depth: options.maxDepth,
     });
     const structured = asRecord(result.structured) ?? {};
     const rawElements = normalizeElements(structured.elements);
@@ -807,6 +808,9 @@ export class OpenSky implements OpenSkyApi {
       (options.includeScreenshot ? await maybeWriteScreenshot(structured, screenshotPath) : null);
     const frame = frameOf(structured);
     const screenshot = filePath ? await screenshotFromFile(filePath, frame) : undefined;
+    const returnedElementCount = optionalFiniteNumber(structured.returned_element_count) ?? rawElements.length;
+    const totalElementCount = optionalFiniteNumber(structured.total_element_count) ??
+      optionalFiniteNumber(structured.element_count) ?? returnedElementCount;
     if (filePath) await chmod(filePath, 0o600).catch(() => undefined);
     resolved.snapshotId = snapshotId;
     this.memory.apps[normalizeAppKey(resolved.query)] = resolved;
@@ -821,6 +825,9 @@ export class OpenSky implements OpenSkyApi {
       frame,
       degraded: structured.degraded === true,
       degradedReason: optionalString(structured.degraded_reason),
+      truncated: structured.elements_complete === false || totalElementCount > returnedElementCount,
+      totalElementCount,
+      returnedElementCount,
     };
   }
 
@@ -840,6 +847,24 @@ export class OpenSky implements OpenSkyApi {
       await sleep(Math.min(delayMs, Math.max(0, deadline - Date.now())));
       delayMs = Math.min(delayMs * 2, 800);
       snapshot = await this.snapshotWindow(resolved, captureOptions);
+    }
+    if (snapshot.truncated && resolved.contentScope !== "web" && !snapshot.degraded) {
+      const full = snapshot;
+      const projected = await this.snapshotWindow(resolved, {
+        includeScreenshot: false,
+        screenshotPath,
+        maxDepth: 3,
+      });
+      if (!projected.degraded && projected.tree.trim()) {
+        projected.tree =
+          `Accessibility projection: the default native tree reached its ${full.returnedElementCount ?? "configured"}-element ` +
+          `walk limit, so deep repetitive descendants were collapsed at depth 3 while preserving their parent controls and landmarks.\n` +
+          projected.tree;
+        projected.screenshotPath = full.screenshotPath;
+        projected.screenshot = full.screenshot;
+        projected.frame = full.frame ?? projected.frame;
+        snapshot = projected;
+      }
     }
     if (snapshot.degraded) {
       const detail = snapshot.degradedReason ? `: ${snapshot.degradedReason}` : "";
@@ -1713,6 +1738,12 @@ function normalizeLastUsed(value: unknown): string | number | undefined {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function optionalFiniteNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
 }
 
 function scalarText(value: unknown): string | undefined {
