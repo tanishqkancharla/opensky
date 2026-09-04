@@ -25,6 +25,10 @@ describe("single-tool native-style cua evaluator", () => {
       const observed = await execute(tool, "apps", { code: "await cua.listApps()" });
       assert.equal(observed.content.length, 1, "the emitted list and expression result must be deduplicated");
       assert.match((observed.content[0] as { text: string }).text, /Example/);
+      assert.deepEqual(
+        (observed.details as { cuaCalls: Array<{ op: string; status: string }> }).cuaCalls.map(({ op, status }) => ({ op, status })),
+        [{ op: "listApps", status: "completed" }],
+      );
 
       runtime.cua.getApp = async () => ({
         targetHandle: "tgt_fake",
@@ -38,6 +42,10 @@ describe("single-tool native-style cua evaluator", () => {
         code: `app = await cua.getApp("Example"); await app.getAXState()`,
       });
       assert.deepEqual(observedAX.content, [{ type: "text", text: "AX tree" }], "getAXState emission and result must appear once");
+      assert.deepEqual(
+        (observedAX.details as { cuaCalls: Array<{ op: string }> }).cuaCalls.map(({ op }) => op),
+        ["getApp", "target.getAXState"],
+      );
     } finally {
       await runtime.close();
     }

@@ -13,12 +13,21 @@ type Content =
 
 export const CUA_REPL_TOOL_NAMES = ["cua_repl"] as const;
 
+type BridgeCallTrace = {
+  op: string;
+  args: unknown[];
+  durationMs: number;
+  status: "completed" | "failed";
+  error?: string;
+};
+
 export function createCuaReplToolRuntime(
   driver: DriverClient,
   target: OpenSkyTarget,
   options: Omit<OpenSkyOptions, "driver" | "target"> = {},
 ) {
   let activeEmissions: unknown[] | undefined;
+  let activeBridgeCalls: BridgeCallTrace[] | undefined;
   const opensky = createOpenSky({ ...options, driver, target, autoLaunch: options.autoLaunch ?? true });
   const cua = createCua(opensky, { emit: (value) => activeEmissions?.push(value) });
   const targets = new Map<string, App | Tab>();
@@ -26,7 +35,19 @@ export function createCuaReplToolRuntime(
   installSafeCuaBridge(repl, async (request) => {
     const parsed = JSON.parse(request) as { op?: string; args?: unknown[] };
     const args = Array.isArray(parsed.args) ? parsed.args : [];
-    return JSON.stringify(encodeBridgeValue(await dispatch(parsed.op ?? "", args, cua, targets)));
+    const op = parsed.op ?? "";
+    const begun = performance.now();
+    const trace: BridgeCallTrace = { op, args, durationMs: 0, status: "completed" };
+    activeBridgeCalls?.push(trace);
+    try {
+      return JSON.stringify(encodeBridgeValue(await dispatch(op, args, cua, targets)));
+    } catch (error) {
+      trace.status = "failed";
+      trace.error = error instanceof Error ? error.message : String(error);
+      throw error;
+    } finally {
+      trace.durationMs = Math.max(0, performance.now() - begun);
+    }
   });
 
   const emittedImages = new Set<string>();
@@ -45,6 +66,7 @@ export function createCuaReplToolRuntime(
     }),
     async execute(_id, params) {
       activeEmissions = [];
+      activeBridgeCalls = [];
       try {
         const result = await repl.evaluate(params.code, "cua-repl");
         const values = [...activeEmissions, ...result.logs];
@@ -57,12 +79,14 @@ export function createCuaReplToolRuntime(
             title: params.title,
             code: params.code,
             emissions: activeEmissions.length,
+            cuaCalls: activeBridgeCalls,
             result: encodeBridgeValue(result.value),
             logs: result.logs,
           },
         };
       } finally {
         activeEmissions = undefined;
+        activeBridgeCalls = undefined;
       }
     },
   })];
