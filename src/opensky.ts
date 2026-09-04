@@ -100,9 +100,19 @@ export class OpenSky implements OpenSkyApi {
     return mapApps(result.structured);
   }
 
-  async get_app_state(args: { app: string; disableDiff?: boolean; includeScreenshot?: boolean }): Promise<AppState> {
+  async get_app_state(args: {
+    app: string;
+    disableDiff?: boolean;
+    includeScreenshot?: boolean;
+    includeAppChrome?: boolean;
+  }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
     const resolved = await this.requireResolved(args.app);
+    if (args.includeAppChrome === true && resolved.contentScope === "web") {
+      resolved.contentScope = undefined;
+      this.memory.apps[normalizeAppKey(resolved.query)] = resolved;
+      await this.persist();
+    }
     await this.settleAfterAction(resolved);
     await this.refreshWindowAfterAction(resolved);
     if (!resolved.windowId) await this.adoptWindowForObservation(resolved);
@@ -180,6 +190,7 @@ export class OpenSky implements OpenSkyApi {
       launchPath: optionalString(structured.launch_path) ?? optionalString(match?.launch_path),
       pid,
       windowId,
+      contentScope: args.targets.some(isHttpUrl) ? "web" : undefined,
     };
     this.memory.apps[normalizeAppKey(args.app)] = resolved;
     if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
@@ -659,10 +670,18 @@ export class OpenSky implements OpenSkyApi {
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
       (typeof structured.text === "string" && structured.text) ||
       "";
-    const pruned = pruneMenuSubtrees(sanitizeTreeText(rawTree));
+    const sanitized = sanitizeTreeText(rawTree);
+    const scoped = resolved.contentScope === "web" ? isolatePrimaryWebArea(sanitized) : sanitized;
+    const pruned = pruneMenuSubtrees(scoped);
+    const scopedIndices = resolved.contentScope === "web" ? indicesInTree(pruned.tree) : undefined;
     const visibleElements = pruned.hiddenIndices.size
-      ? rawElements.filter((element) => !pruned.hiddenIndices.has(element.element_index))
-      : rawElements;
+      ? rawElements.filter((element) =>
+          !pruned.hiddenIndices.has(element.element_index) &&
+          (!scopedIndices || scopedIndices.has(element.element_index)),
+        )
+      : scopedIndices
+        ? rawElements.filter((element) => scopedIndices.has(element.element_index))
+        : rawElements;
     const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
     const elements = stabilizeElementIndices(previousElements, visibleElements, pruned.hiddenIndices.size > 0);
     const remappedTree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
@@ -1155,7 +1174,13 @@ export function pruneMenuSubtrees(tree: string): { tree: string; hiddenIndices: 
     }
     if (menuBarIndent !== undefined) {
       if (indent <= menuBarIndent) {
-        menuBarIndent = undefined;
+        if (/^\s*-\s+/.test(line)) {
+          menuBarIndent = undefined;
+        } else {
+          const index = line.match(/\[(\d+)\]/)?.[1];
+          if (index !== undefined) hiddenIndices.add(Number(index));
+          continue;
+        }
       } else if (indent > menuBarIndent + 2 || !/\bAXMenuBarItem\b/.test(line)) {
         const index = line.match(/\[(\d+)\]/)?.[1];
         if (index !== undefined) hiddenIndices.add(Number(index));
@@ -1165,6 +1190,37 @@ export function pruneMenuSubtrees(tree: string): { tree: string; hiddenIndices: 
     kept.push(line);
   }
   return { tree: kept.join("\n"), hiddenIndices };
+}
+
+/** Return the largest AXWebArea subtree plus its containing window identity. */
+export function isolatePrimaryWebArea(tree: string): string {
+  if (!tree) return tree;
+  const lines = tree.split("\n");
+  const candidates: Array<{ start: number; end: number }> = [];
+  for (let start = 0; start < lines.length; start += 1) {
+    if (!/\bAXWebArea\b/.test(lines[start] ?? "")) continue;
+    const indent = lines[start]?.match(/^\s*/)?.[0].length ?? 0;
+    let end = start + 1;
+    while (end < lines.length) {
+      const line = lines[end] ?? "";
+      const nextIndent = line.match(/^\s*/)?.[0].length ?? 0;
+      if (/^\s*-\s+/.test(line) && nextIndent <= indent) break;
+      end += 1;
+    }
+    candidates.push({ start, end });
+  }
+  const primary = candidates.sort((a, b) => (b.end - b.start) - (a.end - a.start))[0];
+  if (!primary || primary.end - primary.start < 2) return tree;
+  const windowLine = lines.find((line) => /\bAXWindow\b/.test(line));
+  return [windowLine, ...lines.slice(primary.start, primary.end)].filter(Boolean).join("\n");
+}
+
+function indicesInTree(tree: string): Set<number> {
+  return new Set([...tree.matchAll(/\[(\d+)\]/g)].map((match) => Number(match[1])));
+}
+
+function isHttpUrl(target: string): boolean {
+  return /^https?:\/\//i.test(target.trim());
 }
 
 /** Flatten Cua's multi-line custom-action descriptor into one readable action. */
@@ -1272,6 +1328,14 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
         if (!element) return line;
         const additions: string[] = [];
         const renderedValue = element.value === undefined ? undefined : JSON.stringify(element.value);
+        if (
+          /^AX(?:TextField|TextArea|ComboBox)$/i.test(element.role ?? "") &&
+          element.enabled !== false &&
+          !element.value?.includes("\n") &&
+          !/\b(?:editable|settable)\b/i.test(line)
+        ) {
+          additions.push("editable");
+        }
         if (
           element.value !== undefined &&
           !/\bvalue\s*[:=]/i.test(line) &&

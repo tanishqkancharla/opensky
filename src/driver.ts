@@ -72,17 +72,8 @@ export class CuaDriverClient implements DriverClient {
     if (parsed.isError || result.code !== 0) {
       throw driverError(parsed.message || result.stderr.trim() || `${tool} failed.`);
     }
-    const structured = parsed.result.structured;
-    if (
-      structured &&
-      typeof structured === "object" &&
-      (structured as { effect?: unknown }).effect === "refused"
-    ) {
-      const refusal = structured as { reason?: unknown; code?: unknown };
-      throw driverError(
-        String(refusal.reason ?? refusal.code ?? parsed.message ?? `${tool} was refused by the desktop helper.`),
-      );
-    }
+    const refusal = parseDriverRefusal(parsed.result.structured);
+    if (refusal) throw driverError(refusal.message, refusal.code);
     return parsed.result;
   }
 
@@ -353,6 +344,23 @@ export function parseDriverOutput(stdout: string): {
       raw: parsed,
     },
   };
+}
+
+/** Normalize both native-window and typed-browser refusal envelopes. */
+export function parseDriverRefusal(structured: unknown): { code?: string; message: string } | null {
+  if (!isRecord(structured)) return null;
+  if (structured.effect === "refused") {
+    const code = typeof structured.code === "string" ? structured.code : undefined;
+    const message = [structured.reason, structured.message, code]
+      .find((value): value is string => typeof value === "string" && value.length > 0);
+    return { code, message: message ?? "The desktop helper refused the request." };
+  }
+  if (structured.status !== "refused") return null;
+  const nested = isRecord(structured.refusal) ? structured.refusal : structured;
+  const code = typeof nested.code === "string" ? nested.code : undefined;
+  const message = [nested.message, nested.reason, code]
+    .find((value): value is string => typeof value === "string" && value.length > 0);
+  return { code, message: message ?? "The desktop helper refused the request." };
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | null {

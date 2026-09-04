@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
 
-import { parseDriverOutput } from "../src/driver.js";
+import { parseDriverOutput, parseDriverRefusal } from "../src/driver.js";
 
 describe("parseDriverOutput", () => {
   it("reads MCP envelopes", () => {
@@ -36,5 +36,25 @@ describe("parseDriverOutput", () => {
   it("keeps non-JSON stdout as text", () => {
     const parsed = parseDriverOutput("running");
     assert.equal(parsed.result.text, "running");
+  });
+});
+
+describe("parseDriverRefusal", () => {
+  it("reads typed browser refusal envelopes", () => {
+    assert.deepEqual(parseDriverRefusal({
+      status: "refused",
+      refusal: { code: "browser_requires_setup", message: "Prepare an isolated browser first." },
+    }), {
+      code: "browser_requires_setup",
+      message: "Prepare an isolated browser first.",
+    });
+  });
+
+  it("retains legacy effect refusals", () => {
+    assert.deepEqual(parseDriverRefusal({ effect: "refused", code: "window_off_space", reason: "Window is off-Space." }), {
+      code: "window_off_space",
+      message: "Window is off-Space.",
+    });
+    assert.equal(parseDriverRefusal({ status: "ok" }), null);
   });
 });

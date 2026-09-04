@@ -54,6 +54,7 @@ export interface OpenSky {
     app: string;
     disableDiff?: boolean;
     includeScreenshot?: boolean;
+    includeAppChrome?: boolean;
   }): Promise<AppState>;
   open_target(args: {
     app: string;
@@ -148,6 +149,8 @@ export interface ResolvedApp {
   pid: number;
   windowId?: number;
   snapshotId?: string;
+  /** URL targets default to their primary AXWebArea, matching a native Tab binding. */
+  contentScope?: "web";
 }
 
 export interface SnapshotElement {

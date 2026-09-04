@@ -8,6 +8,7 @@ import {
   diffTrees,
   compactTreeActionHints,
   enrichTreeSemantics,
+  isolatePrimaryWebArea,
   findWithContext,
   mapApps,
   normalizeDirection,
@@ -15,6 +16,7 @@ import {
   pickOrdinaryWindowId,
   pickUsableWindowId,
   pickWindowId,
+  pruneMenuSubtrees,
 } from "../src/opensky.js";
 import type { SnapshotElement } from "../src/types.js";
 import { makeHarness } from "./harness.ts";
@@ -123,15 +125,18 @@ describe("opensky helpers", () => {
       [
         '- [7] AXRadioButton (World Clock) [actions=[press]]',
         '- [8] AXButton (Save) [actions=[press]]',
+        '- [9] AXComboBox (Search) [actions=[press]]',
         '- AXButton (Lap)',
       ].join("\n"),
       [
         { element_index: 7, role: "AXRadioButton", label: "World Clock", value: "1", selected: true },
         { element_index: 8, role: "AXButton", label: "Save", enabled: false },
+        { element_index: 9, role: "AXComboBox", label: "Search", value: "" },
       ],
     );
     assert.match(text, /World Clock.*value="1"/);
     assert.match(text, /Save.*disabled/);
+    assert.match(text, /Search.*editable/);
     assert.match(text, /Lap.*unavailable/);
   });
 
@@ -152,6 +157,47 @@ describe("opensky helpers", () => {
       '- [3] AXMenuButton "Options" [actions=[showmenu,press]]',
     ].join("\n"));
     assert.deepEqual(elements[0]?.actions, ["showmenu", "scrolltovisible"]);
+  });
+
+  it("isolates the largest web area from restored tabs and browser chrome", () => {
+    const tree = [
+      '- [0] AXWindow "Browser"',
+      '  - [1] AXToolbar',
+      '    - [2] AXButton "Back"',
+      '  - [3] AXWebArea "Small popup"',
+      '    - [4] AXStaticText = "Popup"',
+      '  - [5] AXWebArea "Main page"',
+      '    - [6] AXHeading "Article"',
+      '      - [7] AXStaticText = "Article"',
+      '    - [8] AXTextField "Search"',
+      '  - [9] AXRadioButton "Restored tab"',
+      '- [10] AXMenuBar',
+    ].join("\n");
+    assert.equal(isolatePrimaryWebArea(tree), [
+      '- [0] AXWindow "Browser"',
+      '  - [5] AXWebArea "Main page"',
+      '    - [6] AXHeading "Article"',
+      '      - [7] AXStaticText = "Article"',
+      '    - [8] AXTextField "Search"',
+    ].join("\n"));
+  });
+
+  it("does not let multiline menu labels escape closed-menu pruning", () => {
+    const tree = [
+      '- [0] AXWindow "App"',
+      '- [10] AXMenuBar',
+      '  - [11] AXMenuBarItem "Develop"',
+      'label continuation at column zero',
+      '    - [12] AXMenu',
+      '      - [13] AXMenuItem "Hidden"',
+      '  - [14] AXMenuBarItem "Help"',
+    ].join("\n");
+    const pruned = pruneMenuSubtrees(tree);
+    assert.match(pruned.tree, /AXMenuBarItem "Develop"/);
+    assert.match(pruned.tree, /AXMenuBarItem "Help"/);
+    assert.doesNotMatch(pruned.tree, /continuation|Hidden/);
+    assert.ok(pruned.hiddenIndices.has(12));
+    assert.ok(pruned.hiddenIndices.has(13));
   });
 
   it("does not duplicate a multiline value already rendered after an equals sign", () => {

@@ -146,11 +146,16 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
         app: Type.String({ description: "Display name, bundle id, or path" }),
         disableDiff: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
+        include_app_chrome: Type.Optional(Type.Boolean({ description: "Exit URL page scope and return full browser app chrome" })),
       }),
       async execute(_id, params) {
-        const { include_screenshot, ...stateArgs } = params;
+        const { include_screenshot, include_app_chrome, ...stateArgs } = params;
         return stateResult(
-          await opensky.get_app_state({ ...stateArgs, includeScreenshot: include_screenshot === true }),
+          await opensky.get_app_state({
+            ...stateArgs,
+            includeScreenshot: include_screenshot === true,
+            includeAppChrome: include_app_chrome === true,
+          }),
           include_screenshot === true,
           emittedImageHashes,
         );
@@ -419,7 +424,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       name: "set_value",
       label: "set_value",
       description:
-        "Set an element's AX value directly. Prefer this for exact replacement and supported controls such as sliders, steppers, and date pickers.",
+        "Set a native element's AX value directly. Prefer this for sliders, steppers, date pickers, and other controls with reliable value semantics. For web text fields/areas/comboboxes, prefer type_text so input events fire.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -437,7 +442,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       name: "type_text",
       label: "type_text",
       description:
-        "Type text. Prefer element_index from fresh state for atomic focus+type; x/y is available for canvas surfaces. Omit both only when the focused field was already verified. Newlines may submit.",
+        "Type text. For an AXTextField, AXTextArea, or AXComboBox, call this directly with element_index—do not click it first; targeted typing atomically focuses and types. x/y is available for canvas surfaces. Omit both only when focus was already verified. Newlines may submit.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),

@@ -70,7 +70,7 @@ Prefer display names for actions when a bundle id looks ineffective. Always re-s
 opensky.target                    // "mac" | "win" | "linux"
 
 await opensky.list_apps()
-await opensky.get_app_state({ app, disableDiff?, includeScreenshot? })
+await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome? })
 await opensky.open_target({ app, targets, includeScreenshot? })
 await opensky.bring_to_front({ app })
 await opensky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
@@ -104,7 +104,7 @@ Returns `{ app, text, screenshot }`.
 
 ### `open_target({ app, targets, includeScreenshot? })`
 
-Use this as the first call when the task supplies a URL or file. For browser URLs it opens and binds the resulting tab/window itself; do not create a blank tab or observe the browser first.
+Use this as the first call when the task supplies a URL or file. For browser URLs it opens and binds the resulting tab/window itself; do not create a blank tab or observe the browser first. URL observations are page-scoped by default so restored tabs, favorites, toolbars, and application menus do not consume context. If the task later needs those browser controls, call `get_app_state({ app, includeAppChrome: true })`; this exits page scope for subsequent app observations.
 
 Open files or URLs with a named app and return the settled full state of the returned, newly created, or title-matching ordinary window. Prefer this over launching a document and then separately resolving the app; the binding prevents an older sibling document from being mistaken for the requested target.
 

@@ -107,8 +107,8 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | Method | Cua Driver tools used |
 | --- | --- |
 | `list_apps()` | `list_apps` |
-| `get_app_state({app, disableDiff?, includeScreenshot?})` | `launch_app` if needed, `list_windows`, `get_window_state` |
-| `open_target({app, targets, includeScreenshot?})` | `launch_app` with URLs/files, then binds the returned/new/matching ordinary window or browser tab before observation; call it directly without first creating a blank tab |
+| `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?})` | `launch_app` if needed, `list_windows`, `get_window_state` |
+| `open_target({app, targets, includeScreenshot?})` | `launch_app` with URLs/files, then binds the returned/new/matching ordinary window or browser tab before observation; URL state is page-scoped by default |
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |
 | `click` | `click` / `double_click` |
 | `drag` | `drag` |
@@ -154,6 +154,8 @@ console.log(after.text);
 Element indices are snapshots. Some identifiers fail silently. An action can take effect even if a later screenshot capture rejects. Refresh state before retrying.
 
 `perform_actions` never retries a completed prefix. If a DOM/UI mutation makes a later element stale, the stopped result includes a fresh settled AX state so the next action can use new indices without a separate observation call.
+
+URL targets return the primary web-content subtree by default, omitting restored tabs, favorites, toolbars, and application menus just like a native tab binding. If the task later needs browser chrome, call `get_app_state` with `includeAppChrome: true`; that explicitly switches the binding back to full-app state.
 
 ## Development
 
