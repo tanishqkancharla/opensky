@@ -90,6 +90,15 @@ describe("opensky helpers", () => {
     assert.equal(pickOrdinaryWindowId([
       { window_id: 4, frame: { width: 640, height: 480 }, on_current_space: false, is_on_screen: false },
     ]), 4);
+    assert.equal(pickOrdinaryWindowId([
+      {
+        window_id: 5,
+        frame: { width: 640, height: 480 },
+        on_current_space: null,
+        is_on_screen: false,
+        space_ids: null,
+      },
+    ]), undefined);
   });
 
   it("validates mouse buttons including numeric aliases", () => {
@@ -333,6 +342,23 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(launches.length, 2);
     assert.deepEqual(launches[0].args.urls, ["/tmp/delayed-target.txt"]);
     assert.deepEqual(launches[1].args.urls, ["/tmp/delayed-target.txt"]);
+  });
+
+  it("does not loop or recommend unsafe input after a refused target dispatch", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const textEdit = fixture.apps.find((app: { name: string }) => app.name === "TextEdit");
+    textEdit.windows = [];
+    fixture.launchRefuse = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    await assert.rejects(
+      opensky.open_target({ app: "TextEdit", targets: ["/tmp/refused.txt"], includeScreenshot: false }),
+      /could not dispatch.*LAUNCH_FAILED.*No keyboard or pointer input was sent/,
+    );
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "launch_app").length, 1);
   });
 
   it("reports current document identity without claiming a verified tab", async () => {

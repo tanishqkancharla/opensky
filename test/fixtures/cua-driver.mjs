@@ -121,6 +121,9 @@ function launchApp(state, args) {
   const app = findApp(state, args) ?? createApp(state, args);
   app.running = true;
   if (!app.pid) app.pid = nextPid(state);
+  if (state.launchRefuse) {
+    return { error: "LAUNCH_FAILED", launch_state: { process_running: true, requested: false, window_ready: false } };
+  }
   if (state.launchNoWindowsOnce > 0) {
     state.launchNoWindowsOnce -= 1;
     return {

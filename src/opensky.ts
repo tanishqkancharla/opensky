@@ -191,7 +191,7 @@ export class OpenSky implements OpenSkyApi {
     // publishing its ordinary window. Native Computer Use hides that race.
     // Repeat the identical request once only while no ordinary window exists;
     // never replay after a usable or off-Space document window is observable.
-    if (pickOrdinaryWindowId(windows) === undefined) {
+    if (pickOrdinaryWindowId(windows) === undefined && !launchDispatchRefused(structured)) {
       await sleep(this.settleDelayMs);
       launched = await this.driver.call("launch_app", launchArgs);
       structured = { ...structured, ...(asRecord(launched.structured) ?? {}) };
@@ -201,6 +201,12 @@ export class OpenSky implements OpenSkyApi {
       if (pickOrdinaryWindowId(windows) === undefined) {
         windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured);
       }
+    }
+    if (pickOrdinaryWindowId(windows) === undefined && launchDispatchRefused(structured)) {
+      throw new OpenSkyError(
+        `The desktop helper could not dispatch the requested target to ${JSON.stringify(args.app)} ` +
+        `(${String(structured.error)}). No keyboard or pointer input was sent.`,
+      );
     }
     const newWindows = windows.filter((window) =>
       typeof window.window_id === "number" && !previousIds.has(window.window_id),
@@ -1141,6 +1147,11 @@ function windowMatchesTargets(window: Record<string, unknown>, targets: string[]
   });
 }
 
+function launchDispatchRefused(structured: Record<string, unknown>): boolean {
+  const state = asRecord(structured.launch_state);
+  return typeof structured.error === "string" && state?.requested === false;
+}
+
 export function pickWindowId(windows: Record<string, unknown>[]): number | undefined {
   if (windows.length === 0) return undefined;
   const eligible = windows.filter((window) => window.on_current_space !== false && window.is_on_screen !== false);
@@ -1165,7 +1176,10 @@ export function pickOrdinaryWindowId(windows: Record<string, unknown>[]): number
 
 function isOrdinaryWindow(window: Record<string, unknown>): boolean {
   const frame = frameOf(window);
-  return Boolean(frame && frame.width >= 120 && frame.height >= 80);
+  const closedGhost = window.is_on_screen === false &&
+    window.on_current_space == null &&
+    window.space_ids == null;
+  return Boolean(frame && frame.width >= 120 && frame.height >= 80 && !closedGhost);
 }
 
 export function windowScore(window: Record<string, unknown>): number {
