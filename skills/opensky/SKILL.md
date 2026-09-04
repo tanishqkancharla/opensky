@@ -94,7 +94,7 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 
 ### `get_app_state({ app, disableDiff?, includeScreenshot? })`
 
-Returns `{ app, text, screenshot }`.
+Returns `{ app, text, screenshot, target? }`. `target` truthfully separates requested resources, native-window correlation, current AX document identity, and browser-tab verification. Treat `tab.status: "unverified"` literally; a new native window does not prove a new browser tab.
 
 - `app` is the launch path when known, otherwise the display name.
 - `text` is the accessibility tree for the **main document window**, including menu-bar elements exposed by the helper. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a compact native-style diff with stable public element indices.

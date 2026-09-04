@@ -157,6 +157,10 @@ Element indices are snapshots. Some identifiers fail silently. An action can tak
 
 URL targets return the primary web-content subtree by default, omitting restored tabs, favorites, toolbars, and application menus just like a native tab binding. If the task later needs browser chrome, call `get_app_state` with `includeAppChrome: true`; that explicitly switches the binding back to full-app state.
 
+`open_target` and later observations also return optional structured `target` identity. It distinguishes the requested resource, exact bound native window, and current AX document title/URL when the helper publishes one. Browser tab identity is explicitly `unverified` unless a future typed browser binding proves it; a new native window is never reported as a new tab. The evaluator renders this as one compact `Target:` line.
+
+If an app is reported running but has no ordinary UI window, `get_app_state` asks the driver to launch/reveal the app before giving up. This matches native `getApp` behavior for background or stale app registrations without guessing a sibling window.
+
 ## Development
 
 Tests are TypeScript and run with [Bun](https://bun.sh) (`bun test`), which executes `src/` directly — no `tsc` step required for the suite.

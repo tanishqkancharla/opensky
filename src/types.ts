@@ -48,6 +48,34 @@ export interface AppState {
   /** True when the exact window was observed but its AX tree could not be resolved. */
   degraded?: boolean;
   degradedReason?: string;
+  /** Honest target/document identity; tab identity remains unverified without typed browser binding. */
+  target?: TargetIdentity;
+}
+
+export type TargetResourceKind = "url" | "path" | "mixed";
+export type TargetWindowSource = "launch_result" | "post_launch_list" | "none";
+export type TargetWindowCorrelation = "new_since_request" | "title_match" | "uncorrelated" | "none";
+
+export interface TargetRequestIdentity {
+  requested: string[];
+  resourceKind: TargetResourceKind;
+  requestDispatch: "sent" | "unknown";
+  window: {
+    id?: number;
+    source: TargetWindowSource;
+    correlation: TargetWindowCorrelation;
+  };
+}
+
+export interface TargetIdentity extends TargetRequestIdentity {
+  document: {
+    freshness: "current" | "unavailable";
+    title?: string;
+    url?: string;
+    source?: "ax_web_area" | "ax_document";
+    requestRelation: "exact" | "different" | "unknown";
+  };
+  tab: { status: "unverified" };
 }
 
 export interface OpenSky {
@@ -154,6 +182,7 @@ export interface ResolvedApp {
   snapshotId?: string;
   /** URL targets default to their primary AXWebArea, matching a native Tab binding. */
   contentScope?: "web";
+  targetRequest?: TargetRequestIdentity;
 }
 
 export interface SnapshotElement {
@@ -165,6 +194,7 @@ export interface SnapshotElement {
   label?: string;
   value?: string;
   identifier?: string;
+  url?: string;
   actions?: string[];
   /** Explicit AX value mutability when the helper publishes it. */
   settable?: boolean;

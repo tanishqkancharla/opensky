@@ -22,6 +22,8 @@ import type {
   OpenSkyOptions,
   OpenSkyTarget,
   SnapshotElement,
+  TargetIdentity,
+  TargetRequestIdentity,
   WindowSnapshot,
 } from "./types.js";
 
@@ -123,6 +125,7 @@ export class OpenSky implements OpenSkyApi {
         text:
           `Application ${JSON.stringify(resolved.name)} is running but has no usable ordinary window on the current desktop. ` +
           "Use an application keyboard shortcut or menu action to create or reveal a window, then observe again.",
+        target: targetIdentityFor(resolved),
       };
     }
     const previous = this.memory.trees[windowKey(resolved)];
@@ -145,6 +148,7 @@ export class OpenSky implements OpenSkyApi {
       text,
       degraded: snapshot.degraded,
       degradedReason: snapshot.degradedReason,
+      target: targetIdentityFor(resolved, snapshot),
     };
   }
 
@@ -176,6 +180,9 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(`Failed to open target with ${JSON.stringify(args.app)}`);
     }
     let windows = windowsFrom(structured);
+    let windowSource: TargetRequestIdentity["window"]["source"] = windows.length > 0
+      ? "launch_result"
+      : "post_launch_list";
     if (windows.length === 0) {
       windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured);
     }
@@ -185,6 +192,14 @@ export class OpenSky implements OpenSkyApi {
     const matchingWindows = windows.filter((window) => windowMatchesTargets(window, args.targets));
     const candidates = newWindows.length > 0 ? newWindows : matchingWindows.length > 0 ? matchingWindows : windows;
     const windowId = pickUsableWindowId(candidates) ?? pickOrdinaryWindowId(candidates);
+    if (windows.length === 0 || windowId === undefined) windowSource = "none";
+    const correlation: TargetRequestIdentity["window"]["correlation"] = windowId === undefined
+      ? "none"
+      : newWindows.some((window) => window.window_id === windowId)
+        ? "new_since_request"
+        : matchingWindows.some((window) => window.window_id === windowId)
+          ? "title_match"
+          : "uncorrelated";
     const resolved: ResolvedApp = {
       query: args.app,
       name: String(structured.name ?? match?.name ?? args.app),
@@ -193,6 +208,12 @@ export class OpenSky implements OpenSkyApi {
       pid,
       windowId,
       contentScope: args.targets.some(isHttpUrl) ? "web" : undefined,
+      targetRequest: {
+        requested: [...args.targets],
+        resourceKind: targetResourceKind(args.targets),
+        requestDispatch: "unknown",
+        window: { id: windowId, source: windowSource, correlation },
+      },
     };
     this.memory.apps[normalizeAppKey(args.app)] = resolved;
     if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
@@ -564,23 +585,37 @@ export class OpenSky implements OpenSkyApi {
 
   private async resolveApp(app: string, options: { launchIfNeeded: boolean }): Promise<ResolvedApp> {
     await this.ensureLoaded();
+    const cached = this.memory.apps[normalizeAppKey(app)];
     const listed = await this.listRawApps();
     const match = findApp(listed, app);
     if (match && (match.running || match.pid)) {
-      const pid = Number(match.pid);
-      const windowId = await this.pickWindow(pid, match);
+      let source = match;
+      let pid = Number(match.pid);
+      let windowId = await this.pickWindow(pid, match);
+      let relaunched = false;
+      if (!windowId && options.launchIfNeeded) {
+        const launched = await this.driver.call("launch_app", launchArgsFor(app, match));
+        source = { ...match, ...(asRecord(launched.structured) ?? {}) };
+        const nextPid = Number(source.pid);
+        if (Number.isFinite(nextPid) && nextPid > 0) pid = nextPid;
+        windowId = await this.pickWindow(pid, source);
+        relaunched = true;
+      }
       const resolved: ResolvedApp = {
         query: app,
-        name: String(match.name ?? app),
-        bundleId: optionalString(match.bundle_id),
-        launchPath: optionalString(match.launch_path),
+        name: String(source.name ?? match.name ?? app),
+        bundleId: optionalString(source.bundle_id) ?? optionalString(match.bundle_id),
+        launchPath: optionalString(source.launch_path) ?? optionalString(match.launch_path),
         pid,
         windowId,
+        contentScope: cached?.pid === pid ? cached.contentScope : undefined,
+        targetRequest: cached?.pid === pid ? cached.targetRequest : undefined,
       };
       this.memory.apps[normalizeAppKey(app)] = resolved;
       if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
       if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
       this.markResolved(resolved);
+      if (relaunched) this.markAction(resolved);
       await this.persist();
       return resolved;
     }
@@ -961,6 +996,7 @@ export function diffTrees(
       before.value !== element.value ||
       before.role !== element.role ||
       before.identifier !== element.identifier ||
+      before.url !== element.url ||
       before.enabled !== element.enabled ||
       before.selected !== element.selected ||
       before.checked !== element.checked ||
@@ -998,6 +1034,7 @@ export function diffTrees(
               before.value !== element.value ||
               before.role !== element.role ||
               before.identifier !== element.identifier ||
+              before.url !== element.url ||
               before.enabled !== element.enabled ||
               before.selected !== element.selected ||
               before.checked !== element.checked ||
@@ -1036,8 +1073,9 @@ function formatElement(element: SnapshotElement): string {
     ? ` value=${JSON.stringify(element.value)}`
     : "";
   const identifier = element.identifier ? ` id=${JSON.stringify(element.identifier)}` : "";
+  const url = element.url ? ` url=${JSON.stringify(element.url)}` : "";
   const semantics = semanticAttributes(element);
-  return `[${element.element_index}] ${element.role ?? "AXUnknown"} ${primary}${value}${identifier}${semantics}`;
+  return `[${element.element_index}] ${element.role ?? "AXUnknown"} ${primary}${value}${identifier}${url}${semantics}`;
 }
 
 function findApp(apps: Record<string, unknown>[], query: string): Record<string, unknown> | undefined {
@@ -1149,6 +1187,7 @@ function normalizeElements(value: unknown): SnapshotElement[] {
         label: optionalString(item.label),
         value: scalarText(item.value),
         identifier: optionalString(item.identifier ?? item.id),
+        url: optionalString(item.url ?? item.document_url),
         actions: asArray<string>(item.actions),
         settable: optionalBoolean(item.settable ?? item.is_settable ?? item.value_settable ?? item.is_value_settable ?? item.editable),
         enabled: optionalBoolean(item.enabled ?? item.is_enabled),
@@ -1224,6 +1263,91 @@ function indicesInTree(tree: string): Set<number> {
 
 function isHttpUrl(target: string): boolean {
   return /^https?:\/\//i.test(target.trim());
+}
+
+function targetResourceKind(targets: string[]): TargetRequestIdentity["resourceKind"] {
+  const urlCount = targets.filter(isHttpUrl).length;
+  return urlCount === targets.length ? "url" : urlCount === 0 ? "path" : "mixed";
+}
+
+function targetIdentityFor(resolved: ResolvedApp, snapshot?: WindowSnapshot): TargetIdentity | undefined {
+  const request = resolved.targetRequest;
+  if (!request) return undefined;
+  const rebound = request.window.id !== undefined && resolved.windowId !== request.window.id;
+  const window = {
+    id: resolved.windowId,
+    source: rebound ? "post_launch_list" as const : request.window.source,
+    correlation: rebound ? "uncorrelated" as const : request.window.correlation,
+  };
+  if (!snapshot || snapshot.degraded) {
+    return {
+      ...request,
+      window,
+      document: { freshness: "unavailable", requestRelation: "unknown" },
+      tab: { status: "unverified" },
+    };
+  }
+  const candidates = snapshot.elements
+    .filter((element) => /^AX(?:WebArea|Document)$/i.test(element.role ?? ""))
+    .sort((a, b) => documentCandidateScore(b) - documentCandidateScore(a));
+  const observed = candidates[0];
+  const url = observed?.url;
+  return {
+    ...request,
+    window,
+    document: {
+      freshness: "current",
+      title: observed?.label,
+      url,
+      source: observed?.role?.toLowerCase() === "axwebarea" ? "ax_web_area" : observed ? "ax_document" : undefined,
+      requestRelation: requestRelation(request.requested, url),
+    },
+    tab: { status: "unverified" },
+  };
+}
+
+function documentCandidateScore(element: SnapshotElement): number {
+  const area = (element.frame?.w ?? 0) * (element.frame?.h ?? 0);
+  return (element.url ? 1e12 : 0) + area;
+}
+
+function requestRelation(requested: string[], observed?: string): "exact" | "different" | "unknown" {
+  if (!observed) return "unknown";
+  const current = canonicalHttpUrl(observed);
+  if (!current) return "unknown";
+  const expected = requested.map(canonicalHttpUrl).filter((value): value is string => value !== undefined);
+  if (expected.length !== requested.length) return "unknown";
+  return expected.includes(current) ? "exact" : "different";
+}
+
+function canonicalHttpUrl(value: string): string | undefined {
+  if (!isHttpUrl(value)) return undefined;
+  try {
+    const parsed = new URL(value);
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+/** Compact model-facing rendering that never implies verified tab identity or creation. */
+export function formatTargetIdentity(target: TargetIdentity): string {
+  const document = target.document;
+  const subject = document.url
+    ? `url=${document.url}`
+    : document.freshness === "current" && document.title
+      ? `document=${JSON.stringify(document.title)}`
+    : target.requested.length === 1
+      ? `requested=${target.requested[0]}`
+      : `requested=${target.requested.length} targets`;
+  const freshness = document.url
+    ? "ax-current"
+    : document.freshness === "current"
+      ? "ax-document-current; url-unverified"
+      : "url-unverified";
+  const window = target.window.correlation.replaceAll("_", "-");
+  return `Target: ${target.resourceKind} ${subject} [${freshness}; request=${document.requestRelation}; window=${window}; tab=unverified]`;
 }
 
 /** Flatten Cua's multi-line custom-action descriptor into one readable action. */

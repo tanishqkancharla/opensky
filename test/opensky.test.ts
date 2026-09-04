@@ -8,6 +8,7 @@ import {
   diffTrees,
   compactTreeActionHints,
   enrichTreeSemantics,
+  formatTargetIdentity,
   isolatePrimaryWebArea,
   findWithContext,
   mapApps,
@@ -274,6 +275,22 @@ describe("OpenSky against cua-driver", () => {
     assert.doesNotMatch(second.text, /No accessibility changes/);
   });
 
+  it("relaunches a running UI app when it has no ordinary window", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const calculator = fixture.apps.find((app: { name: string }) => app.name === "Calculator");
+    calculator.windows = [];
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.match(state.text, /AXWindow/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    assert.ok(after.calls.some((call: { tool: string; args: Record<string, unknown> }) =>
+      call.tool === "launch_app" && call.args.bundle_id === "com.apple.calculator",
+    ));
+  });
+
   it("opens and binds a supplied target through the core API", async () => {
     const { opensky, statePath } = await makeHarness();
     const state = await opensky.open_target({
@@ -289,6 +306,42 @@ describe("OpenSky against cua-driver", () => {
       call.tool === "launch_app" &&
       JSON.stringify(call.args.urls) === JSON.stringify(["/tmp/epoch-target.txt"]),
     ));
+  });
+
+  it("reports current document identity without claiming a verified tab", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.apps.push({
+      pid: 0,
+      name: "Safari",
+      bundle_id: "com.apple.Safari",
+      launch_path: "/Applications/Safari.app",
+      running: false,
+      windows: [],
+      elements: [
+        { element_index: 0, role: "AXWindow", label: "Example Domain" },
+        { element_index: 1, role: "AXWebArea", label: "Example Domain", url: "https://example.com/" },
+        { element_index: 2, role: "AXHeading", label: "Example Domain" },
+      ],
+      actions: [],
+    });
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.open_target({
+      app: "Safari",
+      targets: ["https://EXAMPLE.com#fragment"],
+      includeScreenshot: false,
+    });
+    assert.equal(state.target?.document.url, "https://example.com/");
+    assert.equal(state.target?.document.requestRelation, "exact");
+    assert.equal(state.target?.window.correlation, "new_since_request");
+    assert.deepEqual(state.target?.tab, { status: "unverified" });
+    const rendered = formatTargetIdentity(state.target!);
+    assert.match(rendered, /^Target: url url=https:\/\/example\.com\//);
+    assert.match(rendered, /request=exact/);
+    assert.match(rendered, /tab=unverified/);
+    assert.doesNotMatch(rendered, /new tab|opened tab/i);
   });
 
   it("clicks, types, pastes, sets values, scrolls, and presses keys", async () => {

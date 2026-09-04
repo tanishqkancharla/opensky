@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Type } from "typebox";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 
-import { createOpenSky } from "../src/opensky.js";
+import { createOpenSky, formatTargetIdentity } from "../src/opensky.js";
 import type { AppState, DriverClient } from "../src/types.js";
 import type { OpenSkyTarget } from "../src/types.js";
 
@@ -28,7 +28,10 @@ async function stateResult(
   const content: Array<
     | { type: "text"; text: string }
     | { type: "image"; data: string; mimeType: "image/png" | "image/jpeg" }
-  > = [{ type: "text", text: state.text }];
+  > = [{
+    type: "text",
+    text: state.target ? `${formatTargetIdentity(state.target)}\n${state.text}` : state.text,
+  }];
   if (state.degraded) {
     content.push({
       type: "text",
@@ -60,7 +63,7 @@ async function stateResult(
   }
   return {
     content,
-    details: { app: state.app, screenshot: state.screenshot, degraded: state.degraded, degradedReason: state.degradedReason, screenshotWarning },
+    details: { app: state.app, target: state.target, screenshot: state.screenshot, degraded: state.degraded, degradedReason: state.degradedReason, screenshotWarning },
   };
 }
 
