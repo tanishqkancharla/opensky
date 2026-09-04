@@ -193,10 +193,17 @@ metadata on semantic links when the driver provides them. Use `close_target({app
 asks to close that exact target. Call `close()` in a `finally` block when using
 the library directly; the CLI, REPL, and server entry points do this
 automatically on normal exit or termination.
-Owned isolated-browser session identifiers are durably reserved before launch
-and cleared only after `end_session` succeeds, so a later OpenSky process using
-the same home can reap a target left by a host crash. Ordinary user-owned
-browser state is never added to this ledger.
+Each isolated-browser driver session is durably reserved before launch in its
+own private record under `OPENSKY_HOME/browser-session-leases/`. Records contain
+the exact session name plus a runtime UUID, owner PID, and creation time; they
+are published and transferred with same-filesystem atomic renames. Two live
+OpenSky runtimes can therefore share a home without reaping or overwriting each
+other's cleanup authority. A later runtime claims a crash leftover only when
+the recorded effective owner PID is demonstrably absent. PID reuse and
+indeterminate liveness conservatively retain the lease instead of risking a
+destructive claim. A failed `end_session` likewise retains the exact lease for
+retry, and successful teardown removes only that session's record. Ordinary
+user-owned browser state is never added to this ledger.
 
 For a native macOS target, `open_target` asks LaunchServices for a distinct app
 instance and grants close authority only when the launch response proves the
@@ -214,10 +221,13 @@ observable but are not granted native close authority until their driver route
 can provide equivalent proof.
 
 The version-2 session file migrates older copied app bindings into canonical
-target records and alias pointers. Phase one deliberately does not provide
-cross-process leases or transactional multi-writer persistence: use one OpenSky
-runtime (normally `opensky serve`) per `OPENSKY_HOME`. Separate concurrent
-runtimes should use separate homes until per-target leases land.
+target records and alias pointers. Legacy managed-session array entries whose
+generated name exposes an owner PID migrate into per-session leases; entries
+without enough owner evidence remain recorded but are never granted destructive
+cleanup authority. Target/alias/tree persistence in `session.json` is still
+last-writer-wins rather than transactional. Concurrent runtimes may safely share
+a home for cleanup ownership, but should use separate homes when they need
+cross-process target discovery or mutation until per-target leases land.
 
 `open_target` and later observations also return optional structured `target`
 identity. It distinguishes the requested resource, exact bound native window,

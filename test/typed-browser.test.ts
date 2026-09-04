@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "bun:test";
@@ -501,12 +501,14 @@ describe("OpenSky typed-browser contract", () => {
   });
 
   it("retains cleanup ownership and surfaces a failed teardown for retry", async () => {
-    const { opensky, driver } = await harness();
+    const { opensky, driver, home } = await harness();
     await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
     driver.failEndSessionCount = 1;
 
     await assert.rejects(() => opensky.close(), /Failed to end 1 owned driver session/);
+    assert.equal((await browserLeaseRecords(home)).length, 1, "a failed end_session must retain its exact lease");
     await opensky.close();
+    assert.equal((await browserLeaseRecords(home)).length, 0);
 
     const ended = driver.calls.filter((call) => call.tool === "end_session");
     assert.equal(ended.length, 3, "the failed browser session is retried while the base session is not ended twice");
@@ -563,9 +565,9 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(driver.calls.some((call) => call.tool === "revoke_session"), false);
   });
 
-  it("reaps a persisted owned browser session after a host restart", async () => {
+  it("does not reap a live runtime's browser lease in the same home", async () => {
     const driver = new TypedBrowserDriver();
-    const home = await mkdtemp(join(tmpdir(), "opensky-restart-cleanup-"));
+    const home = await mkdtemp(join(tmpdir(), "opensky-live-owner-"));
     const first = createOpenSky({
       driver,
       homeDir: home,
@@ -580,7 +582,8 @@ describe("OpenSky typed-browser contract", () => {
       driver.calls.find((call) => call.tool === "browser_prepare")?.args.session,
     );
     const persistedBefore = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
-    assert.deepEqual(persistedBefore.managedBrowserSessions, [browserSession]);
+    assert.deepEqual(persistedBefore.managedBrowserSessions, []);
+    assert.deepEqual((await browserLeaseRecords(home)).map((lease) => lease.session), [browserSession]);
 
     const restarted = createOpenSky({
       driver,
@@ -594,9 +597,91 @@ describe("OpenSky typed-browser contract", () => {
     await restarted.close();
 
     const ended = driver.calls.filter((call) => call.tool === "end_session");
-    assert.equal(ended.some((call) => call.args.session === browserSession), true);
-    const persistedAfter = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
-    assert.deepEqual(persistedAfter.managedBrowserSessions, []);
+    assert.equal(ended.some((call) => call.args.session === browserSession), false);
+    assert.deepEqual((await browserLeaseRecords(home)).map((lease) => lease.session), [browserSession]);
+
+    await first.close();
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === browserSession).length, 1);
+    assert.equal((await browserLeaseRecords(home)).length, 0);
+  });
+
+  it("reclaims a crash leftover only after its recorded owner pid is absent", async () => {
+    const driver = new TypedBrowserDriver();
+    const home = await mkdtemp(join(tmpdir(), "opensky-dead-owner-"));
+    const first = createOpenSky({
+      driver,
+      homeDir: home,
+      session: SESSION,
+      target: "mac",
+      settleDelayMs: 0,
+      degradedRetryMs: 0,
+      browserStabilityTimeoutMs: 0,
+    });
+    await first.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const browserSession = String(driver.calls.find((call) => call.tool === "browser_prepare")?.args.session);
+    await markBrowserLeaseOwnerDead(home, browserSession);
+
+    const restarted = createOpenSky({
+      driver,
+      homeDir: home,
+      session: `${SESSION}-restarted`,
+      target: "mac",
+      settleDelayMs: 0,
+      degradedRetryMs: 0,
+      browserStabilityTimeoutMs: 0,
+    });
+    await restarted.close();
+
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === browserSession).length, 1);
+    assert.equal((await browserLeaseRecords(home)).length, 0);
+  });
+
+  it("keeps concurrent same-home browser ownership independent despite session-state lost updates", async () => {
+    const driver = new TypedBrowserDriver();
+    const home = await mkdtemp(join(tmpdir(), "opensky-concurrent-leases-"));
+    const first = createOpenSky({
+      driver, homeDir: home, session: SESSION, target: "mac", settleDelayMs: 0,
+      degradedRetryMs: 0, browserStabilityTimeoutMs: 0,
+    });
+    const second = createOpenSky({
+      driver, homeDir: home, session: SESSION, target: "mac", settleDelayMs: 0,
+      degradedRetryMs: 0, browserStabilityTimeoutMs: 0,
+    });
+
+    await Promise.all([
+      first.open_target({ app: "Google Chrome", targets: ["https://example.com/one"], includeScreenshot: false }),
+      second.open_target({ app: "Google Chrome", targets: ["https://example.com/two"], includeScreenshot: false }),
+    ]);
+    const browserSessions = driver.calls
+      .filter((call) => call.tool === "browser_prepare")
+      .map((call) => String(call.args.session));
+    const firstSession = String(driver.calls.find((call) =>
+      call.tool === "browser_navigate" && call.args.url === "https://example.com/one"
+    )?.args.session);
+    const secondSession = String(driver.calls.find((call) =>
+      call.tool === "browser_navigate" && call.args.url === "https://example.com/two"
+    )?.args.session);
+    assert.equal(new Set(browserSessions).size, 2);
+    assert.deepEqual(
+      new Set((await browserLeaseRecords(home)).map((lease) => lease.session)),
+      new Set(browserSessions),
+      "per-session leases must survive last-writer-wins session.json target persistence",
+    );
+    const leaseDirectory = join(home, "browser-session-leases");
+    const leaseName = (await readdir(leaseDirectory)).find((name) => name.endsWith(".lease"));
+    assert.ok(leaseName);
+    assert.equal((await stat(leaseDirectory)).mode & 0o777, 0o700);
+    assert.equal((await stat(join(leaseDirectory, leaseName, "lease.json"))).mode & 0o777, 0o600);
+
+    await first.close();
+    const afterFirst = driver.calls.filter((call) => call.tool === "end_session").map((call) => String(call.args.session));
+    assert.equal(afterFirst.includes(firstSession), true);
+    assert.equal(afterFirst.includes(secondSession), false);
+    assert.deepEqual((await browserLeaseRecords(home)).map((lease) => lease.session), [secondSession]);
+
+    await second.close();
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && browserSessions.includes(String(call.args.session))).length, 2);
+    assert.equal((await browserLeaseRecords(home)).length, 0);
   });
 
   it("closes one exact owned target without closing user-owned browser state", async () => {
@@ -715,6 +800,38 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(Object.keys(persisted.targets).length, 1);
     assert.equal(persisted.aliases["google chrome"], persisted.aliases["com.google.chrome"]);
     await opensky.close();
+    const after = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
+    assert.deepEqual(after.managedBrowserSessions, ["legacy-browser-session"]);
+    assert.equal(driver.calls.some((call) => call.tool === "end_session" && call.args.session === "legacy-browser-session"), false);
+  });
+
+  it("migrates and reaps an owner-pid-bearing legacy browser session only after owner death", async () => {
+    const driver = new TypedBrowserDriver();
+    const home = await mkdtemp(join(tmpdir(), "opensky-legacy-browser-lease-"));
+    const deadPid = 2_147_483_646;
+    const legacySession = `opensky-old-browser-${deadPid}-1`;
+    await writeFile(join(home, "session.json"), JSON.stringify({
+      version: 2,
+      targets: {},
+      aliases: {},
+      trees: {},
+      managedBrowserSessions: [legacySession],
+    }));
+    const opensky = createOpenSky({
+      driver,
+      homeDir: home,
+      session: SESSION,
+      target: "mac",
+      settleDelayMs: 0,
+      degradedRetryMs: 0,
+    });
+
+    await opensky.close();
+
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === legacySession).length, 1);
+    assert.equal((await browserLeaseRecords(home)).length, 0);
+    const persisted = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
+    assert.deepEqual(persisted.managedBrowserSessions, []);
   });
 });
 
@@ -731,7 +848,34 @@ async function harness(options: { browserStabilityTimeoutMs?: number } = {}) {
     degradedRetryMs: 0,
     browserStabilityTimeoutMs: options.browserStabilityTimeoutMs ?? 0,
   });
-  return { opensky, driver };
+  return { opensky, driver, home };
+}
+
+async function browserLeaseRecords(home: string): Promise<Array<{ session: string; owner: { pid: number } }>> {
+  const directory = join(home, "browser-session-leases");
+  const names = await readdir(directory).catch(() => []);
+  const records = await Promise.all(names
+    .filter((name) => name.endsWith(".lease"))
+    .map(async (name) => JSON.parse(await readFile(join(directory, name, "lease.json"), "utf8"))));
+  return records.sort((a, b) => String(a.session).localeCompare(String(b.session)));
+}
+
+async function markBrowserLeaseOwnerDead(home: string, session: string): Promise<void> {
+  const directory = join(home, "browser-session-leases");
+  const names = await readdir(directory);
+  const name = names.find((candidate) => candidate.endsWith(".lease"));
+  assert.ok(name);
+  const source = join(directory, name);
+  const recordPath = join(source, "lease.json");
+  const record = JSON.parse(await readFile(recordPath, "utf8"));
+  assert.equal(record.session, session);
+  const deadPid = 2_147_483_646;
+  record.owner.pid = deadPid;
+  await writeFile(recordPath, JSON.stringify(record));
+  const parts = name.split(".");
+  assert.equal(parts.length, 4);
+  parts[1] = String(deadPid);
+  await rename(source, join(directory, parts.join(".")));
 }
 
 function ordinaryWindow() {

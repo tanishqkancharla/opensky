@@ -151,6 +151,15 @@ available for retry. It refuses ordinary user-owned app, window, and tab state.
 Hosts should still call `opensky.close()` as an idempotent browser-session
 cleanup fallback.
 
+Isolated browser cleanup is recorded per exact driver session under
+`OPENSKY_HOME`. Concurrent live runtimes never reap one another's sessions. A
+later runtime may recover a crash leftover only after the recorded owner PID is
+demonstrably absent; PID reuse or uncertain liveness intentionally leaks rather
+than risking another runtime's browser. Failed cleanup retains the lease for
+retry. `session.json` target aliases are still last-writer-wins, so concurrent
+runtimes should keep and use their own returned handles rather than relying on
+cross-process alias discovery.
+
 ### `click`
 
 Prefer `element_index` from the latest `get_app_state().text`. Exact AX element actions are token-bound and remain safe if a user changes focus or Spaces. Use `x, y` only for visible canvas/custom-drawn surfaces.

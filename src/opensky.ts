@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { asArray, asRecord, CuaDriverClient } from "./driver.js";
+import { BrowserSessionLeaseStore, legacyBrowserSessionOwnerPid } from "./browser-session-leases.js";
 import { invalidParams, OpenSkyError } from "./errors.js";
 import { inferScreenshotScale, readImageMeta } from "./image-meta.js";
 import { parseXdotoolKey, toHotkeyKeys } from "./keys.js";
@@ -78,8 +79,11 @@ export class OpenSky implements OpenSkyApi {
   private readonly degradedRetryMs: number;
   private readonly browserStabilityTimeoutMs: number;
   private readonly session: string;
+  private readonly runtimeId: string;
+  private readonly browserLeases: BrowserSessionLeaseStore;
   private readonly preferTypedBrowser: boolean;
   private readonly managedBrowserSessions = new Set<string>();
+  private readonly unresolvedLegacyBrowserSessions = new Set<string>();
   private baseSessionEnded = false;
   private browserSequence = 0;
   private lastOpenedAt = 0;
@@ -96,10 +100,12 @@ export class OpenSky implements OpenSkyApi {
 
   constructor(options: OpenSkyOptions = {}) {
     this.target = options.target ?? detectTarget();
-    this.session = options.session ?? `opensky-${process.pid}-${randomUUID().slice(0, 8)}`;
+    this.runtimeId = randomUUID();
+    this.session = options.session ?? `opensky-${process.pid}-${this.runtimeId.slice(0, 8)}`;
     this.driver = options.driver ?? new CuaDriverClient({ session: this.session });
     const home = homeDir(options.homeDir);
     this.store = new SessionStore(sessionFile(home));
+    this.browserLeases = new BrowserSessionLeaseStore(home, this.runtimeId);
     this.screenshotDir = options.screenshotDir ?? join(home, "screenshots");
     this.autoLaunch = options.autoLaunch !== false;
     this.pasteModifier = options.pasteModifier ?? pasteModifierFor(this.target);
@@ -482,17 +488,19 @@ export class OpenSky implements OpenSkyApi {
     const hadManagedBrowserSessions = this.managedBrowserSessions.size > 0;
     const sessions = [...this.managedBrowserSessions];
     if (!this.baseSessionEnded) sessions.push(this.session);
-    this.managedBrowserSessions.clear();
     const failures: Array<{ session: string; error: unknown }> = [];
     const endedManagedSessions = new Set<string>();
     await Promise.all(sessions.map(async (session) => {
       try {
         await this.driver.call("end_session", { session });
         if (session === this.session) this.baseSessionEnded = true;
-        else endedManagedSessions.add(session);
+        else {
+          await this.browserLeases.release(session);
+          this.managedBrowserSessions.delete(session);
+          endedManagedSessions.add(session);
+        }
       } catch (error) {
-        // The caller may retry close(); keep the failed session owned here.
-        if (session !== this.session) this.managedBrowserSessions.add(session);
+        // The caller may retry close(); the per-session lease stays owned.
         failures.push({ session, error });
       }
     }));
@@ -527,12 +535,12 @@ export class OpenSky implements OpenSkyApi {
       !isChromiumApp(args.app, match)
     ) return null;
 
-    const session = `${this.session}-browser-${process.pid}-${++this.browserSequence}`;
+    const session = `${this.session}-browser-${process.pid}-${this.runtimeId}-${++this.browserSequence}`;
     // Reserve the cleanup capability before dispatch. A timed-out or malformed
     // prepare may already have launched an isolated browser; waiting for its
     // success envelope before recording ownership would orphan that process.
+    await this.browserLeases.reserve(session);
     this.managedBrowserSessions.add(session);
-    await this.persist();
     try {
       const pid = Number(match?.pid);
       const preparation = await this.driver.call("browser_prepare", {
@@ -610,6 +618,7 @@ export class OpenSky implements OpenSkyApi {
     } catch (error) {
       try {
         await this.driver.call("end_session", { session });
+        await this.browserLeases.release(session);
         this.managedBrowserSessions.delete(session);
         await this.persist();
       } catch (cleanupError) {
@@ -1333,6 +1342,7 @@ export class OpenSky implements OpenSkyApi {
     const session = resolved.browser?.session;
     if (!session) return;
     await this.driver.call("end_session", { session });
+    await this.browserLeases.release(session);
     this.managedBrowserSessions.delete(session);
     this.removeTarget(resolved.handle);
     await this.persist();
@@ -1839,13 +1849,23 @@ export class OpenSky implements OpenSkyApi {
       );
     }
     for (const session of persisted.managedBrowserSessions) {
+      const ownerPid = legacyBrowserSessionOwnerPid(session);
+      if (ownerPid === undefined) {
+        this.unresolvedLegacyBrowserSessions.add(session);
+        continue;
+      }
+      await this.browserLeases.importLegacy(session, ownerPid);
+    }
+    for (const session of await this.browserLeases.claimDeadOwners()) {
       this.managedBrowserSessions.add(session);
     }
     this.loaded = true;
   }
 
   private async persist(): Promise<void> {
-    this.memory.managedBrowserSessions = [...this.managedBrowserSessions].sort();
+    // v1/v2 entries without a recoverable owner PID cannot be reaped safely;
+    // retain them for backward-compatible migration without granting close.
+    this.memory.managedBrowserSessions = [...this.unresolvedLegacyBrowserSessions].sort();
     await this.store.save({
       version: 2,
       targets: this.memory.targets,

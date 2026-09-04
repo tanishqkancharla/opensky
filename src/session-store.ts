@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { mkdirPrivate, writeFilePrivate } from "./secure-fs.js";
+import { mkdirPrivate, writeFilePrivateAtomic } from "./secure-fs.js";
 import type { ResolvedApp, SnapshotElement, TargetHandle } from "./types.js";
 
 export interface PersistedSession {
@@ -11,7 +11,7 @@ export interface PersistedSession {
   /** Normalized app aliases point to canonical targets instead of copying bindings. */
   aliases: Record<string, TargetHandle>;
   trees: Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>;
-  /** Driver sessions owned by this OpenSky home and safe to reap after a host crash. */
+  /** Unmigrated legacy entries; new cleanup ownership lives in per-session leases. */
   managedBrowserSessions: string[];
 }
 
@@ -43,7 +43,7 @@ export class SessionStore {
 
   async save(session: PersistedSession): Promise<void> {
     await mkdirPrivate(dirname(this.filePath));
-    await writeFilePrivate(this.filePath, JSON.stringify(session, null, 2));
+    await writeFilePrivateAtomic(this.filePath, JSON.stringify(session, null, 2));
   }
 }
 
