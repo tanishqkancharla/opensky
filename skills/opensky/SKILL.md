@@ -72,6 +72,7 @@ opensky.target                    // "mac" | "win" | "linux"
 await opensky.list_apps()
 await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query? })
 await opensky.open_target({ app, targets, includeScreenshot?, query? })
+await opensky.navigate({ app, url, includeScreenshot?, query? })
 await opensky.close_target({ app })
 await opensky.bring_to_front({ app })
 await opensky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
@@ -114,6 +115,17 @@ Use this as the first call when the task supplies a URL or file. For one HTTP(S)
 For that exact typed browser route, pass `query` to make known semantic content addressable in the initial settled observation. Query is rejected before any mutation for native targets, multiple targets, or non-URL targets.
 
 Open files or URLs with a named app and return the settled full state of the returned, newly created, or title-matching ordinary window. Prefer this over launching a document and then separately resolving the app; the binding prevents an older sibling document from being mistaken for the requested target.
+
+### `navigate({ app, url, includeScreenshot?, query? })`
+
+Navigate the exact driver-owned typed browser tab created by `open_target` and
+receive its settled destination state in the same call. Use this for a known URL
+instead of typing into browser chrome or closing and reopening the target. Pass
+`query` to narrow a large destination page immediately. It fails closed for
+native apps and unverified or user-owned tabs.
+
+Back, forward, and reload are not exposed until Cua Driver provides exact-tab
+primitives for them; do not emulate them with native keyboard shortcuts.
 
 ### `close_target({ app })`
 

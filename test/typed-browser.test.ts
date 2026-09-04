@@ -311,6 +311,58 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(driver.calls.some((call) => call.tool === "launch_app"), false);
   });
 
+  it("navigates the exact typed tab and returns its settled queried destination", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const destination = "https://example.com/results";
+    const before = driver.calls.length;
+
+    const state = await opensky.navigate({
+      app: "Google Chrome",
+      url: destination,
+      includeScreenshot: false,
+      query: "Results",
+    });
+
+    assert.deepEqual(driver.calls.slice(before).map((call) => call.tool), [
+      "browser_navigate",
+      "get_browser_state",
+    ]);
+    assert.deepEqual(driver.calls[before]?.args, {
+      session: driver.calls.find((call) => call.tool === "browser_prepare")?.args.session,
+      target_id: TARGET_ID,
+      tab_id: TAB_ID,
+      url: destination,
+    });
+    assert.equal(driver.calls.at(-1)?.args.query, "Results");
+    assert.match(state.text, /^Semantic query "Results"; fresh accessibility state:/);
+    assert.deepEqual(state.target?.requested, [destination]);
+    assert.equal(state.target?.document.url, destination);
+    assert.equal(state.target?.document.requestRelation, "exact");
+  });
+
+  it("refuses navigation without an exact owned binding before any driver call", async () => {
+    const { opensky, driver } = await harness();
+
+    await assert.rejects(
+      () => opensky.navigate({ app: "Calculator", url: "https://example.com/" }),
+      /navigate requires an exact driver-owned typed browser binding.*No app was launched/s,
+    );
+    assert.equal(driver.calls.length, 0);
+  });
+
+  it("rejects unsafe navigation URLs before touching an exact binding", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const before = driver.calls.length;
+
+    await assert.rejects(
+      () => opensky.navigate({ app: "Google Chrome", url: "javascript:alert(1)" }),
+      /http\/https\/about URL/,
+    );
+    assert.equal(driver.calls.length, before);
+  });
+
   it("rejects an initial query for a non-browser target before mutation", async () => {
     const { opensky, driver } = await harness();
 

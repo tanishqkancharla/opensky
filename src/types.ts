@@ -99,6 +99,14 @@ export interface OpenSky {
     /** Narrow the initial exact typed browser observation. */
     query?: string;
   }): Promise<AppState>;
+  /** Navigate an existing exact typed-browser tab and return its settled state. */
+  navigate(args: {
+    app: string;
+    url: string;
+    includeScreenshot?: boolean;
+    /** Narrow the settled destination observation. */
+    query?: string;
+  }): Promise<AppState>;
   /** Close one exact target owned by this instance without touching user-owned app state. */
   close_target(args: { app: string }): Promise<void>;
   bring_to_front(args: { app: string }): Promise<void>;

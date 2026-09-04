@@ -21,6 +21,7 @@ describe("OpenSky tool runtime lifecycle", () => {
     await runtime.close();
 
     assert.equal(runtime.tools.length > 0, true);
+    assert.equal(OPENSKY_TOOL_NAMES.includes("navigate"), true);
     assert.equal(OPENSKY_TOOL_NAMES.includes("close_target"), true);
     assert.equal(calls.length, 1);
     assert.equal(calls[0]?.tool, "end_session");

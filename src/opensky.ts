@@ -339,6 +339,48 @@ export class OpenSky implements OpenSkyApi {
     ]);
   }
 
+  /** Navigate only an exact typed-browser tab and return its settled destination state. */
+  async navigate(args: {
+    app: string;
+    url: string;
+    includeScreenshot?: boolean;
+    query?: string;
+  }): Promise<AppState> {
+    if (!args?.app || typeof args.url !== "string" || !isBrowserNavigableUrl(args.url)) {
+      throw invalidParams("app and an http/https/about URL are required");
+    }
+    if (args.query !== undefined && !args.query.trim()) {
+      throw invalidParams("query must contain non-whitespace text");
+    }
+    const url = args.url.trim();
+    const resolved = await this.requireExactTypedBrowser(args.app, "navigate");
+    const browser = resolved.browser!;
+    await this.driver.call("browser_navigate", {
+      target_id: browser.targetId,
+      tab_id: browser.tabId,
+      url,
+      session: browser.session,
+    });
+    resolved.targetRequest = {
+      requested: [url],
+      resourceKind: "url",
+      requestDispatch: "sent",
+      window: resolved.targetRequest?.window ?? {
+        id: resolved.windowId,
+        source: "launch_result",
+        correlation: "new_since_request",
+      },
+    };
+    this.markAction(resolved);
+    await this.persist();
+    return this.get_app_state({
+      app: args.app,
+      disableDiff: true,
+      includeScreenshot: args.includeScreenshot,
+      query: args.query,
+    });
+  }
+
   /** End only resources that this OpenSky instance created. Safe to call repeatedly. */
   async close(): Promise<void> {
     await this.ensureLoaded();
@@ -1010,6 +1052,19 @@ export class OpenSky implements OpenSkyApi {
     const cached = this.memory.apps[normalizeAppKey(app)];
     if (cached?.pid && this.resolvedThisProcess.has(normalizeAppKey(app))) return cached;
     return this.resolveApp(app, { launchIfNeeded: this.autoLaunch });
+  }
+
+  private async requireExactTypedBrowser(app: string, operation: string): Promise<ResolvedApp> {
+    await this.ensureLoaded();
+    const resolved = this.memory.apps[normalizeAppKey(app)];
+    const browser = resolved?.browser;
+    if (!resolved || !browser?.managed || !this.managedBrowserSessions.has(browser.session)) {
+      throw new OpenSkyError(
+        `${operation} requires an exact driver-owned typed browser binding for ${JSON.stringify(app)}. ` +
+          "No app was launched and no native keyboard or pointer input was sent.",
+      );
+    }
+    return resolved;
   }
 
   private async resolveApp(app: string, options: { launchIfNeeded: boolean }): Promise<ResolvedApp> {
@@ -2082,6 +2137,11 @@ function indicesInTree(tree: string): Set<number> {
 
 function isHttpUrl(target: string): boolean {
   return /^https?:\/\//i.test(target.trim());
+}
+
+function isBrowserNavigableUrl(target: string): boolean {
+  const normalized = target.trim().toLowerCase();
+  return normalized.startsWith("http://") || normalized.startsWith("https://") || normalized.startsWith("about:");
 }
 
 function isChromiumApp(query: string, match?: Record<string, unknown>): boolean {

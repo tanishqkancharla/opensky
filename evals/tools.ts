@@ -174,6 +174,31 @@ export function createOpenSkyToolRuntime(
       },
     }),
     defineTool({
+      name: "navigate",
+      label: "navigate",
+      description:
+        "Navigate the exact driver-owned typed browser tab created by open_target, then return its settled destination state in the same call. Use this instead of closing/reopening the browser target or typing into browser chrome. It fails closed for native apps and unverified/user-owned tabs. query can narrow the destination observation.",
+      executionMode: "sequential",
+      parameters: Type.Object({
+        app: Type.String({ description: "Application identifier used with open_target" }),
+        url: Type.String({ minLength: 1, description: "Destination http, https, or about URL" }),
+        include_screenshot: Type.Optional(Type.Boolean()),
+        query: Type.Optional(Type.String({ minLength: 1, description: "Narrow the settled destination observation" })),
+      }),
+      async execute(_id, params) {
+        return stateResult(
+          await opensky.navigate({
+            app: params.app,
+            url: params.url,
+            includeScreenshot: params.include_screenshot === true,
+            query: params.query,
+          }),
+          params.include_screenshot === true,
+          emittedImageHashes,
+        );
+      },
+    }),
+    defineTool({
       name: "close_target",
       label: "close_target",
       description:
@@ -569,6 +594,7 @@ export function cuaDriverTools(driver: DriverClient) {
 export const OPENSKY_TOOL_NAMES = [
   "list_apps",
   "open_target",
+  "navigate",
   "close_target",
   "get_app_state",
   "bring_to_front",
