@@ -75,7 +75,8 @@ export interface TargetIdentity extends TargetRequestIdentity {
     source?: "ax_web_area" | "ax_document";
     requestRelation: "exact" | "different" | "unknown";
   };
-  tab: { status: "unverified" };
+  /** Present only when the target is web content. */
+  tab?: { status: "unverified" };
 }
 
 export interface OpenSky {

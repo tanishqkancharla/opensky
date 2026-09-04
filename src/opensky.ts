@@ -1284,7 +1284,7 @@ function targetIdentityFor(resolved: ResolvedApp, snapshot?: WindowSnapshot): Ta
       ...request,
       window,
       document: { freshness: "unavailable", requestRelation: "unknown" },
-      tab: { status: "unverified" },
+      tab: resolved.contentScope === "web" ? { status: "unverified" } : undefined,
     };
   }
   const candidates = snapshot.elements
@@ -1302,7 +1302,7 @@ function targetIdentityFor(resolved: ResolvedApp, snapshot?: WindowSnapshot): Ta
       source: observed?.role?.toLowerCase() === "axwebarea" ? "ax_web_area" : observed ? "ax_document" : undefined,
       requestRelation: requestRelation(request.requested, url),
     },
-    tab: { status: "unverified" },
+    tab: resolved.contentScope === "web" ? { status: "unverified" } : undefined,
   };
 }
 
@@ -1341,13 +1341,15 @@ export function formatTargetIdentity(target: TargetIdentity): string {
     : target.requested.length === 1
       ? `requested=${target.requested[0]}`
       : `requested=${target.requested.length} targets`;
+  const unresolvedKind = target.resourceKind === "path" ? "path-unverified" : "url-unverified";
   const freshness = document.url
     ? "ax-current"
     : document.freshness === "current"
-      ? "ax-document-current; url-unverified"
-      : "url-unverified";
+      ? `ax-document-current; ${unresolvedKind}`
+      : unresolvedKind;
   const window = target.window.correlation.replaceAll("_", "-");
-  return `Target: ${target.resourceKind} ${subject} [${freshness}; request=${document.requestRelation}; window=${window}; tab=unverified]`;
+  const tab = target.tab ? "; tab=unverified" : "";
+  return `Target: ${target.resourceKind} ${subject} [${freshness}; request=${document.requestRelation}; window=${window}${tab}]`;
 }
 
 /** Flatten Cua's multi-line custom-action descriptor into one readable action. */

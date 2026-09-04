@@ -299,6 +299,11 @@ describe("OpenSky against cua-driver", () => {
       includeScreenshot: false,
     });
     assert.match(state.text, /AXTextArea/);
+    assert.equal(state.target?.resourceKind, "path");
+    assert.equal(state.target?.tab, undefined);
+    const rendered = formatTargetIdentity(state.target!);
+    assert.match(rendered, /path-unverified/);
+    assert.doesNotMatch(rendered, /url-unverified|tab=/);
     const persisted = JSON.parse(await readFile(statePath, "utf8")) as {
       calls: Array<{ tool: string; args: Record<string, unknown> }>;
     };
