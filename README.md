@@ -108,7 +108,7 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | Method | Cua Driver tools used |
 | --- | --- |
 | `list_apps()` | `list_apps` |
-| `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?})` | Typed `get_browser_state` for an exact Chromium target/tab; otherwise `launch_app` if needed, `list_windows`, `get_window_state` |
+| `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?, query?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` narrows a large page to matching semantic content/current refs. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
 | `open_target({app, targets, includeScreenshot?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; other targets use the native app/window route |
 | `close_target({app})` | Closes one exact driver-owned browser target; refuses to close ordinary user-owned app/window/tab state |
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |

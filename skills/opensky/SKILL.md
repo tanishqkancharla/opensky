@@ -70,7 +70,7 @@ Prefer display names for actions when a bundle id looks ineffective. Always re-s
 opensky.target                    // "mac" | "win" | "linux"
 
 await opensky.list_apps()
-await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome? })
+await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query? })
 await opensky.open_target({ app, targets, includeScreenshot? })
 await opensky.close_target({ app })
 await opensky.bring_to_front({ app })
@@ -94,9 +94,11 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 
 `id` is the bundle id when the helper provides one, otherwise the launch path. Kernel/system processes without app metadata are omitted. `lastUsedDate` is unix seconds. `useCount` is included when the helper reports it.
 
-### `get_app_state({ app, disableDiff?, includeScreenshot? })`
+### `get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query? })`
 
 Returns `{ app, text, screenshot, target? }`. `target` truthfully separates requested resources, native-window correlation, current AX document identity, and browser-tab verification. Treat `tab.status: "unverified"` literally; a new native window does not prove a new browser tab.
+
+For an exact typed browser on a large page, pass `query` when the outline names a needed item but its action was omitted by the semantic budget. The result is a fresh, narrowed state with current actionable indices; use those indices instead of guessing. Query is read-only and unavailable for native app bindings.
 
 - `app` is the launch path when known, otherwise the display name.
 - `text` is the accessibility tree for the **main document window**, including menu-bar elements exposed by the helper. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a compact native-style diff with stable public element indices.

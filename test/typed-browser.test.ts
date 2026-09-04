@@ -303,6 +303,28 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(snapshots.every((call) => call.args.include_screenshot === false), true);
   });
 
+  it("exposes driver semantic query results as fresh addressable browser state", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+
+    const state = await opensky.get_app_state({
+      app: "Google Chrome",
+      query: "Releases",
+      includeScreenshot: false,
+    });
+
+    const queried = driver.calls.findLast((call) => call.tool === "get_browser_state");
+    assert.equal(queried?.args.query, "Releases");
+    assert.match(state.text, /^Semantic query "Releases"; fresh accessibility state:/);
+    assert.match(state.text, /\[1\].*Submit/);
+    const beforeRefusal = driver.calls.length;
+    await assert.rejects(
+      () => opensky.get_app_state({ app: "Calculator", query: "Releases" }),
+      /query requires.*exact typed browser binding/,
+    );
+    assert.equal(driver.calls.length, beforeRefusal, "an unsupported query must not resolve or launch an app");
+  });
+
   it("maps public numeric indices back to exact typed browser refs", async () => {
     const { opensky, driver } = await harness();
     await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });

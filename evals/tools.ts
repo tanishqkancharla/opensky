@@ -182,13 +182,14 @@ export function createOpenSkyToolRuntime(
       name: "get_app_state",
       label: "get_app_state",
       description:
-        "Resolve/launch an app and return fresh accessibility state. First state is full; later states are compact diffs unless disableDiff is true. Set include_screenshot only when pixels are needed.",
+        "Resolve/launch an app and return fresh accessibility state. First state is full; later states are compact diffs unless disableDiff is true. For an exact typed browser, set query to narrow a large page to matching semantic content and current actionable refs; use it when the outline names an item whose action was omitted. Set include_screenshot only when pixels are needed.",
       promptSnippet: "get_app_state: initial/recovery observation for a known app; actions observe by default.",
       parameters: Type.Object({
         app: Type.String({ description: "Display name, bundle id, or path" }),
         disableDiff: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
         include_app_chrome: Type.Optional(Type.Boolean({ description: "Exit legacy URL page scope; unavailable for exact typed browser bindings" })),
+        query: Type.Optional(Type.String({ minLength: 1, description: "Exact typed browser only: semantic text to find and make addressable" })),
       }),
       async execute(_id, params) {
         const { include_screenshot, include_app_chrome, ...stateArgs } = params;

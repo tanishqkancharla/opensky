@@ -117,9 +117,23 @@ export class OpenSky implements OpenSkyApi {
     disableDiff?: boolean;
     includeScreenshot?: boolean;
     includeAppChrome?: boolean;
+    query?: string;
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
-    const resolved = await this.requireResolved(args.app);
+    let resolved: ResolvedApp;
+    if (args.query !== undefined) {
+      await this.ensureLoaded();
+      const bound = this.memory.apps[normalizeAppKey(args.app)];
+      if (!args.query.trim() || !bound?.browser) {
+        throw new OpenSkyError(
+          "query requires non-empty text and an exact typed browser binding. " +
+            "No native app input or browser mutation was sent.",
+        );
+      }
+      resolved = bound;
+    } else {
+      resolved = await this.requireResolved(args.app);
+    }
     if (args.includeAppChrome === true && resolved.browser) {
       throw new OpenSkyError(
         "includeAppChrome is not available for an exact typed browser binding. " +
@@ -156,8 +170,11 @@ export class OpenSky implements OpenSkyApi {
     const snapshot = await this.snapshotSettled(resolved, {
       includeScreenshot: args.includeScreenshot !== false,
       stabilizeBrowser: hadPendingAction,
+      query: args.query?.trim(),
     });
-    const text = snapshot.documentChanged && previous && !args.disableDiff
+    const text = args.query !== undefined
+      ? `Semantic query ${JSON.stringify(args.query.trim())}; fresh accessibility state:\n${snapshot.tree}`
+      : snapshot.documentChanged && previous && !args.disableDiff
       ? `Document changed; fresh accessibility state:\n${snapshot.tree}`
       : snapshot.degraded || args.disableDiff || !previous
         ? snapshot.tree
@@ -1119,7 +1136,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotWindow(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number },
+    options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number; query?: string },
   ): Promise<WindowSnapshot> {
     if (!resolved.windowId) {
       resolved.windowId = await this.pickWindow(resolved.pid, {});
@@ -1199,7 +1216,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotBrowser(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; screenshotPath?: string },
+    options: { includeScreenshot: boolean; screenshotPath?: string; query?: string },
   ): Promise<WindowSnapshot> {
     const browser = resolved.browser;
     if (!browser || resolved.windowId === undefined) {
@@ -1216,6 +1233,7 @@ export class OpenSky implements OpenSkyApi {
       session: browser.session,
       snapshot_format: "semantic_v2",
       include_screenshot: options.includeScreenshot,
+      ...(options.query ? { query: options.query } : {}),
     });
     const structured = asRecord(result.structured) ?? {};
     if (structured.status !== "ok" || structured.mode !== "snapshot") {
@@ -1261,7 +1279,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotSettled(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; stabilizeBrowser?: boolean },
+    options: { includeScreenshot: boolean; stabilizeBrowser?: boolean; query?: string },
   ): Promise<WindowSnapshot> {
     const deadline = Date.now() + this.degradedRetryMs;
     let delayMs = 150;
@@ -1276,6 +1294,7 @@ export class OpenSky implements OpenSkyApi {
     const captureOptions = {
       includeScreenshot: stabilizeBrowser ? false : options.includeScreenshot,
       screenshotPath,
+      query: options.query,
     };
     let snapshot = await this.snapshotWindow(resolved, captureOptions);
     while (snapshot.degraded && Date.now() < deadline) {
@@ -1297,8 +1316,8 @@ export class OpenSky implements OpenSkyApi {
           };
         }
         const next = await this.snapshotWindow(resolved, {
+          ...captureOptions,
           includeScreenshot: false,
-          screenshotPath,
         });
         documentChanged ||= next.documentChanged === true;
         const nextSignature = browserStabilitySignature(next, resolved.browser);
@@ -1316,8 +1335,8 @@ export class OpenSky implements OpenSkyApi {
           };
         }
         const captured = await this.snapshotWindow(resolved, {
+          ...captureOptions,
           includeScreenshot: true,
-          screenshotPath,
         });
         documentChanged ||= captured.documentChanged === true;
         snapshot = captured;

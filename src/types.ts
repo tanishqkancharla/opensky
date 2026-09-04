@@ -89,6 +89,8 @@ export interface OpenSky {
     disableDiff?: boolean;
     includeScreenshot?: boolean;
     includeAppChrome?: boolean;
+    /** Narrow an exact typed browser snapshot to matching semantic content. */
+    query?: string;
   }): Promise<AppState>;
   open_target(args: {
     app: string;
