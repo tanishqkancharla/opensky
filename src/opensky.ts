@@ -857,8 +857,9 @@ export class OpenSky implements OpenSkyApi {
       });
       if (!projected.degraded && projected.tree.trim()) {
         projected.tree =
-          `Accessibility projection: the default native tree reached its ${full.returnedElementCount ?? "configured"}-element ` +
-          `walk limit, so deep repetitive descendants were collapsed at depth 3 while preserving their parent controls and landmarks.\n` +
+          `Accessibility projection: the default native walk was incomplete after returning ${full.returnedElementCount ?? "its configured limit"}` +
+          `${full.totalElementCount !== undefined ? ` of ${full.totalElementCount} discovered elements` : ""}, so deep repetitive descendants were ` +
+          `collapsed at depth 3 while preserving their parent controls and landmarks.\n` +
           projected.tree;
         projected.screenshotPath = full.screenshotPath;
         projected.screenshot = full.screenshot;
