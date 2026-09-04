@@ -179,6 +179,9 @@ describe("opensky helpers", () => {
     assert.match(compact, /^- \[7\] AXLink \(README\.md\)/);
     assert.match(compact, /…"\] \[actions=\[press\]\]$/);
     assert.ok(compact.length < 620);
+    const realDriverShape = sanitizeTreeText(`- [9] AXLink (commit) [help="${longHelp}" actions=[press,showmenu]]`);
+    assert.match(realDriverShape, /…" actions=\[press,showmenu\]\]$/);
+    assert.ok(realDriverShape.length < 620);
     assert.equal(sanitizeTreeText('- [8] AXTextField = "exact value" [help="short"]'), '- [8] AXTextField = "exact value" [help="short"]');
   });
 

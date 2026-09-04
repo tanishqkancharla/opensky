@@ -1484,7 +1484,8 @@ function compactAuxiliaryHelp(line: string): string {
   const start = line.indexOf('help="');
   if (start < 0) return line;
   const valueStart = start + 'help="'.length;
-  const closing = line.lastIndexOf('"]');
+  const beforeActions = line.lastIndexOf('" actions=[');
+  const closing = beforeActions > valueStart ? beforeActions : line.lastIndexOf('"]');
   if (closing <= valueStart || closing - valueStart <= 512) return line;
   return `${line.slice(0, valueStart)}${line.slice(valueStart, valueStart + 512)}…${line.slice(closing)}`;
 }
