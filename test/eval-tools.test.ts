@@ -26,6 +26,44 @@ describe("OpenSky tool runtime lifecycle", () => {
     assert.equal(calls[0]?.tool, "end_session");
     assert.match(String(calls[0]?.args.session), /^opensky-\d+-[0-9a-f]{8}$/);
   });
+
+  it("rejects contradictory observation queries before dispatching input", async () => {
+    const calls: Array<{ tool: string; args: Record<string, unknown> }> = [];
+    const driver: DriverClient = {
+      async ensureDaemon() {},
+      async status() { return { running: true, text: "running" }; },
+      async call(tool, args = {}): Promise<DriverResult> {
+        calls.push({ tool, args });
+        return { structured: { status: "ok" }, text: "ok", raw: {} };
+      },
+    };
+    const runtime = createOpenSkyToolRuntime(driver, "mac");
+    const click = runtime.tools.find((tool) => tool.name === "click");
+    const batch = runtime.tools.find((tool) => tool.name === "perform_actions");
+    assert.ok(click);
+    assert.ok(batch);
+
+    await assert.rejects(
+      () => click.execute("test", {
+        app: "Browser",
+        element_index: 1,
+        observe: false,
+        observation_query: "Results",
+      }),
+      /observation_query requires a post-action observation/,
+    );
+    await assert.rejects(
+      () => batch.execute("test", {
+        app: "Browser",
+        actions: [{ type: "click", element_index: 1 }],
+        observation: "none",
+        observation_query: "Results",
+      }),
+      /observation_query requires a post-action observation/,
+    );
+    assert.equal(calls.length, 0, "invalid combinations must not initialize the driver or send input");
+    await runtime.close();
+  });
 });
 
 describe("perform_actions safety", () => {
