@@ -172,9 +172,10 @@ class TypedBrowserDriver implements DriverClient {
         },
         {
           ref: "p41:1",
-          role: "button",
+          role: "link",
           name: "Submit",
           value: null,
+          url: "https://example.com/results",
           states: {},
           actions: ["click", "pointer"],
           frame: "main",
@@ -281,6 +282,7 @@ describe("OpenSky typed-browser contract", () => {
     });
     assert.match(state.text, /\[0\].*Query/);
     assert.match(state.text, /\[1\].*Submit/);
+    assert.match(state.text, /\[1\].*url="https:\/\/example\.com\/results"/);
     assert.doesNotMatch(state.text, /visibility=in_viewport/);
     assert.equal((state.target?.tab as { status?: string } | undefined)?.status, "verified");
     assert.equal(state.target?.document.url, URL);

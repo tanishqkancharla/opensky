@@ -1924,6 +1924,7 @@ function normalizeBrowserElements(value: unknown): SnapshotElement[] {
       role,
       label,
       value: scalarText(item.value),
+      url: optionalString(item.url),
       actions,
       visibility: optionalString(item.visibility),
       enabled: states.disabled === true ? false : undefined,
@@ -1946,6 +1947,7 @@ function renderBrowserState(
   const header = `Browser page: ${JSON.stringify(optionalString(page.title) ?? "Untitled")} (${optionalString(page.url) ?? "URL unavailable"})`;
   const actionLines = elements.map((element) => {
     const label = JSON.stringify(element.label ?? element.value ?? "");
+    const destination = element.url ? ` url=${JSON.stringify(element.url)}` : "";
     const conciseActions = element.actions?.filter((action) =>
       // A clickable semantic node is already addressable through the normal
       // click tool. Advertising its lower-level pointer route as well spends
@@ -1961,7 +1963,7 @@ function renderBrowserState(
       element.focused === true ? "focused" : "",
       element.enabled === false ? "disabled" : "",
     ].filter(Boolean).join(" ");
-    return `- [${element.element_index}] ${element.role ?? "unknown"} ${label}${hints ? ` [${hints}]` : ""}`;
+    return `- [${element.element_index}] ${element.role ?? "unknown"} ${label}${destination}${hints ? ` [${hints}]` : ""}`;
   });
   const actions: string[] = [];
   let actionCharacters = 0;

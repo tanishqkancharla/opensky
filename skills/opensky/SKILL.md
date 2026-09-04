@@ -99,6 +99,7 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 Returns `{ app, text, screenshot, target? }`. `target` truthfully separates requested resources, native-window correlation, current AX document identity, and browser-tab verification. Treat `tab.status: "unverified"` literally; a new native window does not prove a new browser tab.
 
 For an exact typed browser on a large page, pass `query` when the outline names a needed item but its action was omitted by the semantic budget. The result is a fresh, narrowed state with current actionable indices; use those indices instead of guessing. Query is read-only and unavailable for native app bindings.
+Semantic link entries may include safe resolved `url=` metadata. Use it to understand destinations without unnecessary navigation; continue to act through the opaque current-state element index.
 
 - `app` is the launch path when known, otherwise the display name.
 - `text` is the accessibility tree for the **main document window**, including menu-bar elements exposed by the helper. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a compact native-style diff with stable public element indices.

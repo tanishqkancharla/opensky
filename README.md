@@ -164,7 +164,8 @@ Evaluator action tools accept `observation_query` to narrow their settled post-a
 URL targets return page-scoped semantic state by default, omitting restored tabs,
 favorites, toolbars, and application menus. Chromium URLs use a driver-owned
 isolated profile and exact typed target/tab binding, so they neither reuse nor
-close the user's existing tabs. Use `close_target({app})` when a task explicitly
+close the user's existing tabs. Safe resolved destinations are shown as `url=`
+metadata on semantic links when the driver provides them. Use `close_target({app})` when a task explicitly
 asks to close that exact target. Call `close()` in a `finally` block when using
 the library directly; the CLI, REPL, and server entry points do this
 automatically on normal exit or termination.
