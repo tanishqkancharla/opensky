@@ -130,8 +130,9 @@ export class OpenSky implements OpenSkyApi {
     }
     const previous = this.memory.trees[windowKey(resolved)];
     const snapshot = await this.snapshotSettled(resolved, { includeScreenshot: args.includeScreenshot !== false });
-    const text =
-      snapshot.degraded || args.disableDiff || !previous
+    const text = snapshot.documentChanged && previous && !args.disableDiff
+      ? `Document changed; fresh accessibility state:\n${snapshot.tree}`
+      : snapshot.degraded || args.disableDiff || !previous
         ? snapshot.tree
         : diffTrees(previous.tree, previous.elements, snapshot.tree, snapshot.elements);
     if (!snapshot.degraded) {
@@ -799,7 +800,11 @@ export class OpenSky implements OpenSkyApi {
         ? rawElements.filter((element) => scopedIndices.has(element.element_index))
         : rawElements;
     const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
-    const elements = stabilizeElementIndices(previousElements, visibleElements, pruned.hiddenIndices.size > 0);
+    const previousDocument = primaryDocumentFingerprint(previousElements);
+    const currentDocument = primaryDocumentFingerprint(visibleElements);
+    const documentChanged = resolved.contentScope === "web" && previousDocument !== undefined &&
+      currentDocument !== undefined && previousDocument !== currentDocument;
+    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, visibleElements, pruned.hiddenIndices.size > 0);
     const remappedTree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
     const tree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
     const snapshotId = optionalString(structured.snapshot_id);
@@ -828,6 +833,7 @@ export class OpenSky implements OpenSkyApi {
       truncated: structured.elements_complete === false || totalElementCount > returnedElementCount,
       totalElementCount,
       returnedElementCount,
+      documentChanged,
     };
   }
 
@@ -848,18 +854,19 @@ export class OpenSky implements OpenSkyApi {
       delayMs = Math.min(delayMs * 2, 800);
       snapshot = await this.snapshotWindow(resolved, captureOptions);
     }
-    if (snapshot.truncated && resolved.contentScope !== "web" && !snapshot.degraded) {
+    if (snapshot.truncated && !snapshot.degraded) {
       const full = snapshot;
+      const projectionDepth = resolved.contentScope === "web" ? 5 : 3;
       const projected = await this.snapshotWindow(resolved, {
         includeScreenshot: false,
         screenshotPath,
-        maxDepth: 3,
+        maxDepth: projectionDepth,
       });
       if (!projected.degraded && projected.tree.trim()) {
         projected.tree =
-          `Accessibility projection: the default native walk was incomplete after returning ${full.returnedElementCount ?? "its configured limit"}` +
+          `Accessibility projection: the default accessibility walk was incomplete after returning ${full.returnedElementCount ?? "its configured limit"}` +
           `${full.totalElementCount !== undefined ? ` of ${full.totalElementCount} discovered elements` : ""}, so deep repetitive descendants were ` +
-          `collapsed at depth 3 while preserving their parent controls and landmarks.\n` +
+          `collapsed at depth ${projectionDepth} while preserving their parent controls and landmarks.\n` +
           projected.tree;
         projected.screenshotPath = full.screenshotPath;
         projected.screenshot = full.screenshot;
@@ -1466,10 +1473,29 @@ export function formatTargetIdentity(target: TargetIdentity): string {
 
 /** Flatten Cua's multi-line custom-action descriptor into one readable action. */
 export function sanitizeTreeText(tree: string): string {
-  return tree.replace(
+  const sanitized = tree.replace(
     /,name:([^\n\]]+)\ntarget:[^\n]*\nselector:[^\]]*/g,
     (_match, name: string) => `,${name.trim()}`,
   );
+  return sanitized.split("\n").map(compactAuxiliaryHelp).join("\n");
+}
+
+function compactAuxiliaryHelp(line: string): string {
+  const start = line.indexOf('help="');
+  if (start < 0) return line;
+  const valueStart = start + 'help="'.length;
+  const closing = line.lastIndexOf('"]');
+  if (closing <= valueStart || closing - valueStart <= 512) return line;
+  return `${line.slice(0, valueStart)}${line.slice(valueStart, valueStart + 512)}…${line.slice(closing)}`;
+}
+
+function primaryDocumentFingerprint(elements: SnapshotElement[]): string | undefined {
+  const document = elements.find((element) => /^AX(?:WebArea|Document)$/i.test(element.role ?? ""));
+  if (!document) return undefined;
+  const url = document.url?.trim();
+  if (url) return `url:${url}`;
+  const label = document.label?.trim();
+  return label ? `label:${label}` : undefined;
 }
 
 /**

@@ -160,7 +160,9 @@ async function getWindowState(state, args) {
   if (!window) throw new Error(`window_id_not_found`);
   state.snapshotSeq += 1;
   const snapshotId = `s${String(state.snapshotSeq).padStart(8, "0")}`;
-  const source = elementsForWindow(app, window);
+  const source = elementsForWindow(app, window).filter((element) =>
+    args.max_depth === undefined || Number(element.depth ?? 0) <= args.max_depth
+  );
   const elements = source.map((element) => ({
     ...element,
     element_token: `${snapshotId}:${element.element_index}`,
@@ -183,7 +185,7 @@ async function getWindowState(state, args) {
   }
   state.snapshots[`${app.pid}:${window.window_id}`] = { snapshotId, elements };
   const tree = elements
-    .map((element) => `[${element.element_index}] ${element.role} ${element.label}${element.value ? ` value=${JSON.stringify(element.value)}` : ""}`)
+    .map((element) => `${"  ".repeat(Number(element.depth ?? 0))}[${element.element_index}] ${element.role} ${element.label}${element.value ? ` value=${JSON.stringify(element.value)}` : ""}`)
     .join("\n");
   if (args.screenshot_out_file) {
     await mkdir(dirname(args.screenshot_out_file), { recursive: true });

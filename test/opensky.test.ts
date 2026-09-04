@@ -18,6 +18,7 @@ import {
   pickUsableWindowId,
   pickWindowId,
   pruneMenuSubtrees,
+  sanitizeTreeText,
 } from "../src/opensky.js";
 import type { SnapshotElement } from "../src/types.js";
 import { makeHarness } from "./harness.ts";
@@ -172,6 +173,15 @@ describe("opensky helpers", () => {
     assert.deepEqual(elements[0]?.actions, ["showmenu", "scrolltovisible"]);
   });
 
+  it("bounds verbose auxiliary help without changing the primary label or actions", () => {
+    const longHelp = "detail ".repeat(200);
+    const compact = sanitizeTreeText(`- [7] AXLink (README.md) [help="${longHelp}"] [actions=[press]]`);
+    assert.match(compact, /^- \[7\] AXLink \(README\.md\)/);
+    assert.match(compact, /…"\] \[actions=\[press\]\]$/);
+    assert.ok(compact.length < 620);
+    assert.equal(sanitizeTreeText('- [8] AXTextField = "exact value" [help="short"]'), '- [8] AXTextField = "exact value" [help="short"]');
+  });
+
   it("does not advertise unreliable press actions for editable text controls", () => {
     const elements: SnapshotElement[] = [
       { element_index: 9, role: "AXComboBox", actions: ["press", "showmenu", "scrolltovisible"] },
@@ -299,6 +309,57 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(observations.length, 2);
     assert.equal(observations[0].args.max_depth, undefined);
     assert.equal(observations[1].args.max_depth, 3);
+  });
+
+  it("projects an incomplete web tree at a depth that preserves nested controls", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.saturateDefault = true;
+    fixture.apps[0].elements = [
+      { element_index: 1, role: "AXWindow", label: "Browser", depth: 0 },
+      { element_index: 2, role: "AXWebArea", label: "Example", url: "https://example.com/", depth: 1 },
+      { element_index: 3, role: "AXTable", label: "Files", depth: 2 },
+      { element_index: 4, role: "AXRow", label: "README row", depth: 3 },
+      { element_index: 5, role: "AXCell", label: "Name", depth: 4 },
+      { element_index: 6, role: "AXLink", label: "README.md", actions: ["press"], depth: 5 },
+      { element_index: 7, role: "AXStaticText", label: "deep repetitive prose", depth: 6 },
+    ];
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.open_target({ app: "Calculator", targets: ["https://example.com/"], includeScreenshot: false });
+    assert.match(state.text, /^Accessibility projection:/);
+    assert.match(state.text, /README\.md/);
+    assert.doesNotMatch(state.text, /deep repetitive prose/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const observations = after.calls.filter((call: { tool: string }) => call.tool === "get_window_state");
+    assert.equal(observations.at(-1).args.max_depth, 5);
+  });
+
+  it("returns fresh web state instead of a cross-document removed-index diff", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.apps[0].elements = [
+      { element_index: 1, role: "AXWindow", label: "Browser" },
+      { element_index: 2, role: "AXWebArea", label: "Page A", url: "https://example.com/a" },
+      { element_index: 3, role: "AXLink", label: "Go to B", actions: ["press"] },
+    ];
+    await writeFile(statePath, JSON.stringify(fixture));
+    await opensky.open_target({ app: "Calculator", targets: ["https://example.com/a"], includeScreenshot: false });
+
+    const navigated = JSON.parse(await readFile(statePath, "utf8"));
+    navigated.apps[0].elements = [
+      { element_index: 30, role: "AXWindow", label: "Browser" },
+      { element_index: 31, role: "AXWebArea", label: "Page B", url: "https://example.com/b" },
+      { element_index: 32, role: "AXHeading", label: "Destination" },
+    ];
+    await writeFile(statePath, JSON.stringify(navigated));
+
+    const state = await opensky.get_app_state({ app: "Calculator", includeScreenshot: false });
+    assert.match(state.text, /^Document changed; fresh accessibility state:/);
+    assert.match(state.text, /Destination/);
+    assert.doesNotMatch(state.text, /Removed element IDs/);
   });
 
   it("relaunches a running UI app when it has no ordinary window", async () => {

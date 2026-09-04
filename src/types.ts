@@ -221,6 +221,7 @@ export interface WindowSnapshot {
   truncated?: boolean;
   totalElementCount?: number;
   returnedElementCount?: number;
+  documentChanged?: boolean;
 }
 
 export interface OpenSkyOptions {
