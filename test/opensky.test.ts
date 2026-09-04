@@ -126,17 +126,20 @@ describe("opensky helpers", () => {
         '- [7] AXRadioButton (World Clock) [actions=[press]]',
         '- [8] AXButton (Save) [actions=[press]]',
         '- [9] AXComboBox (Search) [actions=[press]]',
+        '- [10] AXTextField = "Hardware" [actions=[confirm]]',
         '- AXButton (Lap)',
       ].join("\n"),
       [
         { element_index: 7, role: "AXRadioButton", label: "World Clock", value: "1", selected: true },
         { element_index: 8, role: "AXButton", label: "Save", enabled: false },
-        { element_index: 9, role: "AXComboBox", label: "Search", value: "" },
+        { element_index: 9, role: "AXComboBox", label: "Search", value: "", actions: ["press"] },
+        { element_index: 10, role: "AXTextField", value: "Hardware", actions: ["confirm"] },
       ],
     );
     assert.match(text, /World Clock.*value="1"/);
     assert.match(text, /Save.*disabled/);
-    assert.match(text, /Search.*editable/);
+    assert.match(text, /Search.*editable type-directly/);
+    assert.doesNotMatch(text, /Hardware.*editable|Hardware.*type-directly/);
     assert.match(text, /Lap.*unavailable/);
   });
 
@@ -157,6 +160,22 @@ describe("opensky helpers", () => {
       '- [3] AXMenuButton "Options" [actions=[showmenu,press]]',
     ].join("\n"));
     assert.deepEqual(elements[0]?.actions, ["showmenu", "scrolltovisible"]);
+  });
+
+  it("does not advertise unreliable press actions for editable text controls", () => {
+    const elements: SnapshotElement[] = [
+      { element_index: 9, role: "AXComboBox", actions: ["press", "showmenu", "scrolltovisible"] },
+      { element_index: 10, role: "AXPopUpButton", actions: ["press", "showmenu"] },
+    ];
+    const compact = compactTreeActionHints([
+      '- [9] AXComboBox "Go to file" [actions=[press,showmenu,scrolltovisible]]',
+      '- [10] AXPopUpButton "Branch" [actions=[press,showmenu]]',
+    ].join("\n"), elements);
+    assert.equal(compact, [
+      '- [9] AXComboBox "Go to file"',
+      '- [10] AXPopUpButton "Branch" [actions=[press,showmenu]]',
+    ].join("\n"));
+    assert.deepEqual(elements[0]?.actions, ["press", "showmenu", "scrolltovisible"]);
   });
 
   it("isolates the largest web area from restored tabs and browser chrome", () => {
@@ -571,5 +590,7 @@ describe("OpenSky against cua-driver", () => {
     const snapshot = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
     assert.match(snapshot.text, /Use screenshot coordinates/);
     assert.ok(snapshot.screenshot?.url.startsWith("file:"));
+    assert.equal(snapshot.degraded, true);
+    assert.match(snapshot.degradedReason ?? "", /ax_window_unresolved/);
   });
 });

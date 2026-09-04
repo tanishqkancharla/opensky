@@ -29,6 +29,15 @@ async function stateResult(
     | { type: "text"; text: string }
     | { type: "image"; data: string; mimeType: "image/png" | "image/jpeg" }
   > = [{ type: "text", text: state.text }];
+  if (state.degraded) {
+    content.push({
+      type: "text",
+      text:
+        "Recovery: the exact window is bound but AX is unresolved. If bring_to_front was already attempted once, " +
+        "do not repeat bring/state calls. Reopen the supplied URL/file with open_target, or wait for a native app's " +
+        "exact window and observe it again. Never replay failed input without fresh state.",
+    });
+  }
   let screenshotWarning: string | undefined;
   if (includeScreenshot && state.screenshot) {
     try {
@@ -51,7 +60,7 @@ async function stateResult(
   }
   return {
     content,
-    details: { app: state.app, screenshot: state.screenshot, screenshotWarning },
+    details: { app: state.app, screenshot: state.screenshot, degraded: state.degraded, degradedReason: state.degradedReason, screenshotWarning },
   };
 }
 
@@ -62,7 +71,19 @@ async function actionResult(
   options: { observe?: boolean; includeScreenshot?: boolean },
   emittedImageHashes?: Map<string, string>,
 ) {
-  await action();
+  try {
+    await action();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/off.?space|ax.?unresolved|background input is refused|exact bound window.*off the current desktop/i.test(message)) {
+      throw new Error(
+        `${message}\nRecovery: call bring_to_front once. If its returned observation is still AX-unresolved, ` +
+        "do not repeat bring/state calls; reopen the supplied URL/file with open_target or wait for the native " +
+        "app's exact window. Never replay the failed input without fresh state.",
+      );
+    }
+    throw error;
+  }
   if (options.observe === false) return textResult({ ok: true });
   try {
     return await stateResult(

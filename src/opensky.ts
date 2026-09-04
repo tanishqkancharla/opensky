@@ -143,6 +143,8 @@ export class OpenSky implements OpenSkyApi {
       app: resolved.launchPath || resolved.name || args.app,
       screenshot: snapshot.screenshot ?? (snapshot.screenshotPath ? { url: pathToFileURL(snapshot.screenshotPath).href } : null),
       text,
+      degraded: snapshot.degraded,
+      degradedReason: snapshot.degradedReason,
     };
   }
 
@@ -1148,6 +1150,7 @@ function normalizeElements(value: unknown): SnapshotElement[] {
         value: scalarText(item.value),
         identifier: optionalString(item.identifier ?? item.id),
         actions: asArray<string>(item.actions),
+        settable: optionalBoolean(item.settable ?? item.is_settable ?? item.value_settable ?? item.is_value_settable ?? item.editable),
         enabled: optionalBoolean(item.enabled ?? item.is_enabled),
         selected: optionalBoolean(item.selected ?? item.is_selected),
         checked: optionalBoolean(item.checked ?? item.is_checked),
@@ -1245,15 +1248,18 @@ export function compactTreeActionHints(tree: string, elements: SnapshotElement[]
       if (rawIndex === undefined || !line.includes("actions=[")) return line;
       const element = byIndex.get(Number(rawIndex));
       const role = element?.role ?? line.match(/\b(AX\w+)\b/)?.[1] ?? "";
+      const rawActions = element?.actions ?? [];
+      const isEditableText = isLikelyEditableText(element, role, line, rawActions);
       return line.replace(/\s*\[actions=\[([^\]]*)\]\]/i, (_match, rawActions: string) => {
         const actions = rawActions
           .split(",")
           .map((action) => action.trim())
           .filter(Boolean)
           .filter((action) => action.toLowerCase() !== "scrolltovisible")
+          .filter((action) => !isEditableText || action.toLowerCase() !== "press")
           .filter((action) => {
             if (action.toLowerCase() !== "showmenu") return true;
-            return /AX(?:MenuButton|PopUpButton|ComboBox|Button)\b/i.test(role);
+            return !isEditableText && /AX(?:MenuButton|PopUpButton|Button)\b/i.test(role);
           });
         return actions.length > 0 ? ` [actions=[${actions.join(",")}]]` : "";
       });
@@ -1328,13 +1334,9 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
         if (!element) return line;
         const additions: string[] = [];
         const renderedValue = element.value === undefined ? undefined : JSON.stringify(element.value);
-        if (
-          /^AX(?:TextField|TextArea|ComboBox)$/i.test(element.role ?? "") &&
-          element.enabled !== false &&
-          !element.value?.includes("\n") &&
-          !/\b(?:editable|settable)\b/i.test(line)
-        ) {
-          additions.push("editable");
+        if (isLikelyEditableText(element, element.role ?? "", line, element.actions ?? [])) {
+          if (!/\b(?:editable|settable)\b/i.test(line)) additions.push("editable");
+          if (!/\btype-directly\b/i.test(line)) additions.push("type-directly");
         }
         if (
           element.value !== undefined &&
@@ -1368,6 +1370,20 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
       return line;
     })
     .join("\n");
+}
+
+function isLikelyEditableText(
+  element: SnapshotElement | undefined,
+  role: string,
+  line: string,
+  actions: string[],
+): boolean {
+  if (!/^AX(?:TextField|TextArea|ComboBox)$/i.test(role) || element?.enabled === false) return false;
+  if (element?.value?.includes("\n")) return false;
+  if (element?.settable !== undefined) return element.settable;
+  if (/\bsettable\b/i.test(line)) return true;
+  const normalized = new Set(actions.map((action) => action.toLowerCase()));
+  return normalized.has("press") || normalized.has("showmenu");
 }
 
 function semanticAttributes(element: SnapshotElement): string {

@@ -45,6 +45,9 @@ export interface AppState {
   app: string;
   screenshot: Screenshot | null;
   text: string;
+  /** True when the exact window was observed but its AX tree could not be resolved. */
+  degraded?: boolean;
+  degradedReason?: string;
 }
 
 export interface OpenSky {
@@ -163,6 +166,8 @@ export interface SnapshotElement {
   value?: string;
   identifier?: string;
   actions?: string[];
+  /** Explicit AX value mutability when the helper publishes it. */
+  settable?: boolean;
   enabled?: boolean;
   selected?: boolean;
   checked?: boolean;
