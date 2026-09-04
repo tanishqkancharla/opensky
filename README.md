@@ -108,7 +108,8 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | --- | --- |
 | `list_apps()` | `list_apps` |
 | `get_app_state({app, disableDiff?, includeScreenshot?})` | `launch_app` if needed, `list_windows`, `get_window_state` |
-| `bring_to_front({app})` | `bring_to_front`, followed by exact-window usability verification |
+| `open_target({app, targets, includeScreenshot?})` | `launch_app` with URLs/files, then binds the returned/new/matching ordinary window or browser tab before observation; call it directly without first creating a blank tab |
+| `bring_to_front({app})` | `bring_to_front` with the exact bound window |
 | `click` | `click` / `double_click` |
 | `drag` | `drag` |
 | `paste` | `clipboard_read` / `clipboard_write` (text, html, or markdown) + `hotkey` (cmd/ctrl+v), clipboard restored |
@@ -127,6 +128,9 @@ capture waits briefly after actions, and helper-reported degraded AX snapshots
 are retried for up to four seconds. If the helper still cannot resolve AX for an
 off-space or custom-drawn window, `get_app_state` preserves its screenshot and
 returns explicit coordinate-fallback guidance instead of a silent empty tree.
+Fresh target opens retain the launched document/window identity instead of
+silently adopting an older sibling. Exact token-addressed AX actions remain
+safe off-Space; only coordinate and ambient input require an on-screen target.
 AX output keeps top-level menu-bar context while pruning
 closed menu contents, and public element indices remain stable across snapshots
 so compact diffs stay useful after the helper renumbers its AX walk. Screenshot
@@ -148,6 +152,8 @@ console.log(after.text);
 ```
 
 Element indices are snapshots. Some identifiers fail silently. An action can take effect even if a later screenshot capture rejects. Refresh state before retrying.
+
+`perform_actions` never retries a completed prefix. If a DOM/UI mutation makes a later element stale, the stopped result includes a fresh settled AX state so the next action can use new indices without a separate observation call.
 
 ## Development
 

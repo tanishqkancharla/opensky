@@ -71,6 +71,7 @@ opensky.target                    // "mac" | "win" | "linux"
 
 await opensky.list_apps()
 await opensky.get_app_state({ app, disableDiff?, includeScreenshot? })
+await opensky.open_target({ app, targets, includeScreenshot? })
 await opensky.bring_to_front({ app })
 await opensky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
 await opensky.drag({ app, from_x, from_y, to_x, to_y })
@@ -101,19 +102,27 @@ Returns `{ app, text, screenshot }`.
 - Read PNG bytes with `await readFile(pathToFileURL(state.screenshot.url))`.
 - OpenSky automatically waits briefly after actions, revives expired helper sessions, and retries temporary degraded AX snapshots. If AX remains unavailable, use coordinates from the returned screenshot or bring the window onto the current desktop and call `get_app_state` again.
 
+### `open_target({ app, targets, includeScreenshot? })`
+
+Use this as the first call when the task supplies a URL or file. For browser URLs it opens and binds the resulting tab/window itself; do not create a blank tab or observe the browser first.
+
+Open files or URLs with a named app and return the settled full state of the returned, newly created, or title-matching ordinary window. Prefer this over launching a document and then separately resolving the app; the binding prevents an older sibling document from being mistaken for the requested target.
+
 ### `click`
 
-Prefer `element_index` from the latest `get_app_state().text`. Use `x, y` only for canvas/custom-drawn surfaces.
+Prefer `element_index` from the latest `get_app_state().text`. Exact AX element actions are token-bound and remain safe if a user changes focus or Spaces. Use `x, y` only for visible canvas/custom-drawn surfaces.
+
+If `perform_actions` stops because a UI mutation made a later element stale, it returns the completed prefix plus fresh settled AX state. Derive new indices from that result; do not repeat the completed prefix.
 
 `mouse_button`: `left` | `right` | `middle` | `l` | `r` | `m` | `0` | `1` | `2`.
 
 ### `bring_to_front`
 
-Brings the exact bound ordinary window onto the current desktop. Use it after an off-desktop input refusal, then observe again before addressing elements.
+Brings the exact bound ordinary window onto the current desktop. Coordinate and ambient input may need this; exact element-targeted AX actions do not.
 
 ### `press_key`
 
-xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targeted; cannot invoke global OS shortcuts. Prefer a fresh `element_index` for atomic focus+key on sliders and other controls; use `x`/`y` only for custom surfaces.
+xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targeted; cannot invoke global OS shortcuts. Element-targeted chords use background delivery so modifiers are preserved while focus remains isolated; use `x`/`y` only for custom surfaces.
 
 ### `paste`
 

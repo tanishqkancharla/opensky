@@ -117,7 +117,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       name: "open_target",
       label: "open_target",
       description:
-        "Open one or more file paths or URLs with a named app, then return its settled AX state. Use this for task-supplied documents/folders/URLs; app in get_app_state is an application identifier, not a document path.",
+        "Open one or more file paths or URLs with a named app, bind the resulting window/tab, then return its settled AX state. Use this as the first call for task-supplied documents/folders/URLs. For a browser URL it performs the open itself; do not create a blank tab or observe the browser first. app in get_app_state is an application identifier, not a document path.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String({ description: "Application display name or bundle id" }),
@@ -125,14 +125,10 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
         include_screenshot: Type.Optional(Type.Boolean()),
       }),
       async execute(_id, params) {
-        const launchKey = params.app.includes(".") && !params.app.includes(" ")
-          ? { bundle_id: params.app }
-          : { name: params.app };
-        await driver.call("launch_app", { ...launchKey, urls: params.targets });
         return stateResult(
-          await opensky.get_app_state({
+          await opensky.open_target({
             app: params.app,
-            disableDiff: true,
+            targets: params.targets,
             includeScreenshot: params.include_screenshot === true,
           }),
           params.include_screenshot === true,
@@ -215,17 +211,46 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       }),
       async execute(_id, params) {
         validateBatchActions(params.actions);
-        let completed = 0;
-        try {
-          for (const action of params.actions) {
-            await runBatchAction(opensky, params.app, action);
-            completed += 1;
+        const batch = await dispatchBatchActions(opensky, params.app, params.actions);
+        const completed = batch.completed;
+        if (batch.error !== undefined) {
+          const failure = batch.error;
+          const stop = {
+            dispatched_actions: completed,
+            requested_actions: params.actions.length,
+            stopped_before_action: completed + 1,
+            error: failure,
+          };
+          if (params.observation === "none") {
+            return textResult({
+              ...stop,
+              verification: "not_requested",
+              guidance: "The completed prefix was not retried. Observe before choosing the next action.",
+            });
           }
-        } catch (error) {
-          throw new Error(
-            `perform_actions stopped after ${completed}/${params.actions.length} dispatched action(s): ` +
-              (error instanceof Error ? error.message : String(error)),
-          );
+          const withScreenshot = params.observation === "ax+screenshot";
+          try {
+            const result = await stateResult(
+              await opensky.get_app_state({ app: params.app, includeScreenshot: withScreenshot }),
+              withScreenshot,
+              emittedImageHashes,
+            );
+            result.content.unshift({
+              type: "text",
+              text:
+                `Batch stopped safely after ${completed}/${params.actions.length} dispatched actions; ` +
+                `action ${completed + 1} was not sent: ${failure}\n` +
+                "The completed prefix was not retried. Fresh settled state follows; derive new element indices from it.",
+            });
+            result.details = { ...result.details, batch: stop };
+            return result;
+          } catch (observationError) {
+            return textResult({
+              ...stop,
+              observation_error: observationError instanceof Error ? observationError.message : String(observationError),
+              guidance: "The completed prefix was not retried. Refresh state before choosing the next action.",
+            });
+          }
         }
         if (params.observation === "none") {
           return textResult({ dispatched_actions: completed, verification: "not_requested" });
@@ -508,6 +533,23 @@ async function runBatchAction(
     case "set_value": return opensky.set_value(payload as Parameters<typeof opensky.set_value>[0]);
     case "type_text": return opensky.type_text(payload as Parameters<typeof opensky.type_text>[0]);
     default: throw new Error(`Unsupported action type: ${type}`);
+  }
+}
+
+export async function dispatchBatchActions(
+  opensky: ReturnType<typeof createOpenSky>,
+  app: string,
+  actions: Array<Record<string, unknown> & { type: string }>,
+): Promise<{ completed: number; error?: string }> {
+  let completed = 0;
+  try {
+    for (const action of actions) {
+      await runBatchAction(opensky, app, action);
+      completed += 1;
+    }
+    return { completed };
+  } catch (error) {
+    return { completed, error: error instanceof Error ? error.message : String(error) };
   }
 }
 

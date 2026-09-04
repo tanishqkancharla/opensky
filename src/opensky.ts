@@ -136,6 +136,64 @@ export class OpenSky implements OpenSkyApi {
     };
   }
 
+  async open_target(args: {
+    app: string;
+    targets: string[];
+    includeScreenshot?: boolean;
+  }): Promise<AppState> {
+    if (!args?.app || !Array.isArray(args.targets) || args.targets.length === 0) {
+      throw invalidParams("app and at least one target are required");
+    }
+    await this.ensureLoaded();
+    const listed = await this.listRawApps();
+    const match = findApp(listed, args.app);
+    const previousPid = Number(match?.pid);
+    const previousWindows = Number.isFinite(previousPid) && previousPid > 0
+      ? windowsFrom((await this.driver.call("list_windows", { pid: previousPid })).structured)
+      : [];
+    const previousIds = new Set(previousWindows
+      .map((window) => window.window_id)
+      .filter((id): id is number => typeof id === "number"));
+    const launched = await this.driver.call("launch_app", {
+      ...launchArgsFor(args.app, match),
+      urls: args.targets,
+    });
+    const structured = asRecord(launched.structured) ?? {};
+    const pid = Number(structured.pid ?? match?.pid);
+    if (!Number.isFinite(pid) || pid <= 0) {
+      throw new OpenSkyError(`Failed to open target with ${JSON.stringify(args.app)}`);
+    }
+    let windows = windowsFrom(structured);
+    if (windows.length === 0) {
+      windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured);
+    }
+    const newWindows = windows.filter((window) =>
+      typeof window.window_id === "number" && !previousIds.has(window.window_id),
+    );
+    const matchingWindows = windows.filter((window) => windowMatchesTargets(window, args.targets));
+    const candidates = newWindows.length > 0 ? newWindows : matchingWindows.length > 0 ? matchingWindows : windows;
+    const windowId = pickUsableWindowId(candidates) ?? pickOrdinaryWindowId(candidates);
+    const resolved: ResolvedApp = {
+      query: args.app,
+      name: String(structured.name ?? match?.name ?? args.app),
+      bundleId: optionalString(structured.bundle_id) ?? optionalString(match?.bundle_id),
+      launchPath: optionalString(structured.launch_path) ?? optionalString(match?.launch_path),
+      pid,
+      windowId,
+    };
+    this.memory.apps[normalizeAppKey(args.app)] = resolved;
+    if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
+    if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
+    this.markResolved(resolved);
+    this.markAction(resolved);
+    await this.persist();
+    return this.get_app_state({
+      app: args.app,
+      disableDiff: true,
+      includeScreenshot: args.includeScreenshot,
+    });
+  }
+
   async click(args: {
     app: string;
     element_index?: number;
@@ -147,13 +205,14 @@ export class OpenSky implements OpenSkyApi {
     if (!args?.app) throw invalidParams("app is required");
     const button = normalizeMouseButton(args.mouse_button);
     const resolved = await this.requireResolved(args.app);
-    await this.requireUsableInputWindow(resolved);
+    if (args.element_index === undefined) await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       pid: resolved.pid,
       window_id: resolved.windowId,
     };
     if (args.element_index !== undefined) {
       Object.assign(payload, this.elementTarget(resolved, args.element_index));
+      if (button === "left" && args.click_count !== 2) payload.action = "press";
     }
     if (args.x !== undefined) payload.x = args.x;
     if (args.y !== undefined) payload.y = args.y;
@@ -189,7 +248,6 @@ export class OpenSky implements OpenSkyApi {
     await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: boundWindow });
     this.markAction(resolved);
     await this.settleAfterAction(resolved);
-    await this.requireUsableInputWindow(resolved);
   }
 
   async drag(args: {
@@ -268,13 +326,12 @@ export class OpenSky implements OpenSkyApi {
       await this.bring_to_front({ app: args.app });
       return;
     }
-    await this.requireUsableInputWindow(resolved);
     if (mapped?.kind === "key" && mapped.key) {
       await this.driver.call("press_key", {
         pid: resolved.pid,
         window_id: resolved.windowId,
         key: mapped.key,
-        delivery_mode: "foreground",
+        delivery_mode: "background",
         ...this.elementTarget(resolved, args.element_index),
       });
       this.markAction(resolved);
@@ -315,23 +372,27 @@ export class OpenSky implements OpenSkyApi {
           "Refresh after a window exists; global input was not sent.",
       );
     }
-    await this.requireUsableInputWindow(resolved);
     const target: Record<string, unknown> = {};
     if (args.element_index !== undefined) {
       Object.assign(target, this.elementTarget(resolved, args.element_index));
     } else if (hasX) {
+      await this.requireUsableInputWindow(resolved);
       target.x = args.x;
       target.y = args.y;
     }
     if (Object.keys(target).length > 0) {
-      await this.driver.call("press_key", {
-        pid: resolved.pid,
-        window_id: resolved.windowId,
-        key: parsed.key,
-        ...(parsed.modifiers.length > 0 ? { modifiers: parsed.modifiers } : {}),
-        delivery_mode: "foreground",
-        ...target,
-      });
+      if (args.element_index !== undefined) {
+        await this.pressElementKey(resolved, args.element_index, parsed.key, parsed.modifiers);
+      } else {
+        await this.driver.call("press_key", {
+          pid: resolved.pid,
+          window_id: resolved.windowId,
+          key: parsed.key,
+          ...(parsed.modifiers.length > 0 ? { modifiers: parsed.modifiers } : {}),
+          delivery_mode: "foreground",
+          ...target,
+        });
+      }
       this.markAction(resolved);
       return;
     }
@@ -366,7 +427,7 @@ export class OpenSky implements OpenSkyApi {
     if (args.element_index !== undefined && typeof args.element_index !== "number") throw invalidParams();
     const direction = normalizeDirection(args.direction);
     const resolved = await this.requireResolved(args.app);
-    await this.requireUsableInputWindow(resolved);
+    if (typeof args.element_index !== "number") await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -399,7 +460,6 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
-    await this.requireUsableInputWindow(resolved);
     const snapshot = this.memory.trees[windowKey(resolved)];
     const element = snapshot?.elements.find((item) => item.element_index === args.element_index);
     const haystack = element?.value ?? snapshot?.tree ?? "";
@@ -408,47 +468,25 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(`Text ${JSON.stringify(args.text)} was not found in element ${args.element_index}`);
     }
 
-    const target = this.elementTarget(resolved, args.element_index);
-    await this.driver.call("press_key", {
-      pid: resolved.pid,
-      window_id: resolved.windowId,
-      key: "home",
-      modifiers: this.target === "mac" ? ["cmd"] : ["ctrl"],
-      delivery_mode: "background",
-      ...target,
-    });
+    await this.pressElementKey(
+      resolved,
+      args.element_index,
+      "home",
+      this.target === "mac" ? ["cmd"] : ["ctrl"],
+    );
     for (let i = 0; i < index; i += 1) {
-      await this.driver.call("press_key", {
-        pid: resolved.pid,
-        window_id: resolved.windowId,
-        key: "right",
-        delivery_mode: "background",
-        ...target,
-      });
+      await this.pressElementKey(resolved, args.element_index, "right");
     }
     if (selectionType === "cursor_before") return;
     const moves = args.text.length;
     if (selectionType === "cursor_after") {
       for (let i = 0; i < moves; i += 1) {
-        await this.driver.call("press_key", {
-          pid: resolved.pid,
-          window_id: resolved.windowId,
-          key: "right",
-          delivery_mode: "background",
-          ...target,
-        });
+        await this.pressElementKey(resolved, args.element_index, "right");
       }
       return;
     }
     for (let i = 0; i < moves; i += 1) {
-      await this.driver.call("press_key", {
-        pid: resolved.pid,
-        window_id: resolved.windowId,
-        key: "right",
-        modifiers: ["shift"],
-        delivery_mode: "background",
-        ...target,
-      });
+      await this.pressElementKey(resolved, args.element_index, "right", ["shift"]);
     }
   }
 
@@ -457,7 +495,6 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
-    await this.requireUsableInputWindow(resolved);
     await this.driver.call("set_value", {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -485,7 +522,7 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams("element_index cannot be combined with x/y");
     }
     const resolved = await this.requireResolved(args.app);
-    await this.requireUsableInputWindow(resolved);
+    if (args.element_index === undefined) await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -629,7 +666,7 @@ export class OpenSky implements OpenSkyApi {
     const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
     const elements = stabilizeElementIndices(previousElements, visibleElements, pruned.hiddenIndices.size > 0);
     const remappedTree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
-    const tree = enrichTreeSemantics(remappedTree, elements);
+    const tree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
     const snapshotId = optionalString(structured.snapshot_id);
     const filePath =
       optionalString(structured.screenshot_file_path) ??
@@ -762,6 +799,45 @@ export class OpenSky implements OpenSkyApi {
     if (element?.element_token) target.element_token = element.element_token;
     if (snapshot?.snapshotId) target.snapshot_id = snapshot.snapshotId;
     return target;
+  }
+
+  private async pressElementKey(
+    resolved: ResolvedApp,
+    elementIndex: number,
+    key: string,
+    modifiers: string[] = [],
+  ): Promise<void> {
+    const target = this.elementTarget(resolved, elementIndex);
+    const payload = {
+      pid: resolved.pid,
+      window_id: resolved.windowId,
+      key,
+      ...(modifiers.length > 0 ? { modifiers } : {}),
+      ...target,
+    };
+    try {
+      await this.driver.call("press_key", { ...payload, delivery_mode: "background" });
+      return;
+    } catch (error) {
+      if (!isFocusRoutingError(error)) throw error;
+    }
+    const snapshot = this.memory.trees[windowKey(resolved)];
+    const element = snapshot?.elements.find((item) => item.element_index === elementIndex);
+    if (/text|search|combo/i.test(element?.role ?? "")) {
+      await this.driver.call("click", {
+        pid: resolved.pid,
+        window_id: resolved.windowId,
+        action: "press",
+        ...target,
+      });
+      try {
+        await this.driver.call("press_key", { ...payload, delivery_mode: "background" });
+        return;
+      } catch (error) {
+        if (!isFocusRoutingError(error)) throw error;
+      }
+    }
+    await this.driver.call("press_key", { ...payload, delivery_mode: "foreground" });
   }
 
   private async ensureLoaded(): Promise<void> {
@@ -977,6 +1053,19 @@ function windowsFrom(structured: unknown): Record<string, unknown>[] {
   return [];
 }
 
+function windowMatchesTargets(window: Record<string, unknown>, targets: string[]): boolean {
+  const title = String(window.title ?? window.name ?? "").toLowerCase();
+  if (!title) return false;
+  return targets.some((target) => {
+    const normalized = target.replaceAll("\\", "/");
+    const tail = normalized.split("/").filter(Boolean).at(-1)?.toLowerCase() ?? "";
+    let decoded = tail;
+    try { decoded = decodeURIComponent(tail); } catch { /* retain the literal target */ }
+    const stem = decoded.replace(/\.[a-z0-9]{1,8}$/i, "");
+    return Boolean(decoded && (title.includes(decoded) || (stem.length >= 3 && title.includes(stem))));
+  });
+}
+
 export function pickWindowId(windows: Record<string, unknown>[]): number | undefined {
   if (windows.length === 0) return undefined;
   const eligible = windows.filter((window) => window.on_current_space !== false && window.is_on_screen !== false);
@@ -1084,6 +1173,36 @@ export function sanitizeTreeText(tree: string): string {
     /,name:([^\n\]]+)\ntarget:[^\n]*\nselector:[^\]]*/g,
     (_match, name: string) => `,${name.trim()}`,
   );
+}
+
+/**
+ * Keep actionable AX hints while omitting Cua's ubiquitous web-node actions.
+ * The structured element map retains every action, so this only reduces the
+ * model-facing representation; it does not remove capabilities or provenance.
+ */
+export function compactTreeActionHints(tree: string, elements: SnapshotElement[]): string {
+  const byIndex = new Map(elements.map((element) => [element.element_index, element]));
+  return tree
+    .split("\n")
+    .map((line) => {
+      const rawIndex = line.match(/\[(\d+)\]/)?.[1];
+      if (rawIndex === undefined || !line.includes("actions=[")) return line;
+      const element = byIndex.get(Number(rawIndex));
+      const role = element?.role ?? line.match(/\b(AX\w+)\b/)?.[1] ?? "";
+      return line.replace(/\s*\[actions=\[([^\]]*)\]\]/i, (_match, rawActions: string) => {
+        const actions = rawActions
+          .split(",")
+          .map((action) => action.trim())
+          .filter(Boolean)
+          .filter((action) => action.toLowerCase() !== "scrolltovisible")
+          .filter((action) => {
+            if (action.toLowerCase() !== "showmenu") return true;
+            return /AX(?:MenuButton|PopUpButton|ComboBox|Button)\b/i.test(role);
+          });
+        return actions.length > 0 ? ` [actions=[${actions.join(",")}]]` : "";
+      });
+    })
+    .join("\n");
 }
 
 /** Reuse public element indices across snapshots even when the helper renumbers its walk. */
@@ -1313,7 +1432,7 @@ function scalarText(value: unknown): string | undefined {
 
 function isFocusRoutingError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /off.?space|ax.?unresolved|window.*unavailable|background input is refused|ambiguous_window_target/i.test(message);
+  return /off.?space|ax.?unresolved|window.*unavailable|background input is refused|ambiguous_window_target|process-scoped|sibling window|could mutate/i.test(message);
 }
 
 function optionalBoolean(value: unknown): boolean | undefined {

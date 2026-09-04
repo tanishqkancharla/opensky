@@ -6,6 +6,7 @@ import { describe, it } from "bun:test";
 
 import {
   diffTrees,
+  compactTreeActionHints,
   enrichTreeSemantics,
   findWithContext,
   mapApps,
@@ -134,6 +135,25 @@ describe("opensky helpers", () => {
     assert.match(text, /Lap.*unavailable/);
   });
 
+  it("omits ubiquitous web action noise without changing structured capabilities", () => {
+    const elements: SnapshotElement[] = [
+      { element_index: 1, role: "AXStaticText", actions: ["showmenu", "scrolltovisible"] },
+      { element_index: 2, role: "AXLink", actions: ["press", "showmenu", "scrolltovisible"] },
+      { element_index: 3, role: "AXMenuButton", actions: ["showmenu", "press"] },
+    ];
+    const compact = compactTreeActionHints([
+      '- [1] AXStaticText = "Results" [actions=[showmenu,scrolltovisible]]',
+      '- [2] AXLink "Results" [actions=[press,showmenu,scrolltovisible]]',
+      '- [3] AXMenuButton "Options" [actions=[showmenu,press]]',
+    ].join("\n"), elements);
+    assert.equal(compact, [
+      '- [1] AXStaticText = "Results"',
+      '- [2] AXLink "Results" [actions=[press]]',
+      '- [3] AXMenuButton "Options" [actions=[showmenu,press]]',
+    ].join("\n"));
+    assert.deepEqual(elements[0]?.actions, ["showmenu", "scrolltovisible"]);
+  });
+
   it("does not duplicate a multiline value already rendered after an equals sign", () => {
     const value = "first line\nsecond line";
     const tree = `[1] AXTextArea = "first line\nsecond line"`;
@@ -187,6 +207,23 @@ describe("OpenSky against cua-driver", () => {
     const second = await opensky.get_app_state({ app: "Calculator" });
     assert.match(second.text, /^~ /m);
     assert.doesNotMatch(second.text, /No accessibility changes/);
+  });
+
+  it("opens and binds a supplied target through the core API", async () => {
+    const { opensky, statePath } = await makeHarness();
+    const state = await opensky.open_target({
+      app: "TextEdit",
+      targets: ["/tmp/epoch-target.txt"],
+      includeScreenshot: false,
+    });
+    assert.match(state.text, /AXTextArea/);
+    const persisted = JSON.parse(await readFile(statePath, "utf8")) as {
+      calls: Array<{ tool: string; args: Record<string, unknown> }>;
+    };
+    assert.ok(persisted.calls.some((call) =>
+      call.tool === "launch_app" &&
+      JSON.stringify(call.args.urls) === JSON.stringify(["/tmp/epoch-target.txt"]),
+    ));
   });
 
   it("clicks, types, pastes, sets values, scrolls, and presses keys", async () => {
@@ -253,6 +290,18 @@ describe("OpenSky against cua-driver", () => {
         (call) => call.tool === "press_key" && call.args.delivery_mode === "foreground" && call.args.key === "up",
       ),
     );
+    assert.ok(
+      persisted.calls.some(
+        (call) => call.tool === "press_key" && call.args.delivery_mode === "background" &&
+          call.args.element_index === 2 && call.args.key === "a" &&
+          JSON.stringify(call.args.modifiers) === JSON.stringify(["cmd"]),
+      ),
+    );
+    assert.ok(
+      persisted.calls.some(
+        (call) => call.tool === "click" && call.args.element_index === 2 && call.args.action === "press",
+      ),
+    );
     const selectionKeys = persisted.calls.filter(
       (call) => call.tool === "press_key" && call.args.delivery_mode === "background" &&
         call.args.element_index === 2,
@@ -302,7 +351,7 @@ describe("OpenSky against cua-driver", () => {
     await assert.rejects(() => opensky.click({ app: "TextEdit", x: -4, y: -4 }), /windowNotFoundAtPosition/);
   });
 
-  it("refuses input when the exact bound window moves off the current desktop", async () => {
+  it("keeps exact AX actions usable off-Space while refusing pixel or ambient input", async () => {
     const { opensky, statePath } = await makeHarness();
     await opensky.get_app_state({ app: "TextEdit", disableDiff: true, includeScreenshot: false });
     const state = JSON.parse(await readFile(statePath, "utf8")) as {
@@ -318,16 +367,19 @@ describe("OpenSky against cua-driver", () => {
     const typeCallsBefore = state.calls.filter((call) => call.tool === "type_text").length;
     await writeFile(statePath, JSON.stringify(state));
 
+    await opensky.type_text({ app: "TextEdit", text: "exact target", element_index: 2 });
+    await opensky.click({ app: "TextEdit", element_index: 2 });
     await assert.rejects(
-      opensky.type_text({ app: "TextEdit", text: "must not be sent" }),
+      opensky.type_text({ app: "TextEdit", text: "ambient must not be sent" }),
       /off the current desktop; no input was sent/,
     );
     await assert.rejects(
-      opensky.bring_to_front({ app: "TextEdit" }),
+      opensky.click({ app: "TextEdit", x: 10, y: 10 }),
       /off the current desktop; no input was sent/,
     );
+    await opensky.bring_to_front({ app: "TextEdit" });
     const after = JSON.parse(await readFile(statePath, "utf8")) as { calls: Array<{ tool: string }> };
-    assert.equal(after.calls.filter((call) => call.tool === "type_text").length, typeCallsBefore);
+    assert.equal(after.calls.filter((call) => call.tool === "type_text").length, typeCallsBefore + 1);
     assert.equal(after.calls.filter((call) => call.tool === "bring_to_front").length, 1);
   });
 

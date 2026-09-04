@@ -55,6 +55,11 @@ export interface OpenSky {
     disableDiff?: boolean;
     includeScreenshot?: boolean;
   }): Promise<AppState>;
+  open_target(args: {
+    app: string;
+    targets: string[];
+    includeScreenshot?: boolean;
+  }): Promise<AppState>;
   bring_to_front(args: { app: string }): Promise<void>;
   click(args: {
     app: string;
