@@ -113,6 +113,8 @@ async function runEval(code: string, flags: Flags): Promise<number> {
   } catch (error) {
     const logs = error && typeof error === "object" && "logs" in error ? (error as { logs: string[] }).logs : [];
     return printEval(false, undefined, logs, error instanceof Error ? error.message : String(error), flags);
+  } finally {
+    await opensky.close();
   }
 }
 
@@ -127,11 +129,13 @@ async function runFile(file: string | undefined, flags: Flags): Promise<number> 
 
 async function runRepl(flags: Flags): Promise<number> {
   const { opensky, extra } = createContext(flags);
-  startInteractiveRepl({
+  const server = startInteractiveRepl({
     context: { opensky, ...extra },
     prompt: "opensky> ",
   });
-  return new Promise(() => undefined);
+  return new Promise((resolve) => {
+    server.on("exit", () => void opensky.close().finally(() => resolve(0)));
+  });
 }
 
 async function runServe(flags: Flags): Promise<number> {
@@ -144,7 +148,7 @@ async function runServe(flags: Flags): Promise<number> {
     `opensky REPL server listening on 127.0.0.1:${info.port} (pid ${info.pid})\nAuth token stored in ${join(home, "repl.json")} (mode 0600)\n`,
   );
   const shutdown = async () => {
-    await server.stop();
+    await Promise.all([server.stop(), opensky.close()]);
     process.exit(0);
   };
   process.on("SIGINT", () => void shutdown());

@@ -1,7 +1,31 @@
 import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
 
-import { dispatchBatchActions, validateBatchActions } from "../evals/tools.js";
+import { createOpenSkyToolRuntime, dispatchBatchActions, validateBatchActions } from "../evals/tools.js";
+import type { DriverClient, DriverResult } from "../src/types.js";
+
+describe("OpenSky tool runtime lifecycle", () => {
+  it("gives agent hosts an explicit cleanup hook", async () => {
+    const calls: Array<{ tool: string; args: Record<string, unknown> }> = [];
+    const driver: DriverClient = {
+      async ensureDaemon() {},
+      async status() { return { running: true, text: "running" }; },
+      async call(tool, args = {}): Promise<DriverResult> {
+        calls.push({ tool, args });
+        return { structured: { status: "ok" }, text: "ok", raw: {} };
+      },
+    };
+    const runtime = createOpenSkyToolRuntime(driver, "mac");
+
+    await runtime.close();
+    await runtime.close();
+
+    assert.equal(runtime.tools.length > 0, true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]?.tool, "end_session");
+    assert.match(String(calls[0]?.args.session), /^opensky-\d+-[0-9a-f]{8}$/);
+  });
+});
 
 describe("perform_actions safety", () => {
   it("rejects ambient content after unverified focus-changing input", () => {

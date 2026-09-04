@@ -1,0 +1,38 @@
+{
+  "name": "github repository saturated accessibility projection",
+  "states": [
+    {
+      "app": "/Applications/Google Chrome.app",
+      "screenshot": null,
+      "text": "Accessibility projection: the default accessibility walk was incomplete after returning 1473 of 1473 discovered elements, so deep repetitive descendants were collapsed at depth 5 while preserving their parent controls and landmarks.\n- [0] AXWindow \"GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub - Google Chrome\" [actions=[raise]]\n  - [21] AXWebArea \"GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub\"\n    - [110] AXHeading \"Folders and files\" [value=\"2\"]\n    - [112] AXTable \"Folders and files\"\n      - [120] AXRow [actions=[press]]\n        - [122] AXLink (.codex, (Directory)) [actions=[press]]\n      - [148] AXRow \"README.md\" [actions=[press]]\n        - [149] AXStaticText = \"README.md\"",
+      "degraded": false,
+      "target": {
+        "requested": [
+          "https://github.com/openai/codex"
+        ],
+        "resourceKind": "url",
+        "requestDispatch": "unknown",
+        "window": {
+          "id": 94052,
+          "source": "launch_result",
+          "correlation": "new_since_request"
+        },
+        "document": {
+          "freshness": "current",
+          "title": "GitHub - openai/codex: Lightweight coding agent that runs in your terminal · GitHub",
+          "source": "ax_web_area",
+          "requestRelation": "unknown"
+        },
+        "tab": {
+          "status": "unverified"
+        }
+      }
+    }
+  ],
+  "metrics": {
+    "driverCalls": 6,
+    "rawTreeCharacters": 1873,
+    "projectedCharacters": 760,
+    "reductionRatio": 0.4058
+  }
+}

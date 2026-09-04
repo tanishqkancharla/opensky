@@ -55,6 +55,20 @@ describe("parseDriverRefusal", () => {
       code: "window_off_space",
       message: "Window is off-Space.",
     });
+    assert.deepEqual(parseDriverRefusal({
+      effect: "refused",
+      refusal: { code: "browser_ref_stale", message: "The browser ref is stale." },
+    }), {
+      code: "browser_ref_stale",
+      message: "The browser ref is stale.",
+    });
+    assert.deepEqual(parseDriverRefusal({
+      effect: "refused",
+      reason: { code: "browser_action_unavailable", detail: "The target is not focusable." },
+    }), {
+      code: "browser_action_unavailable",
+      message: "The target is not focusable.",
+    });
     assert.equal(parseDriverRefusal({ status: "ok" }), null);
   });
 });

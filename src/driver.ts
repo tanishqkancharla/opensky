@@ -350,8 +350,11 @@ export function parseDriverOutput(stdout: string): {
 export function parseDriverRefusal(structured: unknown): { code?: string; message: string } | null {
   if (!isRecord(structured)) return null;
   if (structured.effect === "refused") {
-    const code = typeof structured.code === "string" ? structured.code : undefined;
-    const message = [structured.reason, structured.message, code]
+    const nested = isRecord(structured.refusal) ? structured.refusal : structured;
+    const reason = isRecord(nested.reason) ? nested.reason : undefined;
+    const code = [nested.code, reason?.code]
+      .find((value): value is string => typeof value === "string" && value.length > 0);
+    const message = [reason?.message, reason?.detail, nested.reason, nested.message, structured.reason, structured.message, code]
       .find((value): value is string => typeof value === "string" && value.length > 0);
     return { code, message: message ?? "The desktop helper refused the request." };
   }

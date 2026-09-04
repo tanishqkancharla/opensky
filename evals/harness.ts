@@ -19,7 +19,7 @@ import {
 } from "./artifacts.js";
 import type { EvalHarness, EvalHarnessName, EvalResponse, EvalScore } from "./eval-case.js";
 import { FleetMcpDriver } from "./mcp-driver.js";
-import { CUA_DRIVER_TOOL_NAMES, cuaDriverTools, OPENSKY_TOOL_NAMES, openskyTools } from "./tools.js";
+import { createOpenSkyToolRuntime, CUA_DRIVER_TOOL_NAMES, cuaDriverTools, OPENSKY_TOOL_NAMES } from "./tools.js";
 import type { EvalVm } from "./vm.js";
 
 export type ModelSelector = `${string}/${string}`;
@@ -55,26 +55,52 @@ export class ComputerUseHarness implements EvalHarness {
 
   private async sendPi(prompt: string): Promise<EvalResponse> {
     const driver = new FleetMcpDriver(this.vm);
-    const customTools =
-      this.name === "opensky" ? openskyTools(driver, this.vm.os) : cuaDriverTools(driver);
+    const openskyRuntime = this.name === "opensky" ? createOpenSkyToolRuntime(driver, this.vm.os) : undefined;
+    const customTools = openskyRuntime?.tools ?? cuaDriverTools(driver);
     const toolNames = this.name === "opensky" ? [...OPENSKY_TOOL_NAMES] : [...CUA_DRIVER_TOOL_NAMES];
-    const { sessionId, startedAt, finishedAt, transcript } = await runPiSession({
-      cwd: this.cwd,
-      model: this.model,
-      prompt,
-      source: "agent",
-      systemPrompt: agentSystemPrompt(this.name),
-      noTools: "builtin",
-      tools: toolNames,
-      customTools,
-    });
-    recordTranscriptMarkdown({
-      source: "agent",
-      prompt,
-      transcript: transcript || "(empty agent output)",
-      startedAt,
-      finishedAt,
-    });
+    let result: Awaited<ReturnType<typeof runPiSession>> | undefined;
+    let runError: unknown;
+    try {
+      result = await runPiSession({
+        cwd: this.cwd,
+        model: this.model,
+        prompt,
+        source: "agent",
+        systemPrompt: agentSystemPrompt(this.name),
+        noTools: "builtin",
+        tools: toolNames,
+        customTools,
+      });
+    } catch (error) {
+      runError = error;
+    }
+    if (result) {
+      const { startedAt, finishedAt, transcript } = result;
+      recordTranscriptMarkdown({
+        source: "agent",
+        prompt,
+        transcript: transcript || "(empty agent output)",
+        startedAt,
+        finishedAt,
+      });
+    }
+    let cleanupError: unknown;
+    try {
+      await openskyRuntime?.close();
+    } catch (error) {
+      cleanupError = error;
+      recordAgentEvent({
+        type: "opensky_cleanup_error",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    if (runError && cleanupError) {
+      throw new AggregateError([runError, cleanupError], "Pi session and OpenSky cleanup both failed");
+    }
+    if (runError) throw runError;
+    if (cleanupError) throw cleanupError;
+    if (!result) throw new Error("Pi session returned no result");
+    const { sessionId, startedAt, finishedAt, transcript } = result;
 
     return this.response({
       prompt,

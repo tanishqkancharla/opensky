@@ -76,7 +76,9 @@ export interface TargetIdentity extends TargetRequestIdentity {
     requestRelation: "exact" | "different" | "unknown";
   };
   /** Present only when the target is web content. */
-  tab?: { status: "unverified" };
+  tab?:
+    | { status: "unverified" }
+    | { status: "verified"; title?: string; url?: string };
 }
 
 export interface OpenSky {
@@ -154,6 +156,8 @@ export interface OpenSky {
     x?: number;
     y?: number;
   }): Promise<void>;
+  /** Release driver-owned browser profiles and their helper sessions. */
+  close(): Promise<void>;
 }
 
 export interface DriverCall {
@@ -184,6 +188,18 @@ export interface ResolvedApp {
   /** URL targets default to their primary AXWebArea, matching a native Tab binding. */
   contentScope?: "web";
   targetRequest?: TargetRequestIdentity;
+  /** Exact typed-browser binding for driver-owned Chromium page content. */
+  browser?: BrowserBinding;
+}
+
+export interface BrowserBinding {
+  session: string;
+  targetId: string;
+  tabId: string;
+  managed: boolean;
+  title?: string;
+  url?: string;
+  documentId?: string;
 }
 
 export interface SnapshotElement {
@@ -191,12 +207,15 @@ export interface SnapshotElement {
   /** Current helper index; element_index is OpenSky's stable public index. */
   driver_index?: number;
   element_token?: string;
+  /** Opaque current-document capability returned by semantic_v2. */
+  browser_ref?: string;
   role?: string;
   label?: string;
   value?: string;
   identifier?: string;
   url?: string;
   actions?: string[];
+  visibility?: string;
   /** Explicit AX value mutability when the helper publishes it. */
   settable?: boolean;
   enabled?: boolean;
@@ -238,4 +257,6 @@ export interface OpenSkyOptions {
   settleDelayMs?: number;
   /** Maximum time to retry a helper-reported degraded AX snapshot. Defaults to 4s. */
   degradedRetryMs?: number;
+  /** Prefer an isolated typed Chromium session for one-URL browser targets. Defaults to true. */
+  preferTypedBrowser?: boolean;
 }

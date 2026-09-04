@@ -104,16 +104,15 @@ async function actionResult(
   }
 }
 
-export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
+export function createOpenSkyToolRuntime(driver: DriverClient, target: OpenSkyTarget) {
   const emittedImageHashes = new Map<string, string>();
   const opensky = createOpenSky({
     driver,
     target,
     autoLaunch: true,
-    session: "opensky-eval",
   });
 
-  return [
+  const tools = [
     defineTool({
       name: "list_apps",
       label: "list_apps",
@@ -170,7 +169,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
         app: Type.String({ description: "Display name, bundle id, or path" }),
         disableDiff: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
-        include_app_chrome: Type.Optional(Type.Boolean({ description: "Exit URL page scope and return full browser app chrome" })),
+        include_app_chrome: Type.Optional(Type.Boolean({ description: "Exit legacy URL page scope; unavailable for exact typed browser bindings" })),
       }),
       async execute(_id, params) {
         const { include_screenshot, include_app_chrome, ...stateArgs } = params;
@@ -189,7 +188,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       name: "bring_to_front",
       label: "bring_to_front",
       description:
-        "Bring the app's exact bound ordinary window onto the current desktop and make it frontmost. Use after an off-desktop input refusal; then observe before addressing elements.",
+        "Bring a native app's exact bound ordinary window onto the current desktop and make it frontmost. Exact typed browser tabs fail closed because they are intentionally background-safe. Use after a native off-desktop input refusal; then observe before addressing elements.",
       executionMode: "sequential",
       parameters: Type.Object({ app: Type.String() }),
       async execute(_id, params) {
@@ -301,7 +300,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       name: "click",
       label: "click",
       description:
-        "Click an element_index from fresh state, or x/y for canvas surfaces. Returns settled post-action AX state by default.",
+        "Click an element_index from fresh state, or x/y for native canvas surfaces. Exact typed browser tabs require element_index and fail closed for coordinates. Returns settled post-action AX state by default.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -324,7 +323,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
     defineTool({
       name: "drag",
       label: "drag",
-      description: "Drag from one point to another in the app window.",
+      description: "Drag from one point to another in a native app window. Exact typed browser tabs fail closed until exact-tab drag routing is available.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -343,7 +342,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
     defineTool({
       name: "paste",
       label: "paste",
-      description: "Paste into the app. format defaults to plain text; use md or html when needed. Clipboard is restored afterwards.",
+      description: "Paste into a native app. For an exact typed browser tab use type_text with element_index. format defaults to plain text; use md or html when needed. Clipboard is restored afterwards.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -378,7 +377,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       name: "press_key",
       label: "press_key",
       description:
-        "Press an xdotool-style key, e.g. Return, super+a, Up. Prefer element_index for atomic focus+key on controls such as sliders; x/y is available for canvas surfaces.",
+        "Press an xdotool-style key in a native app, e.g. Return, super+a, Up. Exact typed browser tabs fail closed because the driver has no exact-tab key route; use semantic click/type targets. Prefer element_index for native controls.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -397,7 +396,7 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
     defineTool({
       name: "scroll",
       label: "scroll",
-      description: "Scroll. Prefer element_index; omit it or pass x/y to scroll the window.",
+      description: "Scroll. Prefer element_index. Exact typed browser tabs require one unambiguous semantic scroll ref and fail closed when the driver does not expose one; they never fall through to native window input.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -483,6 +482,15 @@ export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
       },
     }),
   ];
+  return {
+    tools,
+    close: () => opensky.close(),
+  };
+}
+
+/** Compatibility helper for hosts that own driver/session teardown elsewhere. */
+export function openskyTools(driver: DriverClient, target: OpenSkyTarget) {
+  return createOpenSkyToolRuntime(driver, target).tools;
 }
 
 export function cuaDriverTools(driver: DriverClient) {

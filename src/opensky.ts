@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { chmod, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -74,6 +75,11 @@ export class OpenSky implements OpenSkyApi {
   private readonly screenshotScale?: number;
   private readonly settleDelayMs: number;
   private readonly degradedRetryMs: number;
+  private readonly session: string;
+  private readonly preferTypedBrowser: boolean;
+  private readonly managedBrowserSessions = new Set<string>();
+  private baseSessionEnded = false;
+  private browserSequence = 0;
   private readonly lastActionAt = new Map<string, number>();
   private readonly resolvedThisProcess = new Set<string>();
   private screenshotSequence = 0;
@@ -85,7 +91,8 @@ export class OpenSky implements OpenSkyApi {
 
   constructor(options: OpenSkyOptions = {}) {
     this.target = options.target ?? detectTarget();
-    this.driver = options.driver ?? new CuaDriverClient({ session: options.session ?? "opensky" });
+    this.session = options.session ?? `opensky-${process.pid}-${randomUUID().slice(0, 8)}`;
+    this.driver = options.driver ?? new CuaDriverClient({ session: this.session });
     const home = homeDir(options.homeDir);
     this.store = new SessionStore(sessionFile(home));
     this.screenshotDir = options.screenshotDir ?? join(home, "screenshots");
@@ -95,6 +102,7 @@ export class OpenSky implements OpenSkyApi {
     this.screenshotScale = options.screenshotScale;
     this.settleDelayMs = options.settleDelayMs ?? 800;
     this.degradedRetryMs = options.degradedRetryMs ?? 4_000;
+    this.preferTypedBrowser = options.preferTypedBrowser !== false;
   }
 
   async list_apps(): Promise<App[]> {
@@ -110,13 +118,26 @@ export class OpenSky implements OpenSkyApi {
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
     const resolved = await this.requireResolved(args.app);
+    if (args.includeAppChrome === true && resolved.browser) {
+      throw new OpenSkyError(
+        "includeAppChrome is not available for an exact typed browser binding. " +
+          "Continue with page-scoped semantic state; native browser-chrome input was not enabled.",
+      );
+    }
     if (args.includeAppChrome === true && resolved.contentScope === "web") {
       resolved.contentScope = undefined;
       this.memory.apps[normalizeAppKey(resolved.query)] = resolved;
       await this.persist();
     }
     await this.settleAfterAction(resolved);
-    await this.refreshWindowAfterAction(resolved);
+    if (resolved.browser) {
+      // A typed browser snapshot revalidates its exact target/tab binding. A
+      // native window inventory here adds a full driver round trip without
+      // improving safety, and is especially expensive after every page action.
+      this.lastActionAt.delete(windowKey(resolved));
+    } else {
+      await this.refreshWindowAfterAction(resolved);
+    }
     if (!resolved.windowId) await this.adoptWindowForObservation(resolved);
     if (!resolved.windowId) {
       return {
@@ -170,6 +191,8 @@ export class OpenSky implements OpenSkyApi {
       optionalString(match?.bundle_id),
       optionalString(match?.launch_path),
     ]);
+    const typed = await this.tryOpenTypedBrowser(args, match);
+    if (typed) return typed;
     const previousPid = Number(match?.pid);
     const previousWindows = Number.isFinite(previousPid) && previousPid > 0
       ? windowsFrom((await this.driver.call("list_windows", { pid: previousPid })).structured)
@@ -257,6 +280,136 @@ export class OpenSky implements OpenSkyApi {
     });
   }
 
+  /** End only resources that this OpenSky instance created. Safe to call repeatedly. */
+  async close(): Promise<void> {
+    const sessions = [...this.managedBrowserSessions];
+    if (!this.baseSessionEnded) sessions.push(this.session);
+    this.managedBrowserSessions.clear();
+    const failures: Array<{ session: string; error: unknown }> = [];
+    await Promise.all(sessions.map(async (session) => {
+      try {
+        await this.driver.call("end_session", { session });
+        if (session === this.session) this.baseSessionEnded = true;
+      } catch (error) {
+        // The caller may retry close(); keep the failed session owned here.
+        if (session !== this.session) this.managedBrowserSessions.add(session);
+        failures.push({ session, error });
+      }
+    }));
+    if (failures.length > 0) {
+      const detail = failures.map(({ session, error }) =>
+        `${JSON.stringify(session)}: ${error instanceof Error ? error.message : String(error)}`
+      ).join("; ");
+      throw new OpenSkyError(`Failed to end ${failures.length} owned driver session(s): ${detail}`);
+    }
+  }
+
+  private async tryOpenTypedBrowser(
+    args: { app: string; targets: string[]; includeScreenshot?: boolean },
+    match?: Record<string, unknown>,
+  ): Promise<AppState | null> {
+    if (
+      !this.preferTypedBrowser ||
+      args.targets.length !== 1 ||
+      !isHttpUrl(args.targets[0] ?? "") ||
+      !isChromiumApp(args.app, match)
+    ) return null;
+
+    const session = `${this.session}-browser-${process.pid}-${++this.browserSequence}`;
+    let prepared = false;
+    try {
+      const pid = Number(match?.pid);
+      const preparation = await this.driver.call("browser_prepare", {
+        ...(Number.isFinite(pid) && pid > 0 ? { pid } : {}),
+        session,
+        allow_launch: true,
+        profile: { mode: "isolated_new" },
+      });
+      const preparedState = asRecord(preparation.structured) ?? {};
+      if (preparedState.status !== "ok" || preparedState.prepared !== true) {
+        throw new OpenSkyError(
+          "The desktop helper returned an ambiguous browser preparation result. No legacy browser fallback was attempted.",
+        );
+      }
+      prepared = true;
+      this.managedBrowserSessions.add(session);
+      const preparedPid = Number(preparedState.prepared_pid);
+      if (!Number.isFinite(preparedPid) || preparedPid <= 0) {
+        throw new OpenSkyError("The desktop helper prepared an isolated browser without a process identity.");
+      }
+      const windowsResult = await this.driver.call("list_windows", { pid: preparedPid, session });
+      const windows = windowsFrom(windowsResult.structured);
+      const windowId = pickUsableWindowId(windows) ?? pickOrdinaryWindowId(windows);
+      if (windowId === undefined) {
+        throw new OpenSkyError("The isolated browser launched without an exact ordinary window.");
+      }
+      const boundResult = await this.driver.call("get_browser_state", {
+        pid: preparedPid,
+        window_id: windowId,
+        session,
+      });
+      const bound = asRecord(boundResult.structured) ?? {};
+      if (bound.status !== "ok" || bound.binding_quality !== "exact" || bound.mutation_allowed !== true) {
+        throw new OpenSkyError("The desktop helper could not bind the isolated browser window exactly.");
+      }
+      const targetId = optionalString(bound.target_id);
+      const tabs = asArray<Record<string, unknown>>(bound.tabs);
+      const selected = tabs.find((tab) => tab.active === true) ?? (tabs.length === 1 ? tabs[0] : undefined);
+      const tabId = optionalString(selected?.tab_id);
+      if (!targetId || !tabId) {
+        throw new OpenSkyError("The exact browser binding did not provide one selected tab.");
+      }
+      await this.driver.call("browser_navigate", {
+        target_id: targetId,
+        tab_id: tabId,
+        url: args.targets[0],
+        session,
+      });
+      const resolved: ResolvedApp = {
+        query: args.app,
+        name: String(match?.name ?? args.app),
+        bundleId: optionalString(match?.bundle_id),
+        launchPath: optionalString(match?.launch_path),
+        pid: preparedPid,
+        windowId,
+        contentScope: "web",
+        browser: { session, targetId, tabId, managed: true },
+        targetRequest: {
+          requested: [...args.targets],
+          resourceKind: "url",
+          requestDispatch: "sent",
+          window: { id: windowId, source: "launch_result", correlation: "new_since_request" },
+        },
+      };
+      this.memory.apps[normalizeAppKey(args.app)] = resolved;
+      if (resolved.bundleId) this.memory.apps[normalizeAppKey(resolved.bundleId)] = resolved;
+      if (resolved.name) this.memory.apps[normalizeAppKey(resolved.name)] = resolved;
+      this.markResolved(resolved);
+      this.markAction(resolved);
+      await this.persist();
+      return this.get_app_state({
+        app: args.app,
+        disableDiff: true,
+        includeScreenshot: args.includeScreenshot,
+      });
+    } catch (error) {
+      if (prepared) {
+        try {
+          await this.driver.call("end_session", { session });
+          this.managedBrowserSessions.delete(session);
+        } catch (cleanupError) {
+          throw new OpenSkyError(
+            `Typed browser setup failed (${error instanceof Error ? error.message : String(error)}), and cleanup of ` +
+              `${JSON.stringify(session)} also failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+          );
+        }
+        throw error;
+      }
+      if (isTypedBrowserUnavailable(error)) return null;
+      throw error;
+    }
+  }
+
   async click(args: {
     app: string;
     element_index?: number;
@@ -268,6 +421,42 @@ export class OpenSky implements OpenSkyApi {
     if (!args?.app) throw invalidParams("app is required");
     const button = normalizeMouseButton(args.mouse_button);
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      if (args.element_index === undefined) {
+        throw this.typedBrowserUnsupported(
+          resolved,
+          "coordinate click",
+          "Use an element_index from the semantic state; screenshot coordinates are not routed to the exact tab.",
+        );
+      }
+      const count = args.click_count ?? 1;
+      if (button === "middle" || count < 1 || count > 2 || (button !== "left" && count !== 1)) {
+        throw this.typedBrowserUnsupported(
+          resolved,
+          `${button} click with count ${count}`,
+          "Exact typed tabs support a single left/right click or a left double-click.",
+        );
+      }
+      const common = {
+        target_id: resolved.browser.targetId,
+        tab_id: resolved.browser.tabId,
+        input_route: "dom_event",
+        session: resolved.browser.session,
+      };
+      if (button === "right" || count === 2) {
+        const element = this.browserElement(resolved, args.element_index, "pointer");
+        await this.driver.call("browser_pointer", {
+          ...common,
+          ref: element.browser_ref,
+          action: button === "right" ? "right_click" : "double_click",
+        });
+      } else {
+        const element = this.browserElement(resolved, args.element_index, "click");
+        await this.driver.call("browser_click", { ...common, ref: element.browser_ref });
+      }
+      this.markAction(resolved);
+      return;
+    }
     if (args.element_index === undefined) await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       pid: resolved.pid,
@@ -302,6 +491,13 @@ export class OpenSky implements OpenSkyApi {
   async bring_to_front(args: { app: string }): Promise<void> {
     if (!args?.app) throw invalidParams("app is required");
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      throw this.typedBrowserUnsupported(
+        resolved,
+        "bringing the browser to the foreground",
+        "Continue through the exact background tab, or open a separate native browser binding explicitly.",
+      );
+    }
     const boundWindow = await this.refreshBoundWindow(resolved);
     if (!boundWindow) {
       throw new OpenSkyError(
@@ -325,6 +521,13 @@ export class OpenSky implements OpenSkyApi {
       if (typeof args[key] !== "number") throw invalidParams(`${key} is required`);
     }
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      throw this.typedBrowserUnsupported(
+        resolved,
+        "drag",
+        "The public coordinate drag cannot yet be routed to an exact typed tab.",
+      );
+    }
     await this.requireUsableInputWindow(resolved);
     await this.driver.call("drag", {
       pid: resolved.pid,
@@ -344,6 +547,13 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      throw this.typedBrowserUnsupported(
+        resolved,
+        "paste",
+        "Use type_text with an element_index from the semantic state.",
+      );
+    }
     await this.requireUsableInputWindow(resolved);
     let previous: Record<string, unknown> | undefined;
     try {
@@ -385,6 +595,38 @@ export class OpenSky implements OpenSkyApi {
       );
     }
     const mapped = SECONDARY_ACTIONS[normalizedAction];
+    if (resolved.browser) {
+      if (["show menu", "show_menu", "axshowmenu"].includes(normalizedAction)) {
+        const element = this.browserElement(resolved, args.element_index, "pointer");
+        await this.driver.call("browser_pointer", {
+          target_id: resolved.browser.targetId,
+          tab_id: resolved.browser.tabId,
+          ref: element.browser_ref,
+          action: "right_click",
+          input_route: "dom_event",
+          session: resolved.browser.session,
+        });
+        this.markAction(resolved);
+        return;
+      }
+      if (mapped?.kind === "click") {
+        const element = this.browserElement(resolved, args.element_index, "click");
+        await this.driver.call("browser_click", {
+          target_id: resolved.browser.targetId,
+          tab_id: resolved.browser.tabId,
+          ref: element.browser_ref,
+          input_route: "dom_event",
+          session: resolved.browser.session,
+        });
+        this.markAction(resolved);
+        return;
+      }
+      throw this.typedBrowserUnsupported(
+        resolved,
+        `secondary action ${JSON.stringify(args.action)}`,
+        "Use click, type_text, set_value, or an explicitly supported typed-browser action.",
+      );
+    }
     if (mapped?.kind === "front") {
       await this.bring_to_front({ app: args.app });
       return;
@@ -427,6 +669,13 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams("element_index cannot be combined with x/y");
     }
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      throw this.typedBrowserUnsupported(
+        resolved,
+        "press_key",
+        "The driver does not expose exact-tab key delivery. Use a semantic click or type_text target instead.",
+      );
+    }
     const parsed = parseXdotoolKey(args.key);
     const boundWindow = await this.refreshBoundWindow(resolved);
     if (!boundWindow) {
@@ -488,8 +737,45 @@ export class OpenSky implements OpenSkyApi {
   }): Promise<void> {
     if (!args?.app) throw invalidParams();
     if (args.element_index !== undefined && typeof args.element_index !== "number") throw invalidParams();
+    const hasX = typeof args.x === "number";
+    const hasY = typeof args.y === "number";
+    if (hasX !== hasY) throw invalidParams("x and y must be provided together");
+    if (args.element_index !== undefined && hasX) throw invalidParams("element_index cannot be combined with x/y");
     const direction = normalizeDirection(args.direction);
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      const pages = args.pages ?? 1;
+      if (!Number.isFinite(pages) || pages <= 0) throw invalidParams("pages must be a positive number");
+      if (hasX) {
+        throw this.typedBrowserUnsupported(
+          resolved,
+          "coordinate scrolling",
+          "Use a scroll-capable element_index from the latest semantic state.",
+        );
+      }
+      const element = typeof args.element_index === "number"
+        ? this.browserElementWithAnyAction(resolved, args.element_index, ["scroll", "pointer"])
+        : this.maybeUniqueBrowserElement(resolved, ["scroll"]);
+      if (!element?.browser_ref) {
+        throw this.typedBrowserUnsupported(
+          resolved,
+          "ambient scrolling",
+          "Use a scroll-capable element_index from the latest semantic state. If none is present, the driver cannot yet expose this page's document scroller.",
+        );
+      }
+      await this.driver.call("browser_pointer", {
+        target_id: resolved.browser.targetId,
+        tab_id: resolved.browser.tabId,
+        ref: element.browser_ref,
+        input_route: "dom_event",
+        action: "scroll",
+        delta_x: direction === "left" ? -800 * pages : direction === "right" ? 800 * pages : 0,
+        delta_y: direction === "up" ? -600 * pages : direction === "down" ? 600 * pages : 0,
+        session: resolved.browser.session,
+      });
+      this.markAction(resolved);
+      return;
+    }
     if (typeof args.element_index !== "number") await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       pid: resolved.pid,
@@ -523,6 +809,9 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      throw new OpenSkyError("select_text is not available for typed browser pages; copy observed page text directly instead.");
+    }
     const snapshot = this.memory.trees[windowKey(resolved)];
     const element = snapshot?.elements.find((item) => item.element_index === args.element_index);
     const haystack = element?.value ?? snapshot?.tree ?? "";
@@ -558,6 +847,19 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      const element = this.browserElement(resolved, args.element_index, "type");
+      await this.driver.call("browser_type", {
+        target_id: resolved.browser.targetId,
+        tab_id: resolved.browser.tabId,
+        ref: element.browser_ref,
+        text: args.value,
+        replace: true,
+        session: resolved.browser.session,
+      });
+      this.markAction(resolved);
+      return;
+    }
     await this.driver.call("set_value", {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -585,6 +887,27 @@ export class OpenSky implements OpenSkyApi {
       throw invalidParams("element_index cannot be combined with x/y");
     }
     const resolved = await this.requireResolved(args.app);
+    if (resolved.browser) {
+      if (hasX) {
+        throw this.typedBrowserUnsupported(
+          resolved,
+          "coordinate typing",
+          "Use a type-capable element_index from the semantic state.",
+        );
+      }
+      const element = args.element_index !== undefined
+        ? this.browserElement(resolved, args.element_index, "type")
+        : this.uniqueFocusedBrowserTypeElement(resolved);
+      await this.driver.call("browser_type", {
+        target_id: resolved.browser.targetId,
+        tab_id: resolved.browser.tabId,
+        ref: element.browser_ref,
+        text: args.text,
+        session: resolved.browser.session,
+      });
+      this.markAction(resolved);
+      return;
+    }
     if (args.element_index === undefined) await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       pid: resolved.pid,
@@ -726,15 +1049,22 @@ export class OpenSky implements OpenSkyApi {
 
   private async clearTargetBindings(identities: Array<string | undefined>): Promise<void> {
     const keys = new Set(identities.filter((value): value is string => Boolean(value)).map(normalizeAppKey));
+    const sessionsToEnd = new Set<string>();
     let changed = false;
     for (const [key, resolved] of Object.entries(this.memory.apps)) {
       const aliases = [key, resolved.query, resolved.name, resolved.bundleId, resolved.launchPath]
         .filter((value): value is string => Boolean(value))
         .map(normalizeAppKey);
       if (!aliases.some((alias) => keys.has(alias))) continue;
-      if (resolved.targetRequest || resolved.contentScope) changed = true;
+      if (resolved.targetRequest || resolved.contentScope || resolved.browser) changed = true;
+      if (resolved.browser?.managed) sessionsToEnd.add(resolved.browser.session);
       resolved.targetRequest = undefined;
       resolved.contentScope = undefined;
+      resolved.browser = undefined;
+    }
+    for (const session of sessionsToEnd) {
+      await this.driver.call("end_session", { session });
+      this.managedBrowserSessions.delete(session);
     }
     if (changed) await this.persist();
   }
@@ -769,6 +1099,9 @@ export class OpenSky implements OpenSkyApi {
     }
     if (!resolved.windowId) {
       throw new OpenSkyError(`No window found for ${resolved.name} (pid ${resolved.pid})`);
+    }
+    if (resolved.browser) {
+      return this.snapshotBrowser(resolved, options);
     }
     await mkdirPrivate(this.screenshotDir);
     const screenshotPath = options.screenshotPath ?? join(this.screenshotDir, `${slug(resolved.name)}-${resolved.windowId}.png`);
@@ -837,6 +1170,68 @@ export class OpenSky implements OpenSkyApi {
     };
   }
 
+  private async snapshotBrowser(
+    resolved: ResolvedApp,
+    options: { includeScreenshot: boolean; screenshotPath?: string },
+  ): Promise<WindowSnapshot> {
+    const browser = resolved.browser;
+    if (!browser || resolved.windowId === undefined) {
+      throw new OpenSkyError("Typed browser snapshot requested without an exact binding.");
+    }
+    await mkdirPrivate(this.screenshotDir);
+    const screenshotPath = options.screenshotPath ?? join(
+      this.screenshotDir,
+      `${slug(resolved.name)}-${resolved.windowId}-${Date.now()}-${++this.screenshotSequence}.png`,
+    );
+    const result = await this.driver.call("get_browser_state", {
+      target_id: browser.targetId,
+      tab_id: browser.tabId,
+      session: browser.session,
+      snapshot_format: "semantic_v2",
+      include_screenshot: options.includeScreenshot,
+    });
+    const structured = asRecord(result.structured) ?? {};
+    if (structured.status !== "ok" || structured.mode !== "snapshot") {
+      throw new OpenSkyError("The desktop helper did not return a semantic browser snapshot.");
+    }
+    const page = asRecord(structured.page) ?? {};
+    const priorUrl = browser.url;
+    const priorDocumentId = browser.documentId;
+    browser.url = optionalString(page.url);
+    browser.documentId = optionalString(page.document_id);
+    const observedTitle = optionalString(page.title);
+    browser.title = observedTitle === "about:blank" && browser.url !== "about:blank"
+      ? undefined
+      : observedTitle;
+    const rawElements = normalizeBrowserElements(structured.refs);
+    const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
+    const documentChanged =
+      (priorDocumentId !== undefined && browser.documentId !== undefined && priorDocumentId !== browser.documentId) ||
+      (priorUrl !== undefined && browser.url !== undefined && priorUrl !== browser.url);
+    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, rawElements, true);
+    const outline = optionalString(structured.outline) ?? "";
+    const tree = renderBrowserState(outline, elements, { ...structured, page: { ...page, title: browser.title } });
+    const snapshot = asRecord(structured.snapshot) ?? {};
+    const screenshot = options.includeScreenshot
+      ? await browserScreenshotFromResult(result.raw, structured, screenshotPath)
+      : undefined;
+    const selectedNodes = optionalFiniteNumber(snapshot.selected_nodes) ?? rawElements.length;
+    const totalNodes = optionalFiniteNumber(snapshot.total_nodes) ?? selectedNodes;
+    return {
+      pid: resolved.pid,
+      windowId: resolved.windowId,
+      snapshotId: optionalString(snapshot.id),
+      tree,
+      elements,
+      screenshotPath: screenshot ? screenshotPath : null,
+      screenshot,
+      truncated: snapshot.complete === false,
+      totalElementCount: totalNodes,
+      returnedElementCount: selectedNodes,
+      documentChanged,
+    };
+  }
+
   private async snapshotSettled(
     resolved: ResolvedApp,
     options: { includeScreenshot: boolean },
@@ -854,7 +1249,7 @@ export class OpenSky implements OpenSkyApi {
       delayMs = Math.min(delayMs * 2, 800);
       snapshot = await this.snapshotWindow(resolved, captureOptions);
     }
-    if (snapshot.truncated && !snapshot.degraded) {
+    if (snapshot.truncated && !snapshot.degraded && !resolved.browser) {
       const full = snapshot;
       const projectionDepth = resolved.contentScope === "web" ? 5 : 3;
       const projected = await this.snapshotWindow(resolved, {
@@ -966,6 +1361,71 @@ export class OpenSky implements OpenSkyApi {
     if (element?.element_token) target.element_token = element.element_token;
     if (snapshot?.snapshotId) target.snapshot_id = snapshot.snapshotId;
     return target;
+  }
+
+  private browserElement(resolved: ResolvedApp, elementIndex: number, action: string): SnapshotElement {
+    const snapshot = this.memory.trees[windowKey(resolved)];
+    const element = snapshot?.elements.find((item) => item.element_index === elementIndex);
+    if (!element?.browser_ref) {
+      throw new OpenSkyError(
+        `Element index ${elementIndex} is not present in the latest semantic browser snapshot for ` +
+          `${JSON.stringify(resolved.name)}. Call get_app_state again before acting.`,
+      );
+    }
+    if (!element.actions?.includes(action)) {
+      throw new OpenSkyError(`Element index ${elementIndex} does not support browser action ${JSON.stringify(action)}.`);
+    }
+    return element;
+  }
+
+  private browserElementWithAnyAction(
+    resolved: ResolvedApp,
+    elementIndex: number,
+    actions: string[],
+  ): SnapshotElement {
+    const snapshot = this.memory.trees[windowKey(resolved)];
+    const element = snapshot?.elements.find((item) => item.element_index === elementIndex);
+    if (!element?.browser_ref) {
+      throw new OpenSkyError(
+        `Element index ${elementIndex} is not present in the latest semantic browser snapshot for ` +
+          `${JSON.stringify(resolved.name)}. Call get_app_state again before acting.`,
+      );
+    }
+    if (!actions.some((action) => element.actions?.includes(action))) {
+      throw new OpenSkyError(
+        `Element index ${elementIndex} does not support any of the required browser actions ` +
+          `${JSON.stringify(actions)}.`,
+      );
+    }
+    return element;
+  }
+
+  private maybeUniqueBrowserElement(resolved: ResolvedApp, actions: string[]): SnapshotElement | undefined {
+    const candidates = (this.memory.trees[windowKey(resolved)]?.elements ?? []).filter((element) =>
+      element.browser_ref && actions.some((action) => element.actions?.includes(action))
+    );
+    return candidates.length === 1 ? candidates[0] : undefined;
+  }
+
+  private uniqueFocusedBrowserTypeElement(resolved: ResolvedApp): SnapshotElement {
+    const candidates = (this.memory.trees[windowKey(resolved)]?.elements ?? []).filter((element) =>
+      element.browser_ref && element.focused === true && element.actions?.includes("type")
+    );
+    if (candidates.length !== 1) {
+      throw this.typedBrowserUnsupported(
+        resolved,
+        "ambient typing",
+        "Use type_text with a type-capable element_index from the latest semantic state.",
+      );
+    }
+    return candidates[0]!;
+  }
+
+  private typedBrowserUnsupported(resolved: ResolvedApp, action: string, guidance: string): OpenSkyError {
+    return new OpenSkyError(
+      `${action} is not safely available for the exact typed browser tab in ${JSON.stringify(resolved.name)}. ` +
+        `${guidance} No native foreground or coordinate input was sent.`,
+    );
   }
 
   private async pressElementKey(
@@ -1320,6 +1780,107 @@ function normalizeElements(value: unknown): SnapshotElement[] {
   });
 }
 
+function normalizeBrowserElements(value: unknown): SnapshotElement[] {
+  return asArray<Record<string, unknown>>(value).flatMap((item, index) => {
+    const ref = optionalString(item.ref);
+    if (!ref) return [];
+    const role = optionalString(item.role)?.toLowerCase();
+    const actions = asArray<string>(item.actions);
+    const label = optionalString(item.name);
+    const intrinsicallyInteractive = new Set([
+      "button", "link", "textbox", "searchbox", "checkbox", "radio", "combobox",
+      "menuitem", "tab", "option", "slider", "switch",
+    ]).has(role ?? "");
+    const useful = actions.includes("type") || actions.includes("scroll") ||
+      Boolean(label && (actions.includes("click") || actions.includes("pointer"))) ||
+      (intrinsicallyInteractive && Boolean(label || actions.includes("type")));
+    if (!useful) return [];
+    const states = asRecord(item.states) ?? {};
+    return [{
+      element_index: index,
+      browser_ref: ref,
+      role,
+      label,
+      value: scalarText(item.value),
+      actions,
+      visibility: optionalString(item.visibility),
+      enabled: states.disabled === true ? false : undefined,
+      selected: optionalBoolean(states.selected),
+      checked: optionalBoolean(states.checked),
+      focused: optionalBoolean(states.focused),
+      expanded: optionalBoolean(states.expanded),
+      settable: actions.includes("type") ? true : undefined,
+    }];
+  });
+}
+
+function renderBrowserState(
+  outline: string,
+  elements: SnapshotElement[],
+  structured: Record<string, unknown>,
+): string {
+  const page = asRecord(structured.page) ?? {};
+  const snapshot = asRecord(structured.snapshot) ?? {};
+  const header = `Browser page: ${JSON.stringify(optionalString(page.title) ?? "Untitled")} (${optionalString(page.url) ?? "URL unavailable"})`;
+  const actionLines = elements.map((element) => {
+    const label = JSON.stringify(element.label ?? element.value ?? "");
+    const conciseActions = element.actions?.filter((action) =>
+      // A clickable semantic node is already addressable through the normal
+      // click tool. Advertising its lower-level pointer route as well spends
+      // tokens without giving the model another useful choice.
+      action !== "pointer" || !element.actions?.includes("click")
+    );
+    const hints = [
+      conciseActions?.length ? `actions=[${conciseActions.join(",")}]` : "",
+      // In-viewport controls are the default ranked result. Keep exceptional
+      // visibility states because they affect whether an action should be sent.
+      element.visibility && element.visibility !== "in_viewport" ? `visibility=${element.visibility}` : "",
+      element.focused === true ? "focused" : "",
+      element.enabled === false ? "disabled" : "",
+    ].filter(Boolean).join(" ");
+    return `- [${element.element_index}] ${element.role ?? "unknown"} ${label}${hints ? ` [${hints}]` : ""}`;
+  });
+  const actions: string[] = [];
+  let actionCharacters = 0;
+  for (const line of actionLines) {
+    if (actions.length >= 120 || actionCharacters + line.length + 1 > 8_000) break;
+    actions.push(line);
+    actionCharacters += line.length + 1;
+  }
+  if (actions.length < actionLines.length) {
+    actions.push(`- … ${actionLines.length - actions.length} lower-ranked actionable elements omitted; refresh after scrolling or narrowing the page.`);
+  }
+  const coverage = snapshot.complete === false
+    ? `Semantic state is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} ranked nodes); visible and near-viewport controls are prioritized.`
+    : "Semantic state is complete.";
+  return [header, coverage, compactBrowserOutline(outline), actions.length ? `Actionable elements:\n${actions.join("\n")}` : ""]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function compactBrowserOutline(outline: string, maxCharacters = 10_000): string {
+  const kept: string[] = [];
+  const recentLabels: string[] = [];
+  let characters = 0;
+  for (const line of outline.split("\n")) {
+    if (/^\s*- generic(?:\s|$)/.test(line)) continue;
+    const label = line.match(/"((?:\\.|[^"\\])*)"/)?.[1];
+    if (/^\s*- statictext\b/.test(line) && label && recentLabels.includes(label)) continue;
+    const normalized = line.replace(/^\s+/, (indent) => " ".repeat(Math.min(indent.length, 8)));
+    if (characters + normalized.length + 1 > maxCharacters) {
+      kept.push("- … lower-ranked page content omitted");
+      break;
+    }
+    kept.push(normalized);
+    characters += normalized.length + 1;
+    if (label) {
+      recentLabels.push(label);
+      if (recentLabels.length > 3) recentLabels.shift();
+    }
+  }
+  return kept.join("\n").trim();
+}
+
 /** Keep top-level menu-bar context while dropping enormous, closed menu trees. */
 export function pruneMenuSubtrees(tree: string): { tree: string; hiddenIndices: Set<number> } {
   if (!tree) return { tree, hiddenIndices: new Set() };
@@ -1384,6 +1945,21 @@ function isHttpUrl(target: string): boolean {
   return /^https?:\/\//i.test(target.trim());
 }
 
+function isChromiumApp(query: string, match?: Record<string, unknown>): boolean {
+  const identity = [query, optionalString(match?.name), optionalString(match?.bundle_id), optionalString(match?.launch_path)]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
+  return /(?:google\s*chrome|com\.google\.chrome|microsoft\s*edge|com\.microsoft\.edgemac|chromium)/.test(identity);
+}
+
+function isTypedBrowserUnavailable(error: unknown): boolean {
+  const code = error instanceof OpenSkyError ? error.code : undefined;
+  if (code && ["browser_route_unavailable", "browser_unsupported_engine", "method_not_found"].includes(code)) return true;
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes("unknown tool") || message.includes("tool not found") || message.includes("browser_route_unavailable");
+}
+
 function targetResourceKind(targets: string[]): TargetRequestIdentity["resourceKind"] {
   const urlCount = targets.filter(isHttpUrl).length;
   return urlCount === targets.length ? "url" : urlCount === 0 ? "path" : "mixed";
@@ -1398,6 +1974,20 @@ function targetIdentityFor(resolved: ResolvedApp, snapshot?: WindowSnapshot): Ta
     source: rebound ? "post_launch_list" as const : request.window.source,
     correlation: rebound ? "uncorrelated" as const : request.window.correlation,
   };
+  if (resolved.browser && snapshot && !snapshot.degraded) {
+    return {
+      ...request,
+      window,
+      document: {
+        freshness: "current",
+        title: resolved.browser.title,
+        url: resolved.browser.url,
+        source: "ax_document",
+        requestRelation: requestRelation(request.requested, resolved.browser.url),
+      },
+      tab: { status: "verified", title: resolved.browser.title, url: resolved.browser.url },
+    };
+  }
   if (!snapshot || snapshot.degraded) {
     return {
       ...request,
@@ -1467,7 +2057,7 @@ export function formatTargetIdentity(target: TargetIdentity): string {
       ? `ax-document-current; ${unresolvedKind}`
       : unresolvedKind;
   const window = target.window.correlation.replaceAll("_", "-");
-  const tab = target.tab ? "; tab=unverified" : "";
+  const tab = target.tab ? `; tab=${target.tab.status}` : "";
   return `Target: ${target.resourceKind} ${subject} [${freshness}; request=${document.requestRelation}; window=${window}${tab}]`;
 }
 
@@ -1747,6 +2337,28 @@ async function maybeWriteScreenshot(structured: Record<string, unknown>, fallbac
   if (!b64) return null;
   await writeFilePrivate(fallbackPath, Buffer.from(b64, "base64"));
   return fallbackPath;
+}
+
+async function browserScreenshotFromResult(
+  raw: unknown,
+  structured: Record<string, unknown>,
+  fallbackPath: string,
+): Promise<Screenshot | undefined> {
+  const direct = optionalString(structured.screenshot_png_b64);
+  const rawRecord = asRecord(raw);
+  const image = asArray<Record<string, unknown>>(rawRecord?.content).find((item) => item.type === "image");
+  const data = direct ?? optionalString(image?.data);
+  if (!data) return undefined;
+  await writeFilePrivate(fallbackPath, Buffer.from(data, "base64"));
+  const result = await screenshotFromFile(fallbackPath);
+  const screenshot = asRecord(structured.screenshot) ?? {};
+  return {
+    ...result,
+    url: pathToFileURL(fallbackPath).href,
+    width: optionalFiniteNumber(screenshot.width) ?? result?.width,
+    height: optionalFiniteNumber(screenshot.height) ?? result?.height,
+    format: "png",
+  };
 }
 
 function normalizeLastUsed(value: unknown): string | number | undefined {

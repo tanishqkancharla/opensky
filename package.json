@@ -23,6 +23,7 @@
     "build": "tsc",
     "test": "PATH=\"$HOME/.bun/bin:$PATH\" bun test",
     "evals": "bun evals/cli.ts",
+    "eval:replay": "bun evals/replay.ts",
     "opensky": "bun src/cli.ts",
     "prepare": "tsc"
   },

@@ -82,6 +82,7 @@ await opensky.scroll({ app, element_index?, x?, y?, direction, pages? })
 await opensky.select_text({ app, element_index, text, prefix?, suffix?, selection_type? })
 await opensky.set_value({ app, element_index, value })
 await opensky.type_text({ app, text, element_index?, x?, y? })
+await opensky.close()
 ```
 
 Helpers also in scope: `sleep(ms)`, `state`, `readFile`, `pathToFileURL`.
@@ -104,13 +105,15 @@ Returns `{ app, text, screenshot, target? }`. `target` truthfully separates requ
 
 ### `open_target({ app, targets, includeScreenshot? })`
 
-Use this as the first call when the task supplies a URL or file. For browser URLs it opens and binds the resulting tab/window itself; do not create a blank tab or observe the browser first. URL observations are page-scoped by default so restored tabs, favorites, toolbars, and application menus do not consume context. If the task later needs those browser controls, call `get_app_state({ app, includeAppChrome: true })`; this exits page scope for subsequent app observations.
+Use this as the first call when the task supplies a URL or file. For one HTTP(S) URL in Chrome/Edge/Chromium it creates a driver-owned isolated profile and exact typed tab binding; do not create a blank tab or observe the browser first. URL observations are page-scoped by default so restored tabs, favorites, toolbars, and application menus do not consume context. `includeAppChrome` is unavailable for an exact typed binding and fails closed rather than crossing into native input.
 
 Open files or URLs with a named app and return the settled full state of the returned, newly created, or title-matching ordinary window. Prefer this over launching a document and then separately resolving the app; the binding prevents an older sibling document from being mistaken for the requested target.
 
 ### `click`
 
 Prefer `element_index` from the latest `get_app_state().text`. Exact AX element actions are token-bound and remain safe if a user changes focus or Spaces. Use `x, y` only for visible canvas/custom-drawn surfaces.
+
+For an exact typed browser tab, always use `element_index`. Coordinate clicks fail closed so a page screenshot can never silently route into the native window coordinate space. Type directly into a type-capable field; some fields intentionally expose type without click.
 
 If `perform_actions` stops because a UI mutation made a later element stale, it returns the completed prefix plus fresh settled AX state. Derive new indices from that result; do not repeat the completed prefix.
 
@@ -124,9 +127,13 @@ Brings the exact bound ordinary window onto the current desktop. Coordinate and 
 
 xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targeted; cannot invoke global OS shortcuts. Element-targeted chords use background delivery so modifiers are preserved while focus remains isolated; use `x`/`y` only for custom surfaces.
 
+Exact typed browser tabs currently fail closed for `press_key`; use semantic click and type targets instead.
+
 ### `paste`
 
 `format` defaults to `text`; it may also be `md` or `html`. HTML is written to the HTML clipboard plus a plain-text fallback; markdown is written as markdown plus plain text. Unsupported formats are rejected. The previous clipboard is restored after paste.
+
+Exact typed browser tabs fail closed for clipboard paste; use `type_text` with a semantic field index.
 
 ### `select_text`
 
@@ -145,7 +152,9 @@ Copy a supported action name from the latest tree (`Raise`, `Show Menu`, `Press`
 
 `direction`: `up` | `down` | `left` | `right` or `u` | `d` | `l` | `r`. `pages` defaults to 1.
 
-Prefer `element_index` from the latest tree. You may omit it (or pass `x`/`y`) to scroll the window itself.
+Prefer `element_index` from the latest tree. For native apps you may omit it (or pass `x`/`y`) to scroll the window itself.
+
+For an exact typed browser tab, OpenSky uses one unambiguous semantic scroll ref. Coordinate scrolling and pages without a driver-exposed scroll ref fail closed; OpenSky never falls through to native window scrolling.
 
 ## Confirmation policy
 

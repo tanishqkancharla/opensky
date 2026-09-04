@@ -1,0 +1,17 @@
+{
+  "name": "github repository saturated accessibility projection",
+  "target": "mac",
+  "preferTypedBrowser": false,
+  "tape": "tape.json",
+  "expected": "expected.json",
+  "operations": [
+    {
+      "method": "open_target",
+      "args": {
+        "app": "Google Chrome",
+        "targets": ["https://github.com/openai/codex"],
+        "includeScreenshot": false
+      }
+    }
+  ]
+}

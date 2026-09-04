@@ -10,6 +10,7 @@ const apps = await opensky.list_apps();
 const before = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
 await opensky.click({ app: "Calculator", element_index: 13 });
 const after = await opensky.get_app_state({ app: "Calculator" });
+await opensky.close();
 ```
 
 ## Install
@@ -107,8 +108,8 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | Method | Cua Driver tools used |
 | --- | --- |
 | `list_apps()` | `list_apps` |
-| `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?})` | `launch_app` if needed, `list_windows`, `get_window_state` |
-| `open_target({app, targets, includeScreenshot?})` | `launch_app` with URLs/files, then binds the returned/new/matching ordinary window or browser tab before observation; URL state is page-scoped by default |
+| `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?})` | Typed `get_browser_state` for an exact Chromium target/tab; otherwise `launch_app` if needed, `list_windows`, `get_window_state` |
+| `open_target({app, targets, includeScreenshot?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; other targets use the native app/window route |
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |
 | `click` | `click` / `double_click` |
 | `drag` | `drag` |
@@ -119,6 +120,7 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | `select_text` | Element-targeted background Home/arrows (`exact` alias; prefix/suffix disambiguation) |
 | `set_value` | `set_value` (including exact slider/stepper values) |
 | `type_text` | `type_text` (element, coordinates, or verified focus) |
+| `close()` | Ends only driver sessions owned by this OpenSky instance; safe to call repeatedly |
 
 `opensky.target` is `"mac"`, `"win"`, or `"linux"`.
 
@@ -155,9 +157,18 @@ Element indices are snapshots. Some identifiers fail silently. An action can tak
 
 `perform_actions` never retries a completed prefix. If a DOM/UI mutation makes a later element stale, the stopped result includes a fresh settled AX state so the next action can use new indices without a separate observation call.
 
-URL targets return the primary web-content subtree by default, omitting restored tabs, favorites, toolbars, and application menus just like a native tab binding. If the task later needs browser chrome, call `get_app_state` with `includeAppChrome: true`; that explicitly switches the binding back to full-app state.
+URL targets return page-scoped semantic state by default, omitting restored tabs,
+favorites, toolbars, and application menus. Chromium URLs use a driver-owned
+isolated profile and exact typed target/tab binding, so they neither reuse nor
+close the user's existing tabs. Call `close()` in a `finally` block when using
+the library directly; the CLI, REPL, and server entry points do this
+automatically on normal exit or termination.
 
-`open_target` and later observations also return optional structured `target` identity. It distinguishes the requested resource, exact bound native window, and current AX document title/URL when the helper publishes one. Browser tab identity is explicitly `unverified` unless a future typed browser binding proves it; a new native window is never reported as a new tab. The evaluator renders this as one compact `Target:` line.
+`open_target` and later observations also return optional structured `target`
+identity. It distinguishes the requested resource, exact bound native window,
+and current document title/URL when the helper publishes one. Typed Chromium
+bindings report a verified tab; legacy native-window URL handling remains
+explicitly unverified. A new native window is never reported as a new tab.
 
 If an app is reported running but has no ordinary UI window, `get_app_state` asks the driver to launch/reveal the app before giving up. This matches native `getApp` behavior for background or stale app registrations without guessing a sibling window.
 
@@ -172,7 +183,11 @@ bun test
 
 `npm test` is an alias for `bun test`. `npm run build` still emits the Node-compatible `dist/` used by the published `opensky` bin.
 
-Tests use a mock `cua-driver` so they run without a desktop or TCC grants.
+The deterministic unit suite uses contract doubles and real-driver-derived
+replay tapes so it can run without desktop permissions. Release acceptance is
+separate and uses an installed real Cua Driver against live native apps and
+websites; `evals/real-driver-smoke.ts` and
+`evals/real-driver-browser-task.ts` are the local canaries.
 
 ## Evals
 
