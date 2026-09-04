@@ -176,7 +176,7 @@ cross-process alias discovery.
 
 Prefer `element_index` from the latest `get_app_state().text`. Exact AX element actions are token-bound and remain safe if a user changes focus or Spaces. Use `x, y` only for visible canvas/custom-drawn surfaces.
 
-For an exact typed browser tab, always use `element_index`. Coordinate clicks fail closed so a page screenshot can never silently route into the native window coordinate space. Type directly into a type-capable field; some fields intentionally expose type without click.
+For an exact typed browser tab, prefer `element_index`. Screenshot coordinates are accepted only after a fresh exact-tab screenshot proves the screenshot-pixel to viewport-CSS mapping; they route through trusted page-scoped input and never fall through to native window coordinates. Type directly into a type-capable field; some fields intentionally expose type without click.
 
 If `perform_actions` stops because a UI mutation made a later element stale, it returns the completed prefix plus fresh settled AX state. Derive new indices from that result; do not repeat the completed prefix.
 
@@ -230,7 +230,7 @@ Copy a supported action name from the latest tree (`Raise`, `Show Menu`, `Press`
 
 Prefer `element_index` from the latest tree. For native apps you may omit it (or pass `x`/`y`) to scroll the window itself.
 
-For an exact typed browser tab, OpenSky uses one unambiguous semantic scroll ref. Coordinate scrolling and pages without a driver-exposed scroll ref fail closed; OpenSky never falls through to native window scrolling.
+For an exact typed browser tab, OpenSky prefers one unambiguous semantic scroll ref. Screenshot coordinates are accepted only after a fresh exact-tab screenshot proves their viewport mapping. OpenSky never falls through to native window scrolling.
 
 ## Confirmation policy
 

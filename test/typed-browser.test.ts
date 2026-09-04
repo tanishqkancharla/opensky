@@ -604,6 +604,37 @@ describe("OpenSky typed-browser contract", () => {
     });
   });
 
+  it("converts fresh browser screenshot pixels for trusted click and scroll", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: true });
+    const browserSession = driver.calls.find((call) => call.tool === "browser_prepare")?.args.session;
+
+    await opensky.click({ app: "Google Chrome", x: 20, y: 40 });
+    assert.deepEqual(driver.calls.findLast((call) => call.tool === "browser_click")?.args, {
+      session: browserSession,
+      target_id: TARGET_ID,
+      tab_id: TAB_ID,
+      input_route: "trusted",
+      x: 10,
+      y: 20,
+    });
+
+    await opensky.get_app_state({ app: "Google Chrome", includeScreenshot: true });
+    await opensky.scroll({ app: "Google Chrome", x: 100, y: 120, direction: "down", pages: 2 });
+    assert.deepEqual(driver.calls.findLast((call) => call.tool === "browser_pointer")?.args, {
+      session: browserSession,
+      target_id: TARGET_ID,
+      tab_id: TAB_ID,
+      input_route: "trusted",
+      action: "scroll",
+      x: 50,
+      y: 60,
+      delta_x: 0,
+      delta_y: 1_200,
+    });
+    assert.equal(driver.calls.some((call) => call.tool === "click" || call.tool === "scroll"), false);
+  });
+
   it("refuses browser coordinate drag without current screenshot coordinate proof", async () => {
     const { opensky, driver } = await harness();
     await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
@@ -623,6 +654,10 @@ describe("OpenSky typed-browser contract", () => {
 
     await assert.rejects(
       () => opensky.drag({ app: "Google Chrome", from_x: 1, from_y: 2, to_x: 201, to_y: 4 }),
+      /coordinates must be inside the latest exact-tab screenshot/,
+    );
+    await assert.rejects(
+      () => opensky.click({ app: "Google Chrome", x: 201, y: 4 }),
       /coordinates must be inside the latest exact-tab screenshot/,
     );
     assert.equal(driver.calls.length, before);

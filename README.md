@@ -132,12 +132,12 @@ The original snake_case, app-argument API remains available for backward compati
 | `navigate({app, url | action, includeScreenshot?, query?})` | Navigates an exact driver-owned typed tab to a URL or performs exact-tab back, forward, or reload, then returns settled state |
 | `close_target({app})` | Closes one exact driver-owned browser target or proven-owned macOS native window; refuses to close ordinary user-owned app/window/tab state |
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |
-| `click` | `click` / `double_click` |
+| `click` | Native `click` / `double_click`; exact tabs use a semantic ref or fresh screenshot coordinates with proven pixel-to-CSS metadata |
 | `drag` | Native `drag`; exact tabs use semantic `browser_pointer` drag or screenshot coordinates only with proven pixel-to-CSS metadata |
 | `paste` | Temporarily fails closed before touching the global clipboard; safe paste needs a compound driver primitive |
 | `perform_secondary_action` | Supported `click` actions (`press`/`show_menu`/`open`/…), `bring_to_front`, or Delete |
 | `press_key` | Native `press_key` / `hotkey`; exact tabs use trusted `browser_key` with optional type-capable element targeting |
-| `scroll` | `scroll` (element, coordinates, or the window) |
+| `scroll` | Native `scroll`; exact tabs use a semantic scroll ref or fresh screenshot coordinates with proven pixel-to-CSS metadata |
 | `select_text` | Element-targeted background Home/arrows (`exact` alias; prefix/suffix disambiguation) |
 | `set_value` | `set_value` (including exact slider/stepper values) |
 | `type_text` | `type_text` (element, coordinates, or verified focus) |

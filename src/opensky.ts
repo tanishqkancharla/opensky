@@ -695,13 +695,11 @@ export class OpenSky implements OpenSkyApi {
     const button = normalizeMouseButton(args.mouse_button);
     const resolved = await this.requireResolved(args.app);
     if (resolved.browser) {
-      if (args.element_index === undefined) {
-        throw this.typedBrowserUnsupported(
-          resolved,
-          "coordinate click",
-          "Use an element_index from the semantic state; screenshot coordinates are not routed to the exact tab.",
-        );
-      }
+      const hasX = typeof args.x === "number";
+      const hasY = typeof args.y === "number";
+      if (hasX !== hasY) throw invalidParams("x and y must be provided together");
+      if (args.element_index !== undefined && hasX) throw invalidParams("element_index cannot be combined with x/y");
+      if (args.element_index === undefined && !hasX) throw invalidParams("provide element_index or x/y");
       const count = args.click_count ?? 1;
       if (button === "middle" || count < 1 || count > 2 || (button !== "left" && count !== 1)) {
         throw this.typedBrowserUnsupported(
@@ -716,15 +714,27 @@ export class OpenSky implements OpenSkyApi {
         input_route: "dom_event",
         session: resolved.browser.session,
       };
-      if (button === "right" || count === 2) {
-        const element = this.browserElement(resolved, args.element_index, "pointer");
+      if (hasX) {
+        const point = this.browserScreenshotPoint(resolved, args.x!, args.y!, "coordinate click");
+        if (button === "right" || count === 2) {
+          await this.driver.call("browser_pointer", {
+            ...common,
+            ...point,
+            input_route: "trusted",
+            action: button === "right" ? "right_click" : "double_click",
+          });
+        } else {
+          await this.driver.call("browser_click", { ...common, ...point, input_route: "trusted" });
+        }
+      } else if (button === "right" || count === 2) {
+        const element = this.browserElement(resolved, args.element_index!, "pointer");
         await this.driver.call("browser_pointer", {
           ...common,
           ref: element.browser_ref,
           action: button === "right" ? "right_click" : "double_click",
         });
       } else {
-        const element = this.browserElement(resolved, args.element_index, "click");
+        const element = this.browserElement(resolved, args.element_index!, "click");
         await this.driver.call("browser_click", { ...common, ref: element.browser_ref });
       }
       this.markAction(resolved);
@@ -827,31 +837,12 @@ export class OpenSky implements OpenSkyApi {
           input_route: "dom_event",
         };
       } else {
-        const mapping = browser.screenshotMapping;
-        if (
-          !mapping || mapping.coordinateSpace !== "viewport_css_px" ||
-          !positiveFinite(mapping.pixelToCssScaleX) || !positiveFinite(mapping.pixelToCssScaleY)
-        ) {
-          throw this.typedBrowserUnsupported(
-            resolved,
-            "coordinate drag",
-            "Request a fresh exact-tab screenshot first so its screenshot-pixel to viewport-CSS mapping is proven, or use from_element_index/to_element_index.",
-          );
-        }
-        const screenshotWidth = mapping.viewportCssWidth / mapping.pixelToCssScaleX;
-        const screenshotHeight = mapping.viewportCssHeight / mapping.pixelToCssScaleY;
-        const points = [
-          [Number(raw.from_x), Number(raw.from_y)],
-          [Number(raw.to_x), Number(raw.to_y)],
-        ];
-        if (points.some(([x, y]) => x < 0 || y < 0 || x > screenshotWidth || y > screenshotHeight)) {
-          throw invalidParams("browser drag coordinates must be inside the latest exact-tab screenshot");
-        }
+        const origin = this.browserScreenshotPoint(resolved, Number(raw.from_x), Number(raw.from_y), "coordinate drag");
+        const destination = this.browserScreenshotPoint(resolved, Number(raw.to_x), Number(raw.to_y), "coordinate drag");
         payload = {
-          x: Number(raw.from_x) * mapping.pixelToCssScaleX,
-          y: Number(raw.from_y) * mapping.pixelToCssScaleY,
-          to_x: Number(raw.to_x) * mapping.pixelToCssScaleX,
-          to_y: Number(raw.to_y) * mapping.pixelToCssScaleY,
+          ...origin,
+          to_x: destination.x,
+          to_y: destination.y,
           input_route: "trusted",
         };
       }
@@ -1101,11 +1092,19 @@ export class OpenSky implements OpenSkyApi {
       const pages = args.pages ?? 1;
       if (!Number.isFinite(pages) || pages <= 0) throw invalidParams("pages must be a positive number");
       if (hasX) {
-        throw this.typedBrowserUnsupported(
-          resolved,
-          "coordinate scrolling",
-          "Use a scroll-capable element_index from the latest semantic state.",
-        );
+        const point = this.browserScreenshotPoint(resolved, args.x!, args.y!, "coordinate scrolling");
+        await this.driver.call("browser_pointer", {
+          target_id: resolved.browser.targetId,
+          tab_id: resolved.browser.tabId,
+          ...point,
+          input_route: "trusted",
+          action: "scroll",
+          delta_x: direction === "left" ? -800 * pages : direction === "right" ? 800 * pages : 0,
+          delta_y: direction === "up" ? -600 * pages : direction === "down" ? 600 * pages : 0,
+          session: resolved.browser.session,
+        });
+        this.markAction(resolved);
+        return;
       }
       const element = typeof args.element_index === "number"
         ? this.browserElementWithAnyAction(resolved, args.element_index, ["scroll", "pointer"])
@@ -1877,6 +1876,32 @@ export class OpenSky implements OpenSkyApi {
     );
     if (mainDocument.length === 1) return mainDocument[0];
     return candidates.length === 1 ? candidates[0] : undefined;
+  }
+
+  private browserScreenshotPoint(
+    resolved: ResolvedApp,
+    x: number,
+    y: number,
+    action: string,
+  ): { x: number; y: number } {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) throw invalidParams("browser coordinates must be finite numbers");
+    const mapping = resolved.browser?.screenshotMapping;
+    if (
+      !mapping || mapping.coordinateSpace !== "viewport_css_px" ||
+      !positiveFinite(mapping.pixelToCssScaleX) || !positiveFinite(mapping.pixelToCssScaleY)
+    ) {
+      throw this.typedBrowserUnsupported(
+        resolved,
+        action,
+        "Request a fresh exact-tab screenshot first so its screenshot-pixel to viewport-CSS mapping is proven, or use a semantic element index.",
+      );
+    }
+    const screenshotWidth = mapping.viewportCssWidth / mapping.pixelToCssScaleX;
+    const screenshotHeight = mapping.viewportCssHeight / mapping.pixelToCssScaleY;
+    if (x < 0 || y < 0 || x > screenshotWidth || y > screenshotHeight) {
+      throw invalidParams(`browser ${action.replace(/^coordinate /, "")} coordinates must be inside the latest exact-tab screenshot`);
+    }
+    return { x: x * mapping.pixelToCssScaleX, y: y * mapping.pixelToCssScaleY };
   }
 
   private uniqueFocusedBrowserTypeElement(resolved: ResolvedApp): SnapshotElement {
