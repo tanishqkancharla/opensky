@@ -1404,6 +1404,10 @@ export class OpenSky implements OpenSkyApi {
     const candidates = (this.memory.trees[windowKey(resolved)]?.elements ?? []).filter((element) =>
       element.browser_ref && actions.some((action) => element.actions?.includes(action))
     );
+    const mainDocument = candidates.filter((element) =>
+      element.browserFrame === "main" && element.label === "Document"
+    );
+    if (mainDocument.length === 1) return mainDocument[0];
     return candidates.length === 1 ? candidates[0] : undefined;
   }
 
@@ -1799,6 +1803,7 @@ function normalizeBrowserElements(value: unknown): SnapshotElement[] {
     return [{
       element_index: index,
       browser_ref: ref,
+      browserFrame: optionalString(item.frame),
       role,
       label,
       value: scalarText(item.value),
@@ -1835,6 +1840,7 @@ function renderBrowserState(
       // In-viewport controls are the default ranked result. Keep exceptional
       // visibility states because they affect whether an action should be sent.
       element.visibility && element.visibility !== "in_viewport" ? `visibility=${element.visibility}` : "",
+      element.browserFrame && element.browserFrame !== "main" ? `frame=${element.browserFrame}` : "",
       element.focused === true ? "focused" : "",
       element.enabled === false ? "disabled" : "",
     ].filter(Boolean).join(" ");

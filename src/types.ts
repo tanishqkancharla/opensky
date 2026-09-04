@@ -209,6 +209,8 @@ export interface SnapshotElement {
   element_token?: string;
   /** Opaque current-document capability returned by semantic_v2. */
   browser_ref?: string;
+  /** Driver-reported semantic frame provenance (for example main or oopif). */
+  browserFrame?: string;
   role?: string;
   label?: string;
   value?: string;

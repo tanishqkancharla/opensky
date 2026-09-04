@@ -5,7 +5,7 @@ import { Type } from "typebox";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 
 import { createOpenSky, formatTargetIdentity } from "../src/opensky.js";
-import type { AppState, DriverClient } from "../src/types.js";
+import type { AppState, DriverClient, OpenSkyOptions } from "../src/types.js";
 import type { OpenSkyTarget } from "../src/types.js";
 
 function textResult(value: unknown) {
@@ -104,12 +104,17 @@ async function actionResult(
   }
 }
 
-export function createOpenSkyToolRuntime(driver: DriverClient, target: OpenSkyTarget) {
+export function createOpenSkyToolRuntime(
+  driver: DriverClient,
+  target: OpenSkyTarget,
+  options: Omit<OpenSkyOptions, "driver" | "target"> = {},
+) {
   const emittedImageHashes = new Map<string, string>();
   const opensky = createOpenSky({
+    ...options,
     driver,
     target,
-    autoLaunch: true,
+    autoLaunch: options.autoLaunch ?? true,
   });
 
   const tools = [
