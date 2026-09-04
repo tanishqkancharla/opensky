@@ -315,6 +315,23 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "launch_app").length, 2);
   });
 
+  it("uses the catalog app path as a final macOS reveal fallback", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const calculator = fixture.apps.find((app: { name: string }) => app.name === "Calculator");
+    calculator.windows = [];
+    fixture.launchNoWindowsOnce = 2;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.match(state.text, /AXWindow/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const launches = after.calls.filter((call: { tool: string }) => call.tool === "launch_app");
+    assert.equal(launches.length, 3);
+    assert.deepEqual(launches[2].args.urls, ["/System/Applications/Calculator.app"]);
+  });
+
   it("opens and binds a supplied target through the core API", async () => {
     const { opensky, statePath } = await makeHarness();
     const state = await opensky.open_target({
@@ -360,7 +377,8 @@ describe("OpenSky against cua-driver", () => {
   });
 
   it("does not loop or recommend unsafe input after a refused target dispatch", async () => {
-    const { opensky, statePath } = await makeHarness();
+    const { opensky, statePath, dir } = await makeHarness();
+    await opensky.open_target({ app: "TextEdit", targets: ["/tmp/prior.txt"], includeScreenshot: false });
     await opensky.list_apps();
     const fixture = JSON.parse(await readFile(statePath, "utf8"));
     const textEdit = fixture.apps.find((app: { name: string }) => app.name === "TextEdit");
@@ -373,7 +391,11 @@ describe("OpenSky against cua-driver", () => {
       /could not dispatch.*LAUNCH_FAILED.*No keyboard or pointer input was sent/,
     );
     const after = JSON.parse(await readFile(statePath, "utf8"));
-    assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "launch_app").length, 1);
+    assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "launch_app").length, 2);
+    const session = JSON.parse(await readFile(join(dir, "home", "session.json"), "utf8"));
+    const textEditBindings = Object.values(session.apps).filter((binding: any) => binding.pid === 900) as any[];
+    assert.ok(textEditBindings.length > 0);
+    assert.ok(textEditBindings.every((binding) => binding.targetRequest === undefined && binding.contentScope === undefined));
   });
 
   it("reports current document identity without claiming a verified tab", async () => {

@@ -163,6 +163,12 @@ export class OpenSky implements OpenSkyApi {
     await this.ensureLoaded();
     const listed = await this.listRawApps();
     const match = findApp(listed, args.app);
+    await this.clearTargetBindings([
+      args.app,
+      optionalString(match?.name),
+      optionalString(match?.bundle_id),
+      optionalString(match?.launch_path),
+    ]);
     const previousPid = Number(match?.pid);
     const previousWindows = Number.isFinite(previousPid) && previousPid > 0
       ? windowsFrom((await this.driver.call("list_windows", { pid: previousPid })).structured)
@@ -630,10 +636,24 @@ export class OpenSky implements OpenSkyApi {
           if (Number.isFinite(retryPid) && retryPid > 0) pid = retryPid;
           windowId = await this.pickWindow(pid, source);
         }
+        const recoveryPath = optionalString(source.launch_path) ?? optionalString(match.launch_path);
+        if (!windowId && !launchDispatchRefused(source) && this.target === "mac" && recoveryPath) {
+          launched = await this.driver.call("launch_app", { ...launchArgs, urls: [recoveryPath] });
+          source = { ...source, ...(asRecord(launched.structured) ?? {}) };
+          const recoveryPid = Number(source.pid);
+          if (Number.isFinite(recoveryPid) && recoveryPid > 0) pid = recoveryPid;
+          windowId = await this.pickWindow(pid, source);
+        }
         if (!windowId && launchDispatchRefused(source)) {
           throw new OpenSkyError(
             `The desktop helper could not reveal an ordinary window for ${JSON.stringify(app)} ` +
             `(${String(source.error)}). No keyboard or pointer input was sent.`,
+          );
+        }
+        if (!windowId) {
+          throw new OpenSkyError(
+            `The desktop helper could not reveal an ordinary window for ${JSON.stringify(app)} after bounded launch recovery. ` +
+            "Retrying app aliases or global keyboard shortcuts will not create a safe target; no input was sent.",
           );
         }
         relaunched = true;
@@ -701,6 +721,21 @@ export class OpenSky implements OpenSkyApi {
     if (record && Array.isArray(record.apps)) return record.apps as Record<string, unknown>[];
     if (record && Array.isArray(record.processes)) return record.processes as Record<string, unknown>[];
     return [];
+  }
+
+  private async clearTargetBindings(identities: Array<string | undefined>): Promise<void> {
+    const keys = new Set(identities.filter((value): value is string => Boolean(value)).map(normalizeAppKey));
+    let changed = false;
+    for (const [key, resolved] of Object.entries(this.memory.apps)) {
+      const aliases = [key, resolved.query, resolved.name, resolved.bundleId, resolved.launchPath]
+        .filter((value): value is string => Boolean(value))
+        .map(normalizeAppKey);
+      if (!aliases.some((alias) => keys.has(alias))) continue;
+      if (resolved.targetRequest || resolved.contentScope) changed = true;
+      resolved.targetRequest = undefined;
+      resolved.contentScope = undefined;
+    }
+    if (changed) await this.persist();
   }
 
   private async pickWindow(
