@@ -169,6 +169,10 @@ metadata on semantic links when the driver provides them. Use `close_target({app
 asks to close that exact target. Call `close()` in a `finally` block when using
 the library directly; the CLI, REPL, and server entry points do this
 automatically on normal exit or termination.
+Owned isolated-browser session identifiers are durably reserved before launch
+and cleared only after `end_session` succeeds, so a later OpenSky process using
+the same home can reap a target left by a host crash. Ordinary user-owned
+browser state is never added to this ledger.
 
 `open_target` and later observations also return optional structured `target`
 identity. It distinguishes the requested resource, exact bound native window,

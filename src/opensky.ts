@@ -87,6 +87,7 @@ export class OpenSky implements OpenSkyApi {
   private readonly memory = {
     apps: {} as Record<string, ResolvedApp>,
     trees: {} as Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>,
+    managedBrowserSessions: [] as string[],
   };
   private loaded = false;
 
@@ -340,6 +341,8 @@ export class OpenSky implements OpenSkyApi {
 
   /** End only resources that this OpenSky instance created. Safe to call repeatedly. */
   async close(): Promise<void> {
+    await this.ensureLoaded();
+    const hadManagedBrowserSessions = this.managedBrowserSessions.size > 0;
     const sessions = [...this.managedBrowserSessions];
     if (!this.baseSessionEnded) sessions.push(this.session);
     this.managedBrowserSessions.clear();
@@ -354,6 +357,13 @@ export class OpenSky implements OpenSkyApi {
         failures.push({ session, error });
       }
     }));
+    if (hadManagedBrowserSessions) {
+      try {
+        await this.persist();
+      } catch (error) {
+        failures.push({ session: "ownership ledger", error });
+      }
+    }
     if (failures.length > 0) {
       const detail = failures.map(({ session, error }) =>
         `${JSON.stringify(session)}: ${error instanceof Error ? error.message : String(error)}`
@@ -374,7 +384,11 @@ export class OpenSky implements OpenSkyApi {
     ) return null;
 
     const session = `${this.session}-browser-${process.pid}-${++this.browserSequence}`;
-    let prepared = false;
+    // Reserve the cleanup capability before dispatch. A timed-out or malformed
+    // prepare may already have launched an isolated browser; waiting for its
+    // success envelope before recording ownership would orphan that process.
+    this.managedBrowserSessions.add(session);
+    await this.persist();
     try {
       const pid = Number(match?.pid);
       const preparation = await this.driver.call("browser_prepare", {
@@ -389,8 +403,6 @@ export class OpenSky implements OpenSkyApi {
           "The desktop helper returned an ambiguous browser preparation result. No legacy browser fallback was attempted.",
         );
       }
-      prepared = true;
-      this.managedBrowserSessions.add(session);
       const preparedPid = Number(preparedState.prepared_pid);
       if (!Number.isFinite(preparedPid) || preparedPid <= 0) {
         throw new OpenSkyError("The desktop helper prepared an isolated browser without a process identity.");
@@ -452,17 +464,15 @@ export class OpenSky implements OpenSkyApi {
         query: args.query,
       });
     } catch (error) {
-      if (prepared) {
-        try {
-          await this.driver.call("end_session", { session });
-          this.managedBrowserSessions.delete(session);
-        } catch (cleanupError) {
-          throw new OpenSkyError(
-            `Typed browser setup failed (${error instanceof Error ? error.message : String(error)}), and cleanup of ` +
-              `${JSON.stringify(session)} also failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
-          );
-        }
-        throw error;
+      try {
+        await this.driver.call("end_session", { session });
+        this.managedBrowserSessions.delete(session);
+        await this.persist();
+      } catch (cleanupError) {
+        throw new OpenSkyError(
+          `Typed browser setup failed (${error instanceof Error ? error.message : String(error)}), and cleanup of ` +
+            `${JSON.stringify(session)} also failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        );
       }
       if (isTypedBrowserUnavailable(error)) {
         if (args.query !== undefined) {
@@ -1593,10 +1603,14 @@ export class OpenSky implements OpenSkyApi {
     const persisted = await this.store.load();
     this.memory.apps = persisted.apps;
     this.memory.trees = persisted.trees;
+    for (const session of persisted.managedBrowserSessions) {
+      this.managedBrowserSessions.add(session);
+    }
     this.loaded = true;
   }
 
   private async persist(): Promise<void> {
+    this.memory.managedBrowserSessions = [...this.managedBrowserSessions].sort();
     await this.store.save(this.memory);
   }
 }

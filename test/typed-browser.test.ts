@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "bun:test";
@@ -218,6 +218,10 @@ describe("OpenSky typed-browser contract", () => {
       /No legacy browser fallback was attempted/,
     );
     assert.equal(driver.calls.some((call) => call.tool === "launch_app"), false);
+    const prepare = driver.calls.find((call) => call.tool === "browser_prepare");
+    assert.deepEqual(driver.calls.find((call) => call.tool === "end_session")?.args, {
+      session: prepare?.args.session,
+    });
   });
 
   it("opens a Chrome URL through an isolated exact binding and semantic_v2 snapshot", async () => {
@@ -505,6 +509,42 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(ended.length, 2);
     assert.deepEqual(ended.map((call) => call.args.session).sort(), [SESSION, browserSession].sort());
     assert.equal(driver.calls.some((call) => call.tool === "revoke_session"), false);
+  });
+
+  it("reaps a persisted owned browser session after a host restart", async () => {
+    const driver = new TypedBrowserDriver();
+    const home = await mkdtemp(join(tmpdir(), "opensky-restart-cleanup-"));
+    const first = createOpenSky({
+      driver,
+      homeDir: home,
+      session: SESSION,
+      target: "mac",
+      settleDelayMs: 0,
+      degradedRetryMs: 0,
+      browserStabilityTimeoutMs: 0,
+    });
+    await first.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const browserSession = String(
+      driver.calls.find((call) => call.tool === "browser_prepare")?.args.session,
+    );
+    const persistedBefore = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
+    assert.deepEqual(persistedBefore.managedBrowserSessions, [browserSession]);
+
+    const restarted = createOpenSky({
+      driver,
+      homeDir: home,
+      session: `${SESSION}-restarted`,
+      target: "mac",
+      settleDelayMs: 0,
+      degradedRetryMs: 0,
+      browserStabilityTimeoutMs: 0,
+    });
+    await restarted.close();
+
+    const ended = driver.calls.filter((call) => call.tool === "end_session");
+    assert.equal(ended.some((call) => call.args.session === browserSession), true);
+    const persistedAfter = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
+    assert.deepEqual(persistedAfter.managedBrowserSessions, []);
   });
 
   it("closes one exact owned target without closing user-owned browser state", async () => {

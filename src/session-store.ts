@@ -7,6 +7,8 @@ import type { ResolvedApp, SnapshotElement } from "./types.js";
 export interface PersistedSession {
   apps: Record<string, ResolvedApp>;
   trees: Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>;
+  /** Driver sessions owned by this OpenSky home and safe to reap after a host crash. */
+  managedBrowserSessions: string[];
 }
 
 export class SessionStore {
@@ -19,9 +21,12 @@ export class SessionStore {
       return {
         apps: parsed.apps ?? {},
         trees: parsed.trees ?? {},
+        managedBrowserSessions: Array.isArray(parsed.managedBrowserSessions)
+          ? parsed.managedBrowserSessions.filter((value): value is string => typeof value === "string")
+          : [],
       };
     } catch {
-      return { apps: {}, trees: {} };
+      return { apps: {}, trees: {}, managedBrowserSessions: [] };
     }
   }
 
