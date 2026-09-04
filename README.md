@@ -114,11 +114,17 @@ const tab = await cua.createBrowserTab("chrome", "https://example.com");
 await tab.goto("https://example.com/about");
 console.log(await tab.getAXState());
 await tab.close();
+
+const browser = await cua.getBrowser({ id: "chrome" });
+await browser.nameSession("research");
+const blank = await browser.tabs.new();
+await blank.goto("https://example.com");
+await blank.close();
 ```
 
-The facade provides camelCase, bound-target methods: `getState`, `listApps`, `getApp`, `listBrowsers`, `listTabs`, `getBrowser`, `createBrowserTab`, and `getTab`; target observations and actions; and exact-tab `goto`, `back`, `forward`, `reload`, and `close`. `getAXState()` is AX-only by default, `getScreenshot()` returns screenshot bytes, and `getAXStateAndScreenshot()` returns both. `disableDiffing` maps to the driver's diff control. As a generic OpenSky extension, facade observations also accept `query` to return a fresh semantic view narrowed to matching page content.
+The facade provides camelCase, bound-target methods: `getState`, `listApps`, `getApp`, `listBrowsers`, `listTabs`, `getBrowser`, `createBrowserTab`, and `getTab`; current native-style `browser.tabs.new/get/list/selected` and `browser.nameSession`; target observations and actions; and exact-tab `goto`, `back`, `forward`, `reload`, and `close`. `getAXState()` is AX-only by default, `getScreenshot()` returns screenshot bytes, and `getAXStateAndScreenshot()` returns both. `disableDiffing` maps to the driver's diff control. As a generic OpenSky extension, facade observations also accept `query` to return a fresh semantic view narrowed to matching page content.
 
-Browser-provider discovery uses the installed app catalog, so `getBrowser()` works in a clean session before OpenSky has created a tab. Tab discovery remains deliberately limited to exact tabs created by this facade; it does not enumerate or close user-owned tabs. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred and Edge is the fallback. The in-app browser, hidden or blank tab creation, clipboard paste, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s. Paste currently fails closed for every target before touching the global clipboard because Cua Driver does not yet provide the compound primitive needed to restore safely around concurrent user clipboard changes.
+Browser-provider discovery uses the installed app catalog, so `getBrowser()` works in a clean session before OpenSky has created a tab. `browser.tabs.new()` creates an exact blank tab; the top-level `createBrowserTab(browser, url)` shortcut remains the efficient known-URL path. Tab discovery remains deliberately limited to exact tabs created by this facade; it does not enumerate or close user-owned tabs. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred and Edge is the fallback. The in-app browser, hidden tab creation, clipboard paste, optional browser capabilities, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s or are unavailable. Paste currently fails closed for every target before touching the global clipboard because Cua Driver does not yet provide the compound primitive needed to restore safely around concurrent user clipboard changes.
 
 ## Legacy `opensky` API
 

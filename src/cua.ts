@@ -97,7 +97,16 @@ export interface Tab extends Target {
 
 export interface Browser {
   readonly browserId: string;
+  readonly tabs: Tabs;
   documentation(): Promise<string>;
+  nameSession(name: string): Promise<void>;
+}
+
+export interface Tabs {
+  get(id: string): Promise<Tab>;
+  list(): Promise<TabInfo[]>;
+  "new"(): Promise<Tab>;
+  selected(): Promise<Tab | undefined>;
 }
 
 export interface CuaFacadeOptions {
@@ -143,6 +152,7 @@ const BROWSERS = Object.freeze({
 
 export class CuaFacade {
   private readonly tabs = new Map<string, OwnedTabRecord>();
+  private readonly browserSessionNames = new Map<string, string>();
   private readonly pendingStates = new Map<TargetHandle, AppState>();
 
   constructor(
@@ -205,7 +215,7 @@ export class CuaFacade {
     if (!browserId) {
       throw new CuaUnsupportedError("getBrowser", "no supported installed browser provider is available");
     }
-    const browser = new BoundBrowser(browserId);
+    const browser = new BoundBrowser(this, browserId);
     this.options.emit?.(await browser.documentation());
     return browser;
   }
@@ -225,7 +235,7 @@ export class CuaFacade {
     const record: OwnedTabRecord = {
       handle: state.targetHandle,
       browserId,
-      profileName: options.sessionName,
+      profileName: options.sessionName ?? this.browserSessionNames.get(browserId),
       title: state.target.tab.title ?? state.target.document.title,
       url: state.target.tab.url ?? state.target.document.url ?? normalizedUrl,
       closed: false,
@@ -304,6 +314,21 @@ export class CuaFacade {
     this.pendingStates.set(state.targetHandle, state);
   }
 
+  nameBrowserSession(browserId: string, name: string): void {
+    const trimmed = name.trim();
+    if (!trimmed) throw new OpenSkyError("Invalid params: browser session name must contain non-whitespace text", "invalid_params");
+    this.browserSessionNames.set(browserId, trimmed);
+  }
+
+  selectedTab(browserId: string): Tab | undefined {
+    const records = [...this.tabs.values()];
+    for (let index = records.length - 1; index >= 0; index -= 1) {
+      const record = records[index]!;
+      if (!record.closed && record.browserId === browserId) return new BoundTab(this, record);
+    }
+    return undefined;
+  }
+
   async mark(kind: "deliverable" | "handoff", record: OwnedTabRecord): Promise<void> {
     const callback = kind === "deliverable" ? this.options.markDeliverable : this.options.markHandoff;
     if (!callback) {
@@ -332,7 +357,7 @@ export class CuaFacade {
         name: descriptor?.name ?? id,
         family: descriptor?.family,
         type: "cdp" as const,
-        profileName: tabs.length === 1 ? tabs[0]?.profileName : undefined,
+        profileName: this.browserSessionNames.get(id) ?? (tabs.length === 1 ? tabs[0]?.profileName : undefined),
         tabs: tabs.map(({ browserId: _browserId, ...tab }) => {
           const info = tabInfo({ ...tab, browserId: id });
           return { id: info.id, providerTabId: info.providerTabId, title: info.title, url: info.url };
@@ -478,10 +503,26 @@ class BoundTab extends BoundTarget implements Tab {
 }
 
 class BoundBrowser implements Browser {
-  constructor(readonly browserId: string) {}
-  async documentation(): Promise<string> {
-    return `OpenSky browser ${JSON.stringify(this.browserId)} exposes only exact tabs created by cua.createBrowserTab; user-owned tabs are not discoverable or closable.`;
+  readonly tabs: Tabs;
+
+  constructor(private readonly facade: CuaFacade, readonly browserId: string) {
+    this.tabs = new BoundTabs(facade, browserId);
   }
+
+  async documentation(): Promise<string> {
+    return `OpenSky browser ${JSON.stringify(this.browserId)} exposes exact tabs through browser.tabs and cua.createBrowserTab; user-owned tabs are not discoverable or closable.`;
+  }
+
+  async nameSession(name: string): Promise<void> { this.facade.nameBrowserSession(this.browserId, name); }
+}
+
+class BoundTabs implements Tabs {
+  constructor(private readonly facade: CuaFacade, private readonly browserId: string) {}
+
+  async get(id: string): Promise<Tab> { return this.facade.getTab(id, { browser: this.browserId }); }
+  async list(): Promise<TabInfo[]> { return this.facade.listTabs({ browser: this.browserId, emit: false }); }
+  async ["new"](): Promise<Tab> { return this.facade.createBrowserTab(this.browserId, "about:blank"); }
+  async selected(): Promise<Tab | undefined> { return this.facade.selectedTab(this.browserId); }
 }
 
 export function createCua(opensky: OpenSkyApi, options: CuaFacadeOptions = {}): CuaFacade {
@@ -515,6 +556,7 @@ function normalizeBrowserUrl(value: string, operation = "createBrowserTab"): str
     throw new CuaUnsupportedError(operation, detail);
   }
   const candidate = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  if (candidate.toLowerCase() === "about:blank") return "about:blank";
   let parsed: URL;
   try { parsed = new URL(candidate); }
   catch { throw new CuaUnsupportedError(operation, `invalid browser URL ${JSON.stringify(value)}`); }

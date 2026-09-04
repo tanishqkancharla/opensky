@@ -193,6 +193,32 @@ describe("native-style cua facade", () => {
     await assert.rejects(() => cua.getBrowser({ id: "chrome" }), /not installed or available/);
   });
 
+  it("matches the current bound browser.tabs lifecycle and session naming ergonomics", async () => {
+    const fake = new FakeOpenSky();
+    fake.apps = [{ id: "com.google.Chrome", displayName: "Google Chrome" }];
+    const cua = createCua(fake as unknown as OpenSky);
+    const browser = await cua.getBrowser({ id: "chrome" });
+
+    assert.equal(await browser.tabs.selected(), undefined);
+    await browser.nameSession("  evaluator  ");
+    assert.equal((await cua.listBrowsers({ emit: false }))[0]?.profileName, "evaluator");
+    await assert.rejects(() => browser.nameSession("   "), /must contain non-whitespace text/);
+
+    const tab = await browser.tabs.new();
+    assert.deepEqual(fake.calls.find((call) => call.method === "open_target")?.args, {
+      app: "Google Chrome",
+      targets: ["about:blank"],
+      includeScreenshot: false,
+    });
+    assert.equal((await browser.tabs.selected())?.id, tab.id);
+    assert.deepEqual((await browser.tabs.list()).map(({ id, browserId, url }) => ({ id, browserId, url })), [
+      { id: tab.id, browserId: "chrome", url: "about:blank" },
+    ]);
+    assert.equal((await browser.tabs.get(tab.id)).id, tab.id);
+    await tab.close();
+    assert.equal(await browser.tabs.selected(), undefined);
+  });
+
   it("matches native observation defaults and returns screenshot bytes", async () => {
     const fake = new FakeOpenSky();
     const dir = await mkdtemp(join(tmpdir(), "opensky-cua-facade-"));

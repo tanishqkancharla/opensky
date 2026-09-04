@@ -563,7 +563,7 @@ export class OpenSky implements OpenSkyApi {
     if (
       !this.preferTypedBrowser ||
       args.targets.length !== 1 ||
-      !isHttpUrl(args.targets[0] ?? "") ||
+      !isBrowserNavigableUrl(args.targets[0] ?? "") ||
       !isChromiumApp(args.app, match)
     ) return null;
 

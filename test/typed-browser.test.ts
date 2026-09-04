@@ -339,6 +339,21 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(state.target?.document.requestRelation, "exact");
   });
 
+  it("opens an exact blank tab for the current browser.tabs.new lifecycle", async () => {
+    const { opensky, driver } = await harness();
+
+    const state = await opensky.open_target({
+      app: "Google Chrome",
+      targets: ["about:blank"],
+      includeScreenshot: false,
+    });
+
+    assert.equal(state.target?.tab?.status, "verified");
+    assert.equal(state.target?.tab?.url, "about:blank");
+    assert.equal(driver.calls.some((call) => call.tool === "launch_app"), false);
+    assert.deepEqual(driver.calls.find((call) => call.tool === "browser_navigate")?.args.url, "about:blank");
+  });
+
   it("composes a semantic query into the initial exact-browser observation", async () => {
     const { opensky, driver } = await harness();
 
