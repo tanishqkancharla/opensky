@@ -34,7 +34,6 @@ try {
 
   for (const [name, action] of [
     ["coordinate click", () => opensky.click({ app: "Google Chrome", x: 20, y: 20 })],
-    ["native key escape", () => opensky.press_key({ app: "Google Chrome", key: "Return" })],
     ["ambient type without focused field", () => opensky.type_text({ app: "Google Chrome", text: "must not land" })],
     ["typed includeAppChrome", () => opensky.get_app_state({ app: "Google Chrome", includeAppChrome: true })],
   ] as const) {
@@ -51,6 +50,23 @@ try {
         driver.tape.calls.length === before,
       error,
       emittedDriverCalls: driver.tape.calls.length - before,
+    });
+  }
+
+  {
+    const before = driver.tape.calls.length;
+    let error = "";
+    try {
+      await opensky.press_key({ app: "Google Chrome", key: "Escape" });
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : String(caught);
+    }
+    const emitted = driver.tape.calls.slice(before);
+    checks.push({
+      name: "exact-tab key",
+      passed: emitted.some((call) => call.tool === "browser_key") &&
+        emitted.every((call) => call.tool !== "press_key" && call.tool !== "hotkey"),
+      error: error || undefined,
     });
   }
 

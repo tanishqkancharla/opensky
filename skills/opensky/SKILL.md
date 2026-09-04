@@ -77,11 +77,12 @@ opensky.target                    // "mac" | "win" | "linux"
 await opensky.list_apps()
 await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query? })
 await opensky.open_target({ app, targets, includeScreenshot?, query? })
-await opensky.navigate({ app, url, includeScreenshot?, query? })
+await opensky.navigate({ app, url?, action?: "back" | "forward" | "reload", includeScreenshot?, query? }) // exactly one of url/action
 await opensky.close_target({ app })
 await opensky.bring_to_front({ app })
 await opensky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
 await opensky.drag({ app, from_x, from_y, to_x, to_y })
+await opensky.drag({ app, from_element_index, to_element_index }) // exact typed browser
 await opensky.paste({ app, text, format?: "text" | "md" | "html" })
 await opensky.perform_secondary_action({ app, element_index, action })
 await opensky.press_key({ app, key, element_index?, x?, y? })
@@ -129,16 +130,14 @@ new request-correlated pid with exactly one ordinary window. OpenSky never
 claims or adopts an existing/title-matched/sibling window as an owned native
 target. Prefer the returned opaque handle for every later action.
 
-### `navigate({ app, url, includeScreenshot?, query? })`
+### `navigate({ app, url | action, includeScreenshot?, query? })`
 
 Navigate the exact driver-owned typed browser tab created by `open_target` and
-receive its settled destination state in the same call. Use this for a known URL
-instead of typing into browser chrome or closing and reopening the target. Pass
-`query` to narrow a large destination page immediately. It fails closed for
-native apps and unverified or user-owned tabs.
-
-Back, forward, and reload are not exposed until Cua Driver provides exact-tab
-primitives for them; do not emulate them with native keyboard shortcuts.
+receive settled destination state in the same call. Pass exactly one of an
+HTTP/HTTPS/about `url` or `action: "back" | "forward" | "reload"`. Use this
+instead of browser chrome or native shortcuts. `query` can narrow the resulting
+page. If acknowledgement succeeds but observation fails, navigation may already
+have completed; observe before retrying.
 
 ### `close_target({ app })`
 
@@ -178,13 +177,26 @@ Brings the exact bound ordinary window onto the current desktop. Coordinate and 
 
 xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targeted; cannot invoke global OS shortcuts. Element-targeted chords use background delivery so modifiers are preserved while focus remains isolated; use `x`/`y` only for custom surfaces.
 
-Exact typed browser tabs currently fail closed for `press_key`; use semantic click and type targets instead.
+Exact typed browser tabs use trusted page-scoped key delivery. Omit
+`element_index` only when page focus is already known, or pass a current
+type-capable index to focus that exact field first. Browser x/y key targeting
+fails closed and never falls through to native input.
 
 ### `paste`
 
-`format` defaults to `text`; it may also be `md` or `html`. HTML is written to the HTML clipboard plus a plain-text fallback; markdown is written as markdown plus plain text. Unsupported formats are rejected. The previous clipboard is restored after paste.
+Paste is temporarily unavailable for every target. Safe paste needs a compound
+driver primitive that cannot overwrite a concurrent user clipboard change.
+The call fails before resolving the target or touching the clipboard, and never
+silently substitutes `type_text` because typing and paste semantics differ.
 
-Exact typed browser tabs fail closed for clipboard paste; use `type_text` with a semantic field index.
+### `drag`
+
+Native targets use screenshot coordinates. Exact typed browser tabs prefer
+`from_element_index` and `to_element_index` from the same current semantic
+state. Browser coordinate drag is available only from a fresh exact-tab
+screenshot whose driver metadata proves the screenshot-pixel to viewport-CSS
+mapping; otherwise it fails closed. A browser drag never falls through to a
+native window drag.
 
 ### `select_text`
 
@@ -225,7 +237,7 @@ Do not click through OS permission prompts, password dialogs, or "are you sure" 
 - Always derive indices from fresh state.
 - Treat action failures as ambiguous until state is refreshed. An action may take effect even if the promise rejects.
 - Prefer `set_value()` for exact multiline replacement.
-- Prefer `paste()` for formatted content.
+- `paste()` is unavailable; do not substitute typing unless typing semantics are acceptable.
 - Avoid newlines in `type_text()` when Return could submit.
 - Do not target the agent/IDE itself (Cursor, Codex, Terminal hosting the agent) for safety.
 

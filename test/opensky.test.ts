@@ -522,7 +522,7 @@ describe("OpenSky against cua-driver", () => {
     assert.doesNotMatch(rendered, /new tab|opened tab/i);
   });
 
-  it("clicks, types, pastes, sets values, scrolls, and presses keys", async () => {
+  it("clicks, types, sets values, scrolls, and presses keys", async () => {
     const { opensky, driver, statePath } = await makeHarness();
     const textEdit = await opensky.get_app_state({ app: "TextEdit", disableDiff: true });
     assert.match(textEdit.text, /AXTextArea/);
@@ -540,8 +540,6 @@ describe("OpenSky against cua-driver", () => {
     await opensky.click({ app: "TextEdit", element_index: 2, mouse_button: "l" });
     await opensky.type_text({ app: "TextEdit", element_index: 2, text: "hello" });
     await opensky.set_value({ app: "TextEdit", element_index: 2, value: "Replacement text" });
-    await opensky.paste({ app: "TextEdit", text: "plain default" });
-    await opensky.paste({ app: "TextEdit", text: "<strong>Hello</strong>", format: "html" });
     await opensky.press_key({ app: "TextEdit", key: "super+a" });
     await opensky.press_key({ app: "TextEdit", key: "Up" });
     await opensky.press_key({ app: "TextEdit", key: "super+a", element_index: 2 });
@@ -568,8 +566,6 @@ describe("OpenSky against cua-driver", () => {
       calls: Array<{ tool: string; args: Record<string, unknown> }>;
       apps: Array<{ name: string; actions: Array<{ tool: string; args: Record<string, unknown> }> }>;
     };
-    assert.ok(persisted.calls.some((call) => call.tool === "clipboard_write" && call.args.html === "<strong>Hello</strong>"));
-    assert.ok(persisted.calls.some((call) => call.tool === "clipboard_write" && call.args.text === "plain default"));
     assert.ok(persisted.calls.some((call) => call.tool === "bring_to_front" && call.args.window_id === 2001));
     assert.ok(
       persisted.calls.filter((call) => call.tool === "list_windows" && call.args.pid === 900).length >= 2,
@@ -645,6 +641,17 @@ describe("OpenSky against cua-driver", () => {
       /direction must be up, down, left, or right/,
     );
     await assert.rejects(() => opensky.click({ app: "TextEdit", x: -4, y: -4 }), /windowNotFoundAtPosition/);
+  });
+
+  it("refuses paste before resolving a target or touching the global clipboard", async () => {
+    const { opensky, logPath } = await makeHarness();
+
+    await assert.rejects(
+      () => opensky.paste({ app: "TextEdit", text: "do not dispatch" }),
+      /safe paste requires.*No clipboard, app, window, tab, or input was touched/s,
+    );
+    const calls = await readFile(logPath, "utf8").catch(() => "");
+    assert.equal(calls, "");
   });
 
   it("keeps exact AX actions usable off-Space while refusing pixel or ambient input", async () => {

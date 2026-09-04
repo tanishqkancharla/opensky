@@ -8,6 +8,7 @@ export type {
   AppState,
   Direction,
   MouseButton,
+  NavigationAction,
   OpenSkyOptions,
   OpenSkyTarget,
   SelectionType,

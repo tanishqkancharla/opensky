@@ -110,14 +110,14 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | `list_apps()` | `list_apps` |
 | `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?, query?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` narrows a large page to matching semantic content/current refs. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
 | `open_target({app, targets, includeScreenshot?, query?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; `query` narrows that initial exact-browser observation. On macOS, native targets request a fresh app instance and bind only after proving a new pid with one uniquely revalidated ordinary window |
-| `navigate({app, url, includeScreenshot?, query?})` | Navigates an existing exact driver-owned typed browser tab with `browser_navigate` and returns its settled destination state; refuses native, unverified, and user-owned targets without falling back to browser chrome input |
+| `navigate({app, url | action, includeScreenshot?, query?})` | Navigates an exact driver-owned typed tab to a URL or performs exact-tab back, forward, or reload, then returns settled state |
 | `close_target({app})` | Closes one exact driver-owned browser target or proven-owned macOS native window; refuses to close ordinary user-owned app/window/tab state |
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |
 | `click` | `click` / `double_click` |
-| `drag` | `drag` |
-| `paste` | `clipboard_read` / `clipboard_write` (text, html, or markdown) + `hotkey` (cmd/ctrl+v), clipboard restored |
+| `drag` | Native `drag`; exact tabs use semantic `browser_pointer` drag or screenshot coordinates only with proven pixel-to-CSS metadata |
+| `paste` | Temporarily fails closed before touching the global clipboard; safe paste needs a compound driver primitive |
 | `perform_secondary_action` | Supported `click` actions (`press`/`show_menu`/`open`/…), `bring_to_front`, or Delete |
-| `press_key` | `press_key` / `hotkey` (xdotool-style strings) |
+| `press_key` | Native `press_key` / `hotkey`; exact tabs use trusted `browser_key` with optional type-capable element targeting |
 | `scroll` | `scroll` (element, coordinates, or the window) |
 | `select_text` | Element-targeted background Home/arrows (`exact` alias; prefix/suffix disambiguation) |
 | `set_value` | `set_value` (including exact slider/stepper values) |
@@ -179,11 +179,25 @@ Element indices are snapshots. Some identifiers fail silently. An action can tak
 
 Evaluator action tools accept `observation_query` to narrow their settled post-action exact-browser state. This composes navigation and discovery without a redundant `get_app_state` call. It is invalid when observation is disabled.
 
-`navigate` similarly combines exact-tab URL navigation and the settled destination
-observation in one call. Pass `query` when the destination is large and the needed
-semantic item is already known. Back, forward, and reload are intentionally not
-emulated with native browser shortcuts: Cua Driver does not yet expose exact-tab
-primitives for them, so adding them here would cross the verified target boundary.
+`navigate` similarly combines exact-tab URL, back, forward, or reload navigation
+and the settled destination observation in one call. Pass exactly one of `url` or
+`action`, and use `query` when the resulting page is large. These operations never
+use browser chrome or native keyboard shortcuts. If navigation is acknowledged but
+observation fails, OpenSky says that it may have completed and requires observation
+before retrying.
+
+Exact-tab `press_key` uses trusted page-scoped CDP input without activating browser
+chrome. An optional element index must name a current type-capable semantic ref;
+coordinates fail closed. Exact-tab drag accepts either two pointer-capable semantic
+indices or screenshot coordinates. Coordinate drag is enabled only after a fresh
+browser screenshot supplies an explicit screenshot-pixel to viewport-CSS mapping.
+No browser action falls through to native window input.
+
+`paste` is temporarily unavailable for both native and browser targets. The former
+clipboard bridge could overwrite a clipboard change made concurrently by the user,
+and current driver clipboard formats do not provide the needed atomic contract.
+OpenSky fails before target resolution or clipboard access and does not silently
+replace paste with typing.
 
 URL targets return page-scoped semantic state by default, omitting restored tabs,
 favorites, toolbars, and application menus. Chromium URLs use a driver-owned

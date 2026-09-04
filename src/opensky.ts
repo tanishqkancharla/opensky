@@ -8,7 +8,7 @@ import { BrowserSessionLeaseStore, legacyBrowserSessionOwnerPid } from "./browse
 import { invalidParams, OpenSkyError } from "./errors.js";
 import { inferScreenshotScale, readImageMeta } from "./image-meta.js";
 import { parseXdotoolKey, toHotkeyKeys } from "./keys.js";
-import { detectTarget, homeDir, pasteModifierFor } from "./platform.js";
+import { detectTarget, homeDir } from "./platform.js";
 import { mkdirPrivate, writeFilePrivate } from "./secure-fs.js";
 import { SessionStore, sessionFile } from "./session-store.js";
 import type {
@@ -17,6 +17,7 @@ import type {
   Direction,
   DriverClient,
   MouseButton,
+  NavigationAction,
   PasteFormat,
   ResolvedApp,
   Screenshot,
@@ -72,7 +73,6 @@ export class OpenSky implements OpenSkyApi {
   private readonly store: SessionStore;
   private readonly screenshotDir: string;
   private readonly autoLaunch: boolean;
-  private readonly pasteModifier: "cmd" | "ctrl";
   private readonly screenshotFormat?: "png" | "jpeg";
   private readonly screenshotScale?: number;
   private readonly settleDelayMs: number;
@@ -108,7 +108,6 @@ export class OpenSky implements OpenSkyApi {
     this.browserLeases = new BrowserSessionLeaseStore(home, this.runtimeId);
     this.screenshotDir = options.screenshotDir ?? join(home, "screenshots");
     this.autoLaunch = options.autoLaunch !== false;
-    this.pasteModifier = options.pasteModifier ?? pasteModifierFor(this.target);
     this.screenshotFormat = options.screenshotFormat;
     this.screenshotScale = options.screenshotScale;
     this.settleDelayMs = options.settleDelayMs ?? 800;
@@ -441,45 +440,78 @@ export class OpenSky implements OpenSkyApi {
   }
 
   /** Navigate only an exact typed-browser tab and return its settled destination state. */
-  async navigate(args: {
+  async navigate(args: ({ app: string; url: string; action?: never } | {
     app: string;
-    url: string;
-    includeScreenshot?: boolean;
-    query?: string;
-  }): Promise<AppState> {
-    if (!args?.app || typeof args.url !== "string" || !isBrowserNavigableUrl(args.url)) {
-      throw invalidParams("app and an http/https/about URL are required");
+    action: NavigationAction;
+    url?: never;
+  }) & { includeScreenshot?: boolean; query?: string }): Promise<AppState> {
+    const raw = args as Record<string, unknown> | undefined;
+    const hasUrl = typeof raw?.url === "string";
+    const hasAction = typeof raw?.action === "string";
+    if (!raw?.app || hasUrl === hasAction) {
+      throw invalidParams("app and exactly one of url or action are required");
+    }
+    if (hasUrl && !isBrowserNavigableUrl(String(raw.url))) {
+      throw invalidParams("url must be an http/https/about URL");
+    }
+    if (hasAction && !["back", "forward", "reload"].includes(String(raw.action))) {
+      throw invalidParams("action must be back, forward, or reload");
     }
     if (args.query !== undefined && !args.query.trim()) {
       throw invalidParams("query must contain non-whitespace text");
     }
-    const url = args.url.trim();
+    const url = hasUrl ? String(raw.url).trim() : undefined;
+    const action = hasAction ? String(raw.action) as NavigationAction : undefined;
     const resolved = await this.requireExactTypedBrowser(args.app, "navigate");
     const browser = resolved.browser!;
-    await this.driver.call("browser_navigate", {
+    const result = await this.driver.call("browser_navigate", {
       target_id: browser.targetId,
       tab_id: browser.tabId,
-      url,
+      ...(url ? { url } : { action }),
       session: browser.session,
     });
-    resolved.targetRequest = {
-      requested: [url],
-      resourceKind: "url",
-      requestDispatch: "sent",
-      window: resolved.targetRequest?.window ?? {
-        id: resolved.windowId,
-        source: "launch_result",
-        correlation: "new_since_request",
-      },
-    };
+    const status = asRecord(result.structured);
+    const expectedAction = url ? "url" : action;
+    if (
+      status?.status !== "ok" || status.target_id !== browser.targetId ||
+      status.tab_id !== browser.tabId || status.action !== expectedAction ||
+      status.refs_invalidated !== true
+    ) {
+      throw new OpenSkyError(
+        "Exact-tab navigation returned an ambiguous acknowledgement and may have completed. " +
+          "Observe the target before deciding whether to retry.",
+      );
+    }
+    browser.screenshotMapping = undefined;
+    if (url) {
+      resolved.targetRequest = {
+        requested: [url],
+        resourceKind: "url",
+        requestDispatch: "sent",
+        window: resolved.targetRequest?.window ?? {
+          id: resolved.windowId,
+          source: "launch_result",
+          correlation: "new_since_request",
+        },
+      };
+    }
     this.markAction(resolved);
     await this.persist();
-    return this.get_app_state({
-      app: args.app,
-      disableDiff: true,
-      includeScreenshot: args.includeScreenshot,
-      query: args.query,
-    });
+    try {
+      return await this.get_app_state({
+        app: args.app,
+        disableDiff: true,
+        includeScreenshot: args.includeScreenshot,
+        query: args.query,
+      });
+    } catch (error) {
+      throw new OpenSkyError(
+        `Exact-tab navigation completed, but its settled observation failed: ${
+          error instanceof Error ? error.message : String(error)
+        }. The navigation may have completed; observe before deciding whether to retry.`,
+        error instanceof OpenSkyError ? error.code : undefined,
+      );
+    }
   }
 
   /** End only resources that this OpenSky instance created. Safe to call repeatedly. */
@@ -581,12 +613,23 @@ export class OpenSky implements OpenSkyApi {
       if (!targetId || !tabId) {
         throw new OpenSkyError("The exact browser binding did not provide one selected tab.");
       }
-      await this.driver.call("browser_navigate", {
+      const navigation = await this.driver.call("browser_navigate", {
         target_id: targetId,
         tab_id: tabId,
         url: args.targets[0],
         session,
       });
+      const navigationStatus = asRecord(navigation.structured);
+      if (
+        navigationStatus?.status !== "ok" || navigationStatus.target_id !== targetId ||
+        navigationStatus.tab_id !== tabId || navigationStatus.action !== "url" ||
+        navigationStatus.refs_invalidated !== true
+      ) {
+        throw new OpenSkyError(
+          "Initial exact-tab navigation returned an ambiguous acknowledgement and may have completed. " +
+            "The owned isolated browser will be cleaned up rather than retried.",
+        );
+      }
       const resolved: ResolvedApp = {
         handle: newTargetHandle(),
         openedAt: this.nextOpenedAt(),
@@ -739,33 +782,113 @@ export class OpenSky implements OpenSkyApi {
     await this.settleAfterAction(resolved);
   }
 
-  async drag(args: {
+  async drag(args: ({
     app: string;
     from_x: number;
     from_y: number;
     to_x: number;
     to_y: number;
-  }): Promise<void> {
+    from_element_index?: never;
+    to_element_index?: never;
+  } | {
+    app: string;
+    from_element_index: number;
+    to_element_index: number;
+    from_x?: never;
+    from_y?: never;
+    to_x?: never;
+    to_y?: never;
+  })): Promise<void> {
     if (!args?.app) throw invalidParams("app is required");
-    for (const key of ["from_x", "from_y", "to_x", "to_y"] as const) {
-      if (typeof args[key] !== "number") throw invalidParams(`${key} is required`);
+    const raw = args as Record<string, unknown>;
+    const coordinateKeys = ["from_x", "from_y", "to_x", "to_y"] as const;
+    const indexKeys = ["from_element_index", "to_element_index"] as const;
+    const hasCoordinates = coordinateKeys.some((key) => raw[key] !== undefined);
+    const hasIndices = indexKeys.some((key) => raw[key] !== undefined);
+    if (hasCoordinates === hasIndices) {
+      throw invalidParams("provide either from_x/from_y/to_x/to_y or from_element_index/to_element_index");
+    }
+    const required = hasCoordinates ? coordinateKeys : indexKeys;
+    for (const key of required) {
+      if (typeof raw[key] !== "number" || !Number.isFinite(raw[key])) {
+        throw invalidParams(`${key} must be a finite number`);
+      }
     }
     const resolved = await this.requireResolved(args.app);
     if (resolved.browser) {
-      throw this.typedBrowserUnsupported(
-        resolved,
-        "drag",
-        "The public coordinate drag cannot yet be routed to an exact typed tab.",
+      const browser = resolved.browser;
+      let payload: Record<string, unknown>;
+      if (hasIndices) {
+        const origin = this.browserElement(resolved, Number(raw.from_element_index), "pointer");
+        const destination = this.browserElement(resolved, Number(raw.to_element_index), "pointer");
+        payload = {
+          ref: origin.browser_ref,
+          destination_ref: destination.browser_ref,
+          input_route: "dom_event",
+        };
+      } else {
+        const mapping = browser.screenshotMapping;
+        if (
+          !mapping || mapping.coordinateSpace !== "viewport_css_px" ||
+          !positiveFinite(mapping.pixelToCssScaleX) || !positiveFinite(mapping.pixelToCssScaleY)
+        ) {
+          throw this.typedBrowserUnsupported(
+            resolved,
+            "coordinate drag",
+            "Request a fresh exact-tab screenshot first so its screenshot-pixel to viewport-CSS mapping is proven, or use from_element_index/to_element_index.",
+          );
+        }
+        const screenshotWidth = mapping.viewportCssWidth / mapping.pixelToCssScaleX;
+        const screenshotHeight = mapping.viewportCssHeight / mapping.pixelToCssScaleY;
+        const points = [
+          [Number(raw.from_x), Number(raw.from_y)],
+          [Number(raw.to_x), Number(raw.to_y)],
+        ];
+        if (points.some(([x, y]) => x < 0 || y < 0 || x > screenshotWidth || y > screenshotHeight)) {
+          throw invalidParams("browser drag coordinates must be inside the latest exact-tab screenshot");
+        }
+        payload = {
+          x: Number(raw.from_x) * mapping.pixelToCssScaleX,
+          y: Number(raw.from_y) * mapping.pixelToCssScaleY,
+          to_x: Number(raw.to_x) * mapping.pixelToCssScaleX,
+          to_y: Number(raw.to_y) * mapping.pixelToCssScaleY,
+          input_route: "trusted",
+        };
+      }
+      const result = await this.driver.call("browser_pointer", {
+        target_id: browser.targetId,
+        tab_id: browser.tabId,
+        session: browser.session,
+        action: "drag",
+        ...payload,
+      });
+      const status = asRecord(result.structured);
+      if (
+        status?.status !== "ok" || status.target_id !== browser.targetId ||
+        status.tab_id !== browser.tabId || status.action !== "drag"
+      ) {
+        throw new OpenSkyError(
+          "Exact-tab drag returned an ambiguous acknowledgement and may have completed. " +
+            "Observe the target before deciding whether to retry.",
+        );
+      }
+      this.markAction(resolved);
+      return;
+    }
+    if (hasIndices) {
+      throw new OpenSkyError(
+        "from_element_index/to_element_index drag is available only for exact typed browser tabs. " +
+          "Use screenshot coordinates for a native app.",
       );
     }
     await this.requireUsableInputWindow(resolved);
     await this.driver.call("drag", {
       pid: resolved.pid,
       window_id: resolved.windowId,
-      from_x: args.from_x,
-      from_y: args.from_y,
-      to_x: args.to_x,
-      to_y: args.to_y,
+      from_x: raw.from_x,
+      from_y: raw.from_y,
+      to_x: raw.to_x,
+      to_y: raw.to_y,
     });
     this.markAction(resolved);
   }
@@ -776,36 +899,11 @@ export class OpenSky implements OpenSkyApi {
     if (format !== "text" && format !== "md" && format !== "html") {
       throw invalidParams();
     }
-    const resolved = await this.requireResolved(args.app);
-    if (resolved.browser) {
-      throw this.typedBrowserUnsupported(
-        resolved,
-        "paste",
-        "Use type_text with an element_index from the semantic state.",
-      );
-    }
-    await this.requireUsableInputWindow(resolved);
-    let previous: Record<string, unknown> | undefined;
-    try {
-      const read = await this.driver.call("clipboard_read", { include_text: true, include_html: true });
-      previous = extractClipboard(read.structured);
-    } catch {
-      previous = undefined;
-    }
-    try {
-      await this.driver.call("clipboard_write", clipboardWritePayload(format, args.text));
-      await this.driver.call("hotkey", {
-        pid: resolved.pid,
-        window_id: resolved.windowId,
-        keys: [this.pasteModifier, "v"],
-        delivery_mode: "foreground",
-      });
-      this.markAction(resolved);
-    } finally {
-      if (previous) {
-        await this.driver.call("clipboard_write", previous).catch(() => undefined);
-      }
-    }
+    throw new OpenSkyError(
+      "paste is temporarily unavailable because safe paste requires a compound desktop-helper primitive " +
+        "that cannot overwrite a concurrent user clipboard change. No clipboard, app, window, tab, or input was touched. " +
+        "Use type_text only when typing semantics are acceptable; OpenSky does not silently substitute it for paste.",
+    );
   }
 
   async perform_secondary_action(args: {
@@ -900,11 +998,37 @@ export class OpenSky implements OpenSkyApi {
     }
     const resolved = await this.requireResolved(args.app);
     if (resolved.browser) {
-      throw this.typedBrowserUnsupported(
-        resolved,
-        "press_key",
-        "The driver does not expose exact-tab key delivery. Use a semantic click or type_text target instead.",
-      );
+      if (hasX) {
+        throw this.typedBrowserUnsupported(
+          resolved,
+          "coordinate press_key",
+          "Use an optional type-capable element_index, or omit a target to send the key to the page's current focus.",
+        );
+      }
+      const browser = resolved.browser;
+      const ref = args.element_index === undefined
+        ? undefined
+        : this.browserElement(resolved, args.element_index, "type").browser_ref;
+      const result = await this.driver.call("browser_key", {
+        target_id: browser.targetId,
+        tab_id: browser.tabId,
+        session: browser.session,
+        key: args.key,
+        ...(ref ? { ref } : {}),
+      });
+      const status = asRecord(result.structured);
+      if (
+        status?.status !== "ok" || status.target_id !== browser.targetId ||
+        status.tab_id !== browser.tabId || status.path !== "cdp_input" ||
+        status.effect !== "unverifiable"
+      ) {
+        throw new OpenSkyError(
+          "Exact-tab key delivery returned an ambiguous acknowledgement and may have completed. " +
+            "Observe the target before deciding whether to retry.",
+        );
+      }
+      this.markAction(resolved);
+      return;
     }
     const parsed = parseXdotoolKey(args.key);
     const boundWindow = await this.refreshBoundWindow(resolved);
@@ -1510,6 +1634,8 @@ export class OpenSky implements OpenSkyApi {
     const screenshot = options.includeScreenshot
       ? await browserScreenshotFromResult(result.raw, structured, screenshotPath)
       : undefined;
+    const mapping = screenshotMappingFrom(structured);
+    browser.screenshotMapping = options.includeScreenshot && screenshot && mapping ? mapping : undefined;
     const selectedNodes = optionalFiniteNumber(snapshot.selected_nodes) ?? rawElements.length;
     const totalNodes = optionalFiniteNumber(snapshot.total_nodes) ?? selectedNodes;
     return {
@@ -1623,6 +1749,7 @@ export class OpenSky implements OpenSkyApi {
   }
 
   private markAction(resolved: ResolvedApp): void {
+    if (resolved.browser) resolved.browser.screenshotMapping = undefined;
     this.lastActionAt.set(windowKey(resolved), Date.now());
   }
 
@@ -1847,6 +1974,12 @@ export class OpenSky implements OpenSkyApi {
         (latest, target) => Math.max(latest, target.openedAt),
         this.lastOpenedAt,
       );
+    }
+    // Screenshot coordinates are observation-local evidence. Never trust a
+    // persisted mapping after a process restart, even if the target session
+    // itself can still be recovered.
+    for (const target of Object.values(this.memory.targets)) {
+      if (target.browser) target.browser.screenshotMapping = undefined;
     }
     for (const session of persisted.managedBrowserSessions) {
       const ownerPid = legacyBrowserSessionOwnerPid(session);
@@ -2695,33 +2828,6 @@ function renderTree(elements: SnapshotElement[]): string {
   return elements.map((element) => formatElement(element)).join("\n");
 }
 
-function extractClipboard(structured: unknown): Record<string, unknown> | undefined {
-  const record = asRecord(structured);
-  if (!record) return undefined;
-  const payload: Record<string, unknown> = {};
-  const text = optionalString(record.text) ?? optionalString(record.plain_text);
-  const html = optionalString(record.html) ?? optionalString(record.html_text);
-  const markdown = optionalString(record.markdown) ?? optionalString(record.md);
-  if (text) payload.text = text;
-  if (html) payload.html = html;
-  if (markdown) payload.markdown = markdown;
-  return Object.keys(payload).length > 0 ? payload : undefined;
-}
-
-function clipboardWritePayload(format: PasteFormat, text: string): Record<string, unknown> {
-  if (format === "html") {
-    return { text: stripHtml(text) || text, html: text };
-  }
-  if (format === "md") {
-    return { text, markdown: text };
-  }
-  return { text };
-}
-
-function stripHtml(value: string): string {
-  return value.replace(/<[^>]+>/g, "").trim();
-}
-
 function isApplicationRecord(
   record: Record<string, unknown>,
   options: { fromAppsArray: boolean; hasGuiHints: boolean },
@@ -2797,6 +2903,31 @@ async function browserScreenshotFromResult(
     width: optionalFiniteNumber(screenshot.width) ?? result?.width,
     height: optionalFiniteNumber(screenshot.height) ?? result?.height,
     format: "png",
+    coordinateSpace: screenshot.coordinate_space === "viewport_css_px" ? "viewport_css_px" : undefined,
+    pixelToCssScaleX: optionalFiniteNumber(screenshot.pixel_to_css_scale_x),
+    pixelToCssScaleY: optionalFiniteNumber(screenshot.pixel_to_css_scale_y),
+    viewportCssWidth: optionalFiniteNumber(screenshot.viewport_css_width),
+    viewportCssHeight: optionalFiniteNumber(screenshot.viewport_css_height),
+  };
+}
+
+function screenshotMappingFrom(structured: Record<string, unknown>): NonNullable<ResolvedApp["browser"]>["screenshotMapping"] | undefined {
+  const screenshot = asRecord(structured.screenshot);
+  if (screenshot?.coordinate_space !== "viewport_css_px") return undefined;
+  const pixelToCssScaleX = optionalFiniteNumber(screenshot.pixel_to_css_scale_x);
+  const pixelToCssScaleY = optionalFiniteNumber(screenshot.pixel_to_css_scale_y);
+  const viewportCssWidth = optionalFiniteNumber(screenshot.viewport_css_width);
+  const viewportCssHeight = optionalFiniteNumber(screenshot.viewport_css_height);
+  if (
+    !positiveFinite(pixelToCssScaleX) || !positiveFinite(pixelToCssScaleY) ||
+    !positiveFinite(viewportCssWidth) || !positiveFinite(viewportCssHeight)
+  ) return undefined;
+  return {
+    coordinateSpace: "viewport_css_px",
+    pixelToCssScaleX,
+    pixelToCssScaleY,
+    viewportCssWidth,
+    viewportCssHeight,
   };
 }
 
@@ -2823,6 +2954,10 @@ function optionalFiniteNumber(value: unknown): number | undefined {
   if (value === null || value === undefined || value === "") return undefined;
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function positiveFinite(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 function scalarText(value: unknown): string | undefined {

@@ -26,6 +26,7 @@ class TypedBrowserDriver implements DriverClient {
   failEndSessionCount = 0;
   failBind = false;
   ambiguousPrepare = false;
+  failNextSnapshot = false;
 
   replaceDocument(): void {
     this.documentId = `doc-test-${Number(this.documentId.split("-").at(-1)) + 1}`;
@@ -65,7 +66,13 @@ class TypedBrowserDriver implements DriverClient {
       case "list_windows":
         return result({ windows: [ordinaryWindow()] });
       case "get_browser_state":
-        if (effectiveArgs.target_id !== undefined) return this.semanticSnapshot();
+        if (effectiveArgs.target_id !== undefined) {
+          if (this.failNextSnapshot) {
+            this.failNextSnapshot = false;
+            throw new Error("injected snapshot failure");
+          }
+          return this.semanticSnapshot(effectiveArgs.include_screenshot === true);
+        }
         if (this.failBind) throw new Error("injected bind failure");
         return result({
           status: "ok",
@@ -78,20 +85,33 @@ class TypedBrowserDriver implements DriverClient {
           tabs: [{ tab_id: TAB_ID, title: "New Tab", url: "about:blank", active: true }],
         });
       case "browser_navigate":
-        this.currentUrl = String(effectiveArgs.url);
+        if (typeof effectiveArgs.url === "string") this.currentUrl = effectiveArgs.url;
+        else if (effectiveArgs.action === "back") this.currentUrl = "https://example.com/back";
+        else if (effectiveArgs.action === "forward") this.currentUrl = "https://example.com/forward";
         return result({
           status: "ok",
           target_id: TARGET_ID,
           tab_id: TAB_ID,
-          url: this.currentUrl,
+          url: typeof effectiveArgs.url === "string" ? this.currentUrl : null,
+          action: typeof effectiveArgs.url === "string" ? "url" : effectiveArgs.action,
+          history_destination_attested: effectiveArgs.action === "back" || effectiveArgs.action === "forward",
           refs_invalidated: true,
+        });
+      case "browser_key":
+        return result({
+          status: "ok", target_id: TARGET_ID, tab_id: TAB_ID,
+          ref: effectiveArgs.ref ?? null, key: effectiveArgs.key,
+          modifier_count: 0, path: "cdp_input", effect: "unverifiable",
         });
       case "browser_type":
       case "browser_click":
       case "revoke_session":
         return result({ status: "ok", effect: "confirmed" });
       case "browser_pointer":
-        return result({ status: "ok", effect: "confirmed" });
+        return result({
+          status: "ok", target_id: TARGET_ID, tab_id: TAB_ID,
+          action: effectiveArgs.action, route: effectiveArgs.input_route,
+        });
       case "end_session":
         if (this.failEndSessionCount-- > 0) throw new Error("injected cleanup refusal");
         return result({ status: "ok", effect: "confirmed" });
@@ -128,8 +148,8 @@ class TypedBrowserDriver implements DriverClient {
     }
   }
 
-  private semanticSnapshot(): DriverResult {
-    return result({
+  private semanticSnapshot(includeScreenshot = false): DriverResult {
+    const structured = {
       status: "ok",
       mode: "snapshot",
       target_id: TARGET_ID,
@@ -139,8 +159,8 @@ class TypedBrowserDriver implements DriverClient {
         format: "semantic_v2",
         complete: true,
         scope: "viewport",
-        selected_nodes: 4,
-        total_nodes: 4,
+        selected_nodes: 5,
+        total_nodes: 5,
         node_budget: 300,
         omitted: {
           css_hidden: 0,
@@ -201,10 +221,36 @@ class TypedBrowserDriver implements DriverClient {
           frame: "oopif",
           visibility: "in_viewport",
         },
+        {
+          ref: "p41:4",
+          role: "generic",
+          name: "Drop target",
+          value: null,
+          states: {},
+          actions: ["pointer"],
+          frame: "main",
+          visibility: "in_viewport",
+        },
       ],
       content_refs: [],
       oopif: { status: "attached", frames: 0 },
-    });
+      ...(includeScreenshot ? {
+        screenshot: {
+          source: "cdp_tab",
+          scope: "viewport",
+          mime_type: "image/png",
+          width: 200,
+          height: 240,
+          coordinate_space: "viewport_css_px",
+          viewport_css_width: 100,
+          viewport_css_height: 120,
+          pixel_to_css_scale_x: 0.5,
+          pixel_to_css_scale_y: 0.5,
+        },
+        screenshot_png_b64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+Xw4AAAAASUVORK5CYII=",
+      } : {}),
+    };
+    return result(structured);
   }
 }
 
@@ -341,6 +387,57 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(state.target?.document.requestRelation, "exact");
   });
 
+  it("routes back, forward, and reload to the exact tab and observes each result", async () => {
+    const { opensky, driver } = await harness();
+    const opened = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const browserSession = driver.calls.find((call) => call.tool === "browser_prepare")?.args.session;
+
+    for (const action of ["back", "forward", "reload"] as const) {
+      const before = driver.calls.length;
+      const state = await opensky.navigate({ app: opened.targetHandle, action, includeScreenshot: false });
+      assert.deepEqual(driver.calls.slice(before).map((call) => call.tool), [
+        "browser_navigate", "get_browser_state",
+      ]);
+      assert.deepEqual(driver.calls[before]?.args, {
+        session: browserSession, target_id: TARGET_ID, tab_id: TAB_ID, action,
+      });
+      assert.equal(state.target?.requested[0], URL, "history/reload must not invent a requested URL");
+    }
+  });
+
+  it("rejects invalid navigation shapes before any driver call", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const before = driver.calls.length;
+
+    await assert.rejects(
+      () => opensky.navigate({ app: "Google Chrome", url: URL, action: "back" } as never),
+      /exactly one of url or action/,
+    );
+    await assert.rejects(
+      () => opensky.navigate({ app: "Google Chrome" } as never),
+      /exactly one of url or action/,
+    );
+    await assert.rejects(
+      () => opensky.navigate({ app: "Google Chrome", action: "sideways" } as never),
+      /back, forward, or reload/,
+    );
+    assert.equal(driver.calls.length, before);
+  });
+
+  it("warns that acknowledged navigation may have completed when observation fails", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    driver.failNextSnapshot = true;
+
+    await assert.rejects(
+      () => opensky.navigate({ app: "Google Chrome", action: "reload", includeScreenshot: false }),
+      /navigation completed.*observation failed.*may have completed.*observe before.*retry/i,
+    );
+    assert.equal(driver.calls.at(-2)?.tool, "browser_navigate");
+    assert.equal(driver.calls.at(-1)?.tool, "get_browser_state");
+  });
+
   it("refuses navigation without an exact owned binding before any driver call", async () => {
     const { opensky, driver } = await harness();
 
@@ -444,15 +541,100 @@ describe("OpenSky typed-browser contract", () => {
     });
   });
 
+  it("routes exact-tab keys with optional semantic focus and never uses native input", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const browserSession = driver.calls.find((call) => call.tool === "browser_prepare")?.args.session;
+
+    await opensky.press_key({ app: "Google Chrome", key: "Return" });
+    await opensky.press_key({ app: "Google Chrome", key: "ctrl+a", element_index: 0 });
+
+    assert.deepEqual(driver.calls.filter((call) => call.tool === "browser_key").map((call) => call.args), [
+      { session: browserSession, target_id: TARGET_ID, tab_id: TAB_ID, key: "Return" },
+      { session: browserSession, target_id: TARGET_ID, tab_id: TAB_ID, key: "ctrl+a", ref: "p41:0" },
+    ]);
+    assert.equal(driver.calls.some((call) => call.tool === "press_key" || call.tool === "hotkey"), false);
+    const before = driver.calls.length;
+    await assert.rejects(
+      () => opensky.press_key({ app: "Google Chrome", key: "Return", x: 4, y: 5 }),
+      /coordinate press_key.*No native foreground or coordinate input was sent/s,
+    );
+    await assert.rejects(
+      () => opensky.press_key({ app: "Google Chrome", key: "Return", element_index: 1 }),
+      /does not support browser action "type"/,
+    );
+    assert.equal(driver.calls.length, before);
+  });
+
+  it("routes semantic browser drag by exact refs", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const browserSession = driver.calls.find((call) => call.tool === "browser_prepare")?.args.session;
+
+    await opensky.drag({ app: "Google Chrome", from_element_index: 1, to_element_index: 4 });
+
+    assert.deepEqual(driver.calls.findLast((call) => call.tool === "browser_pointer")?.args, {
+      session: browserSession,
+      target_id: TARGET_ID,
+      tab_id: TAB_ID,
+      action: "drag",
+      ref: "p41:1",
+      destination_ref: "p41:4",
+      input_route: "dom_event",
+    });
+  });
+
+  it("converts fresh browser screenshot pixels to viewport CSS for trusted drag", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: true });
+    const browserSession = driver.calls.find((call) => call.tool === "browser_prepare")?.args.session;
+
+    await opensky.drag({ app: "Google Chrome", from_x: 20, from_y: 40, to_x: 100, to_y: 120 });
+
+    assert.deepEqual(driver.calls.findLast((call) => call.tool === "browser_pointer")?.args, {
+      session: browserSession,
+      target_id: TARGET_ID,
+      tab_id: TAB_ID,
+      action: "drag",
+      input_route: "trusted",
+      x: 10,
+      y: 20,
+      to_x: 50,
+      to_y: 60,
+    });
+  });
+
+  it("refuses browser coordinate drag without current screenshot coordinate proof", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const before = driver.calls.length;
+
+    await assert.rejects(
+      () => opensky.drag({ app: "Google Chrome", from_x: 1, from_y: 2, to_x: 3, to_y: 4 }),
+      /fresh exact-tab screenshot.*No native foreground or coordinate input was sent/s,
+    );
+    assert.equal(driver.calls.length, before);
+  });
+
+  it("refuses browser coordinates outside the proven screenshot", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: true });
+    const before = driver.calls.length;
+
+    await assert.rejects(
+      () => opensky.drag({ app: "Google Chrome", from_x: 1, from_y: 2, to_x: 201, to_y: 4 }),
+      /coordinates must be inside the latest exact-tab screenshot/,
+    );
+    assert.equal(driver.calls.length, before);
+  });
+
   it("keeps every unsupported browser action fail-closed on the exact tab boundary", async () => {
     const { opensky, driver } = await harness();
     await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
     const before = driver.calls.length;
 
     await assert.rejects(() => opensky.click({ app: "Google Chrome", x: 10, y: 20 }), /No native foreground or coordinate input was sent/);
-    await assert.rejects(() => opensky.drag({ app: "Google Chrome", from_x: 1, from_y: 2, to_x: 3, to_y: 4 }), /No native foreground or coordinate input was sent/);
-    await assert.rejects(() => opensky.paste({ app: "Google Chrome", text: "unsafe" }), /No native foreground or coordinate input was sent/);
-    await assert.rejects(() => opensky.press_key({ app: "Google Chrome", key: "Return" }), /No native foreground or coordinate input was sent/);
+    await assert.rejects(() => opensky.paste({ app: "Google Chrome", text: "unsafe" }), /safe paste requires.*No clipboard.*was touched/s);
     await assert.rejects(() => opensky.type_text({ app: "Google Chrome", x: 5, y: 6, text: "unsafe" }), /No native foreground or coordinate input was sent/);
     await assert.rejects(() => opensky.scroll({ app: "Google Chrome", x: 20, y: 30, direction: "up" }), /No native foreground or coordinate input was sent/);
     await assert.rejects(() => opensky.bring_to_front({ app: "Google Chrome" }), /No native foreground or coordinate input was sent/);

@@ -180,11 +180,14 @@ export function createOpenSkyToolRuntime(
       name: "navigate",
       label: "navigate",
       description:
-        "Navigate the exact driver-owned typed browser tab selected by app name or target handle, then return its settled destination state. Use this instead of closing/reopening the target or typing into browser chrome. query can narrow the destination observation.",
+        "Navigate the exact driver-owned typed browser tab selected by app name or target handle, then return its settled destination state. Pass exactly one of url or action (back, forward, reload). Use this instead of browser-chrome shortcuts. query can narrow the resulting observation.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String({ description: "Application identifier used with open_target" }),
-        url: Type.String({ minLength: 1, description: "Destination http, https, or about URL" }),
+        url: Type.Optional(Type.String({ minLength: 1, description: "Destination http, https, or about URL; mutually exclusive with action" })),
+        action: Type.Optional(Type.Union([
+          Type.Literal("back"), Type.Literal("forward"), Type.Literal("reload"),
+        ], { description: "Exact-tab history/reload action; mutually exclusive with url" })),
         include_screenshot: Type.Optional(Type.Boolean()),
         query: Type.Optional(Type.String({ minLength: 1, description: "Narrow the settled destination observation" })),
       }),
@@ -192,10 +195,10 @@ export function createOpenSkyToolRuntime(
         return stateResult(
           await opensky.navigate({
             app: params.app,
-            url: params.url,
+            ...(params.url !== undefined ? { url: params.url } : { action: params.action }),
             includeScreenshot: params.include_screenshot === true,
             query: params.query,
-          }),
+          } as Parameters<typeof opensky.navigate>[0]),
           params.include_screenshot === true,
           emittedImageHashes,
         );
@@ -279,6 +282,8 @@ export function createOpenSkyToolRuntime(
           from_y: Type.Optional(Type.Number()),
           to_x: Type.Optional(Type.Number()),
           to_y: Type.Optional(Type.Number()),
+          from_element_index: Type.Optional(Type.Number()),
+          to_element_index: Type.Optional(Type.Number()),
           key: Type.Optional(Type.String()),
           text: Type.Optional(Type.String()),
           format: Type.Optional(Type.Union([Type.Literal("text"), Type.Literal("md"), Type.Literal("html")])),
@@ -394,14 +399,16 @@ export function createOpenSkyToolRuntime(
     defineTool({
       name: "drag",
       label: "drag",
-      description: "Drag from one point to another in a native app window. Exact typed browser tabs fail closed until exact-tab drag routing is available.",
+      description: "Drag using either screenshot from_x/from_y/to_x/to_y, or exact-browser from_element_index/to_element_index. Browser coordinates require a fresh screenshot with proven pixel-to-CSS mapping; semantic indices are preferred. Never mixes browser and native input routes.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
-        from_x: Type.Number(),
-        from_y: Type.Number(),
-        to_x: Type.Number(),
-        to_y: Type.Number(),
+        from_x: Type.Optional(Type.Number()),
+        from_y: Type.Optional(Type.Number()),
+        to_x: Type.Optional(Type.Number()),
+        to_y: Type.Optional(Type.Number()),
+        from_element_index: Type.Optional(Type.Number()),
+        to_element_index: Type.Optional(Type.Number()),
         observe: Type.Optional(Type.Boolean()),
         include_screenshot: Type.Optional(Type.Boolean()),
         observation_query: Type.Optional(Type.String({ minLength: 1 })),
@@ -414,7 +421,7 @@ export function createOpenSkyToolRuntime(
     defineTool({
       name: "paste",
       label: "paste",
-      description: "Paste into a native app. For an exact typed browser tab use type_text with element_index. format defaults to plain text; use md or html when needed. Clipboard is restored afterwards.",
+      description: "Temporarily unavailable: safe paste needs a compound driver primitive that cannot overwrite a concurrent user clipboard change. This tool fails before touching the clipboard or target and never silently substitutes typing.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),
@@ -451,7 +458,7 @@ export function createOpenSkyToolRuntime(
       name: "press_key",
       label: "press_key",
       description:
-        "Press an xdotool-style key in a native app, e.g. Return, super+a, Up. Exact typed browser tabs fail closed because the driver has no exact-tab key route; use semantic click/type targets. Prefer element_index for native controls.",
+        "Press an xdotool-style key, e.g. Return, super+a, Up. Exact typed browser tabs use trusted exact-tab CDP delivery; optional element_index must be type-capable and focuses that exact page control. Browser coordinates fail closed. Prefer element_index for native controls too.",
       executionMode: "sequential",
       parameters: Type.Object({
         app: Type.String(),

@@ -27,6 +27,7 @@ export type MouseButton =
   | 2;
 
 export type PasteFormat = "text" | "md" | "html";
+export type NavigationAction = "back" | "forward" | "reload";
 
 export interface App {
   id: string;
@@ -42,6 +43,14 @@ export interface Screenshot {
   height?: number;
   scale?: number;
   format?: "png" | "jpeg";
+  /** Exact typed-browser screenshots use viewport CSS pixels for input. */
+  coordinateSpace?: "viewport_css_px";
+  /** Multiply screenshot x pixels by this value before exact-tab input. */
+  pixelToCssScaleX?: number;
+  /** Multiply screenshot y pixels by this value before exact-tab input. */
+  pixelToCssScaleY?: number;
+  viewportCssWidth?: number;
+  viewportCssHeight?: number;
 }
 
 export interface AppState {
@@ -107,9 +116,11 @@ export interface OpenSky {
     query?: string;
   }): Promise<AppState>;
   /** Navigate an existing exact typed-browser tab and return its settled state. */
-  navigate(args: {
+  navigate(args: ({ app: string; url: string; action?: never } | {
     app: string;
-    url: string;
+    action: NavigationAction;
+    url?: never;
+  }) & {
     includeScreenshot?: boolean;
     /** Narrow the settled destination observation. */
     query?: string;
@@ -125,13 +136,23 @@ export interface OpenSky {
     mouse_button?: MouseButton;
     click_count?: number;
   }): Promise<void>;
-  drag(args: {
+  drag(args: ({
     app: string;
     from_x: number;
     from_y: number;
     to_x: number;
     to_y: number;
-  }): Promise<void>;
+    from_element_index?: never;
+    to_element_index?: never;
+  } | {
+    app: string;
+    from_element_index: number;
+    to_element_index: number;
+    from_x?: never;
+    from_y?: never;
+    to_x?: never;
+    to_y?: never;
+  })): Promise<void>;
   paste(args: {
     app: string;
     text: string;
@@ -234,6 +255,13 @@ export interface BrowserBinding {
   title?: string;
   url?: string;
   documentId?: string;
+  screenshotMapping?: {
+    coordinateSpace: "viewport_css_px";
+    pixelToCssScaleX: number;
+    pixelToCssScaleY: number;
+    viewportCssWidth: number;
+    viewportCssHeight: number;
+  };
 }
 
 export interface SnapshotElement {
