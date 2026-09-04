@@ -40,7 +40,7 @@ await app.click(13);
 return app.getAXState();
 ```
 
-The facade exposes exact target objects and camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Browser tabs created with `cua.createBrowserTab("chrome", url)` support `goto`, `back`, `forward`, `reload`, and exact `close`. Only facade-owned tabs are discoverable. Exact-tab `paste`, blank/hidden tabs, the in-app browser, and host marks are explicitly unsupported.
+The facade exposes exact target objects and camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Browser tabs created with `cua.createBrowserTab("chrome", url)` support `goto`, `back`, `forward`, `reload`, and exact `close`. Only facade-owned tabs are discoverable. Clipboard `paste`, blank/hidden tabs, the in-app browser, and host marks are explicitly unsupported.
 
 The legacy API remains available:
 

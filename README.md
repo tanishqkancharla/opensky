@@ -116,9 +116,9 @@ console.log(await tab.getAXState());
 await tab.close();
 ```
 
-The facade provides camelCase, bound-target methods: `getState`, `listApps`, `getApp`, `listBrowsers`, `listTabs`, `getBrowser`, `createBrowserTab`, and `getTab`; target observations and actions; and exact-tab `goto`, `back`, `forward`, `reload`, and `close`. `getAXState()` is AX-only by default, `getScreenshot()` returns screenshot bytes, and `getAXStateAndScreenshot()` returns both. `disableDiffing` maps to the driver's diff control.
+The facade provides camelCase, bound-target methods: `getState`, `listApps`, `getApp`, `listBrowsers`, `listTabs`, `getBrowser`, `createBrowserTab`, and `getTab`; target observations and actions; and exact-tab `goto`, `back`, `forward`, `reload`, and `close`. `getAXState()` is AX-only by default, `getScreenshot()` returns screenshot bytes, and `getAXStateAndScreenshot()` returns both. `disableDiffing` maps to the driver's diff control. As a generic OpenSky extension, facade observations also accept `query` to return a fresh semantic view narrowed to matching page content.
 
-Browser discovery is deliberately limited to exact tabs created by this facade. It does not enumerate or close user-owned tabs. The in-app browser, hidden or blank tab creation, exact-tab clipboard paste, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s. Native-app paste retains the legacy driver route.
+Browser discovery is deliberately limited to exact tabs created by this facade. It does not enumerate or close user-owned tabs. The in-app browser, hidden or blank tab creation, clipboard paste, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s. Paste currently fails closed for every target before touching the global clipboard because Cua Driver does not yet provide the compound primitive needed to restore safely around concurrent user clipboard changes.
 
 ## Legacy `opensky` API
 

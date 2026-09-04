@@ -18,7 +18,11 @@ export type NativeDirection = "up" | "down" | "left" | "right" | "u" | "d" | "l"
 export type NativeSelectionType = "text" | "cursor_before" | "cursor_after";
 
 export interface ObservationOptions { emit?: boolean }
-export interface StateOptions extends ObservationOptions { disableDiffing?: boolean }
+export interface StateOptions extends ObservationOptions {
+  disableDiffing?: boolean;
+  /** OpenSky extension: request a fresh semantic view narrowed to matching content. */
+  query?: string;
+}
 export interface PasteOptions { format?: PasteFormat }
 export interface ClickOptions { mouseButton?: MouseButton; clickCount?: number }
 export interface SelectTextOptions {
@@ -139,6 +143,7 @@ const BROWSERS = Object.freeze({
 
 export class CuaFacade {
   private readonly tabs = new Map<string, OwnedTabRecord>();
+  private readonly pendingStates = new Map<TargetHandle, AppState>();
 
   constructor(
     readonly opensky: OpenSkyApi,
@@ -159,7 +164,7 @@ export class CuaFacade {
 
   async getApp(app: string): Promise<App> {
     if (!app?.trim()) throw new OpenSkyError("Invalid params: app is required", "invalid_params");
-    const state = await this.opensky.get_app_state({ app, includeScreenshot: false });
+    const state = await this.opensky.get_app_state({ app, disableDiff: true, includeScreenshot: false });
     this.options.emit?.(state.text);
     return new BoundApp(this, state.targetHandle);
   }
@@ -205,16 +210,11 @@ export class CuaFacade {
     const browserId = normalizeBrowserId(browser);
     const descriptor = BROWSERS[browserId as keyof typeof BROWSERS];
     if (!descriptor) throw new CuaUnsupportedError("createBrowserTab", `browser ${JSON.stringify(browser)} is not supported`);
-    if (!url) {
-      throw new CuaUnsupportedError("createBrowserTab", "a URL is required because Cua Driver cannot create an exactly-bound blank tab");
-    }
-    if (!/^https?:\/\//i.test(url)) {
-      throw new CuaUnsupportedError("createBrowserTab", "only http/https URLs can create an exact typed OpenSky-owned tab");
-    }
+    const normalizedUrl = normalizeBrowserUrl(url ?? "");
     if (options.visible === false) {
       throw new CuaUnsupportedError("createBrowserTab", "hidden browser tabs are unavailable; the isolated Chromium window is visible");
     }
-    const state = await this.opensky.open_target({ app: descriptor.app, targets: [url], includeScreenshot: false });
+    const state = await this.opensky.open_target({ app: descriptor.app, targets: [normalizedUrl], includeScreenshot: false });
     if (state.target?.tab?.status !== "verified") {
       throw new CuaUnsupportedError("createBrowserTab", "the driver did not return a verified exact tab binding");
     }
@@ -223,7 +223,7 @@ export class CuaFacade {
       browserId,
       profileName: options.sessionName,
       title: state.target.tab.title ?? state.target.document.title,
-      url: state.target.tab.url ?? state.target.document.url ?? url,
+      url: state.target.tab.url ?? state.target.document.url ?? normalizedUrl,
       closed: false,
     };
     this.tabs.set(record.handle, record);
@@ -239,7 +239,7 @@ export class CuaFacade {
       throw new CuaTargetNotFoundError(id);
     }
     const tab = new BoundTab(this, record);
-    await tab.getAXState({ emit: options.emit });
+    await tab.getAXState({ disableDiffing: true, emit: options.emit });
     return tab;
   }
 
@@ -258,12 +258,26 @@ export class CuaFacade {
     if (tab?.closed) throw new CuaTargetClosedError(handle);
   }
 
+  prepareAction(handle: TargetHandle): void {
+    this.assertOpen(handle);
+    this.pendingStates.delete(handle);
+  }
+
   async state(handle: TargetHandle, options: StateOptions, screenshot: boolean): Promise<AppState> {
     this.assertOpen(handle);
+    const pending = this.pendingStates.get(handle);
+    if (pending && !screenshot && options.disableDiffing !== true && options.query === undefined) {
+      this.pendingStates.delete(handle);
+      return pending;
+    }
+    // A stronger fresh observation supersedes any state captured by an earlier
+    // navigation, so never let that older state leak into a later call.
+    this.pendingStates.delete(handle);
     const state = await this.opensky.get_app_state({
       app: handle,
       disableDiff: options.disableDiffing,
       includeScreenshot: screenshot,
+      ...(options.query === undefined ? {} : { query: options.query }),
     });
     const tab = this.tabs.get(handle);
     if (tab && state.target?.tab?.status === "verified") {
@@ -279,6 +293,11 @@ export class CuaFacade {
 
   closeTab(record: OwnedTabRecord): void {
     record.closed = true;
+    this.pendingStates.delete(record.handle);
+  }
+
+  rememberState(state: AppState): void {
+    this.pendingStates.set(state.targetHandle, state);
   }
 
   async mark(kind: "deliverable" | "handoff", record: OwnedTabRecord): Promise<void> {
@@ -349,14 +368,14 @@ abstract class BoundTarget implements Target {
     if (this instanceof BoundTab) {
       throw new CuaUnsupportedError(
         "Tab.paste",
-        "Cua Driver has no exact-tab clipboard paste route; use typeText for plain insertion or a semantic editable target",
+        "Cua Driver has no safe clipboard paste route; use setValue(elementIndex, text), or click a semantic editable target before typeText when typing semantics are acceptable",
       );
     }
     await this.facade.opensky.paste({ app: this.targetHandle, text, format: options.format });
   }
 
   async click(target: number | Vec2, options: ClickOptions = {}): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     const translated = typeof target === "number" ? { element_index: target } : point(target);
     await this.facade.opensky.click({
       app: this.targetHandle,
@@ -367,7 +386,7 @@ abstract class BoundTarget implements Target {
   }
 
   async drag(from: Vec2, to: Vec2): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     const start = point(from);
     const end = point(to);
     await this.facade.opensky.drag({
@@ -380,18 +399,18 @@ abstract class BoundTarget implements Target {
   }
 
   async pressKey(key: string): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     await this.facade.opensky.press_key({ app: this.targetHandle, key });
   }
 
   async scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     const translated = typeof target === "number" ? { element_index: target } : point(target);
     await this.facade.opensky.scroll({ app: this.targetHandle, ...translated, direction, pages });
   }
 
   async selectText(elementIndex: number, text: string, options: SelectTextOptions = {}): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     await this.facade.opensky.select_text({
       app: this.targetHandle,
       element_index: elementIndex,
@@ -403,17 +422,17 @@ abstract class BoundTarget implements Target {
   }
 
   async setValue(elementIndex: number, value: string): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     await this.facade.opensky.set_value({ app: this.targetHandle, element_index: elementIndex, value });
   }
 
   async typeText(text: string): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     await this.facade.opensky.type_text({ app: this.targetHandle, text });
   }
 
   async performSecondaryAction(elementIndex: number, action: string): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     await this.facade.opensky.perform_secondary_action({ app: this.targetHandle, element_index: elementIndex, action });
   }
 }
@@ -433,7 +452,7 @@ class BoundTab extends BoundTarget implements Tab {
   async reload(): Promise<void> { await this.navigate({ action: "reload" }); }
 
   async close(): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     await this.facade.opensky.close_target({ app: this.targetHandle });
     this.facade.closeTab(this.record);
   }
@@ -442,12 +461,13 @@ class BoundTab extends BoundTarget implements Tab {
   async markHandoff(): Promise<void> { this.facade.assertOpen(this.targetHandle); await this.facade.mark("handoff", this.record); }
 
   private async navigate(destination: { url: string } | { action: "back" | "forward" | "reload" }): Promise<void> {
-    this.facade.assertOpen(this.targetHandle);
+    this.facade.prepareAction(this.targetHandle);
     const state = "url" in destination
       ? await this.facade.opensky.navigate({ app: this.targetHandle, url: destination.url, includeScreenshot: false })
       : await this.facade.opensky.navigate({ app: this.targetHandle, action: destination.action, includeScreenshot: false });
     this.record.title = state.target?.tab?.status === "verified" ? state.target.tab.title : state.target?.document.title;
     this.record.url = state.target?.tab?.status === "verified" ? state.target.tab.url : state.target?.document.url;
+    this.facade.rememberState(state);
   }
 }
 
@@ -478,6 +498,19 @@ function normalizeBrowserId(value: string): string {
   if (normalized === "edge" || normalized === "microsoft edge" || normalized === "com.microsoft.edgemac") return "edge";
   if (normalized === "iab") throw new CuaUnsupportedError("browser selection", "the in-app browser provider is not implemented by Cua Driver");
   throw new CuaUnsupportedError("browser selection", `unknown browser id ${JSON.stringify(value)}`);
+}
+
+function normalizeBrowserUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) throw new CuaUnsupportedError("createBrowserTab", "a URL is required because Cua Driver cannot create an exactly-bound blank tab");
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let parsed: URL;
+  try { parsed = new URL(candidate); }
+  catch { throw new CuaUnsupportedError("createBrowserTab", `invalid browser URL ${JSON.stringify(value)}`); }
+  if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || !parsed.hostname) {
+    throw new CuaUnsupportedError("createBrowserTab", "only http/https URLs can create an exact typed OpenSky-owned tab");
+  }
+  return parsed.href;
 }
 
 function mapAppInfo(app: LegacyAppInfo): AppInfo {

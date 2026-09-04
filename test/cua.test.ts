@@ -47,6 +47,10 @@ describe("native-style cua facade", () => {
     const emitted: unknown[] = [];
     const cua = createCua(fake as unknown as OpenSky, { emit: (value) => emitted.push(value) });
     const app = await cua.getApp("Example");
+    assert.deepEqual(fake.calls[0], {
+      method: "get_app_state",
+      args: { app: "Example", disableDiff: true, includeScreenshot: false },
+    });
     await app.click(7, { mouseButton: "right", clickCount: 1 });
     await app.scroll([10, 20], "down", 2);
     await app.selectText(8, "needle", { prefix: "pre", suffix: "post", selectionType: "cursor_after" });
@@ -88,10 +92,22 @@ describe("native-style cua facade", () => {
       { app: tab.id, action: "forward", includeScreenshot: false },
       { app: tab.id, action: "reload", includeScreenshot: false },
     ]);
+    const callsBeforeSettledObservation = fake.calls.length;
+    assert.equal(await tab.getAXState({ emit: false }), "navigated:https://reload.example/");
+    assert.equal(fake.calls.length, callsBeforeSettledObservation, "the settled navigation state should satisfy the next observation");
+    await tab.goto("https://action-after-navigation.example/");
+    await tab.pressKey("Return");
+    const callsBeforeFreshObservation = fake.calls.length;
+    await tab.getAXState({ emit: false });
+    assert.equal(fake.calls.length, callsBeforeFreshObservation + 1, "an intervening mutation must invalidate the pending navigation state");
     const state = await cua.getState({ emit: false });
     assert.equal(state.browsers[0]?.id, "chrome");
     assert.equal(state.browsers[0]?.tabs[0]?.id, tab.id);
     assert.equal((await cua.getTab(tab.id, { emit: false })).id, tab.id);
+    assert.deepEqual(fake.calls.at(-1), {
+      method: "get_app_state",
+      args: { app: tab.id, disableDiff: true, includeScreenshot: false },
+    });
   });
 
   it("matches native observation defaults and returns screenshot bytes", async () => {
@@ -103,12 +119,14 @@ describe("native-style cua facade", () => {
     const cua = createCua(fake as unknown as OpenSky);
     const app = await cua.getApp("Example");
     await app.getAXState({ disableDiffing: true, emit: false });
+    await app.getAXState({ query: "needle", emit: false });
     const bytes = await app.getScreenshot({ emit: false });
     const combined = await app.getAXStateAndScreenshot({ disableDiffing: true, emit: false });
     assert.deepEqual([...bytes], [137, 80, 78, 71]);
     assert.deepEqual([...combined.screenshot!], [137, 80, 78, 71]);
     assert.deepEqual(fake.calls.filter((call) => call.method === "get_app_state").slice(1).map((call) => call.args), [
       { app: "tgt_app", disableDiff: true, includeScreenshot: false },
+      { app: "tgt_app", disableDiff: undefined, includeScreenshot: false, query: "needle" },
       { app: "tgt_app", disableDiff: undefined, includeScreenshot: true },
       { app: "tgt_app", disableDiff: true, includeScreenshot: true },
     ]);
@@ -119,9 +137,15 @@ describe("native-style cua facade", () => {
     const cua = createCua(fake as unknown as OpenSky);
     await assert.rejects(() => cua.createBrowserTab("iab", "https://example.com"), CuaUnsupportedError);
     await assert.rejects(() => cua.createBrowserTab("chrome"), CuaUnsupportedError);
+    const normalized = await cua.createBrowserTab("chrome", "example.com");
+    assert.deepEqual(fake.calls.at(-1), {
+      method: "open_target",
+      args: { app: "Google Chrome", targets: ["https://example.com/"], includeScreenshot: false },
+    });
+    await normalized.close();
     const tab = await cua.createBrowserTab("chrome", "https://example.com");
     const before = fake.calls.length;
-    await assert.rejects(() => tab.paste("text"), /no exact-tab clipboard paste route/);
+    await assert.rejects(() => tab.paste("text"), /no safe clipboard paste route/);
     await assert.rejects(() => tab.markDeliverable(), /no host callback was configured/);
     await assert.rejects(() => tab.markHandoff(), /no host callback was configured/);
     assert.equal(fake.calls.length, before);
