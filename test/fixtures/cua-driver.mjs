@@ -121,6 +121,16 @@ function launchApp(state, args) {
   const app = findApp(state, args) ?? createApp(state, args);
   app.running = true;
   if (!app.pid) app.pid = nextPid(state);
+  if (state.launchNoWindowsOnce > 0) {
+    state.launchNoWindowsOnce -= 1;
+    return {
+      pid: app.pid,
+      name: app.name,
+      bundle_id: app.bundle_id,
+      launch_path: app.launch_path,
+      windows: [],
+    };
+  }
   if (app.windows.length === 0) {
     app.windows.push({
       window_id: 1000 + app.pid,

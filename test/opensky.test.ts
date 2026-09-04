@@ -313,6 +313,28 @@ describe("OpenSky against cua-driver", () => {
     ));
   });
 
+  it("retries an acknowledged target launch once when no ordinary window appears", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const textEdit = fixture.apps.find((app: { name: string }) => app.name === "TextEdit");
+    textEdit.windows = [];
+    fixture.launchNoWindowsOnce = 1;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.open_target({
+      app: "TextEdit",
+      targets: ["/tmp/delayed-target.txt"],
+      includeScreenshot: false,
+    });
+    assert.match(state.text, /AXTextArea/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const launches = after.calls.filter((call: { tool: string }) => call.tool === "launch_app");
+    assert.equal(launches.length, 2);
+    assert.deepEqual(launches[0].args.urls, ["/tmp/delayed-target.txt"]);
+    assert.deepEqual(launches[1].args.urls, ["/tmp/delayed-target.txt"]);
+  });
+
   it("reports current document identity without claiming a verified tab", async () => {
     const { opensky, statePath } = await makeHarness();
     await opensky.list_apps();

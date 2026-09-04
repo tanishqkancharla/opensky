@@ -170,12 +170,13 @@ export class OpenSky implements OpenSkyApi {
     const previousIds = new Set(previousWindows
       .map((window) => window.window_id)
       .filter((id): id is number => typeof id === "number"));
-    const launched = await this.driver.call("launch_app", {
+    const launchArgs = {
       ...launchArgsFor(args.app, match),
       urls: args.targets,
-    });
-    const structured = asRecord(launched.structured) ?? {};
-    const pid = Number(structured.pid ?? match?.pid);
+    };
+    let launched = await this.driver.call("launch_app", launchArgs);
+    let structured = asRecord(launched.structured) ?? {};
+    let pid = Number(structured.pid ?? match?.pid);
     if (!Number.isFinite(pid) || pid <= 0) {
       throw new OpenSkyError(`Failed to open target with ${JSON.stringify(args.app)}`);
     }
@@ -185,6 +186,21 @@ export class OpenSky implements OpenSkyApi {
       : "post_launch_list";
     if (windows.length === 0) {
       windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured);
+    }
+    // Some native launch services acknowledge a document/path request before
+    // publishing its ordinary window. Native Computer Use hides that race.
+    // Repeat the identical request once only while no ordinary window exists;
+    // never replay after a usable or off-Space document window is observable.
+    if (pickOrdinaryWindowId(windows) === undefined) {
+      await sleep(this.settleDelayMs);
+      launched = await this.driver.call("launch_app", launchArgs);
+      structured = { ...structured, ...(asRecord(launched.structured) ?? {}) };
+      const retryPid = Number(structured.pid ?? pid);
+      if (Number.isFinite(retryPid) && retryPid > 0) pid = retryPid;
+      windows = windowsFrom(structured);
+      if (pickOrdinaryWindowId(windows) === undefined) {
+        windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured);
+      }
     }
     const newWindows = windows.filter((window) =>
       typeof window.window_id === "number" && !previousIds.has(window.window_id),
