@@ -165,6 +165,20 @@ export function createOpenSkyToolRuntime(
       },
     }),
     defineTool({
+      name: "close_target",
+      label: "close_target",
+      description:
+        "Close the exact driver-owned browser target previously created by open_target for this app. Use when the task asks you to close your evaluator tab/session. This never closes an ordinary user-owned app, window, or tab; the host also retries owned-session cleanup on exit.",
+      executionMode: "sequential",
+      parameters: Type.Object({
+        app: Type.String({ description: "Application display name or bundle id used with open_target" }),
+      }),
+      async execute(_id, params) {
+        await opensky.close_target(params);
+        return textResult({ ok: true, closed: "driver_owned_exact_target", app: params.app });
+      },
+    }),
+    defineTool({
       name: "get_app_state",
       label: "get_app_state",
       description:
@@ -521,6 +535,7 @@ export function cuaDriverTools(driver: DriverClient) {
 export const OPENSKY_TOOL_NAMES = [
   "list_apps",
   "open_target",
+  "close_target",
   "get_app_state",
   "bring_to_front",
   "perform_actions",

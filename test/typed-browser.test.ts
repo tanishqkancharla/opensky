@@ -287,6 +287,22 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(state.target?.document.requestRelation, "exact");
   });
 
+  it("rechecks semantic browser state after input until it is stable", async () => {
+    const { opensky, driver } = await harness({ browserStabilityTimeoutMs: 20 });
+
+    await opensky.open_target({
+      app: "Google Chrome",
+      targets: [URL],
+      includeScreenshot: false,
+    });
+
+    const snapshots = driver.calls.filter((call) =>
+      call.tool === "get_browser_state" && call.args.target_id === TARGET_ID
+    );
+    assert.equal(snapshots.length, 2, "one internal recheck confirms semantic stability");
+    assert.equal(snapshots.every((call) => call.args.include_screenshot === false), true);
+  });
+
   it("maps public numeric indices back to exact typed browser refs", async () => {
     const { opensky, driver } = await harness();
     await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
@@ -433,9 +449,28 @@ describe("OpenSky typed-browser contract", () => {
     assert.deepEqual(ended.map((call) => call.args.session).sort(), [SESSION, browserSession].sort());
     assert.equal(driver.calls.some((call) => call.tool === "revoke_session"), false);
   });
+
+  it("closes one exact owned target without closing user-owned browser state", async () => {
+    const { opensky, driver } = await harness();
+    await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const browserSession = String(
+      driver.calls.find((call) => call.tool === "browser_prepare")?.args.session,
+    );
+
+    await opensky.close_target({ app: "Google Chrome" });
+    await assert.rejects(
+      () => opensky.close_target({ app: "Google Chrome" }),
+      /No driver-owned exact target.*No user-owned app, window, or tab was closed/,
+    );
+    await opensky.close();
+
+    const ended = driver.calls.filter((call) => call.tool === "end_session");
+    assert.deepEqual(ended.map((call) => call.args.session).sort(), [SESSION, browserSession].sort());
+    assert.equal(ended.filter((call) => call.args.session === browserSession).length, 1);
+  });
 });
 
-async function harness() {
+async function harness(options: { browserStabilityTimeoutMs?: number } = {}) {
   const driver = new TypedBrowserDriver();
   const home = await mkdtemp(join(tmpdir(), "opensky-typed-browser-"));
   const opensky = createOpenSky({
@@ -446,6 +481,7 @@ async function harness() {
     target: "mac",
     settleDelayMs: 0,
     degradedRetryMs: 0,
+    browserStabilityTimeoutMs: options.browserStabilityTimeoutMs ?? 0,
   });
   return { opensky, driver };
 }

@@ -75,6 +75,7 @@ export class OpenSky implements OpenSkyApi {
   private readonly screenshotScale?: number;
   private readonly settleDelayMs: number;
   private readonly degradedRetryMs: number;
+  private readonly browserStabilityTimeoutMs: number;
   private readonly session: string;
   private readonly preferTypedBrowser: boolean;
   private readonly managedBrowserSessions = new Set<string>();
@@ -102,6 +103,7 @@ export class OpenSky implements OpenSkyApi {
     this.screenshotScale = options.screenshotScale;
     this.settleDelayMs = options.settleDelayMs ?? 800;
     this.degradedRetryMs = options.degradedRetryMs ?? 4_000;
+    this.browserStabilityTimeoutMs = options.browserStabilityTimeoutMs ?? 2_000;
     this.preferTypedBrowser = options.preferTypedBrowser !== false;
   }
 
@@ -129,6 +131,7 @@ export class OpenSky implements OpenSkyApi {
       this.memory.apps[normalizeAppKey(resolved.query)] = resolved;
       await this.persist();
     }
+    const hadPendingAction = this.lastActionAt.has(windowKey(resolved));
     await this.settleAfterAction(resolved);
     if (resolved.browser) {
       // A typed browser snapshot revalidates its exact target/tab binding. A
@@ -150,7 +153,10 @@ export class OpenSky implements OpenSkyApi {
       };
     }
     const previous = this.memory.trees[windowKey(resolved)];
-    const snapshot = await this.snapshotSettled(resolved, { includeScreenshot: args.includeScreenshot !== false });
+    const snapshot = await this.snapshotSettled(resolved, {
+      includeScreenshot: args.includeScreenshot !== false,
+      stabilizeBrowser: hadPendingAction,
+    });
     const text = snapshot.documentChanged && previous && !args.disableDiff
       ? `Document changed; fresh accessibility state:\n${snapshot.tree}`
       : snapshot.degraded || args.disableDiff || !previous
@@ -278,6 +284,27 @@ export class OpenSky implements OpenSkyApi {
       disableDiff: true,
       includeScreenshot: args.includeScreenshot,
     });
+  }
+
+  /** Close only an exact driver-owned target created by this instance. */
+  async close_target(args: { app: string }): Promise<void> {
+    if (!args?.app) throw invalidParams("app is required");
+    await this.ensureLoaded();
+    const resolved = this.memory.apps[normalizeAppKey(args.app)];
+    const browser = resolved?.browser;
+    if (!resolved || !browser?.managed || !this.managedBrowserSessions.has(browser.session)) {
+      throw new OpenSkyError(
+        `No driver-owned exact target is open for ${JSON.stringify(args.app)}. ` +
+          "No user-owned app, window, or tab was closed.",
+      );
+    }
+    await this.clearTargetBindings([
+      args.app,
+      resolved.query,
+      resolved.name,
+      resolved.bundleId,
+      resolved.launchPath,
+    ]);
   }
 
   /** End only resources that this OpenSky instance created. Safe to call repeatedly. */
@@ -1234,7 +1261,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotSettled(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean },
+    options: { includeScreenshot: boolean; stabilizeBrowser?: boolean },
   ): Promise<WindowSnapshot> {
     const deadline = Date.now() + this.degradedRetryMs;
     let delayMs = 150;
@@ -1242,12 +1269,60 @@ export class OpenSky implements OpenSkyApi {
       this.screenshotDir,
       `${slug(resolved.name)}-${resolved.windowId}-${Date.now()}-${++this.screenshotSequence}.png`,
     );
-    const captureOptions = { ...options, screenshotPath };
+    const stabilizeBrowser = Boolean(
+      resolved.browser && options.stabilizeBrowser && this.browserStabilityTimeoutMs > 0,
+    );
+    const browserStabilityDeadline = Date.now() + this.browserStabilityTimeoutMs;
+    const captureOptions = {
+      includeScreenshot: stabilizeBrowser ? false : options.includeScreenshot,
+      screenshotPath,
+    };
     let snapshot = await this.snapshotWindow(resolved, captureOptions);
     while (snapshot.degraded && Date.now() < deadline) {
       await sleep(Math.min(delayMs, Math.max(0, deadline - Date.now())));
       delayMs = Math.min(delayMs * 2, 800);
       snapshot = await this.snapshotWindow(resolved, captureOptions);
+    }
+    if (stabilizeBrowser && !snapshot.degraded) {
+      let delayMs = 150;
+      let signature = browserStabilitySignature(snapshot, resolved.browser);
+      let documentChanged = snapshot.documentChanged === true;
+      while (Date.now() < browserStabilityDeadline) {
+        await sleep(Math.min(delayMs, Math.max(0, browserStabilityDeadline - Date.now())));
+        if (documentChanged) {
+          this.memory.trees[windowKey(resolved)] = {
+            tree: snapshot.tree,
+            elements: snapshot.elements,
+            snapshotId: snapshot.snapshotId,
+          };
+        }
+        const next = await this.snapshotWindow(resolved, {
+          includeScreenshot: false,
+          screenshotPath,
+        });
+        documentChanged ||= next.documentChanged === true;
+        const nextSignature = browserStabilitySignature(next, resolved.browser);
+        snapshot = next;
+        if (nextSignature === signature) break;
+        signature = nextSignature;
+        delayMs = Math.min(delayMs * 2, 600);
+      }
+      if (options.includeScreenshot) {
+        if (documentChanged) {
+          this.memory.trees[windowKey(resolved)] = {
+            tree: snapshot.tree,
+            elements: snapshot.elements,
+            snapshotId: snapshot.snapshotId,
+          };
+        }
+        const captured = await this.snapshotWindow(resolved, {
+          includeScreenshot: true,
+          screenshotPath,
+        });
+        documentChanged ||= captured.documentChanged === true;
+        snapshot = captured;
+      }
+      snapshot.documentChanged = documentChanged;
     }
     if (snapshot.truncated && !snapshot.degraded && !resolved.browser) {
       const full = snapshot;
@@ -2410,6 +2485,26 @@ function optionalBoolean(value: unknown): boolean | undefined {
 
 function normalizeAppKey(app: string): string {
   return app.trim().toLowerCase();
+}
+
+function browserStabilitySignature(
+  snapshot: WindowSnapshot,
+  browser: ResolvedApp["browser"],
+): string {
+  return JSON.stringify([
+    browser?.url,
+    browser?.documentId,
+    snapshot.truncated === true,
+    snapshot.totalElementCount,
+    snapshot.returnedElementCount,
+    snapshot.elements.map((element) => [
+      element.role,
+      element.label,
+      element.value,
+      element.browserFrame,
+      element.actions,
+    ]),
+  ]);
 }
 
 function windowKey(resolved: ResolvedApp): string {

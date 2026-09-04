@@ -95,6 +95,8 @@ export interface OpenSky {
     targets: string[];
     includeScreenshot?: boolean;
   }): Promise<AppState>;
+  /** Close one exact target owned by this instance without touching user-owned app state. */
+  close_target(args: { app: string }): Promise<void>;
   bring_to_front(args: { app: string }): Promise<void>;
   click(args: {
     app: string;
@@ -259,6 +261,8 @@ export interface OpenSkyOptions {
   settleDelayMs?: number;
   /** Maximum time to retry a helper-reported degraded AX snapshot. Defaults to 4s. */
   degradedRetryMs?: number;
+  /** Maximum time to wait for semantic browser state to stop changing after input. Defaults to 2s. */
+  browserStabilityTimeoutMs?: number;
   /** Prefer an isolated typed Chromium session for one-URL browser targets. Defaults to true. */
   preferTypedBrowser?: boolean;
 }

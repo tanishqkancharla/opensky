@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
 
-import { createOpenSkyToolRuntime, dispatchBatchActions, validateBatchActions } from "../evals/tools.js";
+import { createOpenSkyToolRuntime, dispatchBatchActions, OPENSKY_TOOL_NAMES, validateBatchActions } from "../evals/tools.js";
 import type { DriverClient, DriverResult } from "../src/types.js";
 
 describe("OpenSky tool runtime lifecycle", () => {
@@ -21,6 +21,7 @@ describe("OpenSky tool runtime lifecycle", () => {
     await runtime.close();
 
     assert.equal(runtime.tools.length > 0, true);
+    assert.equal(OPENSKY_TOOL_NAMES.includes("close_target"), true);
     assert.equal(calls.length, 1);
     assert.equal(calls[0]?.tool, "end_session");
     assert.match(String(calls[0]?.args.session), /^opensky-\d+-[0-9a-f]{8}$/);

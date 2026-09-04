@@ -72,6 +72,7 @@ opensky.target                    // "mac" | "win" | "linux"
 await opensky.list_apps()
 await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome? })
 await opensky.open_target({ app, targets, includeScreenshot? })
+await opensky.close_target({ app })
 await opensky.bring_to_front({ app })
 await opensky.click({ app, element_index?, x?, y?, mouse_button?, click_count? })
 await opensky.drag({ app, from_x, from_y, to_x, to_y })
@@ -101,13 +102,17 @@ Returns `{ app, text, screenshot, target? }`. `target` truthfully separates requ
 - `text` is the accessibility tree for the **main document window**, including menu-bar elements exposed by the helper. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a compact native-style diff with stable public element indices.
 - `screenshot` is `{ url, width?, height?, scale?, format? }` using a `file:` URL, or `null`. Pass `includeScreenshot: false` when AX alone is sufficient. `scale` is `2` for typical Retina captures when the window frame is known.
 - Read PNG bytes with `await readFile(pathToFileURL(state.screenshot.url))`.
-- OpenSky automatically waits briefly after actions, revives expired helper sessions, and retries temporary degraded AX snapshots. If AX remains unavailable, use coordinates from the returned screenshot or bring the window onto the current desktop and call `get_app_state` again.
+- OpenSky automatically waits briefly after actions, rechecks typed browser semantics with a bounded stability budget, revives expired helper sessions, and retries temporary degraded AX snapshots. If AX remains unavailable, use coordinates from the returned screenshot or bring the window onto the current desktop and call `get_app_state` again.
 
 ### `open_target({ app, targets, includeScreenshot? })`
 
 Use this as the first call when the task supplies a URL or file. For one HTTP(S) URL in Chrome/Edge/Chromium it creates a driver-owned isolated profile and exact typed tab binding; do not create a blank tab or observe the browser first. URL observations are page-scoped by default so restored tabs, favorites, toolbars, and application menus do not consume context. `includeAppChrome` is unavailable for an exact typed binding and fails closed rather than crossing into native input.
 
 Open files or URLs with a named app and return the settled full state of the returned, newly created, or title-matching ordinary window. Prefer this over launching a document and then separately resolving the app; the binding prevents an older sibling document from being mistaken for the requested target.
+
+### `close_target({ app })`
+
+Close the exact driver-owned browser target created by `open_target` when the task asks for cleanup. It refuses ordinary user-owned app, window, and tab state. Hosts should still call `opensky.close()` as an idempotent final cleanup fallback.
 
 ### `click`
 

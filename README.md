@@ -110,6 +110,7 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 | `list_apps()` | `list_apps` |
 | `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?})` | Typed `get_browser_state` for an exact Chromium target/tab; otherwise `launch_app` if needed, `list_windows`, `get_window_state` |
 | `open_target({app, targets, includeScreenshot?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; other targets use the native app/window route |
+| `close_target({app})` | Closes one exact driver-owned browser target; refuses to close ordinary user-owned app/window/tab state |
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |
 | `click` | `click` / `double_click` |
 | `drag` | `drag` |
@@ -126,7 +127,8 @@ Same method contract as `@oai/sky`, implemented with Cua Driver:
 
 OpenSky also mirrors the native runtime's ergonomics around helper lifecycle and
 observation timing: expired named sessions are revived transparently, state
-capture waits briefly after actions, and helper-reported degraded AX snapshots
+capture waits briefly after actions, typed browser state is rechecked for semantic
+stability with a bounded two-second budget, and helper-reported degraded AX snapshots
 are retried for up to four seconds. If the helper still cannot resolve AX for an
 off-space or custom-drawn window, `get_app_state` preserves its screenshot and
 returns explicit coordinate-fallback guidance instead of a silent empty tree.
@@ -160,7 +162,8 @@ Element indices are snapshots. Some identifiers fail silently. An action can tak
 URL targets return page-scoped semantic state by default, omitting restored tabs,
 favorites, toolbars, and application menus. Chromium URLs use a driver-owned
 isolated profile and exact typed target/tab binding, so they neither reuse nor
-close the user's existing tabs. Call `close()` in a `finally` block when using
+close the user's existing tabs. Use `close_target({app})` when a task explicitly
+asks to close that exact target. Call `close()` in a `finally` block when using
 the library directly; the CLI, REPL, and server entry points do this
 automatically on normal exit or termination.
 
