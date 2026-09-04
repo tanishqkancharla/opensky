@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { inspect } from "node:util";
 import vm from "node:vm";
 import repl from "node:repl";
@@ -25,42 +26,124 @@ export interface AsyncReplOptions {
   timeoutMs?: number;
   /** When false, omit `process` and `require` from the sandbox (used by `opensky serve`). */
   allowNodeApis?: boolean;
+  /** Harden a no-Node-API evaluator as a security boundary. Context values must be installed through a context-native membrane. */
+  strictSandbox?: boolean;
 }
 
 export class AsyncRepl {
   private readonly sandbox: vm.Context;
   private queue: Promise<void> = Promise.resolve();
   private readonly timeoutMs: number;
+  private readonly strictSandbox: boolean;
+  private readonly strictEvaluation = new AsyncLocalStorage<number>();
+  private readonly activeEvaluations = new Set<number>();
+  private evaluationSequence = 0;
+  private poisonedReason: string | undefined;
 
   constructor(options: AsyncReplOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? 60_000;
-    this.sandbox = vm.createContext(createSandbox(options.context ?? {}, options.allowNodeApis !== false));
+    this.strictSandbox = options.strictSandbox === true;
+    if (this.strictSandbox && options.allowNodeApis !== false) {
+      throw new Error("strictSandbox requires allowNodeApis: false");
+    }
+    if (this.strictSandbox && Object.keys(options.context ?? {}).length > 0) {
+      throw new Error("strictSandbox context must be installed through a context-native membrane");
+    }
+    this.sandbox = vm.createContext(
+      createSandbox(options.context ?? {}, options.allowNodeApis !== false, this.strictSandbox),
+      this.strictSandbox ? {
+        codeGeneration: { strings: false, wasm: false },
+        // Keep context-created Promise microtasks inside runInContext's timeout
+        // accounting instead of allowing a recursive microtask chain to starve
+        // the host deadline timer.
+        microtaskMode: "afterEvaluate",
+      } : undefined,
+    );
+    if (this.strictSandbox) initializeStrictSandbox(this.sandbox);
   }
 
   get context(): vm.Context {
+    if (this.strictSandbox) {
+      throw new Error("strictSandbox context is sealed; install context-native bindings with installContextFactory()");
+    }
     return this.sandbox;
   }
 
   assign(values: Record<string, unknown>): void {
+    if (this.strictSandbox) {
+      throw new Error("strictSandbox rejects host values; install context-native bindings with installContextFactory()");
+    }
     Object.assign(this.sandbox, values);
+  }
+
+  /** Compile a context-native value whose host capabilities remain in an inaccessible lexical extension. */
+  installContextFactory(name: string, source: string, contextExtensions: Record<string, unknown> = {}): void {
+    if (!this.strictSandbox) throw new Error("installContextFactory is only available in strictSandbox mode");
+    if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) throw new Error("Invalid strictSandbox binding name");
+    if (Object.prototype.hasOwnProperty.call(this.sandbox, name)) throw new Error(`strictSandbox binding ${JSON.stringify(name)} already exists`);
+    const extensionNames: string[] = [];
+    const extensionValues: Array<(...args: unknown[]) => unknown> = [];
+    for (const [key, value] of Object.entries(contextExtensions)) {
+      if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)) throw new Error(`Invalid strictSandbox context extension name ${JSON.stringify(key)}`);
+      if (typeof value !== "function") {
+        throw new Error(`strictSandbox context extension ${JSON.stringify(key)} must be a host function behind the membrane`);
+      }
+      extensionNames.push(key);
+      extensionValues.push((...args: unknown[]) => {
+        // Bun loses AsyncLocalStorage context after a cross-realm await. The
+        // evaluator queue permits exactly one active generation, and any
+        // timeout poisons the REPL before another can begin, so this fallback
+        // cannot authorize a stale continuation as a newer evaluation.
+        const stored = this.strictEvaluation.getStore();
+        const generation = stored ?? (this.activeEvaluations.size === 1 ? this.activeEvaluations.values().next().value : undefined);
+        if (generation === undefined || !this.activeEvaluations.has(generation)) {
+          throw new Error("strictSandbox capability is unavailable outside its active evaluation");
+        }
+        return value(...args);
+      });
+    }
+    // Compile a realm-native initializer and pass host capabilities as lexical
+    // parameters. Bun exposes vm.compileFunction contextExtensions as globals,
+    // so that API is intentionally not used here.
+    const factory = vm.compileFunction(`return (${extensionNames.join(", ")}) => {\n${source}\n};`, [], {
+      parsingContext: this.sandbox,
+    });
+    const initialize = factory() as (...values: unknown[]) => unknown;
+    const binding = initialize(...extensionValues);
+    this.sandbox[name] = binding;
   }
 
   async evaluate(code: string, filename = "opensky"): Promise<EvalResult> {
     const run = async (): Promise<EvalResult> => {
+      if (this.strictSandbox && this.poisonedReason) {
+        throw new AsyncReplError(`strictSandbox evaluator is poisoned after ${this.poisonedReason}; create a new evaluator`, []);
+      }
       const logs: string[] = [];
+      const generation = ++this.evaluationSequence;
+      if (this.strictSandbox) this.activeEvaluations.add(generation);
+      if (this.strictSandbox) vm.runInContext("globalThis.__openskyLogs.length = 0", this.sandbox);
       const previousConsole = this.sandbox.console;
-      this.sandbox.console = createConsoleProxy(logs);
+      if (!this.strictSandbox) this.sandbox.console = createConsoleProxy(logs);
       try {
         const wrapped = wrapAsync(code);
         const script = new vm.Script(wrapped, { filename });
-        const evaluated = script.runInContext(this.sandbox, { timeout: this.timeoutMs });
-        const value = await Promise.resolve(evaluated);
+        const evaluated = this.strictSandbox
+          ? this.strictEvaluation.run(generation, () => script.runInContext(this.sandbox, { timeout: this.timeoutMs }))
+          : script.runInContext(this.sandbox, { timeout: this.timeoutMs });
+        const value = this.strictSandbox
+          ? await awaitContextValue(evaluated, this.sandbox, this.timeoutMs)
+          : await withDeadline(Promise.resolve(evaluated), this.timeoutMs);
+        if (this.strictSandbox) {
+          logs.push(...Array.from(this.sandbox.__openskyLogs as unknown[], (value) => String(value)));
+        }
         return { value, logs };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        if (this.strictSandbox && /timed out/i.test(message)) this.poisonedReason = message;
         throw new AsyncReplError(message, logs, { cause: error });
       } finally {
-        this.sandbox.console = previousConsole;
+        if (this.strictSandbox) this.activeEvaluations.delete(generation);
+        if (!this.strictSandbox) this.sandbox.console = previousConsole;
       }
     };
 
@@ -76,7 +159,10 @@ export class AsyncRepl {
 export function wrapAsync(code: string): string {
   const trimmed = stripReplWrapper(code);
   try {
-    new vm.Script(`(async () => (${trimmed}\n))()`);
+    // Bun's vm.Script defers syntax errors until runInContext, so use the host
+    // parser only to distinguish an expression from an async function body.
+    // The supplied code is never executed by this Function.
+    new Function(`return (${trimmed}\n);`);
     return `(async () => (${trimmed}\n))()`;
   } catch {
     return `(async () => {\n${trimmed}\n})()`;
@@ -203,8 +289,8 @@ const SANDBOX_BUILTINS: Record<string, unknown> = {
   structuredClone,
 };
 
-function createSandbox(context: Record<string, unknown>, allowNodeApis: boolean): Record<string, unknown> {
-  const store: Record<string | symbol, unknown> = {
+function createSandbox(context: Record<string, unknown>, allowNodeApis: boolean, strictSandbox = false): Record<string, unknown> {
+  const store = Object.assign(Object.create(null) as Record<string | symbol, unknown>, strictSandbox ? {} : {
     ...SANDBOX_BUILTINS,
     console,
     Buffer,
@@ -218,11 +304,15 @@ function createSandbox(context: Record<string, unknown>, allowNodeApis: boolean)
     URLSearchParams,
     state: {},
     ...context,
-  };
+  });
   if (allowNodeApis) {
     store.process = process;
     store.require = createRequire(import.meta.url);
   }
+  // A contextified plain null-prototype object receives realm-native intrinsics.
+  // A get-trapping Proxy would shadow those intrinsics and make Object/JSON/etc.
+  // unavailable; host values are already excluded above in strict mode.
+  if (strictSandbox) return store as Record<string, unknown>;
   return new Proxy(store, {
     has(target, prop) {
       if (prop === Symbol.unscopables) return false;
@@ -248,6 +338,56 @@ function createSandbox(context: Record<string, unknown>, allowNodeApis: boolean)
       return Reflect.ownKeys(target);
     },
   }) as unknown as Record<string, unknown>;
+}
+
+async function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`Evaluation timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, deadline]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs: number): Promise<unknown> {
+  if (!value || (typeof value !== "object" && typeof value !== "function") || typeof (value as { then?: unknown }).then !== "function") {
+    return value;
+  }
+  let settled = false;
+  let rejected = false;
+  let result: unknown;
+  let failure: unknown;
+  Promise.resolve(value).then(
+    (next) => { settled = true; result = next; },
+    (error) => { settled = true; rejected = true; failure = error; },
+  );
+  const deadline = Date.now() + timeoutMs;
+  while (!settled) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error(`Evaluation timed out after ${timeoutMs}ms`);
+    // With microtaskMode=afterEvaluate this empty turn drains realm-created
+    // Promise continuations under vm's synchronous timeout accounting.
+    vm.runInContext("", context, { timeout: Math.max(1, remaining) });
+    if (!settled) await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  if (rejected) throw failure;
+  return result;
+}
+
+function initializeStrictSandbox(context: vm.Context): void {
+  vm.runInContext(`
+    globalThis.state = Object.create(null);
+    globalThis.__openskyLogs = [];
+    const format = (value) => {
+      if (typeof value === "string") return value;
+      try { return JSON.stringify(value); } catch { return String(value); }
+    };
+    const write = (...values) => globalThis.__openskyLogs.push(values.map(format).join(" "));
+    globalThis.console = Object.freeze({ log: write, info: write, warn: write, error: write, debug: write, dir: write });
+  `, context);
 }
 
 function stripReplWrapper(code: string): string {

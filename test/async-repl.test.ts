@@ -80,4 +80,50 @@ describe("async REPL wrapper", () => {
     }
     assert.equal(await serverAlive(`${dir}/home`), false);
   });
+
+  it("seals strict sandboxes against host injection and code-generation escapes", async () => {
+    const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
+    assert.throws(() => repl.assign({ host: () => process }), /rejects host values/);
+    assert.throws(() => repl.context, /context is sealed/);
+    repl.installContextFactory("bridge", `
+      return Object.freeze({ ping: () => __host("ping") });
+    `, { __host: (value: string) => value });
+    const globals = await repl.evaluate("return { process: typeof process, require: typeof require, fetch: typeof fetch, dispatch: typeof __dispatch }");
+    assert.deepEqual(globals.value, { process: "undefined", require: "undefined", fetch: "undefined", dispatch: "undefined" });
+    const extension = await repl.evaluate("return { host: typeof __host, ping: bridge.ping() }");
+    assert.deepEqual(extension.value, { host: "undefined", ping: "ping" });
+    for (const source of [
+      `Function("return process")()`,
+      `eval("1")`,
+      `this.constructor.constructor("return process")()`,
+      `bridge.ping.constructor("return process")()`,
+      `import("node:fs")`,
+    ]) {
+      await assert.rejects(() => repl.evaluate(source));
+    }
+  });
+
+  it("times out awaited work, revokes its bridge capability, and poisons instead of wedging", async () => {
+    const calls: string[] = [];
+    let release!: () => void;
+    const delayed = new Promise<void>((resolve) => { release = resolve; });
+    const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true, timeoutMs: 20 });
+    repl.installContextFactory("bridge", `return Object.freeze({ delayed: () => __host() });`, {
+      __host: async () => { await delayed; calls.push("late"); },
+    });
+    await assert.rejects(() => repl.evaluate("await bridge.delayed(); await bridge.delayed(); return 1"), /timed out after 20ms/);
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(calls, ["late"], "the continuation's second host call must be rejected after revocation");
+    await assert.rejects(() => repl.evaluate("return 2"), /evaluator is poisoned/);
+  });
+
+  it("interrupts a recursive Promise microtask chain", async () => {
+    const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true, timeoutMs: 20 });
+    await assert.rejects(
+      () => repl.evaluate("async function spin(){ await 0; return spin(); } return spin()"),
+      /timed out after 20ms|Script execution timed out/,
+    );
+    await assert.rejects(() => repl.evaluate("return 1"), /evaluator is poisoned/);
+  });
 });

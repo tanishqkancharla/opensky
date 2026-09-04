@@ -9,6 +9,7 @@ import { CuaDriverClient } from "./driver.js";
 import { homeDir } from "./platform.js";
 import { evalOnServer, ReplServer, serverAlive } from "./repl-server.js";
 import { createOpenSky } from "./opensky.js";
+import { createCua } from "./cua.js";
 import { installSkill, skillDestinations, uninstallSkill } from "./skill-install.js";
 
 const HELP = `opensky — async Node REPL for computer-use
@@ -267,6 +268,7 @@ function createContext(flags: Flags) {
     }),
   });
   const extra = {
+    cua: createCua(opensky),
     driver: opensky.driver,
     sleep: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
     state: {},

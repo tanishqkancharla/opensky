@@ -1,11 +1,11 @@
 ---
 name: opensky
-description: Drive native desktop apps through an async Node REPL whose opensky object matches the OpenAI Computer `@oai/sky` API, implemented on Cua Driver. Use when the user asks to operate, click, type, or automate a GUI application on macOS, Windows, or Linux.
+description: Drive native desktop apps through an async Node REPL with a native-style cua facade and a backward-compatible opensky API, implemented on Cua Driver. Use when the user asks to operate, click, type, or automate a GUI application on macOS, Windows, or Linux.
 ---
 
 # opensky
 
-Use the `opensky` CLI. It is an **async Node REPL** with `opensky` preloaded. Do not call `cua-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
+Use the `opensky` CLI. It is an **async Node REPL** with native-style `cua` and legacy `opensky` objects preloaded. Do not call `cua-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
 
 ```bash
 opensky eval --json 'await opensky.list_apps()'
@@ -30,6 +30,19 @@ opensky doctor
 On macOS they must enable **Accessibility** and **Screen Recording** in System Settings for the helper app that appears (it may be labeled CuaDriver), then run `opensky doctor` again. Do not ask them to install cua-driver separately.
 
 ## Canonical loop
+
+Prefer the bound native-style facade:
+
+```js
+const app = await cua.getApp("Calculator");
+console.log(await app.getAXState());
+await app.click(13);
+return app.getAXState();
+```
+
+The facade exposes exact target objects and camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Browser tabs created with `cua.createBrowserTab("chrome", url)` support `goto`, `back`, `forward`, `reload`, and exact `close`. Only facade-owned tabs are discoverable. Exact-tab `paste`, blank/hidden tabs, the in-app browser, and host marks are explicitly unsupported.
+
+The legacy API remains available:
 
 Refresh state after every action (or a short related group). Element indices are snapshots and go stale when the UI changes.
 
@@ -251,4 +264,4 @@ opensky serve          # persist JS + opensky snapshot cache across evals (token
 opensky stop
 ```
 
-`opensky serve` listens on 127.0.0.1 only. Each eval must present the token from `repl.json` (mode 0600). The serve sandbox does not expose `process` or `require`. Session files under `OPENSKY_HOME` (default `~/.opensky`) are created mode 0700/0600.
+`opensky serve` listens on 127.0.0.1 only. Each eval must present the token from `repl.json` (mode 0600). It omits direct `process` and `require` globals but is for trusted local snippets, not hostile-code isolation. Session files under `OPENSKY_HOME` (default `~/.opensky`) are created mode 0700/0600.

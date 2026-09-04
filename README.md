@@ -1,6 +1,6 @@
 # opensky
 
-`opensky` is an open implementation of the OpenAI Computer [`@oai/sky`](https://openai.com) API. It is a **library**, an **async Node REPL**, and an **agent skill**. Under the hood it calls [Cua Driver](https://cua.ai/cua-driver) (`cua-driver call …`) instead of the proprietary `@oai/sky` host module.
+`opensky` is an open computer-use library, async Node REPL, and agent skill backed by [Cua Driver](https://cua.ai/cua-driver) (`cua-driver call …`). It includes a native-style `cua` facade and preserves the original flat `opensky` API. The facade intentionally reports unsupported operations instead of claiming complete `@oai/sky` coverage.
 
 ```js
 import { createOpenSky } from "opensky-cua";
@@ -99,11 +99,30 @@ opensky doctor
 
 The REPL evaluates each snippet as an async function body, so `await` works. A single expression is returned automatically; otherwise `return` the value you want printed. `Date`, `Number`, and other standard JS globals are in scope.
 
-`opensky serve` binds 127.0.0.1 and requires the token stored in `repl.json` (mode 0600). The serve sandbox does not expose `process` or `require`. `OPENSKY_HOME` (default `~/.opensky`) is created mode 0700; `session.json` is mode 0600.
+`opensky serve` binds 127.0.0.1 and requires the token stored in `repl.json` (mode 0600). It omits direct `process` and `require` globals, but it is intended only for trusted local snippets and is not a security boundary. `OPENSKY_HOME` (default `~/.opensky`) is created mode 0700; `session.json` is mode 0600.
 
-## `opensky` API
+## Native-style `cua` facade
 
-Same method contract as `@oai/sky`, implemented with Cua Driver:
+The package exports `cua` for the singleton lifecycle and `createCua(opensky)` for an explicitly owned lifecycle. The CLI REPL preloads both `cua` and the legacy `opensky` object.
+
+```js
+const app = await cua.getApp("Calculator");
+console.log(await app.getAXState());
+await app.click(13);
+
+const tab = await cua.createBrowserTab("chrome", "https://example.com");
+await tab.goto("https://example.com/about");
+console.log(await tab.getAXState());
+await tab.close();
+```
+
+The facade provides camelCase, bound-target methods: `getState`, `listApps`, `getApp`, `listBrowsers`, `listTabs`, `getBrowser`, `createBrowserTab`, and `getTab`; target observations and actions; and exact-tab `goto`, `back`, `forward`, `reload`, and `close`. `getAXState()` is AX-only by default, `getScreenshot()` returns screenshot bytes, and `getAXStateAndScreenshot()` returns both. `disableDiffing` maps to the driver's diff control.
+
+Browser discovery is deliberately limited to exact tabs created by this facade. It does not enumerate or close user-owned tabs. The in-app browser, hidden or blank tab creation, exact-tab clipboard paste, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s. Native-app paste retains the legacy driver route.
+
+## Legacy `opensky` API
+
+The original snake_case, app-argument API remains available for backward compatibility:
 
 | Method | Cua Driver tools used |
 | --- | --- |

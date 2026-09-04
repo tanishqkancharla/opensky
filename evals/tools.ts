@@ -8,6 +8,8 @@ import { createOpenSky, formatTargetIdentity } from "../src/opensky.js";
 import type { AppState, DriverClient, OpenSkyOptions } from "../src/types.js";
 import type { OpenSkyTarget } from "../src/types.js";
 
+export { createCuaReplToolRuntime, CUA_REPL_TOOL_NAMES } from "./cua-repl-tool.js";
+
 function textResult(value: unknown) {
   return {
     content: [{ type: "text" as const, text: stringify(value) }],
