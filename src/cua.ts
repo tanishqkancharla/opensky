@@ -151,7 +151,8 @@ export class CuaFacade {
   ) {}
 
   async getState(options: ObservationOptions = {}): Promise<CuaState> {
-    const state = { apps: await this.listApps({ emit: false }), browsers: this.browserStates() };
+    const apps = await this.listApps({ emit: false });
+    const state = { apps, browsers: this.browserStates(availableBrowserIds(apps)) };
     this.emit(state, options);
     return state;
   }
@@ -170,7 +171,8 @@ export class CuaFacade {
   }
 
   async listBrowsers(options: ObservationOptions = {}): Promise<BrowserInfo[]> {
-    const browsers = this.browserStates().map(({ tabs: _tabs, ...browser }) => browser);
+    const apps = await this.listApps({ emit: false });
+    const browsers = this.browserStates(availableBrowserIds(apps)).map(({ tabs: _tabs, ...browser }) => browser);
     this.emit(browsers, options);
     return browsers;
   }
@@ -185,21 +187,23 @@ export class CuaFacade {
   }
 
   async getBrowser(options: GetBrowserOptions = {}): Promise<Browser> {
+    const apps = await this.listApps({ emit: false });
+    const available = availableBrowserIds(apps);
+    for (const tab of this.tabs.values()) if (!tab.closed) available.add(tab.browserId);
     let browserId = options.id ? normalizeBrowserId(options.id) : undefined;
-    if (options.url) {
-      const matches = [...this.tabs.values()].filter((tab) => !tab.closed && tab.url === options.url);
-      if (matches.length !== 1) {
-        throw new CuaTargetNotFoundError(options.url);
-      }
-      if (browserId && matches[0]!.browserId !== browserId) throw new CuaTargetNotFoundError(options.url);
-      browserId = matches[0]!.browserId;
+    const normalizedUrl = options.url !== undefined ? normalizeBrowserUrl(options.url, "getBrowser") : undefined;
+    if (browserId && !available.has(browserId)) {
+      throw new CuaUnsupportedError("getBrowser", `browser ${JSON.stringify(browserId)} is not installed or available`);
+    }
+    if (!browserId && normalizedUrl) {
+      const exactOwned = [...this.tabs.values()].find((tab) => !tab.closed && tab.url === normalizedUrl);
+      browserId = exactOwned?.browserId ?? preferredBrowserId(available);
     }
     if (!browserId) {
-      const ids = [...new Set([...this.tabs.values()].filter((tab) => !tab.closed).map((tab) => tab.browserId))];
-      if (ids.length !== 1) {
-        throw new CuaUnsupportedError("getBrowser", "pass an exact browser id when zero or multiple owned browser providers exist");
-      }
-      browserId = ids[0]!;
+      browserId = preferredBrowserId(available);
+    }
+    if (!browserId) {
+      throw new CuaUnsupportedError("getBrowser", "no supported installed browser provider is available");
     }
     const browser = new BoundBrowser(browserId);
     this.options.emit?.(await browser.documentation());
@@ -311,7 +315,7 @@ export class CuaFacade {
     await callback(tabInfo(record));
   }
 
-  private browserStates(): BrowserState[] {
+  private browserStates(available = new Set<string>()): BrowserState[] {
     const grouped = new Map<string, OwnedTabRecord[]>();
     for (const tab of this.tabs.values()) {
       if (tab.closed) continue;
@@ -319,7 +323,9 @@ export class CuaFacade {
       current.push(tab);
       grouped.set(tab.browserId, current);
     }
-    return [...grouped].map(([id, tabs]) => {
+    const ids = new Set([...available, ...grouped.keys()]);
+    return [...ids].map((id) => {
+      const tabs = grouped.get(id) ?? [];
       const descriptor = BROWSERS[id as keyof typeof BROWSERS];
       return {
         id,
@@ -500,17 +506,39 @@ function normalizeBrowserId(value: string): string {
   throw new CuaUnsupportedError("browser selection", `unknown browser id ${JSON.stringify(value)}`);
 }
 
-function normalizeBrowserUrl(value: string): string {
+function normalizeBrowserUrl(value: string, operation = "createBrowserTab"): string {
   const trimmed = value.trim();
-  if (!trimmed) throw new CuaUnsupportedError("createBrowserTab", "a URL is required because Cua Driver cannot create an exactly-bound blank tab");
+  if (!trimmed) {
+    const detail = operation === "createBrowserTab"
+      ? "a URL is required because Cua Driver cannot create an exactly-bound blank tab"
+      : "the URL hint must be non-empty";
+    throw new CuaUnsupportedError(operation, detail);
+  }
   const candidate = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
   let parsed: URL;
   try { parsed = new URL(candidate); }
-  catch { throw new CuaUnsupportedError("createBrowserTab", `invalid browser URL ${JSON.stringify(value)}`); }
+  catch { throw new CuaUnsupportedError(operation, `invalid browser URL ${JSON.stringify(value)}`); }
   if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || !parsed.hostname) {
-    throw new CuaUnsupportedError("createBrowserTab", "only http/https URLs can create an exact typed OpenSky-owned tab");
+    throw new CuaUnsupportedError(operation, "only http/https URLs can select or create an exact typed OpenSky-owned tab");
   }
   return parsed.href;
+}
+
+function availableBrowserIds(apps: readonly AppInfo[]): Set<string> {
+  const ids = new Set<string>();
+  for (const app of apps) {
+    const id = app.id.toLowerCase();
+    const name = app.displayName?.toLowerCase() ?? "";
+    if (id === "com.google.chrome" || name === "google chrome" || id.endsWith("/google chrome.app")) ids.add("chrome");
+    if (id === "com.microsoft.edgemac" || name === "microsoft edge" || id.endsWith("/microsoft edge.app")) ids.add("edge");
+  }
+  return ids;
+}
+
+function preferredBrowserId(available: ReadonlySet<string>): string | undefined {
+  if (available.has("chrome")) return "chrome";
+  if (available.has("edge")) return "edge";
+  return undefined;
 }
 
 function mapAppInfo(app: LegacyAppInfo): AppInfo {

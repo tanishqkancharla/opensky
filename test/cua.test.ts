@@ -12,8 +12,9 @@ class FakeOpenSky {
   calls: Array<{ method: string; args: unknown }> = [];
   private sequence = 0;
   screenshotUrl = "";
+  apps = [{ id: "com.example", displayName: "Example" }];
 
-  async list_apps() { this.calls.push({ method: "list_apps", args: {} }); return [{ id: "com.example", displayName: "Example" }]; }
+  async list_apps() { this.calls.push({ method: "list_apps", args: {} }); return this.apps; }
   async get_app_state(args: Record<string, unknown>): Promise<AppState> {
     this.calls.push({ method: "get_app_state", args });
     const handle = String(args.app).startsWith("tgt_") ? String(args.app) : "tgt_app";
@@ -108,6 +109,88 @@ describe("native-style cua facade", () => {
       method: "get_app_state",
       args: { app: tab.id, disableDiff: true, includeScreenshot: false },
     });
+  });
+
+  it("discovers installed browser providers before any tab is owned", async () => {
+    const fake = new FakeOpenSky();
+    fake.apps = [
+      { id: "/Applications/Microsoft Edge.app", displayName: "Microsoft Edge" },
+      { id: "com.google.Chrome", displayName: "Google Chrome" },
+      { id: "com.example", displayName: "Example" },
+    ];
+    const emitted: unknown[] = [];
+    const cua = createCua(fake as unknown as OpenSky, { emit: (value) => emitted.push(value) });
+
+    assert.deepEqual(await cua.listBrowsers({ emit: false }), [
+      { id: "edge", name: "Microsoft Edge", family: "chromium", type: "cdp", profileName: undefined },
+      { id: "chrome", name: "Google Chrome", family: "chromium", type: "cdp", profileName: undefined },
+    ]);
+    const state = await cua.getState({ emit: false });
+    assert.deepEqual(state.browsers.map(({ id, tabs }) => ({ id, tabs })), [
+      { id: "edge", tabs: [] },
+      { id: "chrome", tabs: [] },
+    ]);
+    assert.equal((await cua.getBrowser()).browserId, "chrome", "Chrome should be the default provider when both are installed");
+    assert.match(String(emitted.at(-1)), /OpenSky browser "chrome"/);
+  });
+
+  it("selects browser providers by explicit id or normalized URL without requiring an owned tab", async () => {
+    const fake = new FakeOpenSky();
+    fake.apps = [{ id: "com.microsoft.edgemac", displayName: "Microsoft Edge" }];
+    const cua = createCua(fake as unknown as OpenSky);
+
+    assert.equal((await cua.getBrowser({ id: "Microsoft Edge", url: "example.com" })).browserId, "edge", "an explicit provider takes precedence after the URL hint is validated");
+    assert.equal((await cua.getBrowser({ url: "example.com" })).browserId, "edge");
+    await assert.rejects(() => cua.getBrowser({ id: "chrome" }), /not installed or available/);
+    await assert.rejects(() => cua.getBrowser({ id: "edge", url: "not a URL" }), /getBrowser/);
+    await assert.rejects(() => cua.getBrowser({ url: "" }), /getBrowser/);
+    await assert.rejects(() => cua.getBrowser({ url: "file:\/\/\/tmp\/example" }), /getBrowser/);
+  });
+
+  it("uses a normalized URL to recover the provider of an exact owned tab", async () => {
+    const fake = new FakeOpenSky();
+    fake.apps = [
+      { id: "com.google.Chrome", displayName: "Google Chrome" },
+      { id: "com.microsoft.edgemac", displayName: "Microsoft Edge" },
+    ];
+    const cua = createCua(fake as unknown as OpenSky);
+    await cua.createBrowserTab("edge", "example.com");
+
+    assert.equal((await cua.getBrowser({ url: "example.com" })).browserId, "edge");
+  });
+
+  it("recognizes each supported provider identifier without relying on its display name", async () => {
+    const cases = [
+      { app: { id: "com.google.Chrome", displayName: "Other" }, browserId: "chrome" },
+      { app: { id: "/Applications/Google Chrome.app", displayName: "Other" }, browserId: "chrome" },
+      { app: { id: "other", displayName: "Google Chrome" }, browserId: "chrome" },
+      { app: { id: "com.microsoft.edgemac", displayName: "Other" }, browserId: "edge" },
+      { app: { id: "/Applications/Microsoft Edge.app", displayName: "Other" }, browserId: "edge" },
+      { app: { id: "other", displayName: "Microsoft Edge" }, browserId: "edge" },
+    ] as const;
+    for (const { app, browserId } of cases) {
+      const fake = new FakeOpenSky();
+      fake.apps = [app];
+      const cua = createCua(fake as unknown as OpenSky);
+      assert.deepEqual((await cua.listBrowsers({ emit: false })).map((browser) => browser.id), [browserId]);
+    }
+
+    const unrelated = new FakeOpenSky();
+    unrelated.apps = [{ id: "/Applications/Chrome Remote Desktop.app", displayName: "Chromium Helper" }];
+    const cua = createCua(unrelated as unknown as OpenSky);
+    assert.deepEqual(await cua.listBrowsers({ emit: false }), []);
+    await assert.rejects(() => cua.getBrowser(), /no supported installed browser provider/);
+  });
+
+  it("keeps an owned provider discoverable when the installed-app catalog omits it", async () => {
+    const fake = new FakeOpenSky();
+    const cua = createCua(fake as unknown as OpenSky);
+    const tab = await cua.createBrowserTab("chrome", "https://example.com/");
+
+    assert.deepEqual((await cua.getState({ emit: false })).browsers.map((browser) => browser.id), ["chrome"]);
+    assert.equal((await cua.getBrowser({ id: "chrome" })).browserId, "chrome");
+    await tab.close();
+    await assert.rejects(() => cua.getBrowser({ id: "chrome" }), /not installed or available/);
   });
 
   it("matches native observation defaults and returns screenshot bytes", async () => {
