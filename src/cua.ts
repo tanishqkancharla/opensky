@@ -225,17 +225,25 @@ export class CuaFacade {
     const descriptor = BROWSERS[browserId as keyof typeof BROWSERS];
     if (!descriptor) throw new CuaUnsupportedError("createBrowserTab", `browser ${JSON.stringify(browser)} is not supported`);
     const normalizedUrl = normalizeBrowserUrl(url ?? "");
+    const sessionName = options.sessionName === undefined
+      ? this.browserSessionNames.get(browserId)
+      : normalizeBrowserSessionName(options.sessionName);
     if (options.visible === false) {
       throw new CuaUnsupportedError("createBrowserTab", "hidden browser tabs are unavailable; the isolated Chromium window is visible");
     }
-    const state = await this.opensky.open_target({ app: descriptor.app, targets: [normalizedUrl], includeScreenshot: false });
+    const state = await this.opensky.open_target({
+      app: descriptor.app,
+      targets: [normalizedUrl],
+      includeScreenshot: false,
+      ...(sessionName ? { sessionName } : {}),
+    });
     if (state.target?.tab?.status !== "verified") {
       throw new CuaUnsupportedError("createBrowserTab", "the driver did not return a verified exact tab binding");
     }
     const record: OwnedTabRecord = {
       handle: state.targetHandle,
       browserId,
-      profileName: options.sessionName ?? this.browserSessionNames.get(browserId),
+      profileName: sessionName,
       title: state.target.tab.title ?? state.target.document.title,
       url: state.target.tab.url ?? state.target.document.url ?? normalizedUrl,
       closed: false,
@@ -315,18 +323,12 @@ export class CuaFacade {
   }
 
   nameBrowserSession(browserId: string, name: string): void {
-    const trimmed = name.trim();
-    if (!trimmed) throw new OpenSkyError("Invalid params: browser session name must contain non-whitespace text", "invalid_params");
-    this.browserSessionNames.set(browserId, trimmed);
+    this.browserSessionNames.set(browserId, normalizeBrowserSessionName(name));
   }
 
   selectedTab(browserId: string): Tab | undefined {
-    const records = [...this.tabs.values()];
-    for (let index = records.length - 1; index >= 0; index -= 1) {
-      const record = records[index]!;
-      if (!record.closed && record.browserId === browserId) return new BoundTab(this, record);
-    }
-    return undefined;
+    const live = [...this.tabs.values()].filter((record) => !record.closed && record.browserId === browserId);
+    return live.length === 1 ? new BoundTab(this, live[0]!) : undefined;
   }
 
   async mark(kind: "deliverable" | "handoff", record: OwnedTabRecord): Promise<void> {
@@ -551,7 +553,7 @@ function normalizeBrowserUrl(value: string, operation = "createBrowserTab"): str
   const trimmed = value.trim();
   if (!trimmed) {
     const detail = operation === "createBrowserTab"
-      ? "a URL is required because Cua Driver cannot create an exactly-bound blank tab"
+      ? "the known-URL shortcut requires a URL; use browser.tabs.new() for an exact blank tab"
       : "the URL hint must be non-empty";
     throw new CuaUnsupportedError(operation, detail);
   }
@@ -564,6 +566,12 @@ function normalizeBrowserUrl(value: string, operation = "createBrowserTab"): str
     throw new CuaUnsupportedError(operation, "only http/https URLs can select or create an exact typed OpenSky-owned tab");
   }
   return parsed.href;
+}
+
+function normalizeBrowserSessionName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) throw new OpenSkyError("Invalid params: browser session name must contain non-whitespace text", "invalid_params");
+  return trimmed;
 }
 
 function availableBrowserIds(apps: readonly AppInfo[]): Set<string> {

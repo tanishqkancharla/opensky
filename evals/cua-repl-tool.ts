@@ -3,7 +3,7 @@ import { Type } from "typebox";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 
 import { AsyncRepl } from "../src/async-repl.js";
-import { createCua, type App, type Tab } from "../src/cua.js";
+import { createCua, type App, type Browser, type Tab } from "../src/cua.js";
 import { createOpenSky } from "../src/opensky.js";
 import type { DriverClient, OpenSkyOptions, OpenSkyTarget } from "../src/types.js";
 
@@ -31,6 +31,7 @@ export function createCuaReplToolRuntime(
   const opensky = createOpenSky({ ...options, driver, target, autoLaunch: options.autoLaunch ?? true });
   const cua = createCua(opensky, { emit: (value) => activeEmissions?.push(value) });
   const targets = new Map<string, App | Tab>();
+  const browsers = new Map<string, Browser>();
   const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
   installSafeCuaBridge(repl, async (request) => {
     const parsed = JSON.parse(request) as { op?: string; args?: unknown[] };
@@ -40,7 +41,8 @@ export function createCuaReplToolRuntime(
     const trace: BridgeCallTrace = { op, args, durationMs: 0, status: "completed" };
     activeBridgeCalls?.push(trace);
     try {
-      return JSON.stringify(encodeBridgeValue(await dispatch(op, args, cua, targets)));
+      const value = encodeBridgeValue(await dispatch(op, args, cua, targets, browsers));
+      return JSON.stringify(value === undefined ? { __cuaUndefined: true } : value);
     } catch (error) {
       trace.status = "failed";
       trace.error = error instanceof Error ? error.message : String(error);
@@ -57,6 +59,7 @@ export function createCuaReplToolRuntime(
     description:
       "Run JavaScript in a persistent, sandboxed native-style Computer Use session. The `cua` object is preloaded. " +
       "Use `await cua.getApp(name)` for native apps or `await cua.createBrowserTab('chrome', url)` for a new exact owned tab. " +
+      "The current bound-browser lifecycle is also available through `await cua.getBrowser(...)` and `browser.tabs.new/get/list/selected`. " +
       "Bindings persist across calls. Batch deterministic target actions and finish with getAXState(); action methods do not observe automatically. " +
       "The sandbox has no process, require, filesystem, dynamic import, eval/Function code generation, or network API.",
     executionMode: "sequential",
@@ -99,6 +102,7 @@ async function dispatch(
   args: unknown[],
   cua: ReturnType<typeof createCua>,
   targets: Map<string, App | Tab>,
+  browsers: Map<string, Browser>,
 ): Promise<unknown> {
   switch (op) {
     case "getState": return cua.getState(asObject(args[0]));
@@ -107,6 +111,7 @@ async function dispatch(
     case "listTabs": return cua.listTabs(asObject(args[0]));
     case "getBrowser": {
       const browser = await cua.getBrowser(asObject(args[0]));
+      browsers.set(browser.browserId, browser);
       return { __cuaBinding: "browser", browserId: browser.browserId };
     }
     case "getApp": {
@@ -126,8 +131,29 @@ async function dispatch(
       return { __cuaBinding: "tab", handle: target.id, browserId: target.browserId };
     }
     case "browser.documentation": {
-      const browser = await cua.getBrowser({ id: String(args[0] ?? "") });
-      return browser.documentation();
+      return requireBrowser(browsers, args[0]).documentation();
+    }
+    case "browser.nameSession": {
+      return requireBrowser(browsers, args[0]).nameSession(String(args[1] ?? ""));
+    }
+    case "browser.tabs.list": {
+      return requireBrowser(browsers, args[0]).tabs.list();
+    }
+    case "browser.tabs.new": {
+      const target = await requireBrowser(browsers, args[0]).tabs.new();
+      targets.set(target.id, target);
+      return { __cuaBinding: "tab", handle: target.id, browserId: target.browserId };
+    }
+    case "browser.tabs.get": {
+      const target = await requireBrowser(browsers, args[0]).tabs.get(String(args[1] ?? ""));
+      targets.set(target.id, target);
+      return { __cuaBinding: "tab", handle: target.id, browserId: target.browserId };
+    }
+    case "browser.tabs.selected": {
+      const target = await requireBrowser(browsers, args[0]).tabs.selected();
+      if (!target) return undefined;
+      targets.set(target.id, target);
+      return { __cuaBinding: "tab", handle: target.id, browserId: target.browserId };
     }
   }
   if (!op.startsWith("target.")) throw new Error(`Unsupported cua bridge operation ${JSON.stringify(op)}`);
@@ -176,6 +202,7 @@ function installSafeCuaBridge(repl: AsyncRepl, dispatch: (request: string) => Pr
     };
     const revive = (value) => {
       if (!value || typeof value !== "object") return value;
+      if (value.__cuaUndefined === true) return undefined;
       if (typeof value.__cuaBytes === "string") return decodeBase64(value.__cuaBytes);
       if (Array.isArray(value)) return value.map(revive);
       for (const key of Object.keys(value)) value[key] = revive(value[key]);
@@ -213,11 +240,24 @@ function installSafeCuaBridge(repl: AsyncRepl, dispatch: (request: string) => Pr
       });
       return result;
     };
-    const browser = (descriptor) => ({
-      browserId: descriptor.browserId,
-      documentation: () => call("browser.documentation", [descriptor.browserId]),
-      toJSON: () => ({ browserId: descriptor.browserId }),
-    });
+    const browser = (descriptor) => {
+      const browserId = descriptor.browserId;
+      return {
+        browserId,
+        tabs: {
+          get: async (id) => target(await call("browser.tabs.get", [browserId, id])),
+          list: () => call("browser.tabs.list", [browserId]),
+          new: async () => target(await call("browser.tabs.new", [browserId])),
+          selected: async () => {
+            const selected = await call("browser.tabs.selected", [browserId]);
+            return selected === undefined ? undefined : target(selected);
+          },
+        },
+        documentation: () => call("browser.documentation", [browserId]),
+        nameSession: (name) => call("browser.nameSession", [browserId, name]),
+        toJSON: () => ({ browserId }),
+      };
+    };
     return Object.freeze({
       getState: (options) => call("getState", [options]),
       listApps: (options) => call("listApps", [options]),
@@ -265,7 +305,10 @@ function isBytes(value: unknown): value is Uint8Array {
 }
 
 function isBindingDescriptor(value: unknown): boolean {
-  return Boolean(value && typeof value === "object" && ("targetHandle" in value || "browserId" in value));
+  return Boolean(value && typeof value === "object" && (
+    "targetHandle" in value ||
+    ("browserId" in value && typeof (value as { documentation?: unknown }).documentation === "function")
+  ));
 }
 
 function equivalentOutput(left: unknown, right: unknown): boolean {
@@ -284,4 +327,10 @@ function optionalString(value: unknown): string | undefined {
 function requireTab(target: App | Tab): Tab {
   if (!("close" in target)) throw new Error("This exact target is an App, not a Tab; no browser operation was sent");
   return target;
+}
+
+function requireBrowser(browsers: Map<string, Browser>, value: unknown): Browser {
+  const browser = browsers.get(String(value ?? ""));
+  if (!browser) throw new Error(`Unknown cua browser binding ${JSON.stringify(value)}; no browser operation was sent`);
+  return browser;
 }

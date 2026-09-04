@@ -209,12 +209,17 @@ describe("native-style cua facade", () => {
       app: "Google Chrome",
       targets: ["about:blank"],
       includeScreenshot: false,
+      sessionName: "evaluator",
     });
     assert.equal((await browser.tabs.selected())?.id, tab.id);
     assert.deepEqual((await browser.tabs.list()).map(({ id, browserId, url }) => ({ id, browserId, url })), [
       { id: tab.id, browserId: "chrome", url: "about:blank" },
     ]);
     assert.equal((await browser.tabs.get(tab.id)).id, tab.id);
+    const second = await browser.tabs.new();
+    assert.equal(await browser.tabs.selected(), undefined, "selection is unprovable across two isolated owned browser sessions");
+    await second.close();
+    assert.equal((await browser.tabs.selected())?.id, tab.id);
     await tab.close();
     assert.equal(await browser.tabs.selected(), undefined);
   });

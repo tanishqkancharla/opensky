@@ -346,12 +346,24 @@ describe("OpenSky typed-browser contract", () => {
       app: "Google Chrome",
       targets: ["about:blank"],
       includeScreenshot: false,
+      sessionName: " blank probe ",
     });
 
     assert.equal(state.target?.tab?.status, "verified");
     assert.equal(state.target?.tab?.url, "about:blank");
     assert.equal(driver.calls.some((call) => call.tool === "launch_app"), false);
-    assert.deepEqual(driver.calls.find((call) => call.tool === "browser_navigate")?.args.url, "about:blank");
+    assert.equal(driver.calls.some((call) => call.tool === "browser_navigate"), false, "the prepared exact tab is already blank");
+    assert.match(String(driver.calls.find((call) => call.tool === "browser_prepare")?.args.session), /-browser-blank-probe-/);
+  });
+
+  it("rejects browser-internal open targets other than exact about:blank", async () => {
+    const { opensky, driver } = await harness();
+
+    await assert.rejects(
+      () => opensky.open_target({ app: "Google Chrome", targets: ["about:settings"], includeScreenshot: false }),
+      /only about:blank/,
+    );
+    assert.equal(driver.calls.some((call) => call.tool === "browser_prepare" || call.tool === "launch_app"), false);
   });
 
   it("composes a semantic query into the initial exact-browser observation", async () => {

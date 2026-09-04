@@ -213,6 +213,7 @@ export class OpenSky implements OpenSkyApi {
     app: string;
     targets: string[];
     includeScreenshot?: boolean;
+    sessionName?: string;
     query?: string;
   }): Promise<AppState> {
     if (!args?.app || !Array.isArray(args.targets) || args.targets.length === 0) {
@@ -229,6 +230,10 @@ export class OpenSky implements OpenSkyApi {
     }
     const listed = await this.listRawApps();
     const match = findApp(listed, args.app);
+    const onlyTarget = args.targets.length === 1 ? args.targets[0]!.trim().toLowerCase() : undefined;
+    if (onlyTarget?.startsWith("about:") && onlyTarget !== "about:blank" && isChromiumApp(args.app, match)) {
+      throw invalidParams("open_target supports only about:blank among browser-internal URLs");
+    }
     if (args.query !== undefined && (
       !args.query.trim() ||
       !this.preferTypedBrowser ||
@@ -557,17 +562,18 @@ export class OpenSky implements OpenSkyApi {
   }
 
   private async tryOpenTypedBrowser(
-    args: { app: string; targets: string[]; includeScreenshot?: boolean; query?: string },
+    args: { app: string; targets: string[]; includeScreenshot?: boolean; sessionName?: string; query?: string },
     match?: Record<string, unknown>,
   ): Promise<AppState | null> {
     if (
       !this.preferTypedBrowser ||
       args.targets.length !== 1 ||
-      !isBrowserNavigableUrl(args.targets[0] ?? "") ||
+      !isTypedBrowserOpenUrl(args.targets[0] ?? "") ||
       !isChromiumApp(args.app, match)
     ) return null;
 
-    const session = `${this.session}-browser-${process.pid}-${this.runtimeId}-${++this.browserSequence}`;
+    const sessionLabel = safeBrowserSessionLabel(args.sessionName);
+    const session = `${this.session}-browser${sessionLabel ? `-${sessionLabel}` : ""}-${process.pid}-${this.runtimeId}-${++this.browserSequence}`;
     // Reserve the cleanup capability before dispatch. A timed-out or malformed
     // prepare may already have launched an isolated browser; waiting for its
     // success envelope before recording ownership would orphan that process.
@@ -613,22 +619,24 @@ export class OpenSky implements OpenSkyApi {
       if (!targetId || !tabId) {
         throw new OpenSkyError("The exact browser binding did not provide one selected tab.");
       }
-      const navigation = await this.driver.call("browser_navigate", {
-        target_id: targetId,
-        tab_id: tabId,
-        url: args.targets[0],
-        session,
-      });
-      const navigationStatus = asRecord(navigation.structured);
-      if (
-        navigationStatus?.status !== "ok" || navigationStatus.target_id !== targetId ||
-        navigationStatus.tab_id !== tabId || navigationStatus.action !== "url" ||
-        navigationStatus.refs_invalidated !== true
-      ) {
-        throw new OpenSkyError(
-          "Initial exact-tab navigation returned an ambiguous acknowledgement and may have completed. " +
-            "The owned isolated browser will be cleaned up rather than retried.",
-        );
+      if (args.targets[0]!.trim().toLowerCase() !== "about:blank") {
+        const navigation = await this.driver.call("browser_navigate", {
+          target_id: targetId,
+          tab_id: tabId,
+          url: args.targets[0],
+          session,
+        });
+        const navigationStatus = asRecord(navigation.structured);
+        if (
+          navigationStatus?.status !== "ok" || navigationStatus.target_id !== targetId ||
+          navigationStatus.tab_id !== tabId || navigationStatus.action !== "url" ||
+          navigationStatus.refs_invalidated !== true
+        ) {
+          throw new OpenSkyError(
+            "Initial exact-tab navigation returned an ambiguous acknowledgement and may have completed. " +
+              "The owned isolated browser will be cleaned up rather than retried.",
+          );
+        }
       }
       const resolved: ResolvedApp = {
         handle: newTargetHandle(),
@@ -2537,6 +2545,14 @@ function isHttpUrl(target: string): boolean {
 function isBrowserNavigableUrl(target: string): boolean {
   const normalized = target.trim().toLowerCase();
   return normalized.startsWith("http://") || normalized.startsWith("https://") || normalized.startsWith("about:");
+}
+
+function isTypedBrowserOpenUrl(target: string): boolean {
+  return isHttpUrl(target) || target.trim().toLowerCase() === "about:blank";
+}
+
+function safeBrowserSessionLabel(value: string | undefined): string {
+  return value?.trim().replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 40) ?? "";
 }
 
 function isChromiumApp(query: string, match?: Record<string, unknown>): boolean {

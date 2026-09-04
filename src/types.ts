@@ -112,6 +112,8 @@ export interface OpenSky {
     app: string;
     targets: string[];
     includeScreenshot?: boolean;
+    /** Optional human-readable label embedded in a unique owned browser-session id. */
+    sessionName?: string;
     /** Narrow the initial exact typed browser observation. */
     query?: string;
   }): Promise<AppState>;

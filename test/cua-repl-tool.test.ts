@@ -46,6 +46,55 @@ describe("single-tool native-style cua evaluator", () => {
         (observedAX.details as { cuaCalls: Array<{ op: string }> }).cuaCalls.map(({ op }) => op),
         ["getApp", "target.getAXState"],
       );
+
+      const lifecycle: string[] = [];
+      let open = false;
+      const fakeTab = {
+        id: "tgt_browser",
+        browserId: "chrome",
+        close: async () => { lifecycle.push("close"); open = false; },
+      };
+      runtime.cua.getBrowser = async () => ({
+        browserId: "chrome",
+        documentation: async () => "browser docs",
+        nameSession: async (name: string) => { lifecycle.push(`name:${name}`); },
+        tabs: {
+          new: async () => { lifecycle.push("new"); open = true; return fakeTab; },
+          get: async (id: string) => { lifecycle.push(`get:${id}`); return fakeTab; },
+          list: async () => open ? [{ id: fakeTab.id, browserId: "chrome" }] : [],
+          selected: async () => open ? fakeTab : undefined,
+        },
+      }) as never;
+      const browserLifecycle = await execute(tool, "browser-lifecycle", {
+        code: `
+          browser = await cua.getBrowser({id:"chrome"});
+          await browser.nameSession("eval");
+          tab = await browser.tabs.new();
+          rebound = await browser.tabs.get(tab.id);
+          selected = await browser.tabs.selected();
+          listed = await browser.tabs.list();
+          await rebound.close();
+          return {tab:tab.id, selected:selected.id, listed:listed.length, emptyAfter:(await browser.tabs.selected())===undefined};
+        `,
+      });
+      assert.deepEqual(lifecycle, ["name:eval", "new", "get:tgt_browser", "close"]);
+      assert.match((browserLifecycle.content[0] as { text: string }).text, /"emptyAfter": true/);
+      assert.deepEqual(
+        (browserLifecycle.details as { cuaCalls: Array<{ op: string; status: string }> }).cuaCalls.map(({ op, status }) => ({ op, status })),
+        [
+          { op: "getBrowser", status: "completed" },
+          { op: "browser.nameSession", status: "completed" },
+          { op: "browser.tabs.new", status: "completed" },
+          { op: "browser.tabs.get", status: "completed" },
+          { op: "browser.tabs.selected", status: "completed" },
+          { op: "browser.tabs.list", status: "completed" },
+          { op: "target.close", status: "completed" },
+          { op: "browser.tabs.selected", status: "completed" },
+        ],
+      );
+      runtime.cua.listTabs = async () => [{ id: "tab-info", browserId: "chrome", title: "Visible info" }];
+      const tabInfo = await execute(tool, "tab-info", { code: "return (await cua.listTabs())[0]" });
+      assert.match((tabInfo.content[0] as { text: string }).text, /Visible info/, "plain tab metadata must not be mistaken for a hidden binding descriptor");
     } finally {
       await runtime.close();
     }
