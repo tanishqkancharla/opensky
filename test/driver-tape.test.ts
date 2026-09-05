@@ -163,6 +163,69 @@ describe("driver tapes", () => {
     replay.assertExhausted();
   });
 
+  it("keeps replay exact by default and scopes the v1 base-session bridge to its declared label", async () => {
+    const tape: DriverTape = {
+      version: 1,
+      calls: [{
+        tool: "list_apps",
+        args: {},
+        result: { structured: { apps: [] }, text: "", raw: null },
+      }],
+    };
+    await assert.rejects(
+      new ReplayDriverClient(tape).call("list_apps", { session: "known-replay-base" }),
+      /Driver tape mismatch at call 0/,
+    );
+
+    const replay = new ReplayDriverClient(tape, {
+      compatibility: { kind: "v1_implicit_base_session", baseSession: "known-replay-base" },
+    });
+    await assert.rejects(
+      replay.call("list_apps", { session: "some-other-base" }),
+      /Driver tape mismatch at call 0/,
+    );
+    await assert.rejects(
+      replay.call("list_apps", { session: "opensky-browser-exact-1" }),
+      /Driver tape mismatch at call 0/,
+    );
+    await assert.rejects(
+      replay.call("list_apps", { session: "known-replay-base", unexpected: true }),
+      /Driver tape mismatch at call 0/,
+    );
+    await replay.call("list_apps", { session: "known-replay-base" });
+    assert.deepEqual(replay.compatibilityReceipt, {
+      kind: "v1_implicit_base_session",
+      baseSession: "known-replay-base",
+      appliedCallIndices: [0],
+    });
+    replay.assertExhausted();
+  });
+
+  it("never normalizes an explicit recorded session or a browser-session label", async () => {
+    const tape: DriverTape = {
+      version: 1,
+      calls: [{
+        tool: "get_browser_state",
+        args: { session: "opensky-browser-exact-1", target_id: "target-1" },
+        result: { structured: { status: "ok" }, text: "", raw: null },
+      }],
+    };
+    const replay = new ReplayDriverClient(tape, {
+      compatibility: { kind: "v1_implicit_base_session", baseSession: "known-replay-base" },
+    });
+    await assert.rejects(
+      replay.call("get_browser_state", { session: "known-replay-base", target_id: "target-1" }),
+      /Driver tape mismatch at call 0/,
+    );
+    await assert.rejects(
+      replay.call("get_browser_state", { session: "opensky-browser-exact-2", target_id: "target-1" }),
+      /Driver tape mismatch at call 0/,
+    );
+    await replay.call("get_browser_state", { session: "opensky-browser-exact-1", target_id: "target-1" });
+    assert.deepEqual(replay.compatibilityReceipt?.appliedCallIndices, []);
+    replay.assertExhausted();
+  });
+
   it("canonicalizes nested records deterministically", () => {
     assert.deepEqual(canonicalizeDriverArgs({ z: 1, nested: { b: 2, a: 1 }, a: undefined }), {
       nested: { a: 1, b: 2 },
@@ -187,5 +250,14 @@ describe("driver tapes", () => {
     assert.equal(first.metrics.reductionRatio, 0.4058);
     assert.match(first.states[0]?.text ?? "", /Accessibility projection:/);
     assert.match(first.states[0]?.text ?? "", /README\.md/);
+    assert.deepEqual(first.replay, {
+      classification: "retrospective_driver_tape",
+      acceptanceEvidence: false,
+      compatibility: {
+        kind: "v1_implicit_base_session",
+        baseSession: "opensky-retrospective-replay-v1-base",
+        appliedCallIndices: [0, 1, 2, 3, 4],
+      },
+    });
   });
 });

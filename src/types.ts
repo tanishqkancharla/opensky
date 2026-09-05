@@ -1,3 +1,5 @@
+import type { CuaDriverOptions } from "./driver.js";
+
 export type OpenSkyTarget = "mac" | "win" | "linux";
 
 /** Opaque exact-target selector returned by OpenSky. Pass it anywhere `app` is accepted. */
@@ -216,6 +218,8 @@ export interface DriverResult {
 }
 
 export interface DriverClient {
+  /** Wrappers must preserve this metadata; it is correlation, not authority. */
+  readonly sessionOwnership?: { kind: "cli-explicit" } | { kind: "mcp-proxy"; instanceId: string };
   call(tool: string, args?: Record<string, unknown>): Promise<DriverResult>;
   status(): Promise<{ running: boolean; text: string }>;
   ensureDaemon(): Promise<void>;
@@ -310,7 +314,14 @@ export interface WindowSnapshot {
 }
 
 export interface OpenSkyOptions {
+  /** Injected clients remain caller-owned and are never disposed by OpenSky. */
   driver?: DriverClient;
+  /** Experimental persistent MCP; CLI remains the default until platform acceptance. */
+  transport?: "cli" | "mcp";
+  /** Configuration for an internally owned local driver, not an injected client. */
+  driverOptions?: Omit<CuaDriverOptions, "session">;
+  /** Stop waiting for admitted operations without claiming cleanup; defaults to 30s. */
+  drainTimeoutMs?: number;
   homeDir?: string;
   screenshotDir?: string;
   session?: string;

@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { asArray, asRecord, CuaDriverClient } from "./driver.js";
+import { AsyncLifecycle } from "./async-lifecycle.js";
+import { StdioMcpDriverClient, type TransportCloseReceipt } from "./mcp-driver.js";
 import { BrowserSessionLeaseStore, legacyBrowserSessionOwnerPid } from "./browser-session-leases.js";
 import { invalidParams, OpenSkyError } from "./errors.js";
 import { displayUrlAttribute } from "./display-url.js";
@@ -68,9 +70,22 @@ const SECONDARY_ACTIONS: Record<string, { kind: "click" | "front" | "key"; actio
   delete: { kind: "key", key: "delete" },
 };
 
+// The interface makes this exhaustive: adding a public operation requires a gate.
+const GUARDED_OPERATIONS = {
+  list_apps: true, get_app_state: true, open_target: true, navigate: true,
+  close_target: true, bring_to_front: true, click: true, drag: true, paste: true,
+  perform_secondary_action: true, press_key: true, scroll: true, select_text: true,
+  set_value: true, type_text: true, invoke: true,
+} satisfies Record<Exclude<keyof OpenSkyApi, "target" | "close"> | "invoke", true>;
+
 export class OpenSky implements OpenSkyApi {
   readonly target: OpenSkyTarget;
   readonly driver: DriverClient;
+  private readonly rawDriver: DriverClient;
+  private readonly ownedMcpDriver?: StdioMcpDriverClient;
+  private readonly lifecycle: AsyncLifecycle;
+  private closeReceipt?: TransportCloseReceipt;
+  private cleanupPersistencePending = false;
   private readonly store: SessionStore;
   private readonly screenshotDir: string;
   private readonly autoLaunch: boolean;
@@ -98,15 +113,36 @@ export class OpenSky implements OpenSkyApi {
     managedBrowserSessions: [] as string[],
   };
   private loaded = false;
+  private loading?: Promise<void>;
+  private readonly quarantinedTargets = new Set<TargetHandle>();
 
   constructor(options: OpenSkyOptions = {}) {
+    if (options.transport !== undefined && !["cli", "mcp"].includes(options.transport)) {
+      throw invalidParams("transport must be cli or mcp");
+    }
+    if (options.driver && (options.transport !== undefined || options.driverOptions !== undefined)) {
+      throw invalidParams("transport/driverOptions configure an internal driver; omit them when injecting a caller-owned driver");
+    }
     this.target = options.target ?? detectTarget();
     this.runtimeId = randomUUID();
     this.session = options.session ?? `opensky-${process.pid}-${this.runtimeId.slice(0, 8)}`;
-    this.driver = options.driver ?? new CuaDriverClient({ session: this.session });
+    this.ownedMcpDriver = !options.driver && options.transport === "mcp"
+      ? new StdioMcpDriverClient({ ...options.driverOptions, session: this.session }) : undefined;
+    this.rawDriver = options.driver ?? this.ownedMcpDriver ?? new CuaDriverClient({ ...options.driverOptions, session: this.session });
+    this.lifecycle = new AsyncLifecycle("OpenSky", () => this.finalizeClose(), options.drainTimeoutMs ?? 30_000);
+    // Each OpenSky owns a distinct base label even when the transport is shared.
+    // The exposed driver uses the same admission gate; only finalization bypasses it.
+    this.driver = {
+      sessionOwnership: this.rawDriver.sessionOwnership,
+      call: async (tool, args = {}) => this.lifecycle.run(`driver.${tool}`, () => this.rawDriver.call(tool, {
+        ...args, session: args.session === undefined ? this.session : args.session,
+      })),
+      status: async () => this.lifecycle.run("driver.status", () => this.rawDriver.status()),
+      ensureDaemon: async () => this.lifecycle.run("driver.ensureDaemon", () => this.rawDriver.ensureDaemon()),
+    };
     const home = homeDir(options.homeDir);
     this.store = new SessionStore(sessionFile(home));
-    this.browserLeases = new BrowserSessionLeaseStore(home, this.runtimeId);
+    this.browserLeases = new BrowserSessionLeaseStore(home, this.runtimeId, process.pid, undefined, this.rawDriver.sessionOwnership);
     this.screenshotDir = options.screenshotDir ?? join(home, "screenshots");
     this.autoLaunch = options.autoLaunch !== false;
     this.screenshotFormat = options.screenshotFormat;
@@ -115,7 +151,19 @@ export class OpenSky implements OpenSkyApi {
     this.degradedRetryMs = options.degradedRetryMs ?? 4_000;
     this.browserStabilityTimeoutMs = options.browserStabilityTimeoutMs ?? 2_000;
     this.preferTypedBrowser = options.preferTypedBrowser !== false;
+    // Count the entire operation, including state/lease persistence between calls.
+    // Closing intentionally rejects later nested dispatch within admitted methods.
+    for (const name of Object.keys(GUARDED_OPERATIONS) as Array<keyof typeof GUARDED_OPERATIONS>) {
+      const operation = this[name] as (...args: unknown[]) => Promise<unknown>;
+      Object.defineProperty(this, name, {
+        configurable: false, enumerable: false, writable: false,
+        value: async (...args: unknown[]) => this.lifecycle.run(name, () => operation.apply(this, args)),
+      });
+    }
   }
+
+  /** Process-exit proof only; session/target cleanup still needs its own receipts. */
+  get transportCloseReceipt(): TransportCloseReceipt | undefined { return this.closeReceipt; }
 
   async list_apps(): Promise<App[]> {
     const result = await this.driver.call("list_apps", {});
@@ -145,6 +193,7 @@ export class OpenSky implements OpenSkyApi {
     } else {
       resolved = await this.requireResolved(args.app);
     }
+    this.assertTargetUsable(resolved);
     if (args.includeAppChrome === true && resolved.browser) {
       throw new OpenSkyError(
         "includeAppChrome is not available for an exact typed browser binding. " +
@@ -224,6 +273,7 @@ export class OpenSky implements OpenSkyApi {
     if (looksLikeTargetHandle(args.app)) {
       const source = this.targetForSelector(args.app);
       if (!source) throw unknownTargetHandle(args.app);
+      this.assertTargetUsable(source);
       args = {
         ...args,
         app: source.launchPath || source.bundleId || source.name,
@@ -394,6 +444,7 @@ export class OpenSky implements OpenSkyApi {
     if (!args?.app) throw invalidParams("app is required");
     await this.ensureLoaded();
     const resolved = this.targetForSelector(args.app);
+    if (resolved) this.assertTargetUsable(resolved);
     const browser = resolved?.browser;
     if (resolved && browser?.managed && this.managedBrowserSessions.has(browser.session)) {
       await this.closeResolvedTarget(resolved);
@@ -521,16 +572,19 @@ export class OpenSky implements OpenSkyApi {
   }
 
   /** End only resources that this OpenSky instance created. Safe to call repeatedly. */
-  async close(): Promise<void> {
+  close(): Promise<void> { return this.lifecycle.close(); }
+
+  private async finalizeClose(): Promise<void> {
     await this.ensureLoaded();
     const hadManagedBrowserSessions = this.managedBrowserSessions.size > 0;
+    if (hadManagedBrowserSessions) this.cleanupPersistencePending = true;
     const sessions = [...this.managedBrowserSessions];
     if (!this.baseSessionEnded) sessions.push(this.session);
     const failures: Array<{ session: string; error: unknown }> = [];
     const endedManagedSessions = new Set<string>();
     await Promise.all(sessions.map(async (session) => {
       try {
-        await this.endSessionConfirmed(session);
+        await this.endSessionConfirmed(session, this.rawDriver);
         if (session === this.session) this.baseSessionEnded = true;
         else {
           await this.browserLeases.release(session);
@@ -547,9 +601,10 @@ export class OpenSky implements OpenSkyApi {
         this.removeTarget(resolved.handle);
       }
     }
-    if (hadManagedBrowserSessions) {
+    if (this.cleanupPersistencePending) {
       try {
         await this.persist();
+        this.cleanupPersistencePending = false;
       } catch (error) {
         failures.push({ session: "ownership ledger", error });
       }
@@ -561,6 +616,21 @@ export class OpenSky implements OpenSkyApi {
       const receiptFailure = failures.find(({ error }) => error instanceof OpenSkyError && error.code === "session_end_unconfirmed");
       throw new OpenSkyError(`Failed to end ${failures.length} owned driver session(s): ${detail}`,
         receiptFailure ? "session_end_unconfirmed" : undefined);
+    }
+    if (this.ownedMcpDriver) {
+      this.closeReceipt = await this.ownedMcpDriver.closeTransport();
+      if (!this.closeReceipt.verified) throw new OpenSkyError(
+        "The owned MCP transport did not close with verified drain and exit; cleanup is not proven.",
+        "transport_close_unconfirmed", this.closeReceipt,
+      );
+    }
+    const unresolved = (await this.browserLeases.unresolvedLeases()).filter(lease => lease.ownerMayBeAlive !== true);
+    if (unresolved.length > 0 || this.unresolvedLegacyBrowserSessions.size > 0) {
+      throw new OpenSkyError(
+        "Unresolved browser ownership records remain. No foreign session was ended and the records were retained for reconciliation.",
+        "browser_cleanup_unresolved",
+        { unresolved, legacySessions: [...this.unresolvedLegacyBrowserSessions] },
+      );
     }
   }
 
@@ -1303,6 +1373,7 @@ export class OpenSky implements OpenSkyApi {
   private async requireResolved(app: string): Promise<ResolvedApp> {
     await this.ensureLoaded();
     const cached = this.targetForSelector(app);
+    if (cached) this.assertTargetUsable(cached);
     if (looksLikeTargetHandle(app)) {
       if (!cached) throw unknownTargetHandle(app);
       return cached;
@@ -1314,6 +1385,7 @@ export class OpenSky implements OpenSkyApi {
   private async requireExactTypedBrowser(app: string, operation: string): Promise<ResolvedApp> {
     await this.ensureLoaded();
     const resolved = this.targetForSelector(app);
+    if (resolved) this.assertTargetUsable(resolved);
     if (looksLikeTargetHandle(app) && !resolved) throw unknownTargetHandle(app);
     const browser = resolved?.browser;
     if (!resolved || !browser?.managed || !this.managedBrowserSessions.has(browser.session)) {
@@ -1490,8 +1562,8 @@ export class OpenSky implements OpenSkyApi {
     await this.persist();
   }
 
-  private async endSessionConfirmed(session: string): Promise<void> {
-    const result = await this.driver.call("end_session", { session });
+  private async endSessionConfirmed(session: string, driver: DriverClient = this.driver): Promise<void> {
+    const result = await driver.call("end_session", { session });
     const receipt = asRecord(result.structured);
     if (receipt?.session !== session || receipt.active !== false) {
       throw new OpenSkyError(
@@ -2019,8 +2091,29 @@ export class OpenSky implements OpenSkyApi {
     await this.driver.call("press_key", { ...payload, delivery_mode: "foreground" });
   }
 
-  private async ensureLoaded(): Promise<void> {
-    if (this.loaded) return;
+  private ensureLoaded(): Promise<void> {
+    if (this.loaded) return Promise.resolve();
+    if (this.loading) return this.loading;
+    const attempt = this.loadPersistedState();
+    this.loading = attempt;
+    void attempt.catch(() => undefined).finally(() => {
+      if (this.loading === attempt) this.loading = undefined;
+    });
+    return attempt;
+  }
+
+  private assertTargetUsable(target: ResolvedApp): void {
+    if (this.quarantinedTargets.has(target.handle) ||
+        (target.browser && !this.managedBrowserSessions.has(target.browser.session))) {
+      throw new OpenSkyError(
+        "The persisted target is not owned by this runtime/transport. No input was sent. " +
+          "Keep the record for reconciliation; create a fresh exact target in a separate home.",
+        "target_transport_unavailable",
+      );
+    }
+  }
+
+  private async loadPersistedState(): Promise<void> {
     const persisted = await this.store.load();
     if ("apps" in persisted) {
       const byBinding = new Map<string, TargetHandle>();
@@ -2060,6 +2153,8 @@ export class OpenSky implements OpenSkyApi {
     // itself can still be recovered.
     for (const target of Object.values(this.memory.targets)) {
       if (target.browser) target.browser.screenshotMapping = undefined;
+      // A fresh proxy cannot inherit old native refs or native close authority.
+      if (this.rawDriver.sessionOwnership?.kind === "mcp-proxy") this.quarantinedTargets.add(target.handle);
     }
     for (const session of persisted.managedBrowserSessions) {
       const ownerPid = legacyBrowserSessionOwnerPid(session);

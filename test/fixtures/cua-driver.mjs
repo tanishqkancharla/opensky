@@ -62,7 +62,8 @@ async function dispatch(command, state) {
     return envelope({ active: true, revived: true, session: args.session });
   }
   if (state.sessionEnded) {
-    throw new Error(`session '${args.session}' has ended; call start_session to revive it`);
+    // Contract fixture for Cua's exact pre-dispatch refusal, not recovery prose.
+    return envelope({ status: "refused", refusal: { code: "session_ended", message: "The session has ended." } });
   }
   switch (tool) {
     case "end_session":

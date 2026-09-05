@@ -831,7 +831,11 @@ describe("OpenSky against cua-driver", () => {
     };
     const closes = after.calls.filter((call) => call.tool === "close_window");
     assert.equal(closes.length, 2);
-    assert.deepEqual(closes[0]?.args, closes[1]?.args);
+    assert.deepEqual(
+      closes.map(call => ({ pid: call.args.pid, window_id: call.args.window_id })),
+      [{ pid: 901, window_id: 1901 }, { pid: 901, window_id: 1901 }],
+    );
+    assert.notEqual(closes[0]?.args.session, closes[1]?.args.session, "resumed runtime owns a distinct base session");
   });
 
   it("refuses to adopt an existing process when fresh native ownership is unproven", async () => {

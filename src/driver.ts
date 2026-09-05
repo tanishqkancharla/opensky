@@ -28,6 +28,7 @@ const PERMISSION_HELP =
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class CuaDriverClient implements DriverClient {
+  readonly sessionOwnership = { kind: "cli-explicit" } as const;
   private daemonReady = false;
 
   constructor(private readonly options: CuaDriverOptions = {}) {}
@@ -50,7 +51,7 @@ export class CuaDriverClient implements DriverClient {
       tool !== "start_session" &&
       this.options.session &&
       payload.session === this.options.session &&
-      isEndedSessionResult(result, parsed)
+      isPreDispatchSessionEnded(parsed.result)
     ) {
       const revived = await this.execDriver(
         this.callArgs("start_session", { session: this.options.session }),
@@ -304,30 +305,13 @@ export class CuaDriverClient implements DriverClient {
   }
 }
 
-function isEndedSessionResult(
-  result: { stdout: string; stderr: string; code: number },
-  parsed: ReturnType<typeof parseDriverOutput>,
-): boolean {
-  if (refusalFromResult(parsed.result)) {
-    // Cua's admission guard emits this exact status/code before dispatch. Do
-    // not generalize from recovery prose or action-level refusal projections:
-    // those may describe input that was already delivered.
-    const structured = asRecord(parsed.result.structured);
-    const refusal = asRecord(structured?.refusal);
-    return structured?.status === "refused" && refusal?.code === "session_ended" &&
-      structured.effect === undefined && structured.delivery === undefined &&
-      refusal.detail === undefined;
-  }
-  if (!parsed.isError && result.code === 0) return false;
-  const message = `${parsed.message}\n${result.stderr}`.toLowerCase();
-  return (
-    message.includes("session") &&
-    (message.includes("has ended") ||
-      message.includes("ended session") ||
-      message.includes("session_not_started") ||
-      message.includes("start_session") ||
-      message.includes("revive"))
-  );
+/** Only this exact admission refusal proves that the rejected operation did not run. */
+export function isPreDispatchSessionEnded(result: DriverResult): boolean {
+  const structured = asRecord(result.structured);
+  const refusal = asRecord(structured?.refusal);
+  return structured?.status === "refused" && refusal?.code === "session_ended" &&
+    structured.effect === undefined && structured.delivery === undefined &&
+    refusal.detail === undefined;
 }
 
 export function parseDriverOutput(stdout: string): {

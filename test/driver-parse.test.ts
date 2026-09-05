@@ -146,6 +146,27 @@ describe("parseDriverRefusal", () => {
     assert.equal(calls[0][2], "browser_pointer");
   });
 
+  it("never treats unstructured session-recovery prose as permission to replay", async () => {
+    for (const reply of [
+      { code: 1, stdout: "", stderr: "The session has ended; input delivery is unknown." },
+      { code: 0, stdout: JSON.stringify({ isError: true, content: [{ type: "text", text: "Run start_session to revive this session." }] }), stderr: "" },
+      { code: 1, stdout: JSON.stringify({ message: "session_not_started" }), stderr: "session_not_started" },
+      { code: 1, stdout: JSON.stringify({ status: "error", code: "session_ended" }), stderr: "The session has ended." },
+    ]) {
+      const driver = new CuaDriverClient({ session: "unit-session" });
+      const calls: string[][] = [];
+      const transport = driver as unknown as {
+        ensureDaemon(): Promise<void>;
+        execDriver(args: string[]): Promise<typeof reply>;
+      };
+      transport.ensureDaemon = async () => {};
+      transport.execDriver = async args => { calls.push(args); return reply; };
+      await assert.rejects(driver.call("type_text", { text: "contract fixture" }));
+      assert.equal(calls.length, 1, "only a structured pre-dispatch refusal can authorize replay");
+      assert.equal(calls[0][2], "type_text");
+    }
+  });
+
   it("revives only its own named session after exact pre-dispatch admission refusal", async () => {
     const ended = { status: "refused", refusal: { code: "session_ended", message: "The session has ended." } };
     for (const [structured, requestedSession, expectedCalls] of [

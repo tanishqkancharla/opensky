@@ -34,12 +34,13 @@ Options:
   --home <dir>            Override OPENSKY_HOME (default ~/.opensky)
   --driver <path>        Path to the desktop helper binary
   --socket <path>        Path to an existing desktop-helper socket
+  --transport <cli|mcp>  Local driver transport (default cli; mcp is experimental)
   --help, -h              Show this help
   --version               Show version
 
 Environment:
   OPENSKY_HOME                      session/screenshot/repl state directory (mode 0700)
-  OPENSKY_SESSION                    helper session label (default opensky)
+  OPENSKY_SESSION                    helper session label (default unique per runtime)
   OPENSKY_REPL_TOKEN                 token for opensky serve (generated into repl.json)
   OPENSKY_AUTOINSTALL=0             do not download the desktop helper
   OPENSKY_DRIVER                    override helper binary path
@@ -106,6 +107,9 @@ async function runEval(code: string, flags: Flags): Promise<number> {
   }
   const home = homeDir(flags.home);
   if (!flags.noServe && (await serverAlive(home))) {
+    if (flags.transport !== undefined) {
+      throw new Error("An existing REPL owns its transport. Use --no-serve with --transport for a separate runtime; no existing server was changed.");
+    }
     const response = await evalOnServer(source, { homeDir: home });
     return printEval(response.ok, response.value, response.logs, response.error, flags);
   }
@@ -263,12 +267,13 @@ async function runSkill(args: string[], flags: Flags): Promise<number> {
 function createContext(flags: Flags) {
   const opensky = createOpenSky({
     homeDir: flags.home,
-    driver: new CuaDriverClient({
+    session: process.env.OPENSKY_SESSION,
+    transport: flags.transport,
+    driverOptions: {
       binaryPath: flags.driver,
-      session: process.env.OPENSKY_SESSION ?? "opensky",
       socket: flags.socket ?? process.env.CUA_DRIVER_SOCKET,
       autoStart: process.env.OPENSKY_AUTOSTART !== "0",
-    }),
+    },
   });
   const extra = {
     cua: createCua(opensky),
@@ -312,6 +317,7 @@ interface Flags {
   home?: string;
   driver?: string;
   socket?: string;
+  transport?: "cli" | "mcp";
 }
 
 function parseArgs(argv: string[]): { command?: string; args: string[]; flags: Flags } {
@@ -327,6 +333,11 @@ function parseArgs(argv: string[]): { command?: string; args: string[]; flags: F
     else if (arg === "--home") flags.home = argv[++i];
     else if (arg === "--driver") flags.driver = argv[++i];
     else if (arg === "--socket") flags.socket = argv[++i];
+    else if (arg === "--transport") {
+      const transport = argv[++i];
+      if (transport !== "cli" && transport !== "mcp") throw new Error("--transport requires cli or mcp");
+      flags.transport = transport;
+    }
     else if (arg === "-e" || arg === "--eval") {
       positional.push("eval", argv[++i] ?? "");
     } else {

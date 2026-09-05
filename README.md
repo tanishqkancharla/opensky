@@ -242,8 +242,10 @@ the original cause or switching input routes. Refused actions are not
 automatically replayed based on diagnostic text mentioning session recovery.
 The exact pre-dispatch `session_ended` admission refusal can revive the client's
 own named session once; projected action refusals cannot.
-Unknown delivery remains explicit. The current one-shot Cua CLI can omit outer
-diagnostic text, so an exact refusal cause is not always recoverable.
+Unknown delivery remains explicit. The default one-shot Cua CLI can omit outer
+diagnostic text, so an exact refusal cause is not always recoverable. The opt-in
+persistent MCP transport preserves the full driver envelope; it cannot restore
+details that the driver itself did not return.
 
 `perform_actions` never retries a completed prefix. If a DOM/UI mutation makes a later element stale, the stopped result includes a fresh settled AX state so the next action can use new indices without a separate observation call.
 
@@ -282,11 +284,13 @@ the library directly; the CLI, REPL, and server entry points do this
 automatically on normal exit or termination.
 Each isolated-browser driver session is durably reserved before launch in its
 own private record under `OPENSKY_HOME/browser-session-leases/`. Records contain
-the exact session name plus a runtime UUID, owner PID, and creation time; they
-are published and transferred with same-filesystem atomic renames. Two live
+the exact session name plus a runtime UUID, owner PID, creation time, and transport
+ownership; they are published and transferred with same-filesystem atomic renames. Two live
 OpenSky runtimes can therefore share a home without reaping or overwriting each
-other's cleanup authority. A later runtime claims a crash leftover only when
-the recorded effective owner PID is demonstrably absent. PID reuse and
+other's cleanup authority. With the CLI transport, a later runtime claims a crash
+leftover only when the recorded effective owner PID is demonstrably absent. A new
+MCP proxy cannot adopt another proxy's session, even after owner death: its stale
+lease and target handles are retained/quarantined for reconciliation. PID reuse and
 indeterminate liveness conservatively retain the lease instead of risking a
 destructive claim. A failed or ambiguous `end_session` likewise retains the
 exact lease for retry. Cleanup requires a structured receipt naming the same
@@ -325,6 +329,48 @@ bindings report a verified tab; legacy native-window URL handling remains
 explicitly unverified. A new native window is never reported as a new tab.
 
 If an app is reported running but has no ordinary UI window, `get_app_state` asks the driver to launch/reveal the app before giving up. This matches native `getApp` behavior for background or stale app registrations without guessing a sibling window.
+
+### Opt-in persistent driver transport
+
+`createOpenSky()` still defaults to the one-shot CLI transport. To try the
+persistent stdio transport against the existing signed daemon:
+
+```js
+const opensky = createOpenSky({
+  transport: "mcp",
+  driverOptions: { autoInstall: false, autoStart: false },
+});
+try {
+  console.log(await opensky.list_apps());
+} finally {
+  await opensky.close();
+}
+```
+
+The equivalent one-shot CLI invocation is
+`opensky --no-serve --transport mcp eval 'await opensky.list_apps()'`.
+An explicit transport flag refuses to reuse an already-running REPL server;
+it does not silently change that server's transport.
+Windows/Linux require an explicit `driverOptions.socket` or `CUA_DRIVER_SOCKET`;
+OpenSky never switches to a direct, in-process driver to make MCP work.
+Cross-platform, crash-recovery, and new-user GUI acceptance remain incomplete,
+so this is not a default change or parity claim.
+
+Each instance uses its own base session by default. `close()` immediately rejects
+new operations, drains admitted work, ends exact owned sessions, and only then
+closes its internally created MCP proxy. Its `transportCloseReceipt` describes
+process exit, not independent proof that a target disappeared. If cleanup fails,
+retain the home/leases and inspect the error; a retry may finish cleanup, but never
+reopens normal operations. The default library drain limit is 30 seconds, tunable
+with `drainTimeoutMs`. A drain timeout does not schedule a late finalizer.
+
+An injected `driver` is caller-owned: OpenSky never closes its transport. Close
+every consumer before calling `StdioMcpDriverClient.closeTransport()` yourself.
+Do not combine injection with `transport` or `driverOptions`. Advanced MCP options
+bound calls (30 seconds), queued/admitted work (64), frames (32 MiB), and shutdown;
+timeouts, malformed replies, and lost connections quarantine the client without
+replaying unknown-delivery calls. Low-level `invoke`/`driver.call` with explicit
+session labels are trusted escape hatches, not a sandbox for untrusted consumers.
 
 ## Development
 

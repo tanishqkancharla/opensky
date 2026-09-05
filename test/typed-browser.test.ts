@@ -1178,7 +1178,7 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(driver.calls.length, before);
   });
 
-  it("migrates legacy alias copies into one canonical target record", async () => {
+  it("retains and quarantines legacy browser aliases with no recoverable ownership", async () => {
     const driver = new TypedBrowserDriver();
     const home = await mkdtemp(join(tmpdir(), "opensky-legacy-targets-"));
     const legacy = {
@@ -1200,14 +1200,14 @@ describe("OpenSky typed-browser contract", () => {
       browserStabilityTimeoutMs: 0,
     });
 
-    const state = await opensky.get_app_state({ app: "Google Chrome", query: "Submit", includeScreenshot: false });
-    assert.match(state.target?.handle ?? "", /^tgt_[a-f0-9]{20}$/);
-    const persisted = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
-    assert.equal(persisted.version, 2);
-    assert.equal(Object.keys(persisted.targets).length, 1);
-    assert.equal(persisted.aliases["google chrome"], persisted.aliases["com.google.chrome"]);
-    await opensky.close();
+    await assert.rejects(
+      opensky.get_app_state({ app: "Google Chrome", query: "Submit", includeScreenshot: false }),
+      (error: any) => error.code === "target_transport_unavailable",
+    );
+    assert.equal(driver.calls.length, 0, "unowned aliases must not grant observation or action authority");
+    await assert.rejects(opensky.close(), (error: any) => error.code === "browser_cleanup_unresolved");
     const after = JSON.parse(await readFile(join(home, "session.json"), "utf8"));
+    assert.deepEqual(after, legacy, "retain the original unresolved evidence, without adopting it");
     assert.deepEqual(after.managedBrowserSessions, ["legacy-browser-session"]);
     assert.equal(driver.calls.some((call) => call.tool === "end_session" && call.args.session === "legacy-browser-session"), false);
   });

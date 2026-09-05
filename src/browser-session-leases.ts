@@ -4,13 +4,25 @@ import { join } from "node:path";
 
 import { mkdirPrivate, writeFilePrivate, writeFilePrivateAtomic } from "./secure-fs.js";
 
-const LEASE_VERSION = 1;
+const LEASE_VERSION = 2;
 const LEASE_FILE = "lease.json";
 const LEASE_DIR = "browser-session-leases";
 const LEASE_NAME = /^([a-f0-9]{64})\.(\d+)\.([a-f0-9-]{36})\.lease$/;
 
+export type BrowserSessionLeaseTransport =
+  | { kind: "cli-explicit" }
+  | { kind: "mcp-proxy"; instanceId: string };
+
+export interface UnresolvedBrowserSessionLease {
+  path: string;
+  session?: string;
+  reason: "malformed" | "transport-mismatch" | "unclaimed";
+  ownerMayBeAlive: boolean | null;
+}
+
 interface BrowserSessionLease {
-  version: 1;
+  version: 2;
+  transport: BrowserSessionLeaseTransport;
   session: string;
   owner: {
     runtimeId: string;
@@ -43,7 +55,10 @@ export class BrowserSessionLeaseStore {
     readonly runtimeId: string,
     readonly pid: number = process.pid,
     private readonly createdAt: () => Date = () => new Date(),
+    private readonly transport: BrowserSessionLeaseTransport = { kind: "cli-explicit" },
   ) {
+    if (!parseTransport(transport)) throw new Error("Invalid browser lease transport.");
+    this.transport = { ...transport };
     this.directory = join(homeDir, LEASE_DIR);
   }
 
@@ -68,7 +83,8 @@ export class BrowserSessionLeaseStore {
   async importLegacy(session: string, ownerPid: number): Promise<void> {
     validateSession(session);
     if (!Number.isSafeInteger(ownerPid) || ownerPid <= 0) return;
-    const existing = (await this.entries()).some((entry) => entry.record.session === session);
+    // Even an unreadable record for this label must not acquire new authority.
+    const existing = (await this.names()).some((name) => name.startsWith(`${sessionHash(session)}.`));
     if (existing) return;
     await mkdirPrivate(this.directory);
     const hash = sessionHash(session);
@@ -79,6 +95,7 @@ export class BrowserSessionLeaseStore {
     try {
       const record: BrowserSessionLease = {
         version: LEASE_VERSION,
+        transport: { kind: "cli-explicit" },
         session,
         owner: { runtimeId, pid: ownerPid, createdAt: this.createdAt().toISOString() },
       };
@@ -96,11 +113,17 @@ export class BrowserSessionLeaseStore {
     await mkdirPrivate(this.directory);
     const claimed: string[] = [];
     for (const entry of await this.entries()) {
+      if (!sameTransport(entry.record.transport, this.transport)) continue;
       if (entry.pathPid === this.pid && entry.pathRuntimeId === this.runtimeId) {
+        if (this.transport.kind === "mcp-proxy" &&
+            (entry.record.owner.pid !== this.pid || entry.record.owner.runtimeId !== this.runtimeId)) continue;
         this.owned.set(entry.record.session, entry.path);
         claimed.push(entry.record.session);
         continue;
       }
+      // Proxy public labels belong to one live transport; process death does
+      // not make them addressable by a replacement proxy.
+      if (this.transport.kind === "mcp-proxy") continue;
       if (pidMayBeAlive(entry.pathPid)) continue;
       const destination = this.pathFor(entry.hash);
       try {
@@ -120,8 +143,37 @@ export class BrowserSessionLeaseStore {
   async release(session: string): Promise<void> {
     const path = this.owned.get(session);
     if (!path) return;
+    const entry = (await this.entries()).find((entry) => entry.path === path);
+    if (!entry || entry.record.session !== session ||
+        entry.pathPid !== this.pid || entry.pathRuntimeId !== this.runtimeId ||
+        (this.transport.kind === "mcp-proxy" &&
+          (entry.record.owner.pid !== this.pid || entry.record.owner.runtimeId !== this.runtimeId)) ||
+        !sameTransport(entry.record.transport, this.transport)) {
+      throw new Error("Browser lease ownership changed or is unreadable; record retained.");
+    }
     await rm(path, { recursive: true, force: true });
     this.owned.delete(session);
+  }
+
+  /** Read-only reconciliation report; a live foreign owner is not a leak. */
+  async unresolvedLeases(): Promise<UnresolvedBrowserSessionLease[]> {
+    const entries = new Map((await this.entries()).map((entry) => [entry.path, entry]));
+    const unresolved: UnresolvedBrowserSessionLease[] = [];
+    for (const name of await this.names()) {
+      const path = join(this.directory, name);
+      const entry = entries.get(path);
+      if (entry && this.owned.get(entry.record.session) === path &&
+          entry.pathPid === this.pid && entry.pathRuntimeId === this.runtimeId &&
+          (this.transport.kind === "cli-explicit" ||
+            (entry.record.owner.pid === this.pid && entry.record.owner.runtimeId === this.runtimeId)) &&
+          sameTransport(entry.record.transport, this.transport)) continue;
+      unresolved.push(entry ? {
+        path, session: entry.record.session,
+        reason: sameTransport(entry.record.transport, this.transport) ? "unclaimed" : "transport-mismatch",
+        ownerMayBeAlive: pidMayBeAlive(entry.pathPid),
+      } : { path, reason: "malformed", ownerMayBeAlive: null });
+    }
+    return unresolved;
   }
 
   private pathFor(hash: string): string {
@@ -131,6 +183,7 @@ export class BrowserSessionLeaseStore {
   private record(session: string): BrowserSessionLease {
     return {
       version: LEASE_VERSION,
+      transport: { ...this.transport },
       session,
       owner: {
         runtimeId: this.runtimeId,
@@ -140,18 +193,21 @@ export class BrowserSessionLeaseStore {
     };
   }
 
-  private async entries(): Promise<LeaseEntry[]> {
-    let names: string[];
+  private async names(): Promise<string[]> {
     try {
-      names = await readdir(this.directory);
+      return (await readdir(this.directory)).sort();
     } catch (error) {
       if (isMissing(error)) return [];
       throw error;
     }
+  }
+
+  private async entries(): Promise<LeaseEntry[]> {
     const entries: LeaseEntry[] = [];
-    for (const name of names.sort()) {
+    for (const name of await this.names()) {
       const match = LEASE_NAME.exec(name);
       if (!match) continue;
+      if (!Number.isSafeInteger(Number(match[2])) || Number(match[2]) <= 0) continue;
       const path = join(this.directory, name);
       let parsed: unknown;
       try {
@@ -162,6 +218,10 @@ export class BrowserSessionLeaseStore {
       }
       const record = parseLease(parsed);
       if (!record || sessionHash(record.session) !== match[1]) continue;
+      // Only CLI claims rename directories. A proxy owner/path disagreement
+      // cannot be a legitimate interrupted ownership transfer.
+      if (record.transport.kind === "mcp-proxy" &&
+          (record.owner.pid !== Number(match[2]) || record.owner.runtimeId !== match[3])) continue;
       entries.push({
         path,
         hash: match[1]!,
@@ -188,13 +248,33 @@ function parseLease(value: unknown): BrowserSessionLease | undefined {
   if (!owner || typeof owner !== "object" || Array.isArray(owner)) return undefined;
   const ownerRecord = owner as Record<string, unknown>;
   if (
-    record.version !== LEASE_VERSION ||
+    (record.version !== 1 && record.version !== LEASE_VERSION) ||
     typeof record.session !== "string" || !record.session ||
     typeof ownerRecord.runtimeId !== "string" || !/^[a-f0-9-]{36}$/.test(ownerRecord.runtimeId) ||
     !Number.isSafeInteger(ownerRecord.pid) || Number(ownerRecord.pid) <= 0 ||
     typeof ownerRecord.createdAt !== "string" || !Number.isFinite(Date.parse(ownerRecord.createdAt))
   ) return undefined;
-  return record as unknown as BrowserSessionLease;
+  // A v1 record is always the historical CLI transport, never the caller's.
+  const transport = record.version === 1
+    ? (record.transport === undefined ? { kind: "cli-explicit" } as const : undefined)
+    : parseTransport(record.transport);
+  if (!transport) return undefined;
+  return { version: 2, session: record.session, owner: ownerRecord as unknown as BrowserSessionLease["owner"], transport };
+}
+
+function parseTransport(value: unknown): BrowserSessionLeaseTransport | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  if (record.kind === "cli-explicit" && Object.keys(record).length === 1) return { kind: "cli-explicit" };
+  if (record.kind === "mcp-proxy" && Object.keys(record).length === 2 &&
+      typeof record.instanceId === "string" && record.instanceId.length > 0 && record.instanceId.length <= 512 &&
+      !/[\u0000-\u001f\u007f]/.test(record.instanceId)) return { kind: "mcp-proxy", instanceId: record.instanceId };
+  return undefined;
+}
+
+function sameTransport(a: BrowserSessionLeaseTransport, b: BrowserSessionLeaseTransport): boolean {
+  return a.kind === b.kind && (a.kind === "cli-explicit" ||
+    (b.kind === "mcp-proxy" && a.instanceId === b.instanceId));
 }
 
 function pidMayBeAlive(pid: number): boolean {

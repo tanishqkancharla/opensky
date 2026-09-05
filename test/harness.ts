@@ -32,6 +32,7 @@ export async function makeHarness() {
   });
   const opensky = createOpenSky({
     driver,
+    session: "opensky",
     homeDir: join(dir, "home"),
     screenshotDir: join(dir, "shots"),
     autoLaunch: true,

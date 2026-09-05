@@ -36,9 +36,21 @@ export type DriverTape = {
   calls: DriverTapeCall[];
 };
 
+export type ReplayCompatibility = {
+  /** Replay-only bridge for v1 calls recorded before OpenSky supplied its base session explicitly. */
+  kind: "v1_implicit_base_session";
+  baseSession: string;
+};
+
+export type ReplayCompatibilityReceipt = ReplayCompatibility & {
+  appliedCallIndices: number[];
+};
+
 /** Records the unmodified DriverClient result while canonicalizing volatile call arguments. */
 export class RecordingDriverClient implements DriverClient {
   readonly tape: DriverTape;
+
+  get sessionOwnership(): DriverClient["sessionOwnership"] { return this.delegate.sessionOwnership; }
 
   constructor(
     private readonly delegate: DriverClient,
@@ -87,11 +99,24 @@ export class RecordingDriverClient implements DriverClient {
 /** Strict, zero-latency replay of a recorded DriverClient call sequence. */
 export class ReplayDriverClient implements DriverClient {
   private cursor = 0;
+  private readonly appliedCompatibilityCalls: number[] = [];
 
-  constructor(readonly tape: DriverTape) {
+  constructor(
+    readonly tape: DriverTape,
+    private readonly options: { compatibility?: ReplayCompatibility } = {},
+  ) {
     if (tape.version !== DRIVER_TAPE_VERSION) {
       throw new Error(`Unsupported driver tape version ${String(tape.version)}.`);
     }
+    if (options.compatibility &&
+        (options.compatibility.kind !== "v1_implicit_base_session" || !options.compatibility.baseSession)) {
+      throw new Error("Replay compatibility requires a non-empty deterministic baseSession.");
+    }
+  }
+
+  get compatibilityReceipt(): ReplayCompatibilityReceipt | undefined {
+    const compatibility = this.options.compatibility;
+    return compatibility ? { ...compatibility, appliedCallIndices: [...this.appliedCompatibilityCalls] } : undefined;
   }
 
   async call(tool: string, args: Record<string, unknown> = {}): Promise<DriverResult> {
@@ -101,7 +126,9 @@ export class ReplayDriverClient implements DriverClient {
       throw new Error(`Driver tape exhausted at call ${index}: received ${tool}.`);
     }
     const actualArgs = canonicalizeDriverArgs(args);
-    if (expected.tool !== tool || stableJson(expected.args) !== stableJson(actualArgs)) {
+    const exactArgs = stableJson(expected.args) === stableJson(actualArgs);
+    const compatibleBaseSession = !exactArgs && this.matchesImplicitBaseSession(expected.args, actualArgs);
+    if (expected.tool !== tool || (!exactArgs && !compatibleBaseSession)) {
       throw new Error(
         [
           `Driver tape mismatch at call ${index}.`,
@@ -120,9 +147,11 @@ export class ReplayDriverClient implements DriverClient {
       const replayed = new OpenSkyError(expected.error, metadata.code,
         metadata.details === undefined ? undefined : boundedErrorDetails(metadata.details));
       replayed.name = metadata.name;
+      if (compatibleBaseSession) this.appliedCompatibilityCalls.push(index);
       this.cursor += 1;
       throw replayed;
     }
+    if (compatibleBaseSession) this.appliedCompatibilityCalls.push(index);
     this.cursor += 1;
     if (expected.error !== undefined) throw new Error(expected.error);
     if (!expected.result) throw new Error(`Driver tape call ${index} has neither result nor error.`);
@@ -141,6 +170,18 @@ export class ReplayDriverClient implements DriverClient {
         `Driver tape has ${this.tape.calls.length - this.cursor} unused call(s), starting at call ${this.cursor}.`,
       );
     }
+  }
+
+  private matchesImplicitBaseSession(
+    expectedArgs: Record<string, unknown>,
+    actualArgs: Record<string, unknown>,
+  ): boolean {
+    const compatibility = this.options.compatibility;
+    if (!compatibility || compatibility.kind !== "v1_implicit_base_session") return false;
+    if (Object.prototype.hasOwnProperty.call(expectedArgs, "session")) return false;
+    if (actualArgs.session !== compatibility.baseSession) return false;
+    const { session: _baseSession, ...withoutSession } = actualArgs;
+    return stableJson(expectedArgs) === stableJson(withoutSession);
   }
 }
 
