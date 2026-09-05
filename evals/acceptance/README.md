@@ -10,6 +10,26 @@ arm can be scored from its own visible evidence and cleanup receipts. The
 current serial runner and independent review workflow remain in
 `work/eval-scripts`; that external integration re-exports this corpus.
 
+## Native baseline reuse
+
+As requested on 2026-09-05, capture a native Computer Use session once per task
+and reuse that evidence for later OpenSky iterations. Do not rerun native on
+every patch. A new task needs its own baseline; a changed native implementation
+must not be silently represented by an older baseline.
+
+Comparisons must identify the original native run, date, model, reasoning,
+tool version when available, and hashed source artifacts. Match the exact task
+prompt and oracle. Preserve original timestamps and distinguish a reused
+baseline from a fresh paired run; never copy historical observations into a new
+run and describe them as newly executed. Dynamic-site state, browser profiles,
+and provider token accounting remain explicit comparison caveats.
+
+Only the frozen task goes to the Pi model. Baseline answers and observations
+are post-hoc comparison evidence, never instructions or a correctness oracle
+for a new arm. Grade each arm against its own observations and cleanup. Report
+efficiency only after correctness, grounding, policy and cleanup pass. Keep live
+GUI runs serial and clean their exact owned resources after each attempt.
+
 The corpus and its contract tests are repository-native, but their presence or
 a passing unit test is not CI acceptance-score evidence. A score is evidence
 only when a real-driver run records the public trace, exact cleanup, metrics,
