@@ -21,3 +21,12 @@ absent after a verified drain and inactive receipt. An inactive driver session
 alone cannot prove that a native window disappeared: native-window cases need
 separate exact window identity-and-absence evidence, including any
 evaluator-created prerequisite window, before cleanup can pass.
+
+`payload-metrics.ts` provides pure public-transcript metrics: serialized
+argument/result character counts, model-visible text characters, image-block
+counts, and available encoded-image character counts. Host-only metadata stays
+separate from model-visible content; these character counts are not token or
+image-cost estimates. Missing or malformed public-call counts remain unknown,
+not zero. Repository tests cover these contracts, and the external transcript
+renderer imports them through a compatibility re-export. No historical run
+artifacts are rewritten by these helpers.
