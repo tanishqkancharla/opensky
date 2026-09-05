@@ -13,12 +13,13 @@ import {
 } from "./eval-case.js";
 import { ComputerUseHarness, type ModelSelector } from "./harness.js";
 import { claimEvalVm } from "./vm.js";
+import { CuaDriverClient } from "../src/driver.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..");
 const evalsRoot = here;
 const HARNESSES: EvalHarnessName[] = ["opensky", "cua-driver", "codex"];
-const DEFAULT_MODEL: ModelSelector = "openai/gpt-5.6-sol";
+const DEFAULT_MODEL: ModelSelector = "openai/gpt-5.6-terra";
 
 type CliOptions = {
   outputDir: string;
@@ -27,6 +28,8 @@ type CliOptions = {
   fileFilters: string[];
   namePattern: string | null;
   timeoutMs: number;
+  local: boolean;
+  list: boolean;
 };
 
 const HELP = `opensky evals — compare computer-use harnesses on Cua Fleet VMs
@@ -42,6 +45,8 @@ Options:
   --output <dir>        Run directory (default: evals/runs/<timestamp>)
   --timeout <ms>        Per-case timeout (default: 180000)
   --help, -h             Show this help
+  --local               Use this machine's real Cua Driver (no Fleet or VM)
+  --list                Validate and list cases without running agents or GUI
 
 Environment:
   FLEETS_TOKEN or CUA_CLIENT_ID + CUA_CLIENT_SECRET
@@ -62,16 +67,31 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
   if (files.length === 0) throw new Error("No eval files matched.");
   const cases = selectCases(await importEvalFiles(files), options.namePattern);
   if (cases.length === 0) throw new Error("No eval cases matched.");
+  if (process.env.CI && cases.some((item) => item.only)) throw new Error("evalCase.only is forbidden in CI");
+  if (options.list) {
+    for (const item of cases) process.stdout.write(`${item.name}\n`);
+    return 0;
+  }
 
   await mkdir(options.outputDir, { recursive: true });
   const startedAt = new Date().toISOString();
   const results: CaseResult[] = [];
+  if (options.local) {
+    if (options.harnesses.some((name) => name !== "opensky")) throw new Error("--local currently supports --harness opensky only; native parity needs a provisioned native plugin.");
+    const driver = new CuaDriverClient({ binaryPath: process.env.CUA_DRIVER_BINARY, socket: process.env.CUA_DRIVER_SOCKET, autoInstall: false, autoStart: false });
+    const status = await driver.status();
+    const permissions = await driver.permissionStatus();
+    await writeFile(join(options.outputDir, "preflight.json"), JSON.stringify({ status, permissions }, null, 2));
+    if (!status.running) throw new Error("Infrastructure failure: real Cua Driver is not running. See preflight.json.");
+    // AX/screenshot capability is exercised by the real cases; never replace it with a mock.
+  }
 
   for (const evalCase of cases) {
     for (const harnessName of options.harnesses) {
       process.stdout.write(`\n▶ ${evalCase.name} [${harnessName}]\n`);
       const result = await runCase(evalCase, harnessName, options);
       results.push(result);
+      await writeFile(join(options.outputDir, "summary.json"), `${JSON.stringify(buildSummary(results, options, startedAt), null, 2)}\n`);
       if (result.status === "completed") {
         process.stdout.write(
           `✓ ${evalCase.name} [${harnessName}] ${result.score.passed}/${result.score.total} (${result.score.percent}%)\n`,
@@ -79,7 +99,10 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
       } else {
         process.stdout.write(`✗ ${evalCase.name} [${harnessName}]\n${result.error ?? "error"}\n`);
       }
+      // An error can include uncertain cleanup. Do not expose the next case to leftovers.
+      if (result.status === "error") break;
     }
+    if (results.at(-1)?.status === "error") break;
   }
 
   const summary = buildSummary(results, options, startedAt);
@@ -87,7 +110,7 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
   await writeFile(join(options.outputDir, "summary.md"), `${renderSummaryMarkdown(summary)}\n`);
   process.stdout.write(`\n${renderSummaryMarkdown(summary)}\n`);
   process.stdout.write(`Wrote ${relative(repoRoot, options.outputDir)}/summary.json\n`);
-  return 0;
+  return results.some((result) => result.status !== "completed" || result.score.total === 0 || result.score.passed !== result.score.total) ? 1 : 0;
 }
 
 type CaseResult = {
@@ -118,25 +141,23 @@ async function runCase(
   const started = Date.now();
   let vm: Awaited<ReturnType<typeof claimEvalVm>> | null = null;
   try {
-    vm = await claimEvalVm();
+    if (!options.local) vm = await claimEvalVm();
     const workspace = join(caseDir, "workspace");
     await mkdir(workspace, { recursive: true });
     const harness = new ComputerUseHarness({
       cwd: workspace,
       model: options.model,
       harness: harnessName,
-      vm,
+      vm: vm ?? undefined,
+      timeoutMs: options.timeoutMs,
     });
-    const score = await withTimeout(
-      withEvalArtifactPaths(artifactPaths, async () => {
+    const score = await withEvalArtifactPaths(artifactPaths, async () => {
         const returned = await evalCase.run({ harness });
         if (!returned) {
           throw new Error("evalCase must return response.score([...]).");
         }
         return returned;
-      }),
-      options.timeoutMs,
-    );
+      });
     const result: CaseResult = {
       name: evalCase.name,
       harness: harnessName,
@@ -154,7 +175,7 @@ async function runCase(
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return {
+    const result: CaseResult = {
       name: evalCase.name,
       harness: harnessName,
       status: "error",
@@ -168,6 +189,8 @@ async function runCase(
         transcriptMarkdown: relative(options.outputDir, artifactPaths.transcriptMarkdown),
       },
     };
+    await writeFile(join(caseDir, "result.json"), `${JSON.stringify(result, null, 2)}\n`);
+    return result;
   } finally {
     await vm?.close();
   }
@@ -187,6 +210,9 @@ function buildSummary(results: CaseResult[], options: CliOptions, startedAt: str
   }
   return {
     generatedAt: new Date().toISOString(),
+    commit: process.env.GITHUB_SHA ?? null,
+    runId: process.env.GITHUB_RUN_ID ?? null,
+    environment: options.local ? "local-real-driver" : "fleet",
     startedAt,
     model: options.model,
     harnesses: options.harnesses,
@@ -212,9 +238,14 @@ function parseArgs(argv: string[]): CliOptions | null {
   let namePattern: string | null = null;
   let outputDir: string | null = null;
   let timeoutMs = 180_000;
+  let local = false;
+  let list = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--help" || arg === "-h") return null;
+    if (arg === "--") continue;
+    if (arg === "--local") { local = true; continue; }
+    if (arg === "--list") { list = true; continue; }
     if (arg === "--harness" || arg.startsWith("--harness=")) {
       const value = arg === "--harness" ? argv[++i] : arg.slice("--harness=".length);
       harnesses = value.split(",").map((item) => parseHarness(item.trim()));
@@ -235,6 +266,8 @@ function parseArgs(argv: string[]): CliOptions | null {
     }
   }
   return {
+    local,
+    list,
     outputDir: outputDir ? resolve(outputDir) : join(evalsRoot, "runs", timestamp()),
     harnesses,
     model,
@@ -302,24 +335,8 @@ function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise((resolvePromise, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Case timed out after ${timeoutMs}ms`)), timeoutMs);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolvePromise(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
-
 if (import.meta.main) {
-  main().catch((error) => {
+  main().then((code) => { process.exitCode = code; }).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });

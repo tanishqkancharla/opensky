@@ -1016,10 +1016,14 @@ export class OpenSky implements OpenSkyApi {
         ...(ref ? { ref } : {}),
       });
       const status = asRecord(result.structured);
+      // Recent Cua releases project action receipts into the public contract,
+      // removing legacy target/path fields after validating the exact request.
+      const projectedDelivery = status?.route === "trusted_input" &&
+        asRecord(status.delivery)?.mode === "background" && status.effect === "unverifiable";
       if (
-        status?.status !== "ok" || status.target_id !== browser.targetId ||
+        !projectedDelivery && (status?.status !== "ok" || status.target_id !== browser.targetId ||
         status.tab_id !== browser.tabId || status.path !== "cdp_input" ||
-        status.effect !== "unverifiable"
+        status.effect !== "unverifiable")
       ) {
         throw new OpenSkyError(
           "Exact-tab key delivery returned an ambiguous acknowledgement and may have completed. " +

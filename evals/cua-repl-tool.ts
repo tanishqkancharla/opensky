@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { Type } from "typebox";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 
-import { AsyncRepl } from "../src/async-repl.js";
+import { AsyncRepl, AsyncReplError } from "../src/async-repl.js";
 import { createCua, type App, type Browser, type Tab } from "../src/cua.js";
 import { createOpenSky } from "../src/opensky.js";
 import type { DriverClient, OpenSkyOptions, OpenSkyTarget } from "../src/types.js";
@@ -60,7 +60,16 @@ export function createCuaReplToolRuntime(
       "Run JavaScript in a persistent, sandboxed native-style Computer Use session. The `cua` object is preloaded. " +
       "Use `await cua.getApp(name)` for native apps or `await cua.createBrowserTab('chrome', url)` for a new exact owned tab. " +
       "The current bound-browser lifecycle is also available through `await cua.getBrowser(...)` and `browser.tabs.new/get/list/selected`. " +
+      "Tab inventories include only this facade's owned tabs. An empty list does not establish that the user has no other tabs or windows. " +
       "Bindings persist across calls. Batch deterministic target actions and finish with getAXState(); action methods do not observe automatically. " +
+      "Target methods: getAXState({disableDiffing?, query?, emit?}), getScreenshot({emit?}), getAXStateAndScreenshot({emit?}), " +
+      "click(indexOrCoordinates), typeText(text), pressKey(key), scroll(indexOrCoordinates, direction, pages?), " +
+      "setValue(index, value), selectText(index, text, options?), drag(fromCoordinates, toCoordinates), performSecondaryAction(index, action). " +
+      "Tabs additionally expose goto(url), back(), forward(), reload(), close(). Use numeric indices from fresh AX state; there are no Playwright locators. " +
+      "For a browser field that exposes type but not click, use setValue(index, text) to replace its contents directly; do not click a non-clickable field. " +
+      "Creation and observation methods emit their results automatically; do not console.log them or repeat getAXState after creation. " +
+      "Observations wait for settled state; timers such as setTimeout are unavailable and unnecessary. " +
+      "If an actionable item is omitted from a large page, getAXState({query: 'relevant text'}) returns fresh matching controls. " +
       "The sandbox has no process, require, filesystem, dynamic import, eval/Function code generation, or network API.",
     executionMode: "sequential",
     parameters: Type.Object({
@@ -86,6 +95,17 @@ export function createCuaReplToolRuntime(
             result: encodeBridgeValue(result.value),
             logs: result.logs,
           },
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const logs = error instanceof AsyncReplError ? error.logs : [];
+        return {
+          isError: true,
+          content: [
+            ...[...activeEmissions, ...logs].flatMap((value) => renderValue(value, emittedImages)),
+            { type: "text" as const, text: `Error: ${message}\nEarlier actions in this cell may have completed. Existing bindings remain available; use the emitted state before retrying.` },
+          ],
+          details: { title: params.title, code: params.code, emissions: activeEmissions.length, cuaCalls: activeBridgeCalls, logs, runtimeError: message },
         };
       } finally {
         activeEmissions = undefined;

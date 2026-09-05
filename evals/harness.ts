@@ -1,4 +1,5 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   convertToLlm,
@@ -18,32 +19,45 @@ import {
   recordTranscriptMarkdown,
 } from "./artifacts.js";
 import type { EvalHarness, EvalHarnessName, EvalResponse, EvalScore } from "./eval-case.js";
+import { RecordingDriverClient } from "./driver-tape.js";
 import { FleetMcpDriver } from "./mcp-driver.js";
-import { createOpenSkyToolRuntime, CUA_DRIVER_TOOL_NAMES, cuaDriverTools, OPENSKY_TOOL_NAMES } from "./tools.js";
+import {
+  createCuaReplToolRuntime,
+  CUA_DRIVER_TOOL_NAMES,
+  CUA_REPL_TOOL_NAMES,
+  cuaDriverTools,
+} from "./tools.js";
 import type { EvalVm } from "./vm.js";
+import { CuaDriverClient } from "../src/driver.js";
+import { detectTarget } from "../src/platform.js";
 
 export type ModelSelector = `${string}/${string}`;
 
-const DEFAULT_MODEL: ModelSelector = "openai/gpt-5.6-sol";
+const DEFAULT_MODEL: ModelSelector = "openai/gpt-5.6-terra";
+const DEFAULT_SESSION_TIMEOUT_MS = 180_000;
+const SESSION_TEARDOWN_TIMEOUT_MS = 10_000;
 
 export type PiHarnessOptions = {
   cwd: string;
-  model: ModelSelector;
+  model?: ModelSelector;
   harness: EvalHarnessName;
-  vm: EvalVm;
+  vm?: EvalVm;
+  timeoutMs?: number;
 };
 
 export class ComputerUseHarness implements EvalHarness {
   readonly name: EvalHarnessName;
   private readonly cwd: string;
   private readonly model: ModelSelector;
-  private readonly vm: EvalVm;
+  private readonly vm?: EvalVm;
+  private readonly timeoutMs: number;
 
   constructor(options: PiHarnessOptions) {
     this.name = options.harness;
     this.cwd = options.cwd;
-    this.model = options.model;
+    this.model = options.model ?? DEFAULT_MODEL;
     this.vm = options.vm;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
   }
 
   async send(prompt: string): Promise<EvalResponse> {
@@ -54,13 +68,25 @@ export class ComputerUseHarness implements EvalHarness {
   }
 
   private async sendPi(prompt: string): Promise<EvalResponse> {
-    const driver = new FleetMcpDriver(this.vm);
-    const openskyRuntime = this.name === "opensky" ? createOpenSkyToolRuntime(driver, this.vm.os) : undefined;
-    const customTools = openskyRuntime?.tools ?? cuaDriverTools(driver);
-    const toolNames = this.name === "opensky" ? [...OPENSKY_TOOL_NAMES] : [...CUA_DRIVER_TOOL_NAMES];
+    const local = !this.vm;
+    const privateHome = await mkdtemp(join(tmpdir(), "opensky-eval-home-"));
+    let driver: RecordingDriverClient | undefined;
+    let openskyRuntime: ReturnType<typeof createCuaReplToolRuntime> | undefined;
     let result: Awaited<ReturnType<typeof runPiSession>> | undefined;
     let runError: unknown;
+    let cleanupError: unknown;
+    let runtimeCleanupSucceeded = false;
     try {
+      const baseDriver = local ? localDriver() : new FleetMcpDriver(this.vm!);
+      driver = new RecordingDriverClient(baseDriver, {
+        backend: local ? "local-real-driver" : "fleet",
+        target: local ? detectTarget() : this.vm!.os,
+      });
+      openskyRuntime = this.name === "opensky"
+        ? createCuaReplToolRuntime(driver, local ? detectTarget() : this.vm!.os, { homeDir: privateHome })
+        : undefined;
+      const customTools = openskyRuntime?.tools ?? cuaDriverTools(driver);
+      const toolNames = this.name === "opensky" ? [...CUA_REPL_TOOL_NAMES] : [...CUA_DRIVER_TOOL_NAMES];
       result = await runPiSession({
         cwd: this.cwd,
         model: this.model,
@@ -70,29 +96,69 @@ export class ComputerUseHarness implements EvalHarness {
         noTools: "builtin",
         tools: toolNames,
         customTools,
+        timeoutMs: this.timeoutMs,
       });
     } catch (error) {
       runError = error;
-    }
-    if (result) {
-      const { startedAt, finishedAt, transcript } = result;
-      recordTranscriptMarkdown({
-        source: "agent",
-        prompt,
-        transcript: transcript || "(empty agent output)",
-        startedAt,
-        finishedAt,
-      });
-    }
-    let cleanupError: unknown;
-    try {
-      await openskyRuntime?.close();
-    } catch (error) {
-      cleanupError = error;
-      recordAgentEvent({
-        type: "opensky_cleanup_error",
-        error: error instanceof Error ? error.message : String(error),
-      });
+    } finally {
+      if (result) {
+        const { startedAt, finishedAt, transcript } = result;
+        recordTranscriptMarkdown({
+          source: "agent",
+          prompt,
+          transcript: transcript || "(empty agent output)",
+          startedAt,
+          finishedAt,
+        });
+      }
+      try {
+        await bounded(openskyRuntime?.close(), SESSION_TEARDOWN_TIMEOUT_MS, "OpenSky cleanup");
+        runtimeCleanupSucceeded = true;
+      } catch (error) {
+        cleanupError = error;
+        recordAgentEvent({
+          type: "opensky_cleanup_error",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      let privateHomeStatus: { status: "removed" } | { status: "retained"; path: string } = {
+        status: "retained",
+        path: privateHome,
+      };
+      if (runtimeCleanupSucceeded) {
+        try {
+          await rm(privateHome, { recursive: true, force: true });
+          privateHomeStatus = { status: "removed" };
+        } catch (error) {
+          cleanupError = cleanupError
+            ? new AggregateError([cleanupError, error], "OpenSky cleanup and private-home removal failed")
+            : error;
+        }
+      }
+      try {
+        const paths = getEvalArtifactPaths();
+        if (paths) {
+          const caseDir = dirnameOf(paths.transcript);
+          if (driver) {
+            await writeFile(join(caseDir, "driver-tape.json"), `${JSON.stringify(driver.tape, null, 2)}\n`);
+          }
+          await writeFile(join(caseDir, "cleanup.json"), `${JSON.stringify({
+            finishedAt: new Date().toISOString(),
+            backend: local ? "local-real-driver" : "fleet",
+            target: local ? detectTarget() : this.vm!.os,
+            runtimeClose: openskyRuntime
+              ? runtimeCleanupSucceeded
+                ? { status: "completed" }
+                : { status: "failed", error: errorMessage(cleanupError) }
+              : { status: "not-applicable" },
+            privateHome: privateHomeStatus,
+          }, null, 2)}\n`);
+        }
+      } catch (error) {
+        cleanupError = cleanupError
+          ? new AggregateError([cleanupError, error], "OpenSky cleanup and driver-tape recording failed")
+          : error;
+      }
     }
     if (runError && cleanupError) {
       throw new AggregateError([runError, cleanupError], "Pi session and OpenSky cleanup both failed");
@@ -112,6 +178,11 @@ export class ComputerUseHarness implements EvalHarness {
   }
 
   private async sendCodex(prompt: string): Promise<EvalResponse> {
+    if (!this.vm) {
+      throw new Error(
+        "The local Codex harness is disabled: provision and select the native Computer Use plugin explicitly before claiming parity.",
+      );
+    }
     const startedAt = new Date().toISOString();
     const quoted = JSON.stringify(prompt);
     const modelId = this.model.includes("/") ? this.model.slice(this.model.indexOf("/") + 1) : this.model;
@@ -175,6 +246,7 @@ export class ComputerUseHarness implements EvalHarness {
             model: this.model,
             sessionId: opts.sessionId,
           },
+          timeoutMs: this.timeoutMs,
         }),
     };
   }
@@ -183,15 +255,11 @@ export class ComputerUseHarness implements EvalHarness {
 function agentSystemPrompt(harness: EvalHarnessName): string {
   if (harness === "opensky") {
     return [
-      "You operate a remote desktop through the opensky tools only.",
+      "You operate a desktop through the cua_repl tool only.",
       "Do not use bash, osascript, cliclick, or any other computer-control path.",
-      "Call get_app_state directly when the task names or clearly implies an app; it resolves and launches display names, paths, or bundle ids.",
-      "Use list_apps only after direct resolution fails or when the task itself requires app discovery.",
-      "Use open_target when the task supplies a file, folder, or URL to open; get_app_state.app identifies an application, not a document.",
-      "Actions return settled post-action AX state by default; derive fresh indices from it instead of immediately calling get_app_state again.",
-      "Use perform_actions for a short deterministic sequence when no intermediate result is needed to choose the next target; it settles and observes once after the sequence.",
-      "Use get_app_state separately for initial state, recovery, or an explicitly needed screenshot. First state is full and later states are compact diffs.",
-      "Choose an action screenshot only when its visual result matters; avoid repeated screenshots once AX answers the question, and reuse the prior image when told it is unchanged.",
+      "Use the preloaded cua facade and keep bindings across calls.",
+      "Call cua.getApp(name) directly for a named native app or cua.createBrowserTab(browser, url) for a new exact owned browser tab.",
+      "Use getAXState after actions when you need fresh evidence; action methods do not observe automatically.",
       "Interact only with applications named or required by the task.",
     ].join(" ");
   }
@@ -208,6 +276,7 @@ export async function scoreTranscript(opts: {
   cwd: string;
   model: ModelSelector;
   agent: { prompt: string; model: string; sessionId: string };
+  timeoutMs?: number;
 }): Promise<EvalScore> {
   const criteria = opts.criteria.map((item) => item.trim()).filter(Boolean);
   if (criteria.length === 0) {
@@ -243,6 +312,7 @@ export async function scoreTranscript(opts: {
       "You are an eval judge. Inspect CASE_DIR artifacts with read/bash. Reply with JSON only.",
     tools: ["read", "bash"],
     customTools: [],
+    timeoutMs: opts.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS,
   });
 
   recordTranscriptMarkdown({
@@ -278,6 +348,7 @@ async function runPiSession(opts: {
   noTools?: "all" | "builtin";
   tools?: string[];
   customTools: Parameters<typeof createAgentSession>[0] extends { customTools?: infer T } ? NonNullable<T> : never;
+  timeoutMs: number;
 }): Promise<{
   sessionId: string;
   events: AgentSessionEvent[];
@@ -323,16 +394,71 @@ async function runPiSession(opts: {
     else recordJudgeEvent(event);
   });
   const startedAt = new Date().toISOString();
+  let promptSettled = false;
+  const promptPromise = session.prompt(opts.prompt).finally(() => {
+    promptSettled = true;
+  });
   try {
-    await session.prompt(opts.prompt);
+    await abortOnTimeout(session, promptPromise, opts.timeoutMs, `${opts.source} session`);
   } finally {
     unsubscribe();
+    if (!promptSettled) {
+      await bounded(session.abort(), SESSION_TEARDOWN_TIMEOUT_MS, `${opts.source} session abort`).catch(() => undefined);
+      await bounded(promptPromise.catch(() => undefined), SESSION_TEARDOWN_TIMEOUT_MS, `${opts.source} prompt settlement`).catch(() => undefined);
+    }
+    session.dispose();
   }
   const finishedAt = new Date().toISOString();
   const transcript = formatMessages(session.messages);
   const sessionId = session.sessionId;
-  session.dispose();
   return { sessionId, events, startedAt, finishedAt, transcript };
+}
+
+function localDriver(): CuaDriverClient {
+  return new CuaDriverClient({
+    binaryPath: process.env.CUA_DRIVER_BINARY?.trim() || undefined,
+    socket: process.env.CUA_DRIVER_SOCKET?.trim() || undefined,
+    autoInstall: false,
+    autoStart: false,
+  });
+}
+
+async function abortOnTimeout<T>(
+  session: { abort(): Promise<void> },
+  operation: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error ?? "unknown cleanup failure");
+}
+
+async function bounded<T>(operation: Promise<T> | undefined, timeoutMs: number, label: string): Promise<T | undefined> {
+  if (!operation) return undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function resolveModel(modelRuntime: ModelRuntime, selector: ModelSelector) {

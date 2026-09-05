@@ -4,6 +4,7 @@ import { inspect } from "node:util";
 import vm from "node:vm";
 import repl from "node:repl";
 import { PassThrough, Writable } from "node:stream";
+import { parse, type Node } from "acorn";
 
 export interface EvalResult {
   value: unknown;
@@ -165,8 +166,57 @@ export function wrapAsync(code: string): string {
     new Function(`return (${trimmed}\n);`);
     return `(async () => (${trimmed}\n))()`;
   } catch {
-    return `(async () => {\n${trimmed}\n})()`;
+    return `(async () => {\n${persistDeclarations(trimmed)}\n})()`;
   }
+}
+
+// Async cells need a wrapper, but its lexical scope must not discard the
+// bindings users create. Only program-level declarations become session
+// properties; nested functions and blocks retain normal lexical semantics.
+function persistDeclarations(code: string): string {
+  const program = parse(code, { ecmaVersion: "latest", allowAwaitOutsideFunction: true, allowReturnOutsideFunction: true });
+  type Ast = Node & Record<string, any>;
+  const pattern = (node: Ast): string => {
+    switch (node.type) {
+      case "Identifier":
+        if (["globalThis", "__openskyLogs"].includes(node.name)) throw new SyntaxError(`Reserved REPL binding ${node.name}`);
+        return `globalThis[${JSON.stringify(node.name)}]`;
+      case "RestElement": return `...${pattern(node.argument)}`;
+      case "AssignmentPattern": return `${pattern(node.left)} = ${code.slice(node.right.start, node.right.end)}`;
+      case "ArrayPattern": return `[${node.elements.map((child: Ast | null) => child ? pattern(child) : "").join(",")}${node.elements.at(-1) === null ? "," : ""}]`;
+      case "ObjectPattern": return `{${node.properties.map((property: Ast) => {
+        if (property.type === "RestElement") return pattern(property);
+        const key = code.slice(property.key.start, property.key.end);
+        return `${property.computed ? `[${key}]` : key}: ${pattern(property.value)}`;
+      }).join(",")}}`;
+      default: throw new SyntaxError(`Unsupported declaration pattern ${node.type}`);
+    }
+  };
+  const edits: Array<{ start: number; end: number; text: string }> = [];
+  const hoisted: string[] = [];
+  for (const statement of program.body as Ast[]) {
+    if (statement.type === "VariableDeclaration") {
+      edits.push({ start: statement.start, end: statement.end, text: statement.declarations.map((declaration: Ast) => {
+        if (!declaration.init && statement.kind === "var" && declaration.id.type === "Identifier") {
+          const target = pattern(declaration.id);
+          return `if (!Object.prototype.hasOwnProperty.call(globalThis, ${JSON.stringify(declaration.id.name)})) ${target} = undefined;`;
+        }
+        const value = declaration.init ? code.slice(declaration.init.start, declaration.init.end) : "undefined";
+        return `(${pattern(declaration.id)} = ${value});`;
+      }).join("\n") });
+    } else if ((statement.type === "FunctionDeclaration" || statement.type === "ClassDeclaration") && statement.id) {
+      const assignment = `${pattern(statement.id)} = (${code.slice(statement.start, statement.end)});`;
+      if (statement.type === "FunctionDeclaration") hoisted.push(assignment);
+      edits.push({ start: statement.start, end: statement.end,
+        text: statement.type === "FunctionDeclaration" ? "" : assignment });
+    }
+  }
+  const last = program.body.at(-1) as Ast | undefined;
+  if (last?.type === "ExpressionStatement") {
+    edits.push({ start: last.start, end: last.end, text: `return (${code.slice(last.expression.start, last.expression.end)});` });
+  }
+  for (const edit of edits.sort((a, b) => b.start - a.start)) code = code.slice(0, edit.start) + edit.text + code.slice(edit.end);
+  return hoisted.join("\n") + "\n" + code;
 }
 
 export function isRecoverableSyntaxError(error: unknown): boolean {
@@ -313,6 +363,7 @@ function createSandbox(context: Record<string, unknown>, allowNodeApis: boolean,
   // A get-trapping Proxy would shadow those intrinsics and make Object/JSON/etc.
   // unavailable; host values are already excluded above in strict mode.
   if (strictSandbox) return store as Record<string, unknown>;
+  store.globalThis = store;
   return new Proxy(store, {
     has(target, prop) {
       if (prop === Symbol.unscopables) return false;
@@ -383,7 +434,13 @@ function initializeStrictSandbox(context: vm.Context): void {
     globalThis.__openskyLogs = [];
     const format = (value) => {
       if (typeof value === "string") return value;
-      try { return JSON.stringify(value); } catch { return String(value); }
+      try {
+        return JSON.stringify(value, (_key, child) =>
+          ArrayBuffer.isView(child)
+            ? "[" + child.constructor.name + ": " + child.byteLength + " bytes]"
+            : child
+        );
+      } catch { return String(value); }
     };
     const write = (...values) => globalThis.__openskyLogs.push(values.map(format).join(" "));
     globalThis.console = Object.freeze({ log: write, info: write, warn: write, error: write, debug: write, dir: write });

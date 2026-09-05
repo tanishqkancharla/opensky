@@ -1,5 +1,12 @@
 # opensky
 
+REPL cells preserve top-level variable, function, and class declarations across
+calls. Top-level variables are mutable session bindings, including declarations
+written with `const`, and may be redeclared in later cells. Nested blocks and
+functions retain JavaScript lexical scope. `globalThis` and `__openskyLogs` are
+reserved declaration names. Screenshot bytes printed to the strict evaluator's
+console are summarized; observation methods attach the image directly.
+
 `opensky` is an open computer-use library, async Node REPL, and agent skill backed by [Cua Driver](https://cua.ai/cua-driver) (`cua-driver call …`). It includes a native-style `cua` facade and preserves the original flat `opensky` API. The facade intentionally reports unsupported operations instead of claiming complete `@oai/sky` coverage.
 
 ```js

@@ -1,0 +1,73 @@
+name: Computer-use evals
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 9 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+      - run: npm ci
+      - run: npm run build
+      - run: bun evals/cli.ts browser.eval.ts --list
+      - run: bun test test/eval-tools.test.ts test/eval-report.test.ts
+
+  real-driver:
+    # Never expose model credentials to pull-request code. Scheduled runs use default branch.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/codex/readable-evals-ci')
+    needs: validate
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+      - run: npm ci
+      - name: Install real driver
+        env:
+          CUA_DRIVER_RS_VERSION: ${{ vars.CUA_DRIVER_RS_VERSION }}
+        run: |
+          mkdir -p evals/runs/ci
+          curl --fail --silent --show-error --location https://cua.ai/driver/install.sh -o "$RUNNER_TEMP/cua-install.sh"
+          bash "$RUNNER_TEMP/cua-install.sh"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          open -n -g -a CuaDriver --args serve
+      - name: Real desktop capability probe
+        run: bun evals/ci-preflight.ts
+      - name: Evaluate OpenSky with Terra (serial cases)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          test -n "$OPENAI_API_KEY" || { echo 'Missing OPENAI_API_KEY repository secret'; exit 1; }
+          bun evals/cli.ts browser.eval.ts --local --harness opensky --model openai/gpt-5.6-terra --timeout 180000 --output evals/runs/ci
+      - name: Record score summary
+        if: always()
+        run: bun evals/report.ts evals/runs/ci >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evals-${{ github.sha }}-${{ github.run_attempt }}
+          path: evals/runs/ci
+          retention-days: 30
+          if-no-files-found: error
