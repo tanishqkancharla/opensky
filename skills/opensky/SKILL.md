@@ -44,6 +44,15 @@ The facade exposes exact target objects and camelCase methods. `getAXState()` is
 
 The legacy API remains available:
 
+For browser context omitted by a filtered query, use `tab.getAXState({context: index})`
+with a current action or read-only content index. This reads the same stored
+snapshot, not a fresh capture. Returned group indices read a group's beginning;
+enclosing-group indices move outward. Respect before/after omissions and frame
+boundaries before inferring order. Read-only anchors cannot receive input.
+Do not combine context with query or screenshots; after input, observe fresh
+state first. This extension requires the context-capable personal-fork helper;
+an unsupported helper fails closed and requires a fresh observation.
+
 Refresh state after every action (or a short related group). Element indices are snapshots and go stale when the UI changes.
 
 ```js
@@ -88,7 +97,7 @@ Prefer display names for actions when a bundle id looks ineffective. Always re-s
 opensky.target                    // "mac" | "win" | "linux"
 
 await opensky.list_apps()
-await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query? })
+await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index? })
 await opensky.open_target({ app, targets, includeScreenshot?, query? })
 await opensky.navigate({ app, url?, action?: "back" | "forward" | "reload", includeScreenshot?, query? }) // exactly one of url/action
 await opensky.close_target({ app })
@@ -114,15 +123,21 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 
 `id` is the bundle id when the helper provides one, otherwise the launch path. Kernel/system processes without app metadata are omitted. `lastUsedDate` is unix seconds. `useCount` is included when the helper reports it.
 
-### `get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query? })`
+### `get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index? })`
 
 Returns `{ app, targetHandle, text, screenshot, target? }`. `target` truthfully separates requested resources, native-window correlation, current AX document identity, and browser-tab verification. For an explicit resource, `target.handle` equals `targetHandle`. Treat `tab.status: "unverified"` literally; a new native window does not prove a new browser tab.
 
 For an exact typed browser on a large page, pass `query` when the outline names a needed item but its action was omitted by the semantic budget. The result is a fresh, narrowed state with current actionable indices; use those indices instead of guessing. Query is read-only and unavailable for native app bindings.
 Semantic link entries may include safe resolved `url=` metadata. Use it to understand destinations without unnecessary navigation; continue to act through the opaque current-state element index.
 
+`context_element_index` is the legacy spelling of the facade's `context` option.
+It returns bounded stored-snapshot context with `target.document.freshness: "stored"`.
+It never settles or captures a new page, grants input authority, or proves content
+has not changed since capture. Group completeness covers materialized nodes in
+the proven group/frame only; virtualized extent remains unknown.
+
 - `app` is the launch path when known, otherwise the display name.
-- `text` is the accessibility tree for the **main document window**, including menu-bar elements exposed by the helper. With `disableDiff: true` this is always the full tree. Repeated calls without that flag return a compact native-style diff with stable public element indices.
+- `text` is the accessibility view for the **main document window**, including menu-bar elements exposed by the helper. `disableDiff: true` disables diffing, not collection/rendering limits or query/context scope. Repeated fresh calls without that flag return a compact native-style diff with stable public element indices.
 - `screenshot` is `{ url, width?, height?, scale?, format? }` using a `file:` URL, or `null`. Pass `includeScreenshot: false` when AX alone is sufficient. `scale` is `2` for typical Retina captures when the window frame is known.
 - Read PNG bytes with `await readFile(pathToFileURL(state.screenshot.url))`.
 - OpenSky automatically waits briefly after actions, rechecks typed browser semantics with a bounded stability budget, revives expired helper sessions, and retries temporary degraded AX snapshots. If AX remains unavailable, use coordinates from the returned screenshot or bring the window onto the current desktop and call `get_app_state` again.

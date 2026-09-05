@@ -33,10 +33,24 @@ Backfill scope is necessarily bounded. It covers the repository history through 
 | LIB-012 | Saturated native AX trees hid later controls; full web trees and auxiliary help/action text consumed excessive context. | Preserve shallow native controls with explicit incomplete coverage, bound help text, compact passive action hints, reset at document boundaries, and separate driver completeness from renderer completeness. | Native shallow projection is **live-confirmed** by Activity Monitor epoch-17; web compaction/help bounding was exercised in browser tasks and is **contract-confirmed** in [`test/opensky.test.ts`](../test/opensky.test.ts). See [ab88cb3](https://github.com/tanishqkancharla/opensky/commit/ab88cb3148f797c91b9373287f7b30e1d94eb640), [23078a9](https://github.com/tanishqkancharla/opensky/commit/23078a993e50694c8abc43f3dff4ddc419e24fcb), [814e169](https://github.com/tanishqkancharla/opensky/commit/814e1692b94ccc7c7dacbd236555299dbffed6df). Native shallow projection and browser semantic selection are distinct limitations. |
 | LIB-013 | Early browser automation could reuse/restored tabs, fall through to native input, or guess the page scroller. | Driver-owned isolated Chromium sessions, exact target/tab binding, exact navigation/input, main-document scroll disambiguation, and no native fallback. | Isolated-session navigation, observation, and semantic input were **live-confirmed** across epochs 18–35; binding, no-fallback, and scroll-disambiguation safety branches are **contract-confirmed** in [`test/typed-browser.test.ts`](../test/typed-browser.test.ts). See [88858c1](https://github.com/tanishqkancharla/opensky/commit/88858c19571362a4d193552bbe9c75b7f45cb7f3), [b9b998e](https://github.com/tanishqkancharla/opensky/commit/b9b998e1013173534fe8124329a1e4d924491c50), [4ca99ad](https://github.com/tanishqkancharla/opensky/commit/4ca99ad08905ded039e5dd782cbea86f0cb7cb3d). Coordinate-scroll delivery still has the live gap in DRV-002. |
 | LIB-014 | The first native-style facade lacked current Browser-versus-Tab ergonomics and could invite invalid calls or unnecessary observations. | Bound `Browser.tabs.new/get/list/selected`, `nameSession`, exact `Tab.close`, installed-provider discovery, top-level known-URL shortcut, and pre-dispatch argument validation. Inventories are explicitly facade-owned-only; unsupported capabilities throw. | **Contract-confirmed**, with invalid-argument **boundary confirmation** against the real helper in epoch 27. See [`src/cua.ts`](../src/cua.ts), [`test/cua.test.ts`](../test/cua.test.ts), [`test/cua-repl-tool.test.ts`](../test/cua-repl-tool.test.ts), [58bc18a](https://github.com/tanishqkancharla/opensky/commit/58bc18abc0306c46e5e760173709715b4f17da31), [1d33c0c](https://github.com/tanishqkancharla/opensky/commit/1d33c0c409f224031e1ebc667e6e0ea3e5335fd1), [2a477eb](https://github.com/tanishqkancharla/opensky/commit/2a477eb7e3c3f010d5ea5e8490875086d67ebe69), [aba84df](https://github.com/tanishqkancharla/opensky/commit/aba84dfd66092ed476ab5476e5136d328372e10a). In-app browser, hidden creation, host metadata without callbacks, and user-tab discovery remain unsupported. |
-| LIB-015 | Filtered semantic queries were easy to mistake for complete ordered context: returned match ancestors can omit sibling/group labels, leading-prefix coverage, and relative document order. Dense-page classification and “first” claims failed repeatedly even when recall found the queried title. | OpenSky now warns that queried state is matching content only and that action ranking is not page order. A same-snapshot collection-context driver extension is proposed, not implemented. | **Open**. Reproduced in e31–e35 Amazon; decisive Pi hard-gate failures in e32, e33, e34, and e35. Source investigation: [`../../e2e-epoch-32/driver-context-plan.md`](../../e2e-epoch-32/driver-context-plan.md). Warning fix [58afe0d](https://github.com/tanishqkancharla/opensky/commit/58afe0d5305356785b9e6d5865614fcb283b0358). HN e35 passed both arms because decisive leading rows survived; that does not close the general gap. Exact-phrase recall suppression was fixed separately in DRV-006. |
+| LIB-015 | Filtered semantic queries were easy to mistake for complete ordered context: returned match ancestors can omit sibling/group labels, leading-prefix coverage, and relative document order. Dense-page classification and “first” claims failed repeatedly even when recall found the queried title. | Query/ranking warnings remain. A same-snapshot context extension is now **implemented in the OpenSky facade and under driver validation**, using the user's personal fork. `getAXState({context: index})` reads bounded generic structure, exposes read-only group/parent anchors, and preserves old action capabilities. | **Open pending real-driver acceptance**. Reproduced across e31–e36 Amazon and e36 Wikipedia. OpenSky contract suite **289/289**; driver/integration/live verification is not yet complete. Contract: [`../../e2e-epoch-37/context-contract.md`](../../e2e-epoch-37/context-contract.md). Earlier warning fix [58afe0d](https://github.com/tanishqkancharla/opensky/commit/58afe0d5305356785b9e6d5865614fcb283b0358). HN e35 passed both arms because decisive leading rows survived; that does not close the general gap. Exact-phrase recall suppression was fixed separately in DRV-006. |
 | LIB-016 | The old browser renderer flattened depth, dropped named/stateful generic containers, deduplicated repeated labels across containers, and obscured omission boundaries. | Preserve source indentation, named/stateful containers and repeated labels; use a bare `-` only for unnamed generic containers; disclose separate outline/action budgets. | **Contract-confirmed**, offline-audited, and exercised live in e35—not blanket-accepted. [d46d848](https://github.com/tanishqkancharla/opensky/commit/d46d84840fd56cd5f1f3ee2ebebbc0097b027cf6), [`test/browser-rendering.test.ts`](../test/browser-rendering.test.ts), epoch-35 [`README.md`](../../e2e-epoch-35/README.md). HN passed both arms; Amazon Pi still failed ordered-context grounding. Across 64 saved observations, outline chars rose 7.6%; meaningful rows improved in 36, stayed equal in 11, and **fell in 17**, including 177 versus 194 on e34 Amazon. The driver-selected target was already absent, so rendering could not recover it. |
 | LIB-017 | A read-only control with an `AXTextField` role was described as directly editable even though it lacked settable/editable action evidence. | Emit direct-typing guidance only for controls with actual mutability evidence; hide unavailable action indices. | **Live-found** in epoch-10 System Information and **contract-confirmed** in [`test/opensky.test.ts`](../test/opensky.test.ts). This does not imply every text-like control is editable. |
 | LIB-018 | Exact-browser AX reads can transiently fail with a missing frame during navigation; broad retries could hide other failures or spend the action budget. | Retry only the recognized transient frame-read condition inside a bounded observation window, preserving the same exact target and arguments. | **Live-observed** as internal recovered reads in e32/e33 and **contract-confirmed** by [`test/typed-browser.test.ts`](../test/typed-browser.test.ts), [d869d05](https://github.com/tanishqkancharla/opensky/commit/d869d05acdec9106f3ce0d58e6d8072d43903f7f). It remains tool-layer latency even when the public call succeeds. |
+
+**LIB-019 — same-snapshot lifetime and authority:** independent source review of
+the new context path found input-in-flight and persistence-failure races, missing
+response-local anchor checks, and potentially unstable ordering domains. The
+host now fences typed browser mutations at dispatch and completion (including
+ambiguous failure), requires anchor/group/parent in the returned window, compares
+exact p-ref identity/capabilities, rejects new input authority, retains per-ref
+order domains, and invalidates only its own failed candidate. It never aliases
+duplicate labels. Coarse frame-label checks supplement, not replace, the driver's
+actual frame-identity verification. **Contract-confirmed** by deferred both-order
+races, failed save, malformed/foreign/duplicate refs, read-only input refusal,
+stable domain, and old-reference tests; independent follow-up found no blocker.
+Future typed mutation tools must join the dispatch fence. Real integration and
+cross-process state transactions are still separate requirements.
 
 ## Driver and transport boundary
 
@@ -160,6 +174,43 @@ attempt separately. Helper: external `fresh_run.ts`, included in provenance hash
 | OBS-008 | Dynamic pages and final-answer agreement could tempt cross-arm oracle leakage. | Grade each arm from its own timestamped observations; treat dynamic scores/order and differing profiles as confounds. | **Process-confirmed** in e30–e35 reviews. E35 Amazon final titles matched, but Pi failed because its own state did not prove first-organic order; e35 HN scores differed by one point yet both arms passed. |
 
 ## Current parity boundary
+
+### Epoch-37 implementation in progress
+
+The user explicitly authorized redesigning the personal Cua fork on 2026-09-05;
+upstream approval is no longer a prerequisite for our local implementation.
+No upstream acceptance or publication is implied. Core context selection uses
+generic structural roles and stored semantic nodes, not domains, CSS selectors,
+product-name heuristics, or task-specific instructions.
+
+The OpenSky half adds one observation option, `context`, and the legacy spelling
+`context_element_index`. It bypasses page recollection and settling, returns
+`freshness: "stored"`, preserves exact previous refs, and distinguishes group
+coverage, document collection, renderer omissions, and unknown virtualized
+extent. Old helpers that ignore the option fail closed, clearing unproven local
+indices instead of silently presenting a newly captured page as context.
+
+Ordinary driver requests/responses remain unchanged when context is absent.
+OpenSky's ordinary/query **rendered output intentionally changes additively**:
+up to 32 read-only content anchors within 3,000 source-row characters are shown
+with bounded, explicitly marked name previews. Empty nonstructural content rows
+are omitted with a count; named rows and generic structural groups retain their
+exact indices. An offline audit of 60 saved real snapshots across five task
+families found no wire incompatibility but showed the initial indiscriminate
+32-row prefix mostly spent its viewport allowance on unnamed rows. The revision
+is generic, not domain-specific. This costs context and may affect model behavior; it is not yet
+a measured efficiency improvement. Browser renderer omissions now also set the
+internal snapshot's truncation flag (OBS-007), not merely a prose warning.
+
+OpenSky build and **290/290 deterministic tests** passed; the initial sandboxed
+attempt was 288/289 because the REPL's loopback listen was denied. The exact
+permission-enabled rerun passed. External evaluator checks remain **65/65**.
+The packaged skill validator passed using an existing cached PyYAML dependency;
+no package or credential was installed. The controlled-page real-driver probe
+is implemented and strict-typechecked; its no-opt-in refusal was tested without
+opening a GUI. Driver source/test completion, signed
+deployment, and real serial model evaluations against pinned native baselines
+remain pending. No new GUI task or improvement score is claimed here.
 
 ### Epoch-36 follow-up and comparison policy
 

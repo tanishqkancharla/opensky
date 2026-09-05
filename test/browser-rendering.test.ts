@@ -1,12 +1,64 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { compactBrowserOutline, renderBrowserState } from "../src/opensky.js";
+import { compactBrowserOutline, renderBrowserObservation, renderBrowserState } from "../src/opensky.js";
 import type { SnapshotElement } from "../src/types.js";
 
 const complete = { snapshot: { complete: true }, page: { title: "Example", url: "https://example.com" } };
 
 describe("source-faithful browser rendering (pure regression tests, not driver acceptance)", () => {
+  it("spends context-anchor budget on named evidence or structural groups, never empty generic rows", () => {
+    const elements: SnapshotElement[] = Array.from({ length: 80 }, (_, element_index) => ({
+      element_index, role: "generic", readOnly: true, actions: [],
+    }));
+    elements.push({ element_index: 80, role: "main", readOnly: true, actions: [] });
+    elements.push({ element_index: 81, role: "heading", label: "Later named content", readOnly: true, actions: [] });
+    const result = renderBrowserObservation("", elements, complete);
+    assert.match(result.text, /\[80\] main/);
+    assert.match(result.text, /\[81\] heading "Later named content"/);
+    assert.doesNotMatch(result.text, /\] generic/);
+    assert.match(result.text, /80 read-only context anchors omitted/);
+    assert.equal(result.truncated, true);
+  });
+
+  it("reports renderer losses as structured truncation even when collection is complete", () => {
+    assert.equal(renderBrowserObservation('- heading "Short"', [], complete).truncated, false);
+    assert.equal(renderBrowserObservation('x'.repeat(10_001), [], complete).truncated, true);
+    const content: SnapshotElement[] = Array.from({ length: 33 }, (_, element_index) => ({
+      element_index, role: "heading", label: "Repeated", readOnly: true, actions: [],
+    }));
+    const rendered = renderBrowserObservation('- heading "Repeated"', content, complete);
+    assert.equal(rendered.truncated, true);
+    assert.match(rendered.text, /1 read-only context anchors omitted/);
+    assert.doesNotMatch(rendered.text, /Actionable elements/);
+  });
+
+  it("keeps context coverage historical and scoped, including outer-group navigation", () => {
+    const elements: SnapshotElement[] = [
+      { element_index: 8, browser_ref: "p1:2", role: "region", label: "Repeated", readOnly: true, actions: [] },
+      { element_index: 9, browser_ref: "p1:3", role: "main", label: "Repeated", readOnly: true, actions: [] },
+    ];
+    const rendered = renderBrowserObservation('- statictext "Qualifier"', elements, {
+      ...complete,
+      context: { group_ref: "p1:2", parent_group_ref: "p1:3", before_omitted: 4, after_omitted: 9,
+        group_complete: false, document_collection_complete: true, virtualized_extent: "unknown" },
+    });
+    assert.match(rendered.text, /not a new page capture/);
+    assert.match(rendered.text, /Group \[8\]; enclosing group \[9\]/);
+    assert.match(rendered.text, /4 nodes before, 9 after omitted; group incomplete/);
+    assert.match(rendered.text, /virtualized extent unknown/);
+    assert.doesNotMatch(rendered.text, /Driver semantic collection is complete|p1:/);
+  });
+
+  it("marks long content names as previews without slicing Unicode or assigning action authority", () => {
+    const rendered = renderBrowserObservation('- heading "Source"', [
+      { element_index: 10, role: "heading", label: "🍋".repeat(170), readOnly: true, actions: ["click"] },
+    ], complete);
+    assert.match(rendered.text, /namePreview=/);
+    assert.doesNotMatch(rendered.text, /actions=|Actionable elements|�/);
+    assert.ok(rendered.text.length < 1_000);
+  });
+
   it("retains named and stateful generic nodes", () => {
     const source = ['- generic "Notice"', '- generic [expanded=true]', '- generic: draft', '- generic "" [disabled=true]'].join("\n");
     assert.equal(compactBrowserOutline(source).text, source);

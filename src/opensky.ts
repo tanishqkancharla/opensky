@@ -13,7 +13,7 @@ import { inferScreenshotScale, readImageMeta } from "./image-meta.js";
 import { parseXdotoolKey, toHotkeyKeys } from "./keys.js";
 import { detectTarget, homeDir } from "./platform.js";
 import { mkdirPrivate, writeFilePrivate } from "./secure-fs.js";
-import { SessionStore, sessionFile } from "./session-store.js";
+import { SessionStore, sessionFile, type StoredSnapshot } from "./session-store.js";
 import type {
   App,
   AppState,
@@ -104,12 +104,13 @@ export class OpenSky implements OpenSkyApi {
   private browserSequence = 0;
   private lastOpenedAt = 0;
   private readonly lastActionAt = new Map<string, number>();
+  private readonly browserMutationsPending = new Map<TargetHandle, number>();
   private readonly resolvedThisProcess = new Set<TargetHandle>();
   private screenshotSequence = 0;
   private readonly memory = {
     targets: {} as Record<TargetHandle, ResolvedApp>,
     aliases: {} as Record<string, TargetHandle>,
-    trees: {} as Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>,
+    trees: {} as Record<string, StoredSnapshot>,
     managedBrowserSessions: [] as string[],
   };
   private loaded = false;
@@ -134,9 +135,28 @@ export class OpenSky implements OpenSkyApi {
     // The exposed driver uses the same admission gate; only finalization bypasses it.
     this.driver = {
       sessionOwnership: this.rawDriver.sessionOwnership,
-      call: async (tool, args = {}) => this.lifecycle.run(`driver.${tool}`, () => this.rawDriver.call(tool, {
-        ...args, session: args.session === undefined ? this.session : args.session,
-      })),
+      call: async (tool, args = {}) => this.lifecycle.run(`driver.${tool}`, async () => {
+        const effectiveArgs = { ...args, session: args.session === undefined ? this.session : args.session };
+        // Fence browser mutations at dispatch, not just after their promise settles.
+        // A failed input can have taken effect, and direct library calls may overlap.
+        const affected = ["browser_navigate", "browser_click", "browser_type", "browser_key", "browser_pointer"].includes(tool)
+          ? Object.values(this.memory.targets).filter((target) => target.browser &&
+            target.browser.session === effectiveArgs.session && target.browser.targetId === args.target_id && target.browser.tabId === args.tab_id)
+          : [];
+        for (const target of affected) {
+          this.browserMutationsPending.set(target.handle, (this.browserMutationsPending.get(target.handle) ?? 0) + 1);
+          this.markAction(target);
+        }
+        try { return await this.rawDriver.call(tool, effectiveArgs); }
+        finally {
+          for (const target of affected) {
+            const remaining = (this.browserMutationsPending.get(target.handle) ?? 1) - 1;
+            if (remaining) this.browserMutationsPending.set(target.handle, remaining);
+            else this.browserMutationsPending.delete(target.handle);
+            this.markAction(target);
+          }
+        }
+      }),
       status: async () => this.lifecycle.run("driver.status", () => this.rawDriver.status()),
       ensureDaemon: async () => this.lifecycle.run("driver.ensureDaemon", () => this.rawDriver.ensureDaemon()),
     };
@@ -176,8 +196,22 @@ export class OpenSky implements OpenSkyApi {
     includeScreenshot?: boolean;
     includeAppChrome?: boolean;
     query?: string;
+    context_element_index?: number;
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
+    if (args.context_element_index !== undefined) {
+      if (!Number.isSafeInteger(args.context_element_index) || args.context_element_index < 0 ||
+          args.query !== undefined || args.includeScreenshot === true || args.includeAppChrome === true) {
+        throw invalidParams("context_element_index requires a non-negative integer and cannot be combined with query, screenshot, or app chrome");
+      }
+      await this.ensureLoaded();
+      const bound = this.targetForSelector(args.app);
+      if (!bound?.browser) {
+        throw new OpenSkyError("context requires an existing exact typed browser binding. No app was launched or input sent.");
+      }
+      this.assertTargetUsable(bound);
+      return this.browserContext(bound, args.context_element_index);
+    }
     const exactTargetRequested = looksLikeTargetHandle(args.app);
     let resolved: ResolvedApp;
     if (args.query !== undefined) {
@@ -237,7 +271,7 @@ export class OpenSky implements OpenSkyApi {
       ? `Semantic query ${JSON.stringify(args.query.trim())}; fresh accessibility state:\n${snapshot.tree}`
       : snapshot.documentChanged && previous && !args.disableDiff
       ? `Document changed; fresh accessibility state:\n${snapshot.tree}`
-      : snapshot.degraded || args.disableDiff || !previous
+      : snapshot.degraded || args.disableDiff || !previous || previous.viewKind === "context"
         ? snapshot.tree
         : diffTrees(previous.tree, previous.elements, snapshot.tree, snapshot.elements);
     if (!snapshot.degraded) {
@@ -257,6 +291,78 @@ export class OpenSky implements OpenSkyApi {
       degradedReason: snapshot.degradedReason,
       target: targetIdentityFor(resolved, snapshot),
     };
+  }
+
+  /** Expand the stored observation; never settle/recollect or silently reinterpret an old index. */
+  private async browserContext(resolved: ResolvedApp, elementIndex: number): Promise<AppState> {
+    const browser = resolved.browser!;
+    const key = windowKey(resolved);
+    const previous = this.memory.trees[key];
+    const anchor = previous?.elements.find((element) => element.element_index === elementIndex);
+    const inputPending = () => this.lastActionAt.has(key) || this.browserMutationsPending.has(resolved.handle);
+    if (!previous?.snapshotId || !anchor?.browser_ref || inputPending()) {
+      throw new OpenSkyError("context requires an index from the current browser snapshot with no intervening input. Observe the tab again first.");
+    }
+    const fail = () => new OpenSkyError(
+      "The helper could not prove same-snapshot context for this exact tab. Observe the tab again before using indices; no input was sent.",
+      "browser_context_unavailable",
+    );
+    // AX-only observations never preserve a screenshot coordinate mapping.
+    browser.screenshotMapping = undefined;
+    let candidate: StoredSnapshot | undefined;
+    try {
+      const result = await this.driver.call("get_browser_state", {
+        session: browser.session, target_id: browser.targetId, tab_id: browser.tabId,
+        snapshot_format: "semantic_v2", include_screenshot: false, context_ref: anchor.browser_ref,
+      });
+      const structured = asRecord(result.structured) ?? {};
+      const snapshot = asRecord(structured.snapshot) ?? {};
+      const context = asRecord(structured.context);
+      if (this.memory.trees[key] !== previous || inputPending() ||
+          structured.status !== "ok" || structured.mode !== "snapshot" ||
+          structured.target_id !== browser.targetId || structured.tab_id !== browser.tabId ||
+          snapshot.id !== previous.snapshotId || snapshot.format !== "semantic_v2" || snapshot.scope !== "context" ||
+          !context || context.anchor_ref !== anchor.browser_ref ||
+          !isSnapshotRef(context.group_ref, previous.snapshotId) ||
+          (context.parent_group_ref != null && !isSnapshotRef(context.parent_group_ref, previous.snapshotId)) ||
+          typeof context.order_domain !== "string" || !context.order_domain ||
+          !isNonnegativeInteger(context.before_omitted) || !isNonnegativeInteger(context.after_omitted) ||
+          typeof context.group_complete !== "boolean" || typeof context.document_collection_complete !== "boolean" ||
+          context.virtualized_extent !== "unknown" || snapshot.complete !== context.group_complete ||
+          (context.group_complete && (context.before_omitted !== 0 || context.after_omitted !== 0 || !context.document_collection_complete))) {
+        throw fail();
+      }
+      const incoming = normalizeBrowserElements(structured.refs, structured.content_refs);
+      if (!anchor.browserFrame || incoming.some((element) =>
+        !isSnapshotRef(element.browser_ref, previous.snapshotId!) || element.browserFrame !== anchor.browserFrame ||
+        (previous.contextDomains?.[element.browser_ref!] !== undefined && previous.contextDomains[element.browser_ref!] !== context.order_domain))) throw fail();
+      const { all, visible } = mergeBrowserContextElements(previous.elements, incoming);
+      // Metadata must refer to this returned window, not an unrelated previously issued row.
+      if (![context.anchor_ref, context.group_ref, context.parent_group_ref].filter((ref) => ref != null)
+        .every((ref) => incoming.some((element) => element.browser_ref === ref))) throw fail();
+      const rendered = renderBrowserObservation(optionalString(structured.outline) ?? "", visible, structured, false, all);
+      const window: WindowSnapshot = {
+        pid: resolved.pid, windowId: resolved.windowId!, snapshotId: previous.snapshotId,
+        tree: rendered.text, elements: all, screenshotPath: null,
+        truncated: context.group_complete !== true || rendered.truncated,
+      };
+      candidate = { tree: window.tree, elements: all, snapshotId: window.snapshotId, viewKind: "context",
+        contextDomains: { ...previous.contextDomains, ...Object.fromEntries(incoming.map((element) => [element.browser_ref!, context.order_domain as string])) } };
+      this.memory.trees[key] = candidate;
+      await this.persist();
+      if (this.memory.trees[key] !== candidate || inputPending()) throw fail();
+      const target = targetIdentityFor(resolved, window);
+      if (target) target.document.freshness = "stored";
+      return { app: resolved.launchPath || resolved.name, targetHandle: resolved.handle, screenshot: null, text: window.tree, target };
+    } catch (error) {
+      // An older helper may ignore context_ref and collect a replacement snapshot.
+      // Do not leave those now-unproven capabilities usable, or erase a newer read.
+      if (this.memory.trees[key] === previous || (candidate && this.memory.trees[key] === candidate)) {
+        delete this.memory.trees[key];
+        await this.persist().catch(() => undefined);
+      }
+      throw error;
+    }
   }
 
   async open_target(args: {
@@ -1748,14 +1854,14 @@ export class OpenSky implements OpenSkyApi {
     browser.title = observedTitle === "about:blank" && browser.url !== "about:blank"
       ? undefined
       : observedTitle;
-    const rawElements = normalizeBrowserElements(structured.refs);
+    const rawElements = normalizeBrowserElements(structured.refs, structured.content_refs);
     const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
     const documentChanged =
       (priorDocumentId !== undefined && browser.documentId !== undefined && priorDocumentId !== browser.documentId) ||
       (priorUrl !== undefined && browser.url !== undefined && priorUrl !== browser.url);
     const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, rawElements, true);
     const outline = optionalString(structured.outline) ?? "";
-    const tree = renderBrowserState(outline, elements, { ...structured, page: { ...page, title: browser.title } }, options.query !== undefined);
+    const rendered = renderBrowserObservation(outline, elements, { ...structured, page: { ...page, title: browser.title } }, options.query !== undefined);
     const snapshot = asRecord(structured.snapshot) ?? {};
     const screenshot = options.includeScreenshot
       ? await browserScreenshotFromResult(result.raw, structured, screenshotPath)
@@ -1768,11 +1874,11 @@ export class OpenSky implements OpenSkyApi {
       pid: resolved.pid,
       windowId: resolved.windowId,
       snapshotId: optionalString(snapshot.id),
-      tree,
+      tree: rendered.text,
       elements,
       screenshotPath: screenshot ? screenshotPath : null,
       screenshot,
-      truncated: snapshot.complete === false,
+      truncated: snapshot.complete === false || rendered.truncated,
       totalElementCount: totalNodes,
       returnedElementCount: selectedNodes,
       documentChanged,
@@ -2515,12 +2621,20 @@ function normalizeElements(value: unknown): SnapshotElement[] {
   });
 }
 
-function normalizeBrowserElements(value: unknown): SnapshotElement[] {
-  return asArray<Record<string, unknown>>(value).flatMap((item, index) => {
+function normalizeBrowserElements(value: unknown, contentRefs?: unknown): SnapshotElement[] {
+  const seen = new Set<string>();
+  const entries = [
+    ...asArray<Record<string, unknown>>(value).map((item) => ({ item, readOnly: false })),
+    ...asArray<Record<string, unknown>>(contentRefs).map((item) => ({ item, readOnly: true })),
+  ];
+  return entries.flatMap(({ item, readOnly }, index) => {
     const ref = optionalString(item.ref);
     if (!ref) return [];
+    if (seen.has(ref)) throw new OpenSkyError("The helper returned duplicate browser references; observe again before using indices.");
+    seen.add(ref);
     const role = optionalString(item.role)?.toLowerCase();
-    const actions = asArray<string>(item.actions);
+    // Content references carry observation identity, never input authority.
+    const actions = readOnly ? [] : asArray<string>(item.actions);
     const label = optionalString(item.name);
     const intrinsicallyInteractive = new Set([
       "button", "link", "textbox", "searchbox", "checkbox", "radio", "combobox",
@@ -2529,11 +2643,12 @@ function normalizeBrowserElements(value: unknown): SnapshotElement[] {
     const useful = actions.includes("type") || actions.includes("scroll") ||
       Boolean(label && (actions.includes("click") || actions.includes("pointer"))) ||
       (intrinsicallyInteractive && Boolean(label || actions.includes("type")));
-    if (!useful) return [];
+    if (!useful && !readOnly) return [];
     const states = asRecord(item.states) ?? {};
     return [{
       element_index: index,
       browser_ref: ref,
+      ...(readOnly ? { readOnly: true } : {}),
       browserFrame: optionalString(item.frame),
       role,
       label,
@@ -2551,16 +2666,63 @@ function normalizeBrowserElements(value: unknown): SnapshotElement[] {
   });
 }
 
+function isNonnegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isSnapshotRef(value: unknown, snapshotId: string): value is string {
+  return typeof value === "string" && value.startsWith(`${snapshotId}:`) &&
+    /^\d+$/.test(value.slice(snapshotId.length + 1)) && isNonnegativeInteger(Number(value.slice(snapshotId.length + 1)));
+}
+
+/** The same snapshot has exact identities; label/rank matching would silently alias duplicate names. */
+function mergeBrowserContextElements(previous: SnapshotElement[], incoming: SnapshotElement[]): {
+  all: SnapshotElement[]; visible: SnapshotElement[];
+} {
+  const byRef = new Map(previous.map((element) => [element.browser_ref, element]));
+  let next = Math.max(-1, ...previous.map((element) => element.element_index)) + 1;
+  const visible = incoming.map((element) => {
+    const prior = byRef.get(element.browser_ref);
+    if (prior) {
+      const identity = (entry: SnapshotElement) => JSON.stringify([
+        entry.browser_ref, entry.role, entry.label, entry.value, entry.url, entry.browserFrame,
+        entry.readOnly === true, [...(entry.actions ?? [])].sort(), entry.visibility,
+        entry.enabled, entry.selected, entry.checked, entry.focused, entry.expanded,
+      ]);
+      if (identity(prior) !== identity(element)) {
+        throw new OpenSkyError("Same-snapshot context changed an existing reference's identity or capabilities. Observe again before using indices.");
+      }
+      return prior;
+    }
+    if (element.readOnly !== true || element.actions?.length) {
+      throw new OpenSkyError("Same-snapshot context cannot introduce new input capabilities. Observe again before acting.");
+    }
+    return { ...element, element_index: next++ };
+  });
+  return { all: [...previous, ...visible.filter((element) => !byRef.has(element.browser_ref))], visible };
+}
+
 export function renderBrowserState(
   outline: string,
   elements: SnapshotElement[],
   structured: Record<string, unknown>,
   queryRequested = false,
 ): string {
+  return renderBrowserObservation(outline, elements, structured, queryRequested).text;
+}
+
+/** Keep renderer loss machine-readable as well as visible to the agent. */
+export function renderBrowserObservation(
+  outline: string,
+  elements: SnapshotElement[],
+  structured: Record<string, unknown>,
+  queryRequested = false,
+  availableElements = elements,
+): { text: string; truncated: boolean } {
   const page = asRecord(structured.page) ?? {};
   const snapshot = asRecord(structured.snapshot) ?? {};
   const header = `Browser page: ${JSON.stringify(optionalString(page.title) ?? "Untitled")} (${optionalString(page.url) ?? "URL unavailable"})`;
-  const actionLines = elements.map((element) => {
+  const actionLines = elements.filter((element) => element.readOnly !== true).map((element) => {
     const label = JSON.stringify(element.label ?? element.value ?? "");
     const destination = displayUrlAttribute(element.url);
     const conciseActions = element.actions?.filter((action) =>
@@ -2588,35 +2750,65 @@ export function renderBrowserState(
     actionCharacters += line.length + 1;
   }
   const omittedActions = actionLines.length - actions.length;
+  const contentElements = elements.filter((element) => element.readOnly === true);
+  const contextGroups = new Set(["document", "rootwebarea", "webarea", "main", "article", "region", "feed", "list", "listitem", "table", "rowgroup", "row"]);
+  const contentLines: string[] = [];
+  let contentCharacters = 0;
+  for (const element of contentElements) {
+    const label = element.label ?? element.value ?? "";
+    if (!label && !contextGroups.has(element.role ?? "")) continue;
+    const characters = Array.from(label);
+    // These are identity hints, not evidence excerpts; the source outline retains the actual content.
+    const name = characters.length > 160
+      ? `namePreview=${JSON.stringify(characters.slice(0, 160).join("") + "…")}`
+      : JSON.stringify(label);
+    const line = `- [${element.element_index}] ${element.role ?? "unknown"} ${name}`;
+    if (contentLines.length >= 32 || contentCharacters + line.length + 1 > 3_000) break;
+    contentLines.push(line);
+    contentCharacters += line.length + 1;
+  }
+  const omittedContent = contentElements.length - contentLines.length;
   const renderedOutline = compactBrowserOutline(outline);
   const renderOmissions = [
     renderedOutline.omittedLines ? `${renderedOutline.omittedLines} outline source lines omitted (only a prefix is shown)` : "",
     omittedActions ? `${omittedActions} actionable elements omitted` : "",
+    omittedContent ? `${omittedContent} read-only context anchors omitted` : "",
   ].filter(Boolean);
   const renderCoverage = renderOmissions.length
     ? `Rendered view is partial: ${renderOmissions.join("; ")}. Rendering limits are separate from driver collection completeness; omitted context cannot establish sibling order.`
     : "";
   const queryScoped = queryRequested || snapshot.scope === "query";
-  const coverage = queryScoped
+  const context = asRecord(structured.context);
+  const indexFor = (ref: unknown) => availableElements.find((element) => element.browser_ref === ref)?.element_index;
+  const coverage = context
+    ? `Same-snapshot context (not a new page capture). Group [${indexFor(context.group_ref) ?? "unavailable"}]` +
+      (context.parent_group_ref ? `; enclosing group [${indexFor(context.parent_group_ref) ?? "unavailable"}]` : "") +
+      `. Group boundaries: ${context.before_omitted ?? "?"} nodes before, ${context.after_omitted ?? "?"} after omitted; ` +
+      `group ${context.group_complete === true ? "complete" : "incomplete"}. ` +
+      `Document collection ${context.document_collection_complete === true ? "complete" : "incomplete"}; virtualized extent unknown. ` +
+      "Order applies only within this stored group/frame. Use context on a group index to read its beginning."
+    : queryScoped
     ? (snapshot.complete === false
         ? `Filtered semantic query view is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} matching nodes).`
         : snapshot.complete === true
           ? "Filtered semantic query view is complete for matching nodes."
           : "Filtered semantic query completeness is unavailable.") +
-      " Surrounding labels and page-wide order may be omitted; ancestor paths are context, not a complete list of siblings. Omit query for page context."
+      " Surrounding labels and page-wide order may be omitted; ancestor paths are not a complete list of siblings. Use context on an index for stored surrounding structure, or omit query for a fresh page capture."
     : snapshot.complete === false
       ? `Semantic state is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} ranked nodes); visible and near-viewport controls are prioritized.`
       : snapshot.complete === true
         ? "Driver semantic collection is complete."
         : "Driver semantic collection completeness is unavailable.";
-  return [
+  const text = [
     header, coverage, renderCoverage,
     renderedOutline.abbreviatedContainers ? "Outline: a bare '-' is an unnamed generic container, not an action ref. Source AX indentation is retained." : "",
     renderedOutline.text,
     actions.length ? `Actionable elements (ranked, not page order):\n${actions.join("\n")}` : "",
+    contentLines.length ? `Context anchors (read-only; use getAXState({context: index}); not page order):\n${contentLines.join("\n")}` : "",
   ]
     .filter(Boolean)
     .join("\n");
+  return { text, truncated: renderOmissions.length > 0 };
 }
 
 /**
@@ -2922,7 +3114,9 @@ export function stabilizeElementIndices(
   const unused = new Set(previous.map((element) => element.element_index));
   let nextIndex = Math.max(-1, ...previous.map((element) => element.element_index)) + 1;
   return current.map((element) => {
-    const candidates = previous.filter((prior) => unused.has(prior.element_index));
+    const candidates = previous.filter((prior) => unused.has(prior.element_index) &&
+      // Do not transfer a read-only identity onto an actionable row with the same label.
+      (prior.readOnly === true) === (element.readOnly === true));
     const prior =
       (element.identifier
         ? candidates.find(

@@ -10,7 +10,7 @@ export interface PersistedSession {
   targets: Record<TargetHandle, ResolvedApp>;
   /** Normalized app aliases point to canonical targets instead of copying bindings. */
   aliases: Record<string, TargetHandle>;
-  trees: Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>;
+  trees: Record<string, StoredSnapshot>;
   /** Unmigrated legacy entries; new cleanup ownership lives in per-session leases. */
   managedBrowserSessions: string[];
 }
@@ -49,8 +49,18 @@ export class SessionStore {
 
 export interface LegacyPersistedSession {
   apps: Record<string, Omit<ResolvedApp, "handle" | "openedAt"> & Partial<Pick<ResolvedApp, "handle" | "openedAt">>>;
-  trees: Record<string, { tree: string; elements: SnapshotElement[]; snapshotId?: string }>;
+  trees: Record<string, StoredSnapshot>;
   managedBrowserSessions: string[];
+}
+
+export interface StoredSnapshot {
+  tree: string;
+  elements: SnapshotElement[];
+  snapshotId?: string;
+  /** A context window is not comparable to a fresh full-page observation. */
+  viewKind?: "context";
+  /** Opaque driver order domains learned for exact refs within this snapshot only. */
+  contextDomains?: Record<string, string>;
 }
 
 function managedSessions(value: unknown): string[] {

@@ -51,6 +51,14 @@ desirable contracts, not executable OpenSky APIs.
        # Keep each qualifier, even when its value repeats.
    ```
 
+   ```text
+   match = search(snapshot, query)
+   context = expand(snapshot, match.ref)
+   emit(context.rows_in_source_order, context.omitted_boundaries)
+   assert context.revision == snapshot.revision
+   # Expand stored evidence without fetching a different revision.
+   ```
+
 6. Make failures actionable. Say what ran, what failed and what can safely happen next; never guess that retrying is harmless.
 
    ```text

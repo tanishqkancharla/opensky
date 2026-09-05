@@ -87,7 +87,7 @@ export interface TargetIdentity extends TargetRequestIdentity {
   /** Opaque selector for this exact window/tab. Pass it as `app` to address this target again. */
   handle: TargetHandle;
   document: {
-    freshness: "current" | "unavailable";
+    freshness: "current" | "stored" | "unavailable";
     title?: string;
     url?: string;
     source?: "ax_web_area" | "ax_document";
@@ -109,6 +109,8 @@ export interface OpenSky {
     includeAppChrome?: boolean;
     /** Narrow an exact typed browser snapshot to matching semantic content. */
     query?: string;
+    /** Read bounded context around a current browser index without collecting a new snapshot. */
+    context_element_index?: number;
   }): Promise<AppState>;
   open_target(args: {
     app: string;
@@ -277,6 +279,8 @@ export interface SnapshotElement {
   element_token?: string;
   /** Opaque current-document capability returned by semantic_v2. */
   browser_ref?: string;
+  /** Addressable for observation only; never grants browser input capabilities. */
+  readOnly?: boolean;
   /** Driver-reported semantic frame provenance (for example main or oopif). */
   browserFrame?: string;
   role?: string;

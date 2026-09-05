@@ -23,6 +23,8 @@ export interface StateOptions extends ObservationOptions {
   disableDiffing?: boolean;
   /** OpenSky extension: matching content only; surrounding labels and page-wide order may be omitted. */
   query?: string;
+  /** OpenSky browser extension: bounded surrounding content from the same stored snapshot, not a fresh capture. */
+  context?: number;
 }
 export interface PasteOptions { format?: PasteFormat }
 export interface ClickOptions { mouseButton?: MouseButton; clickCount?: number }
@@ -301,8 +303,11 @@ export class CuaFacade {
 
   async state(handle: TargetHandle, options: StateOptions, screenshot: boolean): Promise<AppState> {
     this.assertOpen(handle);
+    if (options.context !== undefined && (screenshot || options.query !== undefined)) {
+      throw new OpenSkyError("context cannot be combined with query or a screenshot. Use getAXState({context: index}).");
+    }
     const pending = this.pendingStates.get(handle);
-    if (pending && !screenshot && options.disableDiffing !== true && options.query === undefined) {
+    if (pending && !screenshot && options.disableDiffing !== true && options.query === undefined && options.context === undefined) {
       this.pendingStates.delete(handle);
       return pending;
     }
@@ -314,6 +319,7 @@ export class CuaFacade {
       disableDiff: options.disableDiffing,
       includeScreenshot: screenshot,
       ...(options.query === undefined ? {} : { query: options.query }),
+      ...(options.context === undefined ? {} : { context_element_index: options.context }),
     });
     const tab = this.tabs.get(handle);
     if (tab && state.target?.tab?.status === "verified") {

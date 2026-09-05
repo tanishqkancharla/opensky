@@ -70,7 +70,7 @@ export function createCuaReplToolRuntime(
       "To open a URL use cua.createBrowserTab(id, url, {visible?, sessionName?}) or tab.goto(url). " +
       "Tab inventories include only this facade's owned tabs. An empty list does not establish that the user has no other tabs or windows. " +
       "Bindings persist across calls. Batch deterministic target actions and finish with getAXState(); action methods do not observe automatically. " +
-      "Target methods: getAXState({disableDiffing?, query?, emit?}), getScreenshot({emit?}), getAXStateAndScreenshot({disableDiffing?, query?, emit?}), " +
+      "Target methods: getAXState({disableDiffing?, query?, context?, emit?}), getScreenshot({emit?}), getAXStateAndScreenshot({disableDiffing?, query?, emit?}), " +
       "click(index | [x, y]), typeText(text), pressKey(key), scroll(index | [x, y], direction, pages?), " +
       "setValue(index, value), selectText(index, text, options?), drag([fromX, fromY], [toX, toY]), performSecondaryAction(index, action). " +
       "Coordinates are screenshot-pixel [x, y] tuples, not objects. Browser coordinate input requires a fresh exact-tab screenshot from getScreenshot() or getAXStateAndScreenshot(); actions, navigation, and AX-only observations invalidate that mapping. " +
@@ -78,7 +78,9 @@ export function createCuaReplToolRuntime(
       "For a browser field that exposes type but not click, use setValue(index, text) to replace its contents directly; do not click a non-clickable field. " +
       "Creation and observation methods emit their results automatically; do not console.log them or repeat getAXState after creation. " +
       "Observations wait for settled state; timers such as setTimeout are unavailable and unnecessary. " +
-      "If an actionable item is omitted from a large page, getAXState({query: 'relevant text'}) returns fresh matching controls, not complete surrounding context. Omit query when context or page-wide ordering matters. " +
+      "getAXState({query: 'relevant text'}) captures fresh matching browser content, not complete surrounding context. " +
+      "getAXState({context: index}) reads bounded surrounding structure from the same stored browser snapshot without a new capture; it cannot combine with query or screenshots. " +
+      "Context anchors are read-only. Group indices read the beginning of a group; enclosing-group indices move outward. Heed before/after omissions and frame boundaries before inferring order. " +
       "Long link destinations are marked urlPreview; use the element index, not a truncated URL. " +
       "The sandbox has no process, require, filesystem, dynamic import, eval/Function code generation, or network API.",
     executionMode: "sequential",

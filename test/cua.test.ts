@@ -43,6 +43,22 @@ class FakeOpenSky {
 }
 
 describe("native-style cua facade", () => {
+  it("forwards context explicitly instead of consuming a pending navigation state", async () => {
+    const fake = new FakeOpenSky();
+    const cua = createCua(fake as unknown as OpenSky);
+    const tab = await cua.createBrowserTab("chrome", "https://example.com");
+    await tab.goto("https://next.example");
+    await tab.getAXState({ context: 4 });
+    assert.deepEqual(fake.calls.at(-1), {
+      method: "get_app_state", args: { app: "tgt_tab_1", disableDiff: undefined, includeScreenshot: false, context_element_index: 4 },
+    });
+    const before = fake.calls.length;
+    await assert.rejects(() => tab.getAXState({ query: "x", context: 4 }), /cannot be combined/);
+    await assert.rejects(() => tab.getAXStateAndScreenshot({ context: 4 }), /cannot be combined/);
+    assert.equal(fake.calls.length, before);
+    await tab.getAXState();
+    assert.equal(fake.calls.length, before + 1, "historical navigation state was superseded");
+  });
   it("rejects browser argument mistakes before discovery or target creation", async () => {
     const fake = new FakeOpenSky();
     fake.apps = [{ id: "com.google.chrome", displayName: "Google Chrome" }];

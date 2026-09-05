@@ -31,6 +31,11 @@ class TypedBrowserDriver implements DriverClient {
   resultUrl = "https://example.com/results";
   snapshotErrors: Error[] = [];
   snapshotComplete = true;
+  contentRefs: Array<Record<string, unknown>> = [];
+  snapshotOutline?: string;
+  lastSnapshot?: Record<string, unknown>;
+  contextResult?: (args: Record<string, unknown>) => DriverResult | Promise<DriverResult>;
+  clickResult?: () => DriverResult | Promise<DriverResult>;
 
   replaceDocument(): void {
     this.documentId = `doc-test-${Number(this.documentId.split("-").at(-1)) + 1}`;
@@ -71,6 +76,7 @@ class TypedBrowserDriver implements DriverClient {
         return result({ windows: [ordinaryWindow()] });
       case "get_browser_state":
         if (effectiveArgs.target_id !== undefined) {
+          if (effectiveArgs.context_ref !== undefined && this.contextResult) return this.contextResult(effectiveArgs);
           const error = this.snapshotErrors.shift();
           if (error) throw error;
           if (this.failNextSnapshot) {
@@ -112,6 +118,7 @@ class TypedBrowserDriver implements DriverClient {
       case "browser_type":
       case "browser_click":
       case "revoke_session":
+        if (tool === "browser_click" && this.clickResult) return this.clickResult();
         return result({ status: "ok", effect: "confirmed" });
       case "browser_pointer":
         return result({
@@ -180,7 +187,7 @@ class TypedBrowserDriver implements DriverClient {
         continuation: null,
       },
       page: { url: this.currentUrl, title: "Example Search", document_id: this.documentId },
-      outline: [
+      outline: this.snapshotOutline ?? [
         '- textbox "Query"',
         '- button "Submit"',
         '- region "Results"',
@@ -238,7 +245,7 @@ class TypedBrowserDriver implements DriverClient {
           visibility: "in_viewport",
         },
       ],
-      content_refs: [],
+      content_refs: this.contentRefs,
       oopif: { status: "attached", frames: 0 },
       ...(includeScreenshot ? {
         screenshot: {
@@ -256,11 +263,224 @@ class TypedBrowserDriver implements DriverClient {
         screenshot_png_b64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+Xw4AAAAASUVORK5CYII=",
       } : {}),
     };
+    this.lastSnapshot = structured;
     return result(structured);
   }
 }
 
 describe("OpenSky typed-browser contract", () => {
+  it("fences context while input is in flight and after an ambiguous input failure", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    let started!: () => void;
+    let rejectInput!: (error: Error) => void;
+    const dispatched = new Promise<void>((resolve) => { started = resolve; });
+    driver.clickResult = () => { started(); return new Promise((_resolve, reject) => { rejectInput = reject; }); };
+    const input = opensky.click({ app: state.targetHandle, element_index: 1 });
+    const ambiguous = assert.rejects(input, /ambiguous input/);
+    await dispatched;
+    const before = driver.calls.length;
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 }), /no intervening input/);
+    assert.equal(driver.calls.length, before);
+    rejectInput(new Error("ambiguous input"));
+    await ambiguous;
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 }), /no intervening input/);
+    assert.equal(driver.calls.length, before);
+  });
+
+  it("rejects a context/input race in either completion order", async () => {
+    for (const inputFirst of [true, false]) {
+      const { opensky, driver } = await harness();
+      const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      let contextStarted!: () => void;
+      let inputStarted!: () => void;
+      let releaseContext!: (value: DriverResult) => void;
+      let releaseInput!: (value: DriverResult) => void;
+      const contextDispatched = new Promise<void>((resolve) => { contextStarted = resolve; });
+      const inputDispatched = new Promise<void>((resolve) => { inputStarted = resolve; });
+      driver.contextResult = () => { contextStarted(); return new Promise((resolve) => { releaseContext = resolve; }); };
+      driver.clickResult = () => { inputStarted(); return new Promise((resolve) => { releaseInput = resolve; }); };
+      const pending = opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+      const refused = assert.rejects(pending, /could not prove same-snapshot context/);
+      await contextDispatched;
+      const input = opensky.click({ app: state.targetHandle, element_index: 1 });
+      await inputDispatched;
+      if (inputFirst) { releaseInput(result({ status: "ok" })); await input; }
+      releaseContext(contextFixture(driver, "p41:1"));
+      await refused;
+      if (!inputFirst) { releaseInput(result({ status: "ok" })); await input; }
+    }
+  });
+
+  it("invalidates unreturned context indices when session persistence fails", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    driver.contextResult = (args) => contextFixture(driver, String(args.context_ref));
+    const store = Reflect.get(opensky, "store") as { save: (...args: unknown[]) => Promise<void> };
+    const originalSave = store.save;
+    store.save = async () => { throw new Error("injected persistence failure"); };
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 }), /persistence failure/);
+    store.save = originalSave;
+    const before = driver.calls.length;
+    for (const index of [1, 5, 6]) {
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: index }), /current browser snapshot/);
+    }
+    assert.equal(driver.calls.length, before);
+  });
+
+  it("requires response-local navigation refs and a stable stored ordering domain", async () => {
+    for (const missingGroup of [true, false]) {
+      const { opensky, driver } = await harness();
+      const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      driver.contextResult = (args) => contextFixture(driver, String(args.context_ref));
+      await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+      driver.contextResult = (args) => {
+        const response = contextFixture(driver, String(args.context_ref));
+        const value = response.structured as Record<string, any>;
+        if (missingGroup) value.content_refs = [];
+        else value.context.order_domain = "different-domain";
+        return response;
+      };
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 }), /could not prove same-snapshot context/);
+    }
+  });
+
+  it("reads same-snapshot context in one exact call and preserves existing action indices", async () => {
+    const { opensky, driver } = await harness();
+    driver.contentRefs = [{ ref: "p41:9", role: "heading", name: "Repeated", actions: [], frame: "main" }];
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    assert.match(state.text, /\[5\] heading "Repeated"/);
+    driver.contextResult = (args) => contextFixture(driver, String(args.context_ref));
+    const before = driver.calls.length;
+    const context = await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+    assert.equal(driver.calls.length, before + 1, "no settling, re-collection, native inventory, or screenshot calls");
+    assert.deepEqual(driver.calls.at(-1), {
+      tool: "get_browser_state",
+      args: { session: driver.calls.find((call) => call.tool === "browser_prepare")!.args.session,
+        target_id: TARGET_ID, tab_id: TAB_ID, snapshot_format: "semantic_v2", include_screenshot: false, context_ref: "p41:1" },
+    });
+    assert.equal(context.target?.document.freshness, "stored");
+    assert.equal(context.screenshot, null);
+    assert.match(context.text, /Same-snapshot context \(not a new page capture\)/);
+    assert.match(context.text, /Group \[6\]; enclosing group \[7\]/);
+    assert.match(context.text, /\[1\] link "Submit"/);
+    assert.doesNotMatch(context.text, /p41:/);
+    await opensky.get_app_state({ app: state.targetHandle, context_element_index: 7 });
+    assert.equal(driver.calls.at(-1)!.args.context_ref, "p41:11");
+    await opensky.click({ app: state.targetHandle, element_index: 1 });
+    assert.equal(driver.calls.at(-1)!.args.ref, "p41:1");
+  });
+
+  it("keeps read-only content addressable without granting any input route", async () => {
+    const { opensky, driver } = await harness();
+    driver.contentRefs = [{ ref: "p41:9", role: "link", name: "Submit", actions: ["click", "type", "pointer", "scroll"], frame: "main" }];
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    assert.match(state.text, /Context anchors \(read-only/);
+    const before = driver.calls.length;
+    for (const operation of [
+      () => opensky.click({ app: state.targetHandle, element_index: 5 }),
+      () => opensky.set_value({ app: state.targetHandle, element_index: 5, value: "x" }),
+      () => opensky.scroll({ app: state.targetHandle, element_index: 5, direction: "down" }),
+      () => opensky.perform_secondary_action({ app: state.targetHandle, element_index: 5, action: "show menu" }),
+      () => opensky.press_key({ app: state.targetHandle, element_index: 5, key: "ENTER" }),
+    ]) await assert.rejects(operation, /does not support/);
+    assert.equal(driver.calls.length, before);
+    driver.contextResult = (args) => contextFixture(driver, String(args.context_ref));
+    await opensky.get_app_state({ app: state.targetHandle, context_element_index: 5 });
+    assert.equal(driver.calls.at(-1)!.args.context_ref, "p41:9");
+  });
+
+  it("rejects invalid, native, unknown, and post-input context before dispatch", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const before = driver.calls.length;
+    for (const args of [
+      { app: "Calculator", context_element_index: 1 },
+      { app: state.targetHandle, context_element_index: 99 },
+      { app: state.targetHandle, context_element_index: -1 },
+      { app: state.targetHandle, context_element_index: 1.5 },
+      { app: state.targetHandle, context_element_index: NaN },
+      { app: state.targetHandle, context_element_index: 1, query: "x" },
+      { app: state.targetHandle, context_element_index: 1, includeScreenshot: true },
+      { app: state.targetHandle, context_element_index: 1, includeAppChrome: true },
+    ]) await assert.rejects(() => opensky.get_app_state(args));
+    assert.equal(driver.calls.length, before);
+    await opensky.click({ app: state.targetHandle, element_index: 1 });
+    const afterInput = driver.calls.length;
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 }), /no intervening input/);
+    assert.equal(driver.calls.length, afterInput);
+  });
+
+  it("fails closed if an older helper ignores context and invalidates the old capabilities", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 }), /could not prove same-snapshot context/);
+    const before = driver.calls.length;
+    await assert.rejects(() => opensky.click({ app: state.targetHandle, element_index: 1 }), /latest semantic browser snapshot/);
+    assert.equal(driver.calls.length, before);
+  });
+
+  it("does not diff a new page capture against a historical context window", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    driver.contextResult = (args) => contextFixture(driver, String(args.context_ref));
+    await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+    const fresh = await opensky.get_app_state({ app: state.targetHandle, includeScreenshot: false });
+    assert.match(fresh.text, /^Browser page:/);
+    assert.doesNotMatch(fresh.text, /Same-snapshot context|Removed|Added/);
+    assert.equal(fresh.target?.document.freshness, "current");
+  });
+
+  it("rejects malformed, foreign, conflicting, or authority-expanding context responses", async () => {
+    const corruptions: Array<(value: Record<string, any>) => void> = [
+      (value) => { value.snapshot.id = "p42"; },
+      (value) => { value.tab_id = "foreign"; },
+      (value) => { value.context.anchor_ref = "p41:99"; },
+      (value) => { value.context.group_ref = "p42:1"; },
+      (value) => { value.context.parent_group_ref = "p41:999"; },
+      (value) => { value.context.before_omitted = -1; },
+      (value) => { value.context.group_complete = true; value.snapshot.complete = true; },
+      (value) => { value.content_refs[0].ref = "p42:0"; },
+      (value) => { value.content_refs.push(value.content_refs[0]); },
+      (value) => { value.refs[0].name = "Different target"; },
+      (value) => { value.refs.push({ ...value.refs[0], ref: "p41:999" }); },
+      (value) => { value.refs = []; },
+      (value) => { value.content_refs[0].frame = "oopif"; },
+      (value) => { delete value.content_refs[0].frame; },
+    ];
+    for (const corrupt of corruptions) {
+      const { opensky, driver } = await harness();
+      const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      driver.contextResult = (args) => {
+        const response = contextFixture(driver, String(args.context_ref));
+        corrupt(response.structured as Record<string, any>);
+        return response;
+      };
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 }));
+      const before = driver.calls.length;
+      await assert.rejects(() => opensky.click({ app: state.targetHandle, element_index: 1 }));
+      assert.equal(driver.calls.length, before);
+    }
+  });
+
+  it("does not overwrite a newer observation when a context request finishes late", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    let release!: (value: DriverResult) => void;
+    let started!: () => void;
+    const dispatched = new Promise<void>((resolve) => { started = resolve; });
+    const response = contextFixture(driver, "p41:1");
+    driver.contextResult = () => { started(); return new Promise((resolve) => { release = resolve; }); };
+    const pending = opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+    const refused = assert.rejects(pending, /could not prove same-snapshot context/);
+    await dispatched;
+    await opensky.get_app_state({ app: state.targetHandle, includeScreenshot: false });
+    release(response);
+    await refused;
+    await opensky.click({ app: state.targetHandle, element_index: 1 });
+    assert.equal(driver.calls.at(-1)!.args.ref, "p41:1");
+  });
+
   it("fails closed on an ambiguous typed preparation result", async () => {
     const { opensky, driver } = await harness();
     driver.ambiguousPrepare = true;
@@ -629,7 +849,7 @@ describe("OpenSky typed-browser contract", () => {
       app: "Google Chrome", targets: [URL], includeScreenshot: false, query: "Submit",
     });
     assert.match(state.text, /Filtered semantic query view is partial \(5\/5 matching nodes\)/);
-    assert.match(state.text, /ancestor paths are context, not a complete list of siblings/);
+    assert.match(state.text, /ancestor paths are not a complete list of siblings/);
     assert.doesNotMatch(state.text, /Semantic state is (complete|partial)/);
     await opensky.close();
   });
@@ -1323,6 +1543,27 @@ function legacyBrowserBinding(query: string) {
 
 function result(structured: unknown): DriverResult {
   return { structured, text: "ok", raw: structured };
+}
+
+/** Deterministic protocol fixture only; real helper acceptance is a separate evaluation. */
+function contextFixture(driver: TypedBrowserDriver, anchorRef: string): DriverResult {
+  const base = structuredClone(driver.lastSnapshot!);
+  return result({
+    ...base,
+    snapshot: { ...(base.snapshot as object), scope: "context", complete: false },
+    outline: '- region "Repeated"\n  - statictext "Qualifier before the match"\n  - link "Submit"',
+    refs: (base.refs as Array<{ ref: string }>).filter((entry) => entry.ref === "p41:1"),
+    content_refs: [
+      ...(base.content_refs as Array<Record<string, unknown>>).filter((entry) => entry.ref === anchorRef),
+      { ref: "p41:10", role: "region", name: "Repeated", actions: [], frame: "main" },
+      { ref: "p41:11", role: "main", name: "Document", actions: [], frame: "main" },
+    ],
+    context: {
+      anchor_ref: anchorRef, group_ref: "p41:10", parent_group_ref: "p41:11", order_domain: "opaque-order-1",
+      before_omitted: 0, after_omitted: 12, group_complete: false,
+      document_collection_complete: true, virtualized_extent: "unknown",
+    },
+  });
 }
 
 function assertOrderedSubsequence(actual: string[], expected: string[]): void {

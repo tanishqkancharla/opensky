@@ -36,6 +36,32 @@ without granting authority over pre-existing user windows.
 
 ## Writing a case
 
+### Controlled-page context integration
+
+`probe-browser-context.ts` exercises the real signed local helper against
+declarative article/list/table pages served on an ephemeral loopback port. It
+checks sibling qualifiers, outward group traversal, unchanged snapshot identity,
+one-call context reads, retained old action refs, and read-only input refusal.
+These controlled checks supplement, not replace, fresh model evaluations on
+ordinary websites. They produce a public operation timeline and raw driver tape;
+no mock or model is used. Only exact probe-owned tabs/sessions are closed. A
+quiescent helper and explicit source revision are required before opening a tab.
+
+```bash
+OPENSKY_REAL_DRIVER=1 \
+CUA_DRIVER_BINARY=/absolute/path/to/cua-driver-local \
+EVAL_EXPECTED_DRIVER_SHA="REPLACE_WITH_EXACT_CONTEXT_CAPABLE_COMMIT_SHA" \
+node --import tsx evals/probe-browser-context.ts
+```
+
+This opt-in probe needs a provisioned GUI runner and is not part of the ordinary
+unit suite. It does not install/start the helper or change permissions. Reports
+are kept in a unique temporary directory printed at completion; the private
+runtime directory is removed only after exact inactive receipts, clean transport
+exit, and an unambiguous empty operator inventory. Unproven cleanup retains it.
+
+### Model task
+
 ```ts
 import { evalCase } from "./eval-case.js";
 
