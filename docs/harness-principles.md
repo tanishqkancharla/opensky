@@ -2,48 +2,105 @@
 
 Working rules learned from OpenSky, intended for any model/tool harness. Keep
 these short; put implementation details and evidence in the
-[friction ledger](harness-friction.md). Examples illustrate desirable contracts,
-not promises that every operation is implemented in OpenSky.
+[friction ledger](harness-friction.md). Examples are pseudocode illustrating
+desirable contracts, not executable OpenSky APIs.
 
 1. Make the first successful step obvious. Use consistent names, arguments and defaults.
 
-   Example: opening a supplied URL returns a bound tab and its initial state, with the available methods shown immediately.
+   ```text
+   open_url(url) -> {
+       tab: exact_tab_handle,
+       state: initial_page_state,
+       methods: [click, type, observe, close]
+   }
+   ```
 
 2. Return useful evidence with completed work. Avoid calls that only retrieve a result already available.
 
-   Example: a test command returns failed test names and relevant error output, so the agent can act without a separate “fetch logs” call.
+   ```text
+   result = run_tests()
+   if result.failed:
+       fix(result.failed_tests, result.relevant_errors)
+       # No separate fetch_logs() needed.
+   ```
 
 3. Bind actions to explicit resources. Validate identity and arguments before side effects; do not rely on ambient focus or shared mutable state.
 
-   Example: edit a file handle at an expected revision. If the file changed, reject the edit instead of applying it to stale text.
+   ```text
+   file = open_file(path)
+   edit(file.handle, expected_revision=file.revision, patch)
+   # Revision mismatch -> STALE_RESOURCE; no write occurred.
+   ```
 
 4. State the limits of every result. An accepted request is not a verified outcome; distinguish observed, inferred, partial, unsupported and unknown.
 
-   Example: a search says “100 of 1,462 matching rows; ranked by relevance.” It does not imply that the first returned row appeared first in the source.
+   ```text
+   search(query) -> {
+       rows: [...], returned: 100, matched: 1462,
+       ordering: RELEVANCE, coverage: PARTIAL
+   }
+   # rows[0] is not necessarily the first row in source order.
+   ```
 
 5. Compress repetition, not meaning. Preserve relationships, qualifiers and ordering; emit each result once.
 
-   Example: keep each product's “Sponsored” label attached to its own result, even when the label repeats. Remove a duplicate screenshot emission, not those qualifiers.
+   ```text
+   emit_once(observation.screenshot)
+   for product in observation.products_in_source_order:
+       emit(product.title, product.sponsored)
+       # Keep each qualifier, even when its value repeats.
+   ```
 
 6. Make failures actionable. Say what ran, what failed and what can safely happen next; never guess that retrying is harmless.
 
-   Example: after a job-submission timeout, report “submission outcome unknown” and provide its request ID for status lookup. Do not automatically submit a second job.
+   ```text
+   result = submit_job(job, request_id)
+   if result == OUTCOME_UNKNOWN:
+       status = get_job_status(request_id)
+       # Reconcile this request; do not submit another job blindly.
+   ```
 
 7. Bound time, output and outstanding work. Cancellation must stop new work and settle work already accepted.
 
-   Example: cancelling a build rejects queued commands and waits for the running child process to exit. If it cannot confirm exit, it reports incomplete cleanup.
+   ```text
+   cancel(build):
+       stop_admitting_work(build)
+       reject_queued_work(build)
+       exit = stop_and_wait(build.process, deadline)
+       return CLEAN if exit.confirmed else CLEANUP_UNPROVEN
+   ```
 
 8. Track ownership from creation through cleanup. Release only owned resources and verify the outcome.
 
-   Example: an evaluation opens two tabs beside a user's existing tab. Cleanup closes the two recorded tab IDs and checks that the user's tab remains.
+   ```text
+   protected = browser.list_tabs()
+   owned = [browser.new_tab(), browser.new_tab()]
+   for tab in owned: browser.close(tab.id)
+   after = browser.list_tabs()
+   verify(all_absent(owned, after) and all_present(protected, after))
+   ```
 
 9. Make behavior inspectable. Record public calls, arguments, results, timing and costs without exposing secrets or private reasoning.
 
-   Example: a timeline shows the search arguments, returned matches, duration and provider-reported usage. Authentication tokens are redacted; hidden reasoning is excluded.
+   ```text
+   timeline.append(redact_secrets({
+       tool: "search", args: query, result: matches,
+       duration_ms: elapsed, usage: provider_reported_usage
+   }))
+   # Record public events only; omit hidden reasoning.
+   ```
 
 10. Optimize the whole successful workflow. Test fresh users and unseen tasks; include setup, retries and cleanup, and measure efficiency only after correctness.
 
-    Example: compare repository tasks from fresh checkouts, counting setup and recovery calls. A run that makes fewer calls but leaves failing tests is not an efficiency win.
+    ```text
+    for task in held_out_tasks:
+        run = evaluate(task, fresh_checkout=true)
+        if run.correct and run.grounded and run.policy_ok and run.cleanup_verified:
+            score_efficiency(run.all_calls, run.provider_usage)
+            # Include setup, retries, and cleanup.
+        else:
+            record_failure(run)  # Fewer calls cannot turn failure into a win.
+    ```
 
 Update a principle only when a finding generalizes beyond one task or tool.
 Prefer fixing the interface over teaching the model another exception.
