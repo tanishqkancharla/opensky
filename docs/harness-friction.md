@@ -161,6 +161,37 @@ attempt separately. Helper: external `fresh_run.ts`, included in provenance hash
 
 ## Current parity boundary
 
+### Epoch-36 follow-up and comparison policy
+
+- The stalled helper was stopped with the user's approval after its 100% CPU
+  usage was verified. The exact old helper and test Chrome PIDs are now absent;
+  retained old session receipts remain unavailable, so the original run is still
+  failed. A local-only Cua repair was tested, signed with the existing identity,
+  and deployed as source `131d661739e7dc4fb8dcb8fb17d1d45e768e9179`. Its post-restart
+  real read-only MCP probe passed. No permission/keychain changes were made.
+- `run-e36-amazon-02` then completed with 5 public calls, no tool failures,
+  36.307 seconds, exact session cleanup and a clean MCP close. It still **fails
+  grounding**: filtered output does not prove first-organic ordering (LIB-015).
+  The saved native baseline passed in 6 calls / 36.084 seconds. Fewer OpenSky
+  calls are not an efficiency win when its answer lacks required evidence.
+- **OBS-010 — repeated native baselines:** earlier iterations reran both arms.
+  At the user's request, later runs pin and reuse a recorded native session for
+  the same task/model/reasoning, preserving its original date, version, verdict,
+  timing, provider usage and six source-artifact hashes. Baseline content never
+  enters the Pi prompt. A reference marker supplies the original native verdict
+  without copying observations into a new run. Reviewed failed native baselines
+  may be retained but cannot satisfy both-pass efficiency gates. Initial
+  integration: external suite **62/62**, and e36 Amazon reuse **live-confirmed**.
+- **RUN-013 — legacy metadata/preflight friction:** the first Wikipedia reuse
+  attempt stopped before model/GUI work because its old oracle omitted the later
+  `lifecycle.targetKind` annotation. Prompt and all other oracle fields match.
+  The empty reserved run is retained with a setup-refusal note; a narrowly
+  disclosed compatibility rule is pending. No baseline or score was rewritten.
+
+Detailed local evidence: [`../../e2e-epoch-36/README.md`](../../e2e-epoch-36/README.md).
+Cross-platform certification, repeated real-driver reliability and the broader
+same-snapshot context capability remain unproven.
+
 OpenSky has live successes across native apps and browser tasks, including e35 Hacker News where both arms passed, and the e35 Amazon run confirms the screenshot dedup fix. Those results do not establish general parity. The currently blocking generic gaps are:
 
 1. same-snapshot semantic collection context and truthful leading-order coverage (LIB-015);
