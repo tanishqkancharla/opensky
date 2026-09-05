@@ -44,9 +44,13 @@ if (!binary || !expectedSource || !/^[a-f0-9]{40}$/.test(expectedSource)) {
 const output = await mkdtemp(join(tmpdir(), "opensky-context-probe-"));
 const home = join(output, "runtime");
 const session = `context-probe-${randomUUID()}`;
+const revision = spawnSync("git", ["rev-parse", "HEAD"], { cwd: join(import.meta.dirname, ".."), encoding: "utf8" });
+const status = spawnSync("git", ["status", "--porcelain"], { cwd: join(import.meta.dirname, ".."), encoding: "utf8" });
+if (revision.status !== 0 || status.status !== 0) throw new Error("Cannot establish probe source provenance");
+const openskySource = { revision: revision.stdout.trim(), dirty: status.stdout.length !== 0 };
 await writeFile(join(output, "declaration.json"), JSON.stringify({
   classification: "real-driver-controlled-page-integration", modelEvaluation: false,
-  startedAt: new Date().toISOString(), output, home, session, binary, expectedSource,
+  startedAt: new Date().toISOString(), output, home, session, binary, expectedSource, openskySource,
   fixtures: cases.map((fixture) => ({ ...fixture, sha256: createHash("sha256").update(fixture.html).digest("hex") })),
   cleanup: "Exact probe-owned tabs and sessions only; retain runtime unless receipts, clean transport exit and empty operator inventory prove cleanup.",
 }, null, 2) + "\n", { flag: "wx", mode: 0o600 });
@@ -138,7 +142,7 @@ finally {
     catch (error) { failure ??= error; }
   }
   const report = { classification: "real-driver-controlled-page-integration", modelEvaluation: false,
-    expectedSource, session, before, after, cleanupVerified, transport, timeline,
+    expectedSource, openskySource, session, before, after, cleanupVerified, transport, timeline,
     passed: !failure && cleanupVerified, error: failure instanceof Error ? failure.message : failure };
   await writeFile(join(output, "report.json"), JSON.stringify(report, null, 2) + "\n", { flag: "wx", mode: 0o600 });
   await writeFile(join(output, "driver-tape.json"), JSON.stringify(driver.tape, null, 2) + "\n", { flag: "wx", mode: 0o600 });
