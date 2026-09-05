@@ -28,11 +28,11 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: bun evals/cli.ts browser.eval.ts --list
-      - run: bun test test/eval-tools.test.ts test/eval-report.test.ts
+      - run: bun test test/eval-tools.test.ts test/eval-report.test.ts test/cua-repl-tool.test.ts
 
   real-driver:
     # Never expose model credentials to pull-request code. Scheduled runs use default branch.
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/codex/readable-evals-ci')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     needs: validate
     runs-on: macos-15
     timeout-minutes: 35

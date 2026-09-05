@@ -119,7 +119,17 @@ describe("single-tool native-style cua evaluator", () => {
         `cua.getState.constructor("return process")()`,
         `import("node:fs")`,
       ]) {
-        await assert.rejects(() => execute(tool, "escape", { code }));
+        const blocked = await execute(tool, "escape", { code });
+        assert.equal(blocked.isError, true, `${code} must be reported as a tool error`);
+        const errorText = blocked.content
+          .filter((item): item is { type: "text"; text: string } => item.type === "text")
+          .map((item) => item.text)
+          .join("\n");
+        assert.match(
+          errorText,
+          /Code generation from strings disallowed|dynamic import callback was not specified/,
+          `${code} must be blocked inside the sandbox rather than executed by the host`,
+        );
       }
     } finally {
       await runtime.close();

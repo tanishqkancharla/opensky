@@ -398,16 +398,36 @@ async function runPiSession(opts: {
   const promptPromise = session.prompt(opts.prompt).finally(() => {
     promptSettled = true;
   });
+  let runError: unknown;
+  let teardownError: unknown;
   try {
-    await abortOnTimeout(session, promptPromise, opts.timeoutMs, `${opts.source} session`);
+    await abortOnTimeout(promptPromise, opts.timeoutMs, `${opts.source} session`);
+  } catch (error) {
+    runError = error;
   } finally {
-    unsubscribe();
     if (!promptSettled) {
-      await bounded(session.abort(), SESSION_TEARDOWN_TIMEOUT_MS, `${opts.source} session abort`).catch(() => undefined);
-      await bounded(promptPromise.catch(() => undefined), SESSION_TEARDOWN_TIMEOUT_MS, `${opts.source} prompt settlement`).catch(() => undefined);
+      try {
+        await bounded(session.abort(), SESSION_TEARDOWN_TIMEOUT_MS, `${opts.source} session abort`);
+        await bounded(
+          promptPromise.catch(() => undefined),
+          SESSION_TEARDOWN_TIMEOUT_MS,
+          `${opts.source} prompt settlement`,
+        );
+      } catch (error) {
+        teardownError = error;
+        const event = { type: "pi_session_teardown_error", error: errorMessage(error) };
+        if (opts.source === "agent") recordAgentEvent(event);
+        else recordJudgeEvent(event);
+      }
     }
     session.dispose();
+    unsubscribe();
   }
+  if (runError && teardownError) {
+    throw new AggregateError([runError, teardownError], `${opts.source} session and teardown both failed`);
+  }
+  if (runError) throw runError;
+  if (teardownError) throw teardownError;
   const finishedAt = new Date().toISOString();
   const transcript = formatMessages(session.messages);
   const sessionId = session.sessionId;
@@ -424,7 +444,6 @@ function localDriver(): CuaDriverClient {
 }
 
 async function abortOnTimeout<T>(
-  session: { abort(): Promise<void> },
   operation: Promise<T>,
   timeoutMs: number,
   label: string,

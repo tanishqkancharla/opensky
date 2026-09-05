@@ -1,5 +1,33 @@
 # Browser evaluation in CI
 
+## Current hosted result
+
+[First GitHub-hosted macOS run](https://github.com/tanishqkancharla/opensky/actions/runs/33947371636)
+passed clean dependency installation, build, case registration, and runner/report
+checks. The real-driver probe failed with `permissions_pending`: macOS
+Accessibility or Screen Recording was not granted. No agent cases ran and no
+acceptance score was earned. The cleanup attempt also hit the permission gate;
+the disposable hosted worker is torn down by GitHub after the job.
+
+The workflow records JSON and Markdown summaries and uploads run artifacts for
+30 days. It runs validation on pushes/PRs, and real-driver probes/evals on manual
+dispatch and daily schedules. GitHub schedules require the workflow on the
+default branch. `OPENAI_API_KEY` is required only by the agent step. Set
+`CUA_DRIVER_RS_VERSION` as a repository variable to pin the driver under test.
+The current branch does not enable scheduled runs until merged.
+
+Run the declarative cases on an already provisioned machine with:
+
+```sh
+bun evals/cli.ts browser.eval.ts --local --harness opensky --model openai/gpt-5.6-terra --output evals/runs/manual
+```
+
+Local mode does not install or launch the helper. Optional `CUA_DRIVER_BINARY`
+and `CUA_DRIVER_SOCKET` select an explicit helper. `--list` lists cases without
+launching the model or desktop. Local native Codex comparison is intentionally
+unavailable until its plugin is explicitly provisioned; OpenSky scores are not
+native parity scores.
+
 `browser.eval.ts` describes live tasks using `evalCase`, `harness.send`, and
 `response.score`. Cases cover search and linked follow-up, release discovery,
 shopping search refinement, and documentation lookup. They specify the user's
