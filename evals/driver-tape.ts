@@ -1,6 +1,16 @@
 import type { DriverClient, DriverResult } from "../src/types.js";
+import { OpenSkyError } from "../src/errors.js";
 
 export const DRIVER_TAPE_VERSION = 1 as const;
+const ERROR_DETAILS_MAX_CHARS = 16_384;
+const ERROR_LABEL_MAX_CHARS = 256;
+
+/** Present only for OpenSkyError; additive to the legacy message string. */
+export type DriverTapeErrorMetadata = {
+  name: string;
+  code?: string;
+  details?: unknown;
+};
 
 export type DriverCallMetrics = {
   durationMs: number;
@@ -16,6 +26,7 @@ export type DriverTapeCall = {
   args: Record<string, unknown>;
   result?: DriverResult;
   error?: string;
+  errorMetadata?: DriverTapeErrorMetadata;
   observed?: DriverCallMetrics;
 };
 
@@ -52,6 +63,7 @@ export class RecordingDriverClient implements DriverClient {
         tool,
         args: canonicalizeDriverArgs(args),
         error: error instanceof Error ? error.message : String(error),
+        ...(error instanceof OpenSkyError ? { errorMetadata: errorMetadata(error) } : {}),
         observed: {
           durationMs: roundMs(performance.now() - started),
           serializedCharacters: 0,
@@ -98,6 +110,19 @@ export class ReplayDriverClient implements DriverClient {
         ].join("\n"),
       );
     }
+    if (expected.errorMetadata !== undefined) {
+      const metadata = expected.errorMetadata;
+      if (typeof expected.error !== "string" || !metadata || typeof metadata !== "object" ||
+          typeof metadata.name !== "string" || metadata.name.length > ERROR_LABEL_MAX_CHARS ||
+          (metadata.code !== undefined && (typeof metadata.code !== "string" || metadata.code.length > ERROR_LABEL_MAX_CHARS))) {
+        throw new OpenSkyError(`Invalid driver tape error metadata at call ${index}.`, "driver_tape_error_metadata_invalid");
+      }
+      const replayed = new OpenSkyError(expected.error, metadata.code,
+        metadata.details === undefined ? undefined : boundedErrorDetails(metadata.details));
+      replayed.name = metadata.name;
+      this.cursor += 1;
+      throw replayed;
+    }
     this.cursor += 1;
     if (expected.error !== undefined) throw new Error(expected.error);
     if (!expected.result) throw new Error(`Driver tape call ${index} has neither result nor error.`);
@@ -116,6 +141,68 @@ export class ReplayDriverClient implements DriverClient {
         `Driver tape has ${this.tape.calls.length - this.cursor} unused call(s), starting at call ${this.cursor}.`,
       );
     }
+  }
+}
+
+function errorMetadata(error: OpenSkyError): DriverTapeErrorMetadata {
+  const field = (key: string) => Object.getOwnPropertyDescriptor(error, key)?.value;
+  const name = field("name");
+  const code = field("code");
+  const details = field("details");
+  return {
+    name: typeof name === "string" ? name.slice(0, ERROR_LABEL_MAX_CHARS) : "Error",
+    ...(typeof code === "string" && code.length <= ERROR_LABEL_MAX_CHARS ? { code } : {}),
+    ...(details !== undefined ? { details: boundedErrorDetails(details) } : {}),
+  };
+}
+
+/** No getters/toJSON, stack, environment, causes, or arbitrary class instances. */
+function boundedErrorDetails(value: unknown): unknown {
+  const ancestors = new Set<object>();
+  let nodes = 0;
+  let chars = 0;
+  function copy(input: unknown, depth: number): unknown {
+    if (++nodes > 512 || depth > 8) throw new Error("details_limit");
+    if (input === null || typeof input === "boolean") return input;
+    if (typeof input === "number" && Number.isFinite(input)) return input;
+    if (typeof input === "string") {
+      chars += input.length;
+      if (chars > ERROR_DETAILS_MAX_CHARS) throw new Error("details_limit");
+      return input;
+    }
+    if (!input || typeof input !== "object") throw new Error("non_json_details");
+    if (ancestors.has(input)) throw new Error("cyclic_details");
+    if (!Array.isArray(input) && Object.getPrototypeOf(input) !== Object.prototype && Object.getPrototypeOf(input) !== null) {
+      throw new Error("non_json_details");
+    }
+    ancestors.add(input);
+    const keys = Object.keys(input);
+    if (keys.length > 512) throw new Error("details_limit");
+    if (Array.isArray(input)) {
+      if (input.length > 512) throw new Error("details_limit");
+      if (keys.length !== input.length || keys.some((key, index) => key !== String(index))) throw new Error("non_json_details");
+    }
+    const output: any = Array.isArray(input) ? [] : Object.create(null);
+    for (const key of keys) {
+      if (["stack", "env", "environment", "cause", "causes"].includes(key.toLowerCase())) continue;
+      chars += key.length;
+      if (chars > ERROR_DETAILS_MAX_CHARS) throw new Error("details_limit");
+      const descriptor = Object.getOwnPropertyDescriptor(input, key);
+      if (!descriptor || !("value" in descriptor)) throw new Error("non_json_details");
+      output[key] = copy(descriptor.value, depth + 1);
+    }
+    ancestors.delete(input);
+    return output;
+  }
+  try {
+    const copied = copy(value, 0);
+    const serialized = JSON.stringify(copied);
+    if (serialized.length > ERROR_DETAILS_MAX_CHARS) return { omitted: "details_limit" };
+    return JSON.parse(serialized);
+  } catch (error) {
+    const reason = error instanceof Error && ["details_limit", "non_json_details", "cyclic_details"].includes(error.message)
+      ? error.message : "non_json_details";
+    return { omitted: reason };
   }
 }
 

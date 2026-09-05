@@ -49,6 +49,7 @@ export class CuaDriverClient implements DriverClient {
     if (
       tool !== "start_session" &&
       this.options.session &&
+      payload.session === this.options.session &&
       isEndedSessionResult(result, parsed)
     ) {
       const revived = await this.execDriver(
@@ -56,9 +57,12 @@ export class CuaDriverClient implements DriverClient {
         this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       );
       const revivedParsed = parseDriverOutput(revived.stdout);
-      if (revived.code !== 0 || revivedParsed.isError) {
+      const revivalRefusal = refusalFromResult(revivedParsed.result);
+      if (revived.code !== 0 || revivedParsed.isError || revivalRefusal) {
         throw driverError(
-          revivedParsed.message || revived.stderr.trim() || "desktop helper session could not be revived.",
+          revivalRefusal?.message || revivedParsed.message || revived.stderr.trim() || "desktop helper session could not be revived.",
+          revivalRefusal?.code,
+          revivedParsed.result.structured,
         );
       }
       result = await this.execDriver(this.callArgs(tool, payload), this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -70,14 +74,14 @@ export class CuaDriverClient implements DriverClient {
     }
 
     if (parsed.isError || result.code !== 0) {
-      const refusal = parseDriverRefusal(parsed.result.structured);
+      const refusal = refusalFromResult(parsed.result);
       throw driverError(
         refusal?.message || parsed.message || result.stderr.trim() || `${tool} failed.`,
         refusal?.code,
         parsed.result.structured,
       );
     }
-    const refusal = parseDriverRefusal(parsed.result.structured);
+    const refusal = refusalFromResult(parsed.result);
     if (refusal) throw driverError(refusal.message, refusal.code, parsed.result.structured);
     return parsed.result;
   }
@@ -304,6 +308,16 @@ function isEndedSessionResult(
   result: { stdout: string; stderr: string; code: number },
   parsed: ReturnType<typeof parseDriverOutput>,
 ): boolean {
+  if (refusalFromResult(parsed.result)) {
+    // Cua's admission guard emits this exact status/code before dispatch. Do
+    // not generalize from recovery prose or action-level refusal projections:
+    // those may describe input that was already delivered.
+    const structured = asRecord(parsed.result.structured);
+    const refusal = asRecord(structured?.refusal);
+    return structured?.status === "refused" && refusal?.code === "session_ended" &&
+      structured.effect === undefined && structured.delivery === undefined &&
+      refusal.detail === undefined;
+  }
   if (!parsed.isError && result.code === 0) return false;
   const message = `${parsed.message}\n${result.stderr}`.toLowerCase();
   return (
@@ -366,24 +380,55 @@ export function parseDriverOutput(stdout: string): {
   };
 }
 
-/** Normalize both native-window and typed-browser refusal envelopes. */
-export function parseDriverRefusal(structured: unknown): { code?: string; message: string } | null {
+function refusalFromResult(result: DriverResult): { code?: string; message: string } | null {
+  const diagnostic = isRecord(result.raw) ? contentToText(result.raw.content) : undefined;
+  return parseDriverRefusal(result.structured, diagnostic);
+}
+
+/** Normalize refusals; diagnostic text alone can never classify an outcome. */
+export function parseDriverRefusal(structured: unknown, diagnosticText?: string): { code?: string; message: string } | null {
   if (!isRecord(structured)) return null;
-  if (structured.effect === "refused") {
-    const nested = isRecord(structured.refusal) ? structured.refusal : structured;
-    const reason = isRecord(nested.reason) ? nested.reason : undefined;
-    const code = [nested.code, reason?.code]
-      .find((value): value is string => typeof value === "string" && value.length > 0);
-    const message = [reason?.message, reason?.detail, nested.reason, nested.message, structured.reason, structured.message, code]
-      .find((value): value is string => typeof value === "string" && value.length > 0);
-    return { code, message: message ?? "The desktop helper refused the request." };
-  }
-  if (structured.status !== "refused") return null;
-  const nested = isRecord(structured.refusal) ? structured.refusal : structured;
-  const code = typeof nested.code === "string" ? nested.code : undefined;
-  const message = [nested.message, nested.reason, code]
-    .find((value): value is string => typeof value === "string" && value.length > 0);
-  return { code, message: message ?? "The desktop helper refused the request." };
+  const explicitRefusal = isRecord(structured.refusal) ? structured.refusal : undefined;
+  if (structured.effect !== "refused" && structured.status !== "refused" &&
+      !firstNonemptyString(explicitRefusal?.code, explicitRefusal?.message)) return null;
+
+  const nested = explicitRefusal ?? structured;
+  const reason = isRecord(nested.reason) ? nested.reason : undefined;
+  const code = firstNonemptyString(nested.code, reason?.code);
+  const exactMessage = firstNonemptyString(
+    reason?.message, reason?.detail, nested.reason, nested.message, structured.reason, structured.message,
+  );
+  const escalation = isRecord(structured.escalation) ? structured.escalation : undefined;
+  // These are the closed public ActionResult enums, not an inferred refusal
+  // code or permission to switch routes. Many exact causes share one reason.
+  const target = escalation?.target;
+  const escalationReason = escalation?.reason;
+  const validEscalation = typeof target === "string" && ["pixel", "foreground", "page", "session"].includes(target) &&
+    typeof escalationReason === "string" && ["route_unavailable", "delivery_failed", "effect_unconfirmed", "suspected_noop", "permission_required"].includes(escalationReason);
+  const fallback = validEscalation
+    ? `The desktop helper refused the request. Driver escalation: target=${target}, reason=${escalationReason}.`
+    : "The desktop helper refused the request.";
+  const detail = isRecord(nested.detail) ? nested.detail : undefined;
+  const delivery = isRecord(structured.delivery) ? structured.delivery : undefined;
+  const unknownDelivery = delivery?.mode === "unknown" || structured.delivery === "unknown" || detail?.delivery === "unknown";
+  const message = boundedDiagnostic(firstNonemptyString(exactMessage, diagnosticText, code) ?? fallback);
+  return {
+    code: code && code.length <= 256 ? code : undefined,
+    message: message + (unknownDelivery ? " Action delivery is unknown; do not retry automatically." : ""),
+  };
+}
+
+function firstNonemptyString(...values: unknown[]): string | undefined {
+  return values.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+}
+
+function boundedDiagnostic(value: string, limit = 4_000): string {
+  if (value.length <= limit) return value;
+  // Keep both ends: a final delivery warning must not disappear behind a long
+  // platform error. This is a display bound, not evidence that a retry is safe.
+  const marker = " …[truncated]… ";
+  const prefix = Math.floor((limit - marker.length) * 0.75);
+  return value.slice(0, prefix) + marker + value.slice(-(limit - marker.length - prefix));
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | null {

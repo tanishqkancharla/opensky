@@ -38,3 +38,10 @@ buffers, and private reasoning/signatures are omitted. Unknown numeric objects
 remain intact. Raw artifacts and payload measurements must use the original
 data, not this projection. The external renderer accepts `EVAL_TIMELINE_FILE`
 as a simple `.md` basename for a separately named derived transcript.
+
+`../driver-tape.ts` retains the legacy version-1 error string and adds
+`errorMetadata` for `OpenSkyError`: name, exact code when available, and bounded
+JSON-safe details. Replay restores the typed error; old string-only tapes stay
+compatible. Stacks, environments, causes, and non-JSON or oversized details are
+omitted. This is prospective evidence preservation, not a way to reconstruct
+causes missing from historical recordings or from the driver transport.

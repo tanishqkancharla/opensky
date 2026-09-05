@@ -223,6 +223,16 @@ console.log(after.text);
 
 Element indices are snapshots. Some identifiers fail silently. An action can take effect even if a later screenshot capture rejects. Refresh state before retrying.
 
+Driver refusals throw `OpenSkyError`, retaining an exact structured code when
+available and the driver payload in `details`. Projected action results may
+provide only an escalation target/reason; OpenSky reports those without inventing
+the original cause or switching input routes. Refused actions are not
+automatically replayed based on diagnostic text mentioning session recovery.
+The exact pre-dispatch `session_ended` admission refusal can revive the client's
+own named session once; projected action refusals cannot.
+Unknown delivery remains explicit. The current one-shot Cua CLI can omit outer
+diagnostic text, so an exact refusal cause is not always recoverable.
+
 `perform_actions` never retries a completed prefix. If a DOM/UI mutation makes a later element stale, the stopped result includes a fresh settled AX state so the next action can use new indices without a separate observation call.
 
 Evaluator action tools accept `observation_query` to narrow their settled post-action exact-browser state. This composes navigation and discovery without a redundant `get_app_state` call. It is invalid when observation is disabled.
