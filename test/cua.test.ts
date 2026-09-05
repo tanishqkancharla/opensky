@@ -215,6 +215,24 @@ describe("native-style cua facade", () => {
     await assert.rejects(() => cua.getBrowser({ id: "chrome" }), /not installed or available/);
   });
 
+  it("labels populated and empty state inventories as facade-owned only", async () => {
+    const fake = new FakeOpenSky();
+    const emitted: unknown[] = [];
+    const cua = createCua(fake as unknown as OpenSky, { emit: (value) => emitted.push(value) });
+    const before = await cua.getState();
+    assert.equal(before.tabInventoryScope, "facade-owned-only");
+    assert.deepEqual(before.browsers, []);
+    assert.equal((emitted.at(-1) as typeof before).tabInventoryScope, "facade-owned-only");
+    const tab = await cua.createBrowserTab("chrome", "https://example.com/");
+    const during = await cua.getState();
+    assert.equal(during.tabInventoryScope, "facade-owned-only");
+    assert.equal(during.browsers[0]?.tabs[0]?.id, tab.id);
+    await tab.close();
+    const after = await cua.getState();
+    assert.equal(after.tabInventoryScope, "facade-owned-only");
+    assert.deepEqual(after.browsers, []);
+  });
+
   it("matches the current bound browser.tabs lifecycle and session naming ergonomics", async () => {
     const fake = new FakeOpenSky();
     fake.apps = [{ id: "com.google.Chrome", displayName: "Google Chrome" }];

@@ -63,7 +63,12 @@ export interface BrowserInfo {
 
 export interface TabInfo extends BrowserTabInfo { browserId: string }
 export interface BrowserState extends BrowserInfo { tabs: BrowserTabInfo[] }
-export interface CuaState { apps: AppInfo[]; browsers: BrowserState[] }
+export interface CuaState {
+  /** OpenSky inventories cannot establish whether pre-existing user tabs exist. */
+  tabInventoryScope: "facade-owned-only";
+  apps: AppInfo[];
+  browsers: BrowserState[];
+}
 export interface BrowserOptions extends ObservationOptions { browser?: string }
 export interface GetBrowserOptions { id?: string; url?: string }
 export interface CreateBrowserTabOptions { visible?: boolean; sessionName?: string }
@@ -163,7 +168,11 @@ export class CuaFacade {
 
   async getState(options: ObservationOptions = {}): Promise<CuaState> {
     const apps = await this.listApps({ emit: false });
-    const state = { apps, browsers: this.browserStates(availableBrowserIds(apps)) };
+    const state: CuaState = {
+      tabInventoryScope: "facade-owned-only",
+      apps,
+      browsers: this.browserStates(availableBrowserIds(apps)),
+    };
     this.emit(state, options);
     return state;
   }
