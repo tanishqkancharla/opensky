@@ -185,8 +185,35 @@ attempt separately. Helper: external `fresh_run.ts`, included in provenance hash
 - **RUN-013 — legacy metadata/preflight friction:** the first Wikipedia reuse
   attempt stopped before model/GUI work because its old oracle omitted the later
   `lifecycle.targetKind` annotation. Prompt and all other oracle fields match.
-  The empty reserved run is retained with a setup-refusal note; a narrowly
-  disclosed compatibility rule is pending. No baseline or score was rewritten.
+  The reserved run is retained with a setup-refusal note, not a task failure.
+  A narrow compatibility rule is now **contract/live-confirmed**: omission only
+  may bridge to `exact_browser_session` when every other task field matches and
+  the old public trace proves the same exact browser binding was created and
+  closed. Provenance records the original create/close calls, provider identity
+  and final empty inventory; the resolver recomputes the proof. Explicit kind
+  mismatches and other task changes still refuse. External suite **63/63**;
+  `run-e36-wikipedia-02` reused the e31 baseline. No historical artifact changed.
+- `run-e36-wikipedia-02`: 5 calls / 0 failures / 31.027 seconds; exact cleanup
+  and MCP closure passed. The helper was at 0.2% CPU afterward and a read-only
+  operator check returned zero sessions. Independent review **fails grounding**:
+  the filtered article result supports its title, but a matching ancestor region
+  does not prove the first section heading. This reproduces LIB-015 on a second
+  task family. The final response also omitted the facade-owned-only inventory
+  qualifier; user-sibling absence was not proven, though no unsafe close occurred.
+- **OBS-011 — task-equivalent baselines can have different protocols:** the
+  Wikipedia native baseline has 4 calls / 26.730 seconds, but combines exact
+  close and final inventory. The current evaluator requires separate calls,
+  imposing one extra call on the same strategy. Preserve raw metrics and mark
+  efficiency confounded; do not invent adjusted calls or rerun native merely to
+  erase the difference. Same prompt/model/oracle is insufficient for a strict
+  efficiency comparison when required setup or cleanup work changed. The
+  resolver now fingerprints the recorded cleanup-protocol version and both
+  evaluator instruction envelopes, including missing-versus-present fields.
+  Metrics/timelines disclose drift; the validator requires an indeterminate
+  winner while preserving task verdicts and valid reuse. It does not infer call
+  costs from prose. **Contract-confirmed:** full external suite **65/65**, with
+  same-protocol and changed-protocol both-pass fixtures; both new e36 reviews
+  validate. The Wikipedia derived report was refreshed; raw evidence is intact.
 
 Detailed local evidence: [`../../e2e-epoch-36/README.md`](../../e2e-epoch-36/README.md).
 Cross-platform certification, repeated real-driver reliability and the broader

@@ -30,6 +30,19 @@ for a new arm. Grade each arm against its own observations and cleanup. Report
 efficiency only after correctness, grounding, policy and cleanup pass. Keep live
 GUI runs serial and clean their exact owned resources after each attempt.
 
+Task equivalence is not evaluation-protocol equivalence. Record changes in
+setup, observation and cleanup requirements when reusing a baseline. For example,
+requiring a separate final inventory adds a public call relative to a baseline
+that combined close and inventory. Report raw metrics with that confound; do not
+declare an efficiency winner or silently subtract hypothetical calls.
+
+Legacy metadata compatibility must be explicit and evidence-backed, not a broad
+prompt/oracle normalization. The external runner permits one recorded bridge:
+an omitted old `lifecycle.targetKind` to `exact_browser_session`, with all other
+task fields identical and public evidence proving creation and exact closure of
+the same browser binding. Its manifest pins the compatibility receipt as well as
+the original artifacts. This does not upgrade the old cleanup protocol.
+
 The corpus and its contract tests are repository-native, but their presence or
 a passing unit test is not CI acceptance-score evidence. A score is evidence
 only when a real-driver run records the public trace, exact cleanup, metrics,

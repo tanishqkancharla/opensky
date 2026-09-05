@@ -98,6 +98,12 @@ desirable contracts, not executable OpenSky APIs.
         if run.correct and run.grounded and run.policy_ok and run.cleanup_verified:
             score_efficiency(run.all_calls, run.provider_usage)
             # Include setup, retries, and cleanup.
+            baseline = recorded_baseline(task)
+            if baseline and baseline.passed and same_required_work(baseline.protocol, run.protocol):
+                compare_successful_workflows(baseline, run)
+            elif baseline:
+                report_raw_metrics_with_protocol_differences(baseline, run)
+                # A newly required verification call is not a harness regression.
         else:
             record_failure(run)  # Fewer calls cannot turn failure into a win.
     ```
