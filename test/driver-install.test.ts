@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 import { mkdtemp, mkdir, symlink, rm, writeFile, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

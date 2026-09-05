@@ -1,11 +1,28 @@
 import assert from "node:assert/strict";
-import { describe, it } from "bun:test";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { describe, it } from "node:test";
 
 import { AsyncRepl, wrapAsync } from "../src/async-repl.js";
 import { evalOnServer, ReplServer, serverAlive } from "../src/repl-server.js";
 import { makeHarness } from "./harness.ts";
 
 describe("async REPL wrapper", () => {
+  it("keeps ordinary context assignment, descriptors, and async values without a VM proxy", async () => {
+    const repl = new AsyncRepl({ allowNodeApis: false, context: { answer: async () => 42 } });
+    repl.assign({ initial: 3 });
+    const result = await repl.evaluate("const answerValue = await answer(); globalThis.extra = initial; return answerValue");
+    assert.equal(result.value, 42);
+    assert.equal(repl.context.answerValue, 42);
+    assert.equal(repl.context.extra, 3);
+    Object.defineProperty(repl.context, "configured", { value: 5, writable: true, configurable: true });
+    assert.equal((await repl.evaluate("configured += extra; return configured")).value, 8);
+    const globals = (await repl.evaluate("return { process: typeof process, require: typeof require }")).value as Record<string, string>;
+    assert.deepEqual({ ...globals }, { process: "undefined", require: "undefined" });
+    assert.equal((await repl.evaluate("delete extra; return typeof extra")).value, "undefined");
+    await assert.rejects(repl.evaluate("missingBinding"), /missingBinding|not defined|Can't find/);
+  });
+
   it("warns on direct writes to prior const bindings without blocking effects", async () => {
     const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
     await repl.evaluate("effects = 0; const handle = 'original'; const object = {value:1};");
@@ -67,6 +84,7 @@ describe("async REPL wrapper", () => {
   it("wraps expressions vs statements", () => {
     assert.match(wrapAsync("await opensky.list_apps()"), /\(async \(\) => \(/);
     assert.match(wrapAsync("const x = 1; return x"), /\(async \(\) => \{/);
+    assert.match(wrapAsync("{value: await answer()}"), /\(async \(\) => \(/);
   });
 
   it("exposes standard JS globals such as Date and Number", async () => {
@@ -119,9 +137,9 @@ describe("async REPL wrapper", () => {
       return Object.freeze({ ping: () => __host("ping") });
     `, { __host: (value: string) => value });
     const globals = await repl.evaluate("return { process: typeof process, require: typeof require, fetch: typeof fetch, dispatch: typeof __dispatch }");
-    assert.deepEqual(globals.value, { process: "undefined", require: "undefined", fetch: "undefined", dispatch: "undefined" });
+    assert.deepEqual({ ...(globals.value as Record<string, string>) }, { process: "undefined", require: "undefined", fetch: "undefined", dispatch: "undefined" });
     const extension = await repl.evaluate("return { host: typeof __host, ping: bridge.ping() }");
-    assert.deepEqual(extension.value, { host: "undefined", ping: "ping" });
+    assert.deepEqual({ ...(extension.value as Record<string, string>) }, { host: "undefined", ping: "ping" });
     for (const source of [
       `Function("return process")()`,
       `eval("1")`,
@@ -141,19 +159,36 @@ describe("async REPL wrapper", () => {
     repl.installContextFactory("bridge", `return Object.freeze({ delayed: () => __host() });`, {
       __host: async () => { await delayed; calls.push("late"); },
     });
-    await assert.rejects(() => repl.evaluate("await bridge.delayed(); await bridge.delayed(); return 1"), /timed out after 20ms/);
+    // Either the host deadline or the VM's remaining-budget deadline can win.
+    await assert.rejects(() => repl.evaluate("await bridge.delayed(); await bridge.delayed(); return 1"), /timed out after 20ms|Script execution timed out/);
     release();
     await new Promise((resolve) => setTimeout(resolve, 0));
     assert.deepEqual(calls, ["late"], "the continuation's second host call must be rejected after revocation");
     await assert.rejects(() => repl.evaluate("return 2"), /evaluator is poisoned/);
   });
 
-  it("interrupts a recursive Promise microtask chain", async () => {
-    const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true, timeoutMs: 20 });
-    await assert.rejects(
-      () => repl.evaluate("async function spin(){ await 0; return spin(); } return spin()"),
-      /timed out after 20ms|Script execution timed out/,
-    );
-    await assert.rejects(() => repl.evaluate("return 1"), /evaluator is poisoned/);
+  for (const kind of ["sync", "then", "async"]) {
+    it(`interrupts ${kind} runaway work in an externally bounded Node process`, () => {
+      const probe = fileURLToPath(new URL("./fixtures/strict-runtime-probe.ts", import.meta.url));
+      const child = spawnSync(process.execPath, ["--import", "tsx", probe, kind], {
+        encoding: "utf8", timeout: 5_000, killSignal: "SIGKILL",
+      });
+      assert.equal(child.error, undefined, String(child.error));
+      assert.equal(child.signal, null, child.stderr);
+      assert.equal(child.status, 0, child.stderr);
+      assert.equal(JSON.parse(child.stdout).status, "timed-out-and-poisoned");
+    });
+  }
+
+  it("requires Bun to reject unsupported strict mode or enforce the same timeout contract", (t) => {
+    const available = spawnSync("bun", ["--version"], { encoding: "utf8", timeout: 5_000 });
+    if (available.error && "code" in available.error && available.error.code === "ENOENT") return t.skip("Bun is not installed");
+    assert.equal(available.status, 0, available.stderr);
+    const probe = fileURLToPath(new URL("./fixtures/strict-runtime-probe.ts", import.meta.url));
+    const child = spawnSync("bun", [probe, "async"], { encoding: "utf8", timeout: 5_000, killSignal: "SIGKILL" });
+    assert.equal(child.error, undefined, String(child.error));
+    assert.equal(child.signal, null, child.stderr);
+    assert.equal(child.status, 0, child.stderr);
+    assert.ok(["unsupported", "timed-out-and-poisoned"].includes(JSON.parse(child.stdout).status));
   });
 });

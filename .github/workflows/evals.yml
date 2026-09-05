@@ -22,13 +22,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
-      - uses: oven-sh/setup-bun@v2
       - run: npm ci
       - run: npm run build
-      - run: bun evals/cli.ts browser.eval.ts --list
-      - run: bun test test/eval-tools.test.ts test/eval-report.test.ts test/cua-repl-tool.test.ts
+      - run: npm run evals -- browser.eval.ts --list
+      - run: npm test
 
   real-driver:
     # Never expose model credentials to pull-request code. Scheduled runs use default branch.
@@ -40,9 +39,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
-      - uses: oven-sh/setup-bun@v2
       - run: npm ci
       - name: Install real driver
         env:
@@ -54,16 +52,16 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           open -n -g -a CuaDriver --args serve
       - name: Real desktop capability probe
-        run: bun evals/ci-preflight.ts
+        run: node --import tsx evals/ci-preflight.ts
       - name: Evaluate OpenSky with Terra (serial cases)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           test -n "$OPENAI_API_KEY" || { echo 'Missing OPENAI_API_KEY repository secret'; exit 1; }
-          bun evals/cli.ts browser.eval.ts --local --harness opensky --model openai/gpt-5.6-terra --timeout 180000 --output evals/runs/ci
+          npm run evals -- browser.eval.ts --local --harness opensky --model openai/gpt-5.6-terra --timeout 180000 --output evals/runs/ci
       - name: Record score summary
         if: always()
-        run: bun evals/report.ts evals/runs/ci >> "$GITHUB_STEP_SUMMARY"
+        run: node --import tsx evals/report.ts evals/runs/ci >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

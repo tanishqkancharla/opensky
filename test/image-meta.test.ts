@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import { inferScreenshotScale, readImageMeta } from "../src/image-meta.js";
 

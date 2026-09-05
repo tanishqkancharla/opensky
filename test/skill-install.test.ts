@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import { installSkill, skillDestinations, uninstallSkill } from "../src/skill-install.js";
 

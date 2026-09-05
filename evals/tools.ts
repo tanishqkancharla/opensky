@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Type } from "typebox";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 
+import { AsyncLifecycle } from "./async-lifecycle.js";
 import { createOpenSky, formatTargetIdentity } from "../src/opensky.js";
 import type { AppState, DriverClient, OpenSkyOptions } from "../src/types.js";
 import type { OpenSkyTarget } from "../src/types.js";
@@ -128,6 +129,7 @@ export function createOpenSkyToolRuntime(
     target,
     autoLaunch: options.autoLaunch ?? true,
   });
+  const lifecycle = new AsyncLifecycle("OpenSky tool runtime", () => opensky.close());
 
   const tools = [
     defineTool({
@@ -572,10 +574,17 @@ export function createOpenSkyToolRuntime(
       },
     }),
   ];
-  return {
-    tools,
-    close: () => opensky.close(),
-  };
+  for (const tool of tools) guardToolExecution(tool, lifecycle);
+  return { tools, close: () => lifecycle.close() };
+}
+
+function guardToolExecution<T extends { name: string; execute: (...args: any[]) => Promise<any> }>(
+  tool: T,
+  lifecycle: AsyncLifecycle,
+): void {
+  const execute = tool.execute.bind(tool);
+  tool.execute = ((...args: Parameters<T["execute"]>) =>
+    lifecycle.run(`tool execution (${tool.name})`, () => execute(...args))) as T["execute"];
 }
 
 /** Compatibility helper for hosts that own driver/session teardown elsewhere. */

@@ -1,12 +1,19 @@
 # evals
 
-Compare computer-use harnesses on a **fresh Cua Fleet VM per case**. The agent and judge are both `openai/gpt-5.6-sol`. Scoring is a judge over the transcript: passed criteria / total criteria (including whether the path was efficient).
+Compare computer-use harnesses on a **fresh Cua Fleet VM per case**. The agent and judge default to `openai/gpt-5.6-terra`. Scoring is a judge over the transcript: passed criteria / total criteria (including whether the path was efficient).
+
+Development tests and evaluations run on Node 22.19 or newer (Node 24 in CI),
+with `tsx` loading TypeScript source. Run `npm ci` before using the commands
+below. The strict evaluator requires VM microtask draining under its timeout;
+Bun 1.3.4 does not provide that behavior and is unsupported for strict
+evaluations. Ordinary, non-strict CLI compatibility with Bun does not imply
+strict evaluation support.
 
 ```bash
 export FLEETS_TOKEN=...          # or CUA_CLIENT_ID + CUA_CLIENT_SECRET
 export OPENAI_API_KEY=...
-bun run evals -- --harness opensky,cua-driver
-bun run evals -- terminal-echo.eval.ts --harness opensky
+npm run evals -- --harness opensky,cua-driver
+npm run evals -- terminal-echo.eval.ts --harness opensky
 ```
 
 `--harness` values:
@@ -15,7 +22,7 @@ bun run evals -- terminal-echo.eval.ts --harness opensky
 | --- | --- | --- |
 | `opensky` | Pi | opensky methods only |
 | `cua-driver` | Pi | `cua_driver_call` (raw `cua-driver call`) |
-| `codex` | `codex exec --model gpt-5.6-sol` on the VM | Codex Computer Use / `@oai/sky` |
+| `codex` | `codex exec --model gpt-5.6-terra` on the VM | Codex Computer Use / `@oai/sky` |
 
 Pi built-in coding tools are off for the first two arms.
 
@@ -67,5 +74,5 @@ Cua Fleet cloud currently boots Linux (Omarchy). `Image.macos()` is local Lume. 
 export CUA_EVAL_OS=macos
 export CUA_EVAL_IMAGE='…macos containerDisk digest…'
 export CUA_POOL_NAME=opensky-macos-evals
-bun evals/macos-compat.ts
+node --import tsx evals/macos-compat.ts
 ```

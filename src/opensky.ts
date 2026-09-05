@@ -529,7 +529,7 @@ export class OpenSky implements OpenSkyApi {
     const endedManagedSessions = new Set<string>();
     await Promise.all(sessions.map(async (session) => {
       try {
-        await this.driver.call("end_session", { session });
+        await this.endSessionConfirmed(session);
         if (session === this.session) this.baseSessionEnded = true;
         else {
           await this.browserLeases.release(session);
@@ -557,7 +557,9 @@ export class OpenSky implements OpenSkyApi {
       const detail = failures.map(({ session, error }) =>
         `${JSON.stringify(session)}: ${error instanceof Error ? error.message : String(error)}`
       ).join("; ");
-      throw new OpenSkyError(`Failed to end ${failures.length} owned driver session(s): ${detail}`);
+      const receiptFailure = failures.find(({ error }) => error instanceof OpenSkyError && error.code === "session_end_unconfirmed");
+      throw new OpenSkyError(`Failed to end ${failures.length} owned driver session(s): ${detail}`,
+        receiptFailure ? "session_end_unconfirmed" : undefined);
     }
   }
 
@@ -668,14 +670,18 @@ export class OpenSky implements OpenSkyApi {
       });
     } catch (error) {
       try {
-        await this.driver.call("end_session", { session });
+        await this.endSessionConfirmed(session);
         await this.browserLeases.release(session);
         this.managedBrowserSessions.delete(session);
+        for (const target of Object.values(this.memory.targets)) {
+          if (target.browser?.session === session) this.removeTarget(target.handle);
+        }
         await this.persist();
       } catch (cleanupError) {
         throw new OpenSkyError(
           `Typed browser setup failed (${error instanceof Error ? error.message : String(error)}), and cleanup of ` +
             `${JSON.stringify(session)} also failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+          cleanupError instanceof OpenSkyError ? cleanupError.code : undefined,
         );
       }
       if (isTypedBrowserUnavailable(error)) {
@@ -1476,11 +1482,24 @@ export class OpenSky implements OpenSkyApi {
   private async closeResolvedTarget(resolved: ResolvedApp): Promise<void> {
     const session = resolved.browser?.session;
     if (!session) return;
-    await this.driver.call("end_session", { session });
+    await this.endSessionConfirmed(session);
     await this.browserLeases.release(session);
     this.managedBrowserSessions.delete(session);
     this.removeTarget(resolved.handle);
     await this.persist();
+  }
+
+  private async endSessionConfirmed(session: string): Promise<void> {
+    const result = await this.driver.call("end_session", { session });
+    const receipt = asRecord(result.structured);
+    if (receipt?.session !== session || receipt.active !== false) {
+      throw new OpenSkyError(
+        `Ending owned driver session ${JSON.stringify(session)} was not confirmed by a matching inactive receipt. ` +
+          "Exact ownership is retained; retry cleanup for the same session.",
+        "session_end_unconfirmed",
+        { session, receipt: result.structured },
+      );
+    }
   }
 
   private async verifyNativeCloseAuthority(

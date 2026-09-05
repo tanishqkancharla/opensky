@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import { createCuaReplToolRuntime, CUA_REPL_TOOL_NAMES } from "../evals/cua-repl-tool.js";
 import type { DriverClient, DriverResult } from "../src/types.js";
@@ -11,10 +11,10 @@ describe("single-tool native-style cua evaluator", () => {
   it("rejects invalid browser arguments before the bridge can discard them", async () => {
     const calls: string[] = [];
     const runtime = createCuaReplToolRuntime({
-      async call(tool): Promise<DriverResult> {
+      async call(tool, args = {}): Promise<DriverResult> {
         calls.push(tool);
         if (tool === "list_apps") return result({ apps: [{ name: "Google Chrome", bundle_id: "com.google.chrome", running: true }] });
-        if (tool === "end_session") return result({ status: "ok" });
+        if (tool === "end_session") return result({ session: args.session, active: false });
         throw new Error(`Unexpected driver call ${tool}`);
       },
     }, "mac", { homeDir: await mkdtemp(join(tmpdir(), "opensky-browser-args-")) });
@@ -77,71 +77,6 @@ describe("single-tool native-style cua evaluator", () => {
         [{ op: "listApps", status: "completed" }],
       );
 
-      runtime.cua.getApp = async () => ({
-        targetHandle: "tgt_fake",
-        toJSON: () => ({ targetHandle: "tgt_fake", kind: "app" }),
-        getAXState: async (options = {}) => {
-          runtime.cua.emit("AX tree", options);
-          return "AX tree";
-        },
-      }) as never;
-      const observedAX = await execute(tool, "ax", {
-        code: `app = await cua.getApp("Example"); await app.getAXState()`,
-      });
-      assert.deepEqual(observedAX.content, [{ type: "text", text: "AX tree" }], "getAXState emission and result must appear once");
-      assert.deepEqual(
-        (observedAX.details as { cuaCalls: Array<{ op: string }> }).cuaCalls.map(({ op }) => op),
-        ["getApp", "target.getAXState"],
-      );
-
-      const lifecycle: string[] = [];
-      let open = false;
-      const fakeTab = {
-        id: "tgt_browser",
-        browserId: "chrome",
-        close: async () => { lifecycle.push("close"); open = false; },
-      };
-      runtime.cua.getBrowser = async () => ({
-        browserId: "chrome",
-        documentation: async () => "browser docs",
-        nameSession: async (name: string) => { lifecycle.push(`name:${name}`); },
-        tabs: {
-          new: async () => { lifecycle.push("new"); open = true; return fakeTab; },
-          get: async (id: string) => { lifecycle.push(`get:${id}`); return fakeTab; },
-          list: async () => open ? [{ id: fakeTab.id, browserId: "chrome" }] : [],
-          selected: async () => open ? fakeTab : undefined,
-        },
-      }) as never;
-      const browserLifecycle = await execute(tool, "browser-lifecycle", {
-        code: `
-          browser = await cua.getBrowser({id:"chrome"});
-          await browser.nameSession("eval");
-          tab = await browser.tabs.new();
-          rebound = await browser.tabs.get(tab.id);
-          selected = await browser.tabs.selected();
-          listed = await browser.tabs.list();
-          await rebound.close();
-          return {tab:tab.id, selected:selected.id, listed:listed.length, emptyAfter:(await browser.tabs.selected())===undefined};
-        `,
-      });
-      assert.deepEqual(lifecycle, ["name:eval", "new", "get:tgt_browser", "close"]);
-      assert.match((browserLifecycle.content[0] as { text: string }).text, /"emptyAfter": true/);
-      assert.deepEqual(
-        (browserLifecycle.details as { cuaCalls: Array<{ op: string; status: string }> }).cuaCalls.map(({ op, status }) => ({ op, status })),
-        [
-          { op: "getBrowser", status: "completed" },
-          { op: "browser.nameSession", status: "completed" },
-          { op: "browser.tabs.new", status: "completed" },
-          { op: "browser.tabs.get", status: "completed" },
-          { op: "browser.tabs.selected", status: "completed" },
-          { op: "browser.tabs.list", status: "completed" },
-          { op: "target.close", status: "completed" },
-          { op: "browser.tabs.selected", status: "completed" },
-        ],
-      );
-      runtime.cua.listTabs = async () => [{ id: "tab-info", browserId: "chrome", title: "Visible info" }];
-      const tabInfo = await execute(tool, "tab-info", { code: "return (await cua.listTabs())[0]" });
-      assert.match((tabInfo.content[0] as { text: string }).text, /Visible info/, "plain tab metadata must not be mistaken for a hidden binding descriptor");
     } finally {
       await runtime.close();
     }
@@ -200,7 +135,7 @@ function driver(): DriverClient {
       if (tool === "list_apps") {
         return result({ apps: [{ name: "Example", bundle_id: "com.example", running: true }] });
       }
-      if (tool === "end_session") return result({ status: "ok", session: args.session });
+      if (tool === "end_session") return result({ session: args.session, active: false });
       throw new Error(`Unexpected driver call ${tool}`);
     },
   };

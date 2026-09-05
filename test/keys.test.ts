@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import { parseXdotoolKey, toHotkeyKeys } from "../src/keys.js";
 

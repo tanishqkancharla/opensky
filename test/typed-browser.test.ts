@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import { createOpenSky } from "../src/opensky.js";
 import type { DriverCall, DriverClient, DriverResult } from "../src/types.js";
@@ -24,6 +24,7 @@ class TypedBrowserDriver implements DriverClient {
   private currentUrl = "about:blank";
   private documentId = "doc-test-1";
   failEndSessionCount = 0;
+  endSessionReceipt: ((session: string) => unknown) | undefined;
   failBind = false;
   ambiguousPrepare = false;
   failNextSnapshot = false;
@@ -114,7 +115,7 @@ class TypedBrowserDriver implements DriverClient {
         });
       case "end_session":
         if (this.failEndSessionCount-- > 0) throw new Error("injected cleanup refusal");
-        return result({ status: "ok", effect: "confirmed" });
+        return result(this.endSessionReceipt ? this.endSessionReceipt(String(effectiveArgs.session)) : { session: effectiveArgs.session, active: false });
 
       // Compatibility responses for the pre-typed-browser implementation.
       case "launch_app":
@@ -756,6 +757,75 @@ describe("OpenSky typed-browser contract", () => {
 
     const ended = driver.calls.filter((call) => call.tool === "end_session");
     assert.equal(ended.length, 3, "the failed browser session is retried while the base session is not ended twice");
+  });
+
+  for (const [label, receipt] of [
+    ["missing", (_session: string) => undefined],
+    ["status-only", (_session: string) => ({ status: "ok" })],
+    ["mismatched", (_session: string) => ({ session: "another-session", active: false })],
+    ["still-active", (session: string) => ({ session, active: true })],
+  ] as const) {
+    it(`retains exact close authority after a ${label} end-session receipt`, async () => {
+      const { opensky, driver, home } = await harness();
+      const target = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      const session = String(driver.calls.find((call) => call.tool === "browser_prepare")?.args.session);
+      driver.endSessionReceipt = receipt;
+      await assert.rejects(opensky.close_target({ app: target.targetHandle }), { code: "session_end_unconfirmed" });
+      assert.deepEqual((await browserLeaseRecords(home)).map((lease) => lease.session), [session]);
+      driver.endSessionReceipt = undefined;
+      await opensky.close_target({ app: target.targetHandle });
+      assert.equal((await browserLeaseRecords(home)).length, 0);
+      assert.deepEqual(driver.calls.filter((call) => call.tool === "end_session").map((call) => call.args.session), [session, session]);
+      const before = driver.calls.length;
+      await assert.rejects(opensky.close_target({ app: target.targetHandle }), /No driver-owned exact target/);
+      assert.equal(driver.calls.length, before);
+      await opensky.close();
+    });
+
+    it(`retries base and managed cleanup after a ${label} end-session receipt`, async () => {
+      const { opensky, driver, home } = await harness();
+      await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      driver.endSessionReceipt = receipt;
+      await assert.rejects(opensky.close(), { code: "session_end_unconfirmed" });
+      assert.equal((await browserLeaseRecords(home)).length, 1);
+      const firstAttempt = driver.calls.filter((call) => call.tool === "end_session").map((call) => call.args.session);
+      assert.equal(firstAttempt.length, 2);
+      driver.endSessionReceipt = undefined;
+      await opensky.close();
+      assert.equal((await browserLeaseRecords(home)).length, 0);
+      assert.deepEqual(driver.calls.filter((call) => call.tool === "end_session").map((call) => call.args.session), [...firstAttempt, ...firstAttempt]);
+      await opensky.close();
+      assert.equal(driver.calls.filter((call) => call.tool === "end_session").length, 4);
+    });
+
+    it(`retains rollback ownership after a ${label} end-session receipt`, async () => {
+      const { opensky, driver, home } = await harness();
+      driver.failBind = true;
+      driver.endSessionReceipt = receipt;
+      await assert.rejects(opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false }), { code: "session_end_unconfirmed" });
+      const [lease] = await browserLeaseRecords(home);
+      assert.ok(lease);
+      driver.endSessionReceipt = undefined;
+      await opensky.close();
+      assert.equal((await browserLeaseRecords(home)).length, 0);
+      assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === lease.session).length, 2);
+    });
+  }
+
+  it("retains a reclaimed orphan lease until its matching inactive receipt arrives", async () => {
+    const { opensky: first, driver, home } = await harness();
+    await first.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const session = String(driver.calls.find((call) => call.tool === "browser_prepare")?.args.session);
+    await markBrowserLeaseOwnerDead(home, session);
+    const restarted = createOpenSky({ driver, homeDir: home, session: `${SESSION}-restarted`, target: "mac", settleDelayMs: 0 });
+    driver.endSessionReceipt = (requested) => requested === session ? { status: "ok" } : { session: requested, active: false };
+    await assert.rejects(restarted.close(), { code: "session_end_unconfirmed" });
+    assert.deepEqual((await browserLeaseRecords(home)).map((lease) => lease.session), [session]);
+    driver.endSessionReceipt = undefined;
+    await restarted.close();
+    assert.equal((await browserLeaseRecords(home)).length, 0);
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === session).length, 2);
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === `${SESSION}-restarted`).length, 1);
   });
 
   it("retains a failed setup rollback session so close can retry it", async () => {

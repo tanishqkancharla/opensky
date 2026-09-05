@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import { createCua, CuaTargetClosedError, CuaUnsupportedError } from "../src/cua.js";
 import type { AppState, OpenSky } from "../src/types.js";

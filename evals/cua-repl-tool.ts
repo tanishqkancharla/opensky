@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Type } from "typebox";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 
+import { AsyncLifecycle } from "./async-lifecycle.js";
 import { AsyncRepl, AsyncReplError } from "../src/async-repl.js";
 import { createCua, type App, type Browser, type Tab } from "../src/cua.js";
 import { createOpenSky } from "../src/opensky.js";
@@ -33,23 +34,27 @@ export function createCuaReplToolRuntime(
   const targets = new Map<string, App | Tab>();
   const browsers = new Map<string, Browser>();
   const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
+  const lifecycle = new AsyncLifecycle("CUA REPL runtime", () => opensky.close());
+  let executionQueue: Promise<void> = Promise.resolve();
   installSafeCuaBridge(repl, async (request) => {
-    const parsed = JSON.parse(request) as { op?: string; args?: unknown[] };
-    const args = Array.isArray(parsed.args) ? parsed.args : [];
-    const op = parsed.op ?? "";
-    const begun = performance.now();
-    const trace: BridgeCallTrace = { op, args, durationMs: 0, status: "completed" };
-    activeBridgeCalls?.push(trace);
-    try {
-      const value = encodeBridgeValue(await dispatch(op, args, cua, targets, browsers));
-      return JSON.stringify(value === undefined ? { __cuaUndefined: true } : value);
-    } catch (error) {
-      trace.status = "failed";
-      trace.error = error instanceof Error ? error.message : String(error);
-      throw error;
-    } finally {
-      trace.durationMs = Math.max(0, performance.now() - begun);
-    }
+    return lifecycle.run("bridge dispatch", async () => {
+      const parsed = JSON.parse(request) as { op?: string; args?: unknown[] };
+      const args = Array.isArray(parsed.args) ? parsed.args : [];
+      const op = parsed.op ?? "";
+      const begun = performance.now();
+      const trace: BridgeCallTrace = { op, args, durationMs: 0, status: "completed" };
+      activeBridgeCalls?.push(trace);
+      try {
+        const value = encodeBridgeValue(await dispatch(op, args, cua, targets, browsers));
+        return JSON.stringify(value === undefined ? { __cuaUndefined: true } : value);
+      } catch (error) {
+        trace.status = "failed";
+        trace.error = error instanceof Error ? error.message : String(error);
+        throw error;
+      } finally {
+        trace.durationMs = Math.max(0, performance.now() - begun);
+      }
+    });
   });
 
   const emittedImages = new Set<string>();
@@ -78,45 +83,63 @@ export function createCuaReplToolRuntime(
       code: Type.String({ minLength: 1, description: "Async JavaScript using the preloaded cua object" }),
       title: Type.Optional(Type.String({ description: "Short human-readable action label" })),
     }),
-    async execute(_id, params) {
-      activeEmissions = [];
-      activeBridgeCalls = [];
-      try {
-        const result = await repl.evaluate(params.code, "cua-repl");
-        const values = [...activeEmissions, ...result.logs];
-        if (!isBindingDescriptor(result.value) && !activeEmissions.some((value) => equivalentOutput(value, result.value))) {
-          values.push(result.value);
-        }
-        return {
-          content: values.flatMap((value) => renderValue(value, emittedImages)),
-          details: {
-            title: params.title,
-            code: params.code,
-            emissions: activeEmissions.length,
-            cuaCalls: activeBridgeCalls,
-            result: encodeBridgeValue(result.value),
-            logs: result.logs,
-          },
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const logs = error instanceof AsyncReplError ? error.logs : [];
-        return {
-          isError: true,
-          content: [
-            ...[...activeEmissions, ...logs].flatMap((value) => renderValue(value, emittedImages)),
-            { type: "text" as const, text: `Error: ${message}\nEarlier actions in this cell may have completed. Existing bindings remain available; use the emitted state before retrying.` },
-          ],
-          details: { title: params.title, code: params.code, emissions: activeEmissions.length, cuaCalls: activeBridgeCalls, logs, runtimeError: message },
-        };
-      } finally {
-        activeEmissions = undefined;
-        activeBridgeCalls = undefined;
-      }
+    execute(_id, params) {
+      return lifecycle.run("tool execution", () => {
+        const execution = executionQueue.then(async () => {
+          activeEmissions = [];
+          activeBridgeCalls = [];
+          try {
+            const result = await repl.evaluate(params.code, "cua-repl");
+            const values = [...activeEmissions, ...result.logs];
+            if (!isBindingDescriptor(result.value) && !activeEmissions.some((value) => equivalentOutput(value, result.value))) {
+              values.push(result.value);
+            }
+            return {
+              content: values.flatMap((value) => renderValue(value, emittedImages)),
+              details: {
+                title: params.title,
+                code: params.code,
+                emissions: activeEmissions.length,
+                cuaCalls: activeBridgeCalls,
+                result: encodeBridgeValue(result.value),
+                logs: result.logs,
+                runtimeError: undefined as string | undefined,
+              },
+            };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            const logs = error instanceof AsyncReplError ? error.logs : [];
+            return {
+              isError: true,
+              content: [
+                ...[...activeEmissions, ...logs].flatMap((value) => renderValue(value, emittedImages)),
+                { type: "text" as const, text: `Error: ${message}\nEarlier actions in this cell may have completed. Existing bindings remain available; use the emitted state before retrying.` },
+              ],
+              details: {
+                title: params.title,
+                code: params.code,
+                emissions: activeEmissions.length,
+                cuaCalls: activeBridgeCalls,
+                result: undefined,
+                logs,
+                runtimeError: message,
+              },
+            };
+          } finally {
+            activeEmissions = undefined;
+            activeBridgeCalls = undefined;
+          }
+        });
+        executionQueue = execution.then(
+          () => undefined,
+          () => undefined,
+        );
+        return execution;
+      });
     },
   })];
 
-  return { tools, close: () => opensky.close(), cua };
+  return { tools, close: () => lifecycle.close() };
 }
 
 async function dispatch(

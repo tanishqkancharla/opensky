@@ -67,7 +67,7 @@ async function dispatch(command, state) {
   switch (tool) {
     case "end_session":
       state.sessionEnded = true;
-      return envelope({ status: "ok", effect: "confirmed", session: args.session });
+      return envelope({ session: args.session, active: false });
     case "list_apps":
       return envelope({ apps: state.apps });
     case "launch_app":

@@ -1,5 +1,11 @@
 # Browser evaluation in CI
 
+The canonical runner uses Node 22.19+ with the `tsx` development dependency;
+CI uses Node 24. Run `npm ci` first. Strict evaluations require working VM
+microtask timeout support and must not run under installed Bun 1.3.4, which
+ignores the required `microtaskMode: 'afterEvaluate'` behavior. A green ordinary
+CLI check under Bun does not establish strict-runtime support.
+
 ## Current hosted result
 
 [First GitHub-hosted macOS run](https://github.com/tanishqkancharla/opensky/actions/runs/33947371636)
@@ -19,7 +25,7 @@ The current branch does not enable scheduled runs until merged.
 Run the declarative cases on an already provisioned machine with:
 
 ```sh
-bun evals/cli.ts browser.eval.ts --local --harness opensky --model openai/gpt-5.6-terra --output evals/runs/manual
+npm run evals -- browser.eval.ts --local --harness opensky --model openai/gpt-5.6-terra --output evals/runs/manual
 ```
 
 Local mode does not install or launch the helper. Optional `CUA_DRIVER_BINARY`
@@ -29,11 +35,19 @@ unavailable until its plugin is explicitly provisioned; OpenSky scores are not
 native parity scores.
 
 To verify browser argument validation against the real helper without opening
-GUI targets, run `bun evals/probe-browser-arguments.ts <new-output-directory>`.
+GUI targets, run `node --import tsx evals/probe-browser-arguments.ts <new-output-directory>`.
 It requires an already-running helper and installed Chrome, never installs or
 starts the driver, and records exact results plus a driver tape in
 `evidence.json`. Invalid calls must fail before driver dispatch. This is a
 boundary regression check, not an agent-task completion or native parity score.
+
+`node --import tsx evals/probe-runtime-lifecycle.ts <new-output-directory>`
+tests close/admission races against the real helper without opening GUI targets.
+It delays delivery of one actual `list_apps` response, closes the runtime while
+that response is pending, and verifies that later dispatches are refused and
+the exact driver session is ended only after admitted work drains. A defensive
+allowlist permits only `list_apps` and `end_session`; no driver response is
+mocked. The resulting tape is boundary evidence, not a model-task score.
 
 `browser.eval.ts` describes live tasks using `evalCase`, `harness.send`, and
 `response.score`. Cases cover search and linked follow-up, release discovery,

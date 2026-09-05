@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -35,12 +35,12 @@ type CliOptions = {
 const HELP = `opensky evals — compare computer-use harnesses on Cua Fleet VMs
 
 Usage:
-  bun run evals -- [--harness opensky,cua-driver,codex] [--model openai/gpt-5.6-sol]
-  bun run evals -- terminal-echo.eval.ts --harness opensky
+  npm run evals -- [--harness opensky,cua-driver,codex] [--model openai/gpt-5.6-terra]
+  npm run evals -- terminal-echo.eval.ts --harness opensky
 
 Options:
   --harness <id[,id]>   opensky | cua-driver | codex   (default: all three)
-  --model <provider/id> Agent and judge model            (default: openai/gpt-5.6-sol)
+  --model <provider/id> Agent and judge model            (default: openai/gpt-5.6-terra)
   -t <pattern>           Filter cases by name
   --output <dir>        Run directory (default: evals/runs/<timestamp>)
   --timeout <ms>        Per-case timeout (default: 180000)
@@ -53,7 +53,7 @@ Environment:
   CUA_POOL_NAME          Fleet pool name (default: opensky-evals)
   CUA_EVAL_IMAGE         Fleet image (default: Cua Omarchy Linux)
   CUA_EVAL_OS            linux | macos | windows
-  OPENAI_API_KEY         For Pi gpt-5.6-sol
+  OPENAI_API_KEY         For Pi gpt-5.6-terra
 `;
 
 async function main(argv = process.argv.slice(2)): Promise<number> {

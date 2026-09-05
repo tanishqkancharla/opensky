@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import { makeHarness } from "./harness.ts";
 
@@ -58,7 +58,7 @@ describe("opensky CLI", () => {
     };
     assert.equal(payload.ok, true);
     assert.match(payload.value.before, /\[13]/);
-    assert.match(payload.value.after, /Changed:/);
+    assert.match(payload.value.after, /diff from the previous accessibility tree/);
     assert.doesNotMatch(payload.value.after, /No accessibility changes/);
     assert.ok(payload.value.shot.startsWith("file:"));
   });
@@ -107,10 +107,12 @@ describe("opensky CLI", () => {
 
 function runCli(args: string[], options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}) {
   return new Promise<{ code: number; stdout: string; stderr: string }>((resolve, reject) => {
-    const child = spawn(process.execPath, [cli, ...args], {
+    const child = spawn(process.execPath, ["--import", import.meta.resolve("tsx"), cli, ...args], {
       cwd: options.cwd ?? process.cwd(),
       env: { ...process.env, ...(options.env ?? {}) },
       stdio: ["ignore", "pipe", "pipe"],
+      timeout: 10_000,
+      killSignal: "SIGKILL",
     });
     let stdout = "";
     let stderr = "";

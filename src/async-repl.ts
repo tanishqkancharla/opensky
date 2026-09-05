@@ -51,6 +51,7 @@ export class AsyncRepl {
     if (this.strictSandbox && Object.keys(options.context ?? {}).length > 0) {
       throw new Error("strictSandbox context must be installed through a context-native membrane");
     }
+    if (this.strictSandbox) assertStrictVmSupport();
     this.sandbox = vm.createContext(
       createSandbox(options.context ?? {}, options.allowNodeApis !== false, this.strictSandbox),
       this.strictSandbox ? {
@@ -92,7 +93,7 @@ export class AsyncRepl {
       }
       extensionNames.push(key);
       extensionValues.push((...args: unknown[]) => {
-        // Bun loses AsyncLocalStorage context after a cross-realm await. The
+        // Cross-realm awaits can lose AsyncLocalStorage context. The
         // evaluator queue permits exactly one active generation, and any
         // timeout poisons the REPL before another can begin, so this fallback
         // cannot authorize a stale continuation as a newer evaluation.
@@ -217,10 +218,9 @@ function cellBindings(source: string): { constants: Set<string>; writes: Set<str
 export function wrapAsync(code: string): string {
   const trimmed = stripReplWrapper(code);
   try {
-    // Bun's vm.Script defers syntax errors until runInContext, so use the host
-    // parser only to distinguish an expression from an async function body.
-    // The supplied code is never executed by this Function.
-    new Function(`return (${trimmed}\n);`);
+    // Parse without executing, and allow await in an expression. A plain
+    // Function constructor rejects await and incorrectly treats it as a body.
+    parse(`(${trimmed}\n)`, { ecmaVersion: "latest", allowAwaitOutsideFunction: true });
     return `(async () => (${trimmed}\n))()`;
   } catch {
     return `(async () => {\n${persistDeclarations(trimmed)}\n})()`;
@@ -416,36 +416,35 @@ function createSandbox(context: Record<string, unknown>, allowNodeApis: boolean,
     store.process = process;
     store.require = createRequire(import.meta.url);
   }
-  // A contextified plain null-prototype object receives realm-native intrinsics.
-  // A get-trapping Proxy would shadow those intrinsics and make Object/JSON/etc.
-  // unavailable; host values are already excluded above in strict mode.
+  // Contextify a plain object in both modes. The former get-trapping Proxy
+  // shadowed realm intrinsics and crashes Bun's VM even for `await host()`.
+  // Persistent declarations already target globalThis; no proxy is needed.
+  // Strict contexts receive only realm-native intrinsics, never host values.
   if (strictSandbox) return store as Record<string, unknown>;
   store.globalThis = store;
-  return new Proxy(store, {
-    has(target, prop) {
-      if (prop === Symbol.unscopables) return false;
-      return prop in target;
-    },
-    get(target, prop) {
-      if (prop === Symbol.unscopables) return undefined;
-      return target[prop];
-    },
-    set(target, prop, value) {
-      target[prop] = value;
-      return true;
-    },
-    getOwnPropertyDescriptor(target, prop) {
-      if (prop in target) return Object.getOwnPropertyDescriptor(target, prop);
-      return undefined;
-    },
-    defineProperty(target, prop, descriptor) {
-      Object.defineProperty(target, prop, descriptor);
-      return true;
-    },
-    ownKeys(target) {
-      return Reflect.ownKeys(target);
-    },
-  }) as unknown as Record<string, unknown>;
+  return store as Record<string, unknown>;
+}
+
+let strictVmSupported: boolean | undefined;
+
+function assertStrictVmSupport(): void {
+  if (strictVmSupported === undefined) {
+    // Some runtimes silently ignore microtaskMode. Check with a finite job,
+    // never with a runaway chain that could wedge the caller during setup.
+    try {
+      const probe = vm.createContext(Object.create(null), {
+        codeGeneration: { strings: false, wasm: false },
+        microtaskMode: "afterEvaluate",
+      });
+      vm.runInContext("globalThis.drained = false; Promise.resolve().then(() => { globalThis.drained = true; });", probe, { timeout: 100 });
+      strictVmSupported = probe.drained === true;
+    } catch {
+      strictVmSupported = false;
+    }
+  }
+  if (!strictVmSupported) {
+    throw new Error("strictSandbox requires a runtime with enforced VM microtask draining; run this evaluator with Node.js (npm run evals), not a runtime that ignores microtaskMode.");
+  }
 }
 
 async function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {

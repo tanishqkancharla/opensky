@@ -46,8 +46,9 @@ from the executable's bundle ancestry; `CUA_DRIVER_APP_PATH` can specify it.
 From this repo instead of npm:
 
 ```bash
-bun install
-bun src/cli.ts doctor
+npm install
+npm run build
+node dist/cli.js doctor
 ```
 
 ## Add / install the skill
@@ -258,8 +259,10 @@ OpenSky runtimes can therefore share a home without reaping or overwriting each
 other's cleanup authority. A later runtime claims a crash leftover only when
 the recorded effective owner PID is demonstrably absent. PID reuse and
 indeterminate liveness conservatively retain the lease instead of risking a
-destructive claim. A failed `end_session` likewise retains the exact lease for
-retry, and successful teardown removes only that session's record. Ordinary
+destructive claim. A failed or ambiguous `end_session` likewise retains the
+exact lease for retry. Cleanup requires a structured receipt naming the same
+session and reporting `active: false`; otherwise `session_end_unconfirmed`
+preserves ownership. Confirmed teardown removes only that session's record. Ordinary
 user-owned browser state is never added to this ledger.
 
 For a native macOS target, `open_target` asks LaunchServices for a distinct app
@@ -296,14 +299,27 @@ If an app is reported running but has no ordinary UI window, `get_app_state` ask
 
 ## Development
 
-Tests are TypeScript and run with [Bun](https://bun.sh) (`bun test`), which executes `src/` directly — no `tsc` step required for the suite.
+Tests and model evaluations run under Node.js with `tsx`, executing TypeScript
+source directly. Use Node.js 22.19 or newer for the development/evaluation
+toolchain (the Pi SDK requires it).
 
 ```bash
-curl -fsSL https://bun.sh/install | bash
-bun test
+npm install
+npm test
 ```
 
-`npm test` is an alias for `bun test`. `npm run build` still emits the Node-compatible `dist/` used by the published `opensky` bin.
+`npm run build` emits the Node-compatible `dist/` used by the published
+`opensky` bin. The ordinary CLI REPL also works under Bun. Strict evaluator
+mode requires VM microtask draining and checks that capability before admitting
+any cell: Bun 1.3.4 ignores that VM option, so it is rejected with a Node.js
+recovery instruction instead of risking an uninterruptible Promise loop.
+Runaway-loop regressions run in externally bounded child processes so a broken
+runtime cannot leave a wedged test process behind.
+
+The evaluator's close operation stops admission of new tool/bridge calls,
+drains already-admitted work, and only then cleans up owned targets. An
+unsettled action or failed cleanup is not proof of a clean desktop; retain
+ownership evidence and retry exact cleanup rather than closing unrelated apps.
 
 The deterministic unit suite uses contract doubles and real-driver-derived
 replay tapes so it can run without desktop permissions. Release acceptance is
@@ -313,12 +329,12 @@ websites; `evals/real-driver-smoke.ts` and
 
 ## Evals
 
-Computer-use harness comparison (opensky vs Cua Driver vs Codex Computer Use) lives in [`evals/`](evals/). Each case claims a Cua Fleet VM, runs gpt-5.6-sol, then a judge scores the transcript.
+Computer-use harness comparison (opensky vs Cua Driver vs Codex Computer Use) lives in [`evals/`](evals/). Each case claims a Cua Fleet VM (or uses an explicitly selected local real driver), runs gpt-5.6-terra, then a judge scores the transcript.
 
 ```bash
 export FLEETS_TOKEN=...
 export OPENAI_API_KEY=...
-bun run evals -- --harness opensky,cua-driver,codex
+npm run evals -- --harness opensky,cua-driver,codex
 ```
 
 Codex Computer Use needs a macOS Fleet image (`CUA_EVAL_OS=macos` and `CUA_EVAL_IMAGE=...`). See [`evals/README.md`](evals/README.md).

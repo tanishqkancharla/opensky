@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import {
   createOpenSky,
@@ -969,7 +969,7 @@ describe("OpenSky against cua-driver", () => {
     await opensky.list_apps();
     const state = JSON.parse(await readFile(statePath, "utf8"));
     state.sessionEnded = true;
-    await Bun.write(statePath, JSON.stringify(state));
+    await writeFile(statePath, JSON.stringify(state));
 
     const apps = await opensky.list_apps();
     assert.ok(apps.some((app) => app.displayName === "Calculator"));
@@ -986,7 +986,7 @@ describe("OpenSky against cua-driver", () => {
     await opensky.list_apps();
     const state = JSON.parse(await readFile(statePath, "utf8"));
     state.degradedSnapshots = 1;
-    await Bun.write(statePath, JSON.stringify(state));
+    await writeFile(statePath, JSON.stringify(state));
 
     const snapshot = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
     assert.match(snapshot.text, /AXWindow/);
@@ -997,7 +997,7 @@ describe("OpenSky against cua-driver", () => {
     await opensky.list_apps();
     const state = JSON.parse(await readFile(statePath, "utf8"));
     state.degradedAlways = true;
-    await Bun.write(statePath, JSON.stringify(state));
+    await writeFile(statePath, JSON.stringify(state));
 
     const snapshot = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
     assert.match(snapshot.text, /Use screenshot coordinates/);

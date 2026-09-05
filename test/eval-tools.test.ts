@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it } from "bun:test";
+import { describe, it } from "node:test";
 
 import { createOpenSkyToolRuntime, dispatchBatchActions, OPENSKY_TOOL_NAMES, validateBatchActions } from "../evals/tools.js";
 import type { DriverClient, DriverResult } from "../src/types.js";
@@ -15,7 +15,8 @@ describe("OpenSky tool runtime lifecycle", () => {
       async status() { return { running: true, text: "running" }; },
       async call(tool, args = {}): Promise<DriverResult> {
         calls.push({ tool, args });
-        return { structured: { status: "ok" }, text: "ok", raw: {} };
+        const structured = tool === "end_session" ? { session: args.session, active: false } : { status: "ok" };
+        return { structured, text: JSON.stringify(structured), raw: structured };
       },
     };
     const runtime = createOpenSkyToolRuntime(driver, "mac", {
@@ -40,7 +41,8 @@ describe("OpenSky tool runtime lifecycle", () => {
       async status() { return { running: true, text: "running" }; },
       async call(tool, args = {}): Promise<DriverResult> {
         calls.push({ tool, args });
-        return { structured: { status: "ok" }, text: "ok", raw: {} };
+        const structured = tool === "end_session" ? { session: args.session, active: false } : { status: "ok" };
+        return { structured, text: JSON.stringify(structured), raw: structured };
       },
     };
     const runtime = createOpenSkyToolRuntime(driver, "mac", {
