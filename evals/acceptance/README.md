@@ -14,3 +14,10 @@ The corpus and its contract tests are repository-native, but their presence or
 a passing unit test is not CI acceptance-score evidence. A score is evidence
 only when a real-driver run records the public trace, exact cleanup, metrics,
 and an independently validated review artifact.
+
+`evidence.ts` keeps driver-session evidence distinct from target-lifecycle
+evidence. An exact isolated browser session can prove its owned browser target
+absent after a verified drain and inactive receipt. An inactive driver session
+alone cannot prove that a native window disappeared: native-window cases need
+separate exact window identity-and-absence evidence, including any
+evaluator-created prerequisite window, before cleanup can pass.
