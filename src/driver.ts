@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
-import { delimiter, join } from "node:path";
+import { basename, delimiter, dirname, join } from "node:path";
 
 import { driverError } from "./errors.js";
 import { detectTarget } from "./platform.js";
@@ -97,6 +97,10 @@ export class CuaDriverClient implements DriverClient {
   async ensureHelper(): Promise<string> {
     const existing = await this.resolveBinary();
     if (existing) return existing;
+    const override = this.binaryOverride();
+    if (override) {
+      throw driverError(`opensky desktop helper is not installed or executable at the configured path ${JSON.stringify(override)}. Correct --driver or the helper binary environment override.`);
+    }
     if (!this.autoInstallEnabled()) {
       throw driverError("opensky desktop helper is not installed. Run `opensky doctor`.");
     }
@@ -153,15 +157,15 @@ export class CuaDriverClient implements DriverClient {
     const binary = await this.requireBinary();
     const target = detectTarget();
     if (target === "mac") {
-      const appPath = this.options.appPath ?? "/Applications/CuaDriver.app";
+      const appPath = this.configuredAppPath() ?? await appBundleForDriver(binary);
       // Reuse an in-flight helper launch. `open -n` creates competing daemon
       // instances when multiple first-run commands arrive together.
-      const opened = await this.exec(
+      const opened = appPath ? await this.exec(
         "/usr/bin/open",
         ["-g", appPath, "--args", ...this.withSocket(["serve", "--no-overlay"])],
         3_000,
-      );
-      if (opened.code !== 0) {
+      ) : undefined;
+      if (!opened || opened.code !== 0) {
         await this.spawnDetached(binary, this.withSocket(["serve", "--no-overlay"]));
       }
     } else if (target === "win") {
@@ -191,14 +195,13 @@ export class CuaDriverClient implements DriverClient {
   }
 
   async resolveBinary(): Promise<string | null> {
-    if (this.options.binaryPath) {
-      return (await isExecutable(this.options.binaryPath)) ? this.options.binaryPath : null;
+    const override = this.binaryOverride();
+    if (override) {
+      return (await isExecutable(override)) ? override : null;
     }
     const candidates = [
-      this.options.env?.CUA_DRIVER_PATH ?? process.env.CUA_DRIVER_PATH,
-      this.options.env?.OPENSKY_DRIVER ?? process.env.OPENSKY_DRIVER,
       ...pathCandidates("cua-driver", this.driverEnv().PATH),
-      ...defaultHelperPaths(this.options.appPath),
+      ...defaultHelperPaths(this.configuredAppPath()),
     ].filter((value): value is string => Boolean(value));
 
     for (const candidate of candidates) {
@@ -209,10 +212,22 @@ export class CuaDriverClient implements DriverClient {
 
   private autoInstallEnabled(): boolean {
     if (this.options.autoInstall === false) return false;
-    if (this.options.binaryPath) return false;
+    // An explicit selection must never silently install/use another helper.
+    if (this.binaryOverride()) return false;
     const env = this.options.env ?? process.env;
     if (env.OPENSKY_AUTOINSTALL === "0") return false;
     return true;
+  }
+
+  private binaryOverride(): string | undefined {
+    const env = this.options.env ?? process.env;
+    // Preserve the legacy PATH-over-OPENSKY precedence; the new BINARY alias
+    // takes priority over both. An API/CLI path always wins.
+    return this.options.binaryPath || env.CUA_DRIVER_BINARY || env.CUA_DRIVER_PATH || env.OPENSKY_DRIVER;
+  }
+
+  private configuredAppPath(): string | undefined {
+    return this.options.appPath || (this.options.env ?? process.env).CUA_DRIVER_APP_PATH;
   }
 
   private driverEnv(): NodeJS.ProcessEnv {
@@ -417,6 +432,21 @@ async function isExecutable(path: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Resolve symlinks and accept only an executable directly in an app's MacOS directory. */
+export async function appBundleForDriver(binary: string): Promise<string | undefined> {
+  try {
+    const executable = await realpath(binary);
+    const macOS = dirname(executable);
+    const contents = dirname(macOS);
+    const app = dirname(contents);
+    return basename(macOS) === "MacOS" && basename(contents) === "Contents" && basename(app).endsWith(".app")
+      ? app
+      : undefined;
+  } catch {
+    return undefined;
   }
 }
 

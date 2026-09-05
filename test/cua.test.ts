@@ -43,6 +43,28 @@ class FakeOpenSky {
 }
 
 describe("native-style cua facade", () => {
+  it("rejects browser argument mistakes before discovery or target creation", async () => {
+    const fake = new FakeOpenSky();
+    fake.apps = [{ id: "com.google.chrome", displayName: "Google Chrome" }];
+    const cua = createCua(fake as unknown as OpenSky);
+    for (const options of ["chrome", null, [], { browser: "chrome" }, { id: 42 }, { url: false }, { url: "https://example.com", extra: undefined }]) {
+      await assert.rejects(() => cua.getBrowser(options as never), /Invalid params/);
+    }
+    await assert.rejects(() => Reflect.apply(cua.getBrowser, cua, [{ id: "chrome" }, "extra"]), /Invalid params/);
+    for (const options of ["eval", null, [], { visible: "yes" }, { sessionName: 42 }, { url: "https://example.com" }]) {
+      await assert.rejects(() => cua.createBrowserTab("chrome", "https://example.com", options as never), /Invalid params/);
+    }
+    assert.deepEqual(fake.calls, [], "invalid calls must not discover apps or create targets");
+    const browser = await cua.getBrowser({ id: "chrome" });
+    const before = fake.calls.length;
+    for (const args of [["https://example.com"], [{}], [undefined]]) {
+      await assert.rejects(() => Reflect.apply(browser.tabs.new, browser.tabs, args), /takes no arguments.*createBrowserTab/);
+    }
+    assert.equal(fake.calls.length, before);
+    assert.match(await browser.documentation(), /tabs\.new\(\).*about:blank/);
+    assert.match(await browser.documentation(), /getBrowser\(\{id\?, url\?\}\)/);
+  });
+
   it("binds app actions to the exact handle and translates camelCase arguments", async () => {
     const fake = new FakeOpenSky();
     const emitted: unknown[] = [];

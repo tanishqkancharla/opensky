@@ -28,6 +28,13 @@ launching the model or desktop. Local native Codex comparison is intentionally
 unavailable until its plugin is explicitly provisioned; OpenSky scores are not
 native parity scores.
 
+To verify browser argument validation against the real helper without opening
+GUI targets, run `bun evals/probe-browser-arguments.ts <new-output-directory>`.
+It requires an already-running helper and installed Chrome, never installs or
+starts the driver, and records exact results plus a driver tape in
+`evidence.json`. Invalid calls must fail before driver dispatch. This is a
+boundary regression check, not an agent-task completion or native parity score.
+
 `browser.eval.ts` describes live tasks using `evalCase`, `harness.send`, and
 `response.score`. Cases cover search and linked follow-up, release discovery,
 shopping search refinement, and documentation lookup. They specify the user's

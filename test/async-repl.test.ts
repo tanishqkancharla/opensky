@@ -6,6 +6,36 @@ import { evalOnServer, ReplServer, serverAlive } from "../src/repl-server.js";
 import { makeHarness } from "./harness.ts";
 
 describe("async REPL wrapper", () => {
+  it("warns on direct writes to prior const bindings without blocking effects", async () => {
+    const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
+    await repl.evaluate("effects = 0; const handle = 'original'; const object = {value:1};");
+    const replaced = await repl.evaluate("const handle = (++effects, 'replacement'); console.log(handle); return effects;");
+    assert.equal(replaced.value, 1);
+    assert.deepEqual(replaced.logs, ["handle was declared with const; use let for reassignable variables.", "replacement"]);
+    const assigned = await repl.evaluate("handle = 'assigned'; return handle;");
+    assert.equal(assigned.value, "assigned");
+    assert.equal(assigned.logs.length, 1);
+    const property = await repl.evaluate("object.value++; return object.value;");
+    assert.equal(property.value, 2);
+    assert.deepEqual(property.logs, []);
+    const local = await repl.evaluate("{ let handle='local'; handle='changed'; } return handle;");
+    assert.equal(local.value, "assigned");
+    assert.deepEqual(local.logs, []);
+    await repl.evaluate("const {x: renamed, ...rest} = {x:1}; const [first] = [2];");
+    const patterns = await repl.evaluate("({x:renamed}={x:3}); [first]=[4]; return renamed + first;");
+    assert.equal(patterns.value, 7);
+    assert.deepEqual(patterns.logs, [
+      "renamed was declared with const; use let for reassignable variables.",
+      "first was declared with const; use let for reassignable variables.",
+    ]);
+    await assert.rejects(repl.evaluate("console.log('before failure'); handle='changed'; throw new Error('failure');"), (error: unknown) => {
+      assert.deepEqual((error as {logs:string[]}).logs, [
+        "handle was declared with const; use let for reassignable variables.", "before failure",
+      ]);
+      return true;
+    });
+  });
+
   it("returns the value of an awaited expression", async () => {
     const repl = new AsyncRepl({
       context: {

@@ -197,11 +197,13 @@ export class CuaFacade {
   }
 
   async getBrowser(options: GetBrowserOptions = {}): Promise<Browser> {
+    if (arguments.length > 1) throw new OpenSkyError("Invalid params: use cua.getBrowser({id?, url?}) with at most one options object", "invalid_params");
+    validateBrowserOptions(options, { id: "string", url: "string" }, "cua.getBrowser({id?, url?})");
+    let browserId = options.id !== undefined ? normalizeBrowserId(options.id) : undefined;
+    const normalizedUrl = options.url !== undefined ? normalizeBrowserUrl(options.url, "getBrowser") : undefined;
     const apps = await this.listApps({ emit: false });
     const available = availableBrowserIds(apps);
     for (const tab of this.tabs.values()) if (!tab.closed) available.add(tab.browserId);
-    let browserId = options.id ? normalizeBrowserId(options.id) : undefined;
-    const normalizedUrl = options.url !== undefined ? normalizeBrowserUrl(options.url, "getBrowser") : undefined;
     if (browserId && !available.has(browserId)) {
       throw new CuaUnsupportedError("getBrowser", `browser ${JSON.stringify(browserId)} is not installed or available`);
     }
@@ -221,6 +223,8 @@ export class CuaFacade {
   }
 
   async createBrowserTab(browser: string, url?: string, options: CreateBrowserTabOptions = {}): Promise<Tab> {
+    if (arguments.length > 3) throw new OpenSkyError("Invalid params: use cua.createBrowserTab(id, url, {visible?, sessionName?})", "invalid_params");
+    validateBrowserOptions(options, { visible: "boolean", sessionName: "string" }, "cua.createBrowserTab(id, url, {visible?, sessionName?})");
     const browserId = normalizeBrowserId(browser);
     const descriptor = BROWSERS[browserId as keyof typeof BROWSERS];
     if (!descriptor) throw new CuaUnsupportedError("createBrowserTab", `browser ${JSON.stringify(browser)} is not supported`);
@@ -512,7 +516,7 @@ class BoundBrowser implements Browser {
   }
 
   async documentation(): Promise<string> {
-    return `OpenSky browser ${JSON.stringify(this.browserId)} exposes exact tabs through browser.tabs and cua.createBrowserTab; user-owned tabs are not discoverable or closable.`;
+    return `OpenSky browser ${JSON.stringify(this.browserId)}: cua.getBrowser({id?, url?}) selects a provider; it does not navigate. browser.tabs.new() takes no arguments and opens about:blank. For a URL use cua.createBrowserTab(${JSON.stringify(this.browserId)}, url, {visible?, sessionName?}) or tab.goto(url). browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(); tab.close() closes its exact owned tab. User-owned tabs are not discoverable or closable.`;
   }
 
   async nameSession(name: string): Promise<void> { this.facade.nameBrowserSession(this.browserId, name); }
@@ -523,7 +527,10 @@ class BoundTabs implements Tabs {
 
   async get(id: string): Promise<Tab> { return this.facade.getTab(id, { browser: this.browserId }); }
   async list(): Promise<TabInfo[]> { return this.facade.listTabs({ browser: this.browserId, emit: false }); }
-  async ["new"](): Promise<Tab> { return this.facade.createBrowserTab(this.browserId, "about:blank"); }
+  async ["new"](): Promise<Tab> {
+    if (arguments.length !== 0) throw new OpenSkyError("Invalid params: browser.tabs.new() takes no arguments and opens about:blank; use cua.createBrowserTab(id, url) or tab.goto(url)", "invalid_params");
+    return this.facade.createBrowserTab(this.browserId, "about:blank");
+  }
   async selected(): Promise<Tab | undefined> { return this.facade.selectedTab(this.browserId); }
 }
 
@@ -542,6 +549,7 @@ function point(value: Vec2): { x: number; y: number } {
 }
 
 function normalizeBrowserId(value: string): string {
+  if (typeof value !== "string") throw new OpenSkyError("Invalid params: browser id must be a string", "invalid_params");
   const normalized = value.trim().toLowerCase();
   if (normalized === "chrome" || normalized === "google chrome" || normalized === "com.google.chrome") return "chrome";
   if (normalized === "edge" || normalized === "microsoft edge" || normalized === "com.microsoft.edgemac") return "edge";
@@ -550,6 +558,7 @@ function normalizeBrowserId(value: string): string {
 }
 
 function normalizeBrowserUrl(value: string, operation = "createBrowserTab"): string {
+  if (typeof value !== "string") throw new OpenSkyError(`Invalid params: ${operation} URL must be a string`, "invalid_params");
   const trimmed = value.trim();
   if (!trimmed) {
     const detail = operation === "createBrowserTab"
@@ -566,6 +575,17 @@ function normalizeBrowserUrl(value: string, operation = "createBrowserTab"): str
     throw new CuaUnsupportedError(operation, "only http/https URLs can select or create an exact typed OpenSky-owned tab");
   }
   return parsed.href;
+}
+
+function validateBrowserOptions(value: unknown, fields: Record<string, string>, signature: string): void {
+  if (value === null || typeof value !== "object" || Object.prototype.toString.call(value) !== "[object Object]") {
+    throw new OpenSkyError(`Invalid params: use ${signature}; options must be an object`, "invalid_params");
+  }
+  for (const key of Object.keys(value)) {
+    if (!Object.hasOwn(fields, key)) throw new OpenSkyError(`Invalid params: ${signature} does not support option ${JSON.stringify(key)}`, "invalid_params");
+    const option = (value as Record<string, unknown>)[key];
+    if (option !== undefined && typeof option !== fields[key]) throw new OpenSkyError(`Invalid params: ${signature} option ${key} must be ${fields[key]}`, "invalid_params");
+  }
 }
 
 function normalizeBrowserSessionName(value: string): string {

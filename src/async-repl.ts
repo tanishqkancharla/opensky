@@ -40,6 +40,7 @@ export class AsyncRepl {
   private readonly activeEvaluations = new Set<number>();
   private evaluationSequence = 0;
   private poisonedReason: string | undefined;
+  private readonly constBindings = new Set<string>();
 
   constructor(options: AsyncReplOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? 60_000;
@@ -128,6 +129,11 @@ export class AsyncRepl {
       try {
         const wrapped = wrapAsync(code);
         const script = new vm.Script(wrapped, { filename });
+        const bindings = cellBindings(code);
+        for (const name of bindings.writes) {
+          if (this.constBindings.has(name)) logs.push(`${name} was declared with const; use let for reassignable variables.`);
+        }
+        for (const name of bindings.constants) this.constBindings.add(name);
         const evaluated = this.strictSandbox
           ? this.strictEvaluation.run(generation, () => script.runInContext(this.sandbox, { timeout: this.timeoutMs }))
           : script.runInContext(this.sandbox, { timeout: this.timeoutMs });
@@ -139,6 +145,9 @@ export class AsyncRepl {
         }
         return { value, logs };
       } catch (error) {
+        if (this.strictSandbox) {
+          logs.push(...Array.from(this.sandbox.__openskyLogs as unknown[], (value) => String(value)));
+        }
         const message = error instanceof Error ? error.message : String(error);
         if (this.strictSandbox && /timed out/i.test(message)) this.poisonedReason = message;
         throw new AsyncReplError(message, logs, { cause: error });
@@ -155,6 +164,54 @@ export class AsyncRepl {
     );
     return result;
   }
+}
+
+// Match the native REPL's advisory (not immutable) const behavior for direct
+// cell writes. Do not inspect deferred function bodies or block-local names:
+// a warning must not claim that an object's property mutation rebinds it.
+function cellBindings(source: string): { constants: Set<string>; writes: Set<string> } {
+  type Ast = Node & Record<string, any>;
+  const constants = new Set<string>();
+  const writes = new Set<string>();
+  let program: Ast;
+  try {
+    program = parse(stripReplWrapper(source), { ecmaVersion: "latest", allowAwaitOutsideFunction: true, allowReturnOutsideFunction: true }) as Ast;
+  } catch { return { constants, writes }; }
+  const names = (node: Ast): string[] => {
+    switch (node.type) {
+      case "Identifier": return [node.name];
+      case "RestElement": return names(node.argument);
+      case "AssignmentPattern": return names(node.left);
+      case "ArrayPattern": return node.elements.flatMap((item: Ast | null) => item ? names(item) : []);
+      case "ObjectPattern": return node.properties.flatMap((item: Ast) => names(item.type === "RestElement" ? item : item.value));
+      default: return []; // Member expressions mutate properties, not bindings.
+    }
+  };
+  const expressionWrites = (node: Ast | null | undefined): void => {
+    if (!node || /Function|Class/.test(node.type)) return;
+    if (node.type === "AssignmentExpression" || node.type === "UpdateExpression") {
+      for (const name of names(node.type === "AssignmentExpression" ? node.left : node.argument)) writes.add(name);
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) for (const child of value) { if (child?.type) expressionWrites(child); }
+      else if (value && typeof value === "object" && "type" in value) expressionWrites(value as Ast);
+    }
+  };
+  for (const statement of program.body as Ast[]) {
+    if (statement.type === "VariableDeclaration") {
+      for (const declaration of statement.declarations as Ast[]) {
+        for (const name of names(declaration.id)) {
+          if (statement.kind === "const") constants.add(name);
+          if (declaration.init || statement.kind !== "var") writes.add(name);
+        }
+        expressionWrites(declaration.init);
+      }
+    } else if ((statement.type === "FunctionDeclaration" || statement.type === "ClassDeclaration") && statement.id) {
+      writes.add(statement.id.name);
+    } else if (statement.type === "ExpressionStatement") expressionWrites(statement.expression);
+    else if (statement.type === "ReturnStatement" || statement.type === "ThrowStatement") expressionWrites(statement.argument);
+  }
+  return { constants, writes };
 }
 
 export function wrapAsync(code: string): string {
@@ -202,7 +259,7 @@ function persistDeclarations(code: string): string {
           return `if (!Object.prototype.hasOwnProperty.call(globalThis, ${JSON.stringify(declaration.id.name)})) ${target} = undefined;`;
         }
         const value = declaration.init ? code.slice(declaration.init.start, declaration.init.end) : "undefined";
-        return `(${pattern(declaration.id)} = ${value});`;
+        return `(${pattern(declaration.id)} = (${value}));`;
       }).join("\n") });
     } else if ((statement.type === "FunctionDeclaration" || statement.type === "ClassDeclaration") && statement.id) {
       const assignment = `${pattern(statement.id)} = (${code.slice(statement.start, statement.end)});`;

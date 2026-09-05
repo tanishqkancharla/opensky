@@ -2,7 +2,12 @@
 
 REPL cells preserve top-level variable, function, and class declarations across
 calls. Top-level variables are mutable session bindings, including declarations
-written with `const`, and may be redeclared in later cells. Nested blocks and
+written with `const`, and may be redeclared in later cells. Direct top-level
+redeclarations, assignments, and updates of a binding previously declared with
+`const` emit an advisory warning before cell output; the assignment still runs.
+These warnings analyze direct cell expressions, not deferred callbacks or
+control-flow bodies, and do not predict which branch of an expression executes.
+Mutating an object's properties does not replace its binding. Nested blocks and
 functions retain JavaScript lexical scope. `globalThis` and `__openskyLogs` are
 reserved declaration names. Screenshot bytes printed to the strict evaluator's
 console are summarized; observation methods attach the image directly.
@@ -29,6 +34,12 @@ opensky doctor
 
 If the helper runs on a non-default or sandbox-exposed socket, set
 `CUA_DRIVER_SOCKET=/path/to/cua-driver.sock` or pass `--socket <path>`.
+
+For a custom helper, set `CUA_DRIVER_BINARY=/absolute/path/to/helper` (legacy
+aliases: `CUA_DRIVER_PATH`, then `OPENSKY_DRIVER`). An explicit `--driver` wins
+over environment overrides. An invalid explicit path fails without installing
+or selecting a different helper. On macOS, OpenSky resolves the helper's app
+from the executable's bundle ancestry; `CUA_DRIVER_APP_PATH` can specify it.
 
 `opensky doctor` downloads the native desktop helper if needed and starts it. On macOS, System Settings will ask for **Accessibility** and **Screen Recording**. Enable both for the helper app that appears (it may be labeled CuaDriver), then run `opensky doctor` again.
 

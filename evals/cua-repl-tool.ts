@@ -59,7 +59,9 @@ export function createCuaReplToolRuntime(
     description:
       "Run JavaScript in a persistent, sandboxed native-style Computer Use session. The `cua` object is preloaded. " +
       "Use `await cua.getApp(name)` for native apps or `await cua.createBrowserTab('chrome', url)` for a new exact owned tab. " +
-      "The current bound-browser lifecycle is also available through `await cua.getBrowser(...)` and `browser.tabs.new/get/list/selected`. " +
+      "Browser signatures: cua.getBrowser({id?, url?}) selects a provider without navigation; browser.tabs.new() takes no arguments and opens about:blank; " +
+      "browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(). " +
+      "To open a URL use cua.createBrowserTab(id, url, {visible?, sessionName?}) or tab.goto(url). " +
       "Tab inventories include only this facade's owned tabs. An empty list does not establish that the user has no other tabs or windows. " +
       "Bindings persist across calls. Batch deterministic target actions and finish with getAXState(); action methods do not observe automatically. " +
       "Target methods: getAXState({disableDiffing?, query?, emit?}), getScreenshot({emit?}), getAXStateAndScreenshot({emit?}), " +
@@ -130,7 +132,7 @@ async function dispatch(
     case "listBrowsers": return cua.listBrowsers(asObject(args[0]));
     case "listTabs": return cua.listTabs(asObject(args[0]));
     case "getBrowser": {
-      const browser = await cua.getBrowser(asObject(args[0]));
+      const browser = await cua.getBrowser(...args as Parameters<typeof cua.getBrowser>);
       browsers.set(browser.browserId, browser);
       return { __cuaBinding: "browser", browserId: browser.browserId };
     }
@@ -141,7 +143,7 @@ async function dispatch(
       return { __cuaBinding: "app", handle: descriptor.targetHandle };
     }
     case "createBrowserTab": {
-      const target = await cua.createBrowserTab(String(args[0] ?? ""), optionalString(args[1]), asObject(args[2]));
+      const target = await cua.createBrowserTab(...args as Parameters<typeof cua.createBrowserTab>);
       targets.set(target.id, target);
       return { __cuaBinding: "tab", handle: target.id, browserId: target.browserId };
     }
@@ -160,6 +162,7 @@ async function dispatch(
       return requireBrowser(browsers, args[0]).tabs.list();
     }
     case "browser.tabs.new": {
+      if (args.length !== 1) throw new Error("Invalid params: browser.tabs.new() takes no arguments and opens about:blank; use cua.createBrowserTab(id, url) or tab.goto(url)");
       const target = await requireBrowser(browsers, args[0]).tabs.new();
       targets.set(target.id, target);
       return { __cuaBinding: "tab", handle: target.id, browserId: target.browserId };
@@ -229,6 +232,15 @@ function installSafeCuaBridge(repl: AsyncRepl, dispatch: (request: string) => Pr
       return value;
     };
     const call = async (op, args = []) => revive(JSON.parse(await __dispatch(JSON.stringify({ op, args }))));
+    const browserOptions = (value, fields, signature) => {
+      if (value === undefined) return {};
+      if (value === null || typeof value !== "object" || Object.prototype.toString.call(value) !== "[object Object]") throw new Error("Invalid params: use " + signature + "; options must be an object");
+      for (const key of Object.keys(value)) {
+        if (!Object.hasOwn(fields, key)) throw new Error("Invalid params: " + signature + " does not support option " + JSON.stringify(key));
+        if (value[key] !== undefined && typeof value[key] !== fields[key]) throw new Error("Invalid params: " + signature + " option " + key + " must be " + fields[key]);
+      }
+      return value;
+    };
     const target = (descriptor) => {
       const handle = descriptor.handle;
       const result = {
@@ -267,7 +279,10 @@ function installSafeCuaBridge(repl: AsyncRepl, dispatch: (request: string) => Pr
         tabs: {
           get: async (id) => target(await call("browser.tabs.get", [browserId, id])),
           list: () => call("browser.tabs.list", [browserId]),
-          new: async () => target(await call("browser.tabs.new", [browserId])),
+          new: async (...args) => {
+            if (args.length !== 0) throw new Error("Invalid params: browser.tabs.new() takes no arguments and opens about:blank; use cua.createBrowserTab(id, url) or tab.goto(url)");
+            return target(await call("browser.tabs.new", [browserId]));
+          },
           selected: async () => {
             const selected = await call("browser.tabs.selected", [browserId]);
             return selected === undefined ? undefined : target(selected);
@@ -284,8 +299,15 @@ function installSafeCuaBridge(repl: AsyncRepl, dispatch: (request: string) => Pr
       getApp: async (name) => target(await call("getApp", [name])),
       listBrowsers: (options) => call("listBrowsers", [options]),
       listTabs: (options) => call("listTabs", [options]),
-      getBrowser: async (options) => browser(await call("getBrowser", [options])),
-      createBrowserTab: async (id, url, options) => target(await call("createBrowserTab", [id, url, options])),
+      getBrowser: async (...args) => {
+        if (args.length > 1) throw new Error("Invalid params: use cua.getBrowser({id?, url?}) with at most one options object");
+        return browser(await call("getBrowser", [browserOptions(args[0], {id:"string", url:"string"}, "cua.getBrowser({id?, url?})")]));
+      },
+      createBrowserTab: async (...args) => {
+        if (args.length > 3) throw new Error("Invalid params: use cua.createBrowserTab(id, url, {visible?, sessionName?})");
+        const options = browserOptions(args[2], {visible:"boolean", sessionName:"string"}, "cua.createBrowserTab(id, url, {visible?, sessionName?})");
+        return target(await call("createBrowserTab", [args[0], args[1], options]));
+      },
       getTab: async (id, options) => target(await call("getTab", [id, options])),
     });
   `, { __dispatch: dispatch });
@@ -338,10 +360,6 @@ function equivalentOutput(left: unknown, right: unknown): boolean {
 
 function asObject(value: unknown): Record<string, never> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, never> : {};
-}
-
-function optionalString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
 }
 
 function requireTab(target: App | Tab): Tab {

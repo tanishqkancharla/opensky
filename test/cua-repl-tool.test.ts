@@ -8,6 +8,53 @@ import { createCuaReplToolRuntime, CUA_REPL_TOOL_NAMES } from "../evals/cua-repl
 import type { DriverClient, DriverResult } from "../src/types.js";
 
 describe("single-tool native-style cua evaluator", () => {
+  it("rejects invalid browser arguments before the bridge can discard them", async () => {
+    const calls: string[] = [];
+    const runtime = createCuaReplToolRuntime({
+      async call(tool): Promise<DriverResult> {
+        calls.push(tool);
+        if (tool === "list_apps") return result({ apps: [{ name: "Google Chrome", bundle_id: "com.google.chrome", running: true }] });
+        if (tool === "end_session") return result({ status: "ok" });
+        throw new Error(`Unexpected driver call ${tool}`);
+      },
+    }, "mac", { homeDir: await mkdtemp(join(tmpdir(), "opensky-browser-args-")) });
+    try {
+      const tool = runtime.tools[0]!;
+      const invalid = await execute(tool, "invalid-browser-args", { code: `
+        const attempts = [
+          () => cua.getBrowser('chrome'), () => cua.getBrowser(null),
+          () => cua.getBrowser({browser:'chrome'}), () => cua.getBrowser({id:42}),
+          () => cua.getBrowser({id:'chrome',extra:undefined}),
+          () => cua.getBrowser({}, 'extra'),
+          () => cua.createBrowserTab('chrome','https://example.com','eval'),
+          () => cua.createBrowserTab('chrome','https://example.com',{sessionName:()=>{}}),
+          () => cua.createBrowserTab('chrome','https://example.com',{visible:'yes'})
+        ];
+        const messages = [];
+        for (const attempt of attempts) { try { await attempt(); messages.push('UNEXPECTED SUCCESS'); } catch (error) { messages.push(error.message); } }
+        return messages;
+      ` });
+      const invalidText = JSON.stringify(invalid.content);
+      assert.doesNotMatch(invalidText, /UNEXPECTED SUCCESS/);
+      assert.equal((invalidText.match(/Invalid params/g) ?? []).length, 9);
+      assert.deepEqual(calls, [], "invalid bridge calls must never reach the driver");
+      await execute(tool, "valid-browser", { code: "browser = await cua.getBrowser({id:'chrome'});" });
+      const before = calls.length;
+      const invalidNew = await execute(tool, "invalid-new", { code: `
+        const errors = [];
+        for (const arg of ['https://example.com', {}, undefined]) {
+          try { await browser.tabs.new(arg); errors.push('UNEXPECTED SUCCESS'); }
+          catch (error) { errors.push(error.message); }
+        }
+        return errors;
+      ` });
+      assert.equal((JSON.stringify(invalidNew.content).match(/takes no arguments/g) ?? []).length, 3);
+      assert.equal(calls.length, before, "tabs.new arguments must not open a blank tab");
+    } finally {
+      await runtime.close();
+    }
+  });
+
   it("has one schema, persists JS state, and does not duplicate emitted results", async () => {
     const runtime = createCuaReplToolRuntime(driver(), "mac", {
       homeDir: await mkdtemp(join(tmpdir(), "opensky-cua-repl-")),

@@ -43,6 +43,9 @@ Environment:
   OPENSKY_REPL_TOKEN                 token for opensky serve (generated into repl.json)
   OPENSKY_AUTOINSTALL=0             do not download the desktop helper
   OPENSKY_DRIVER                    override helper binary path
+  CUA_DRIVER_BINARY                 override helper binary (before CUA_DRIVER_PATH/OPENSKY_DRIVER)
+  CUA_DRIVER_PATH                   legacy helper binary override
+  CUA_DRIVER_APP_PATH               explicit macOS helper app (otherwise derived from binary)
   CUA_DRIVER_SOCKET                 connect to an existing helper socket
 
 Examples:
@@ -261,7 +264,7 @@ function createContext(flags: Flags) {
   const opensky = createOpenSky({
     homeDir: flags.home,
     driver: new CuaDriverClient({
-      binaryPath: flags.driver ?? process.env.CUA_DRIVER_PATH ?? process.env.OPENSKY_DRIVER,
+      binaryPath: flags.driver,
       session: process.env.OPENSKY_SESSION ?? "opensky",
       socket: flags.socket ?? process.env.CUA_DRIVER_SOCKET,
       autoStart: process.env.OPENSKY_AUTOSTART !== "0",
