@@ -14,6 +14,9 @@ console are summarized; observation methods attach the image directly.
 
 `opensky` is an open computer-use library, async Node REPL, and agent skill backed by [Cua Driver](https://cua.ai/cua-driver) (`cua-driver call …`). It includes a native-style `cua` facade and preserves the original flat `opensky` API. The facade intentionally reports unsupported operations instead of claiming complete `@oai/sky` coverage.
 
+Harness development is tracked in the [friction and fixes ledger](docs/harness-friction.md)
+and the concise, cross-domain [harness principles](docs/harness-principles.md).
+
 ```js
 import { createOpenSky } from "opensky-cua";
 
