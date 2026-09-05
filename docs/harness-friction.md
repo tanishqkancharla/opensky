@@ -127,9 +127,13 @@ reports whether cleanup work and the tape settled. Source worktree selection is
 explicit, with an exact intended revision that must be independently matched by
 real `get_config`; evaluator source hashes accompany each new run. The e36 failed
 GUI run exercised quarantine/forced-close failure, not successful crash reaping.
-The full external suite is **49/49**; strict TypeScript checking still reports
-two pre-existing `evals/tools.ts` typing errors outside `src`'s successful build.
-These remain open rather than being described as a clean whole-evaluator build.
+The full external suite is **49/49**. Two pre-existing `evals/tools.ts` typing
+errors were then corrected without changing runtime/public shapes: retain the
+inferred batch-detail extension and acknowledge the drag schema boundary whose
+exclusive coordinate/index forms are validated by the library before dispatch.
+Strict TypeScript checking of the external runner and all its imports now passes;
+the six relevant tool tests pass. This is compile/contract evidence, not GUI
+acceptance or proof of all cleanup timeout branches.
 
 | ID | Symptom and cause/layer | Disposition | Validation and evidence |
 | --- | --- | --- | --- |

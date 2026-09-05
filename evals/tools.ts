@@ -344,7 +344,8 @@ export function createOpenSkyToolRuntime(
                 `action ${completed + 1} was not sent: ${failure}\n` +
                 "The completed prefix was not retried. Fresh settled state follows; derive new element indices from it.",
             });
-            result.details = { ...result.details, batch: stop };
+            const details = { ...result.details, batch: stop };
+            result.details = details;
             return result;
           } catch (observationError) {
             return textResult({
@@ -419,7 +420,9 @@ export function createOpenSkyToolRuntime(
       }),
       async execute(_id, params) {
         const { observe, include_screenshot, observation_query, ...action } = params;
-        return actionResult(opensky, params.app, () => opensky.drag(action), { observe, includeScreenshot: include_screenshot, query: observation_query }, emittedImageHashes);
+        // The public tool schema keeps both alternatives optional; drag itself
+        // validates that exactly one complete coordinate/index form was given.
+        return actionResult(opensky, params.app, () => opensky.drag(action as Parameters<typeof opensky.drag>[0]), { observe, includeScreenshot: include_screenshot, query: observation_query }, emittedImageHashes);
       },
     }),
     defineTool({
