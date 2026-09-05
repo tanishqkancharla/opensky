@@ -30,3 +30,11 @@ image-cost estimates. Missing or malformed public-call counts remain unknown,
 not zero. Repository tests cover these contracts, and the external transcript
 renderer imports them through a compatibility re-export. No historical run
 artifacts are rewritten by these helpers.
+
+`public-transcript.ts` produces a lossy readable projection, never scoring
+evidence: public text and ordinary metadata remain, while image encodings,
+typed bytes, screenshot byte objects, signature-recognized serialized image
+buffers, and private reasoning/signatures are omitted. Unknown numeric objects
+remain intact. Raw artifacts and payload measurements must use the original
+data, not this projection. The external renderer accepts `EVAL_TIMELINE_FILE`
+as a simple `.md` basename for a separately named derived transcript.
