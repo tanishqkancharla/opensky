@@ -28,6 +28,8 @@ class TypedBrowserDriver implements DriverClient {
   failBind = false;
   ambiguousPrepare = false;
   failNextSnapshot = false;
+  resultUrl = "https://example.com/results";
+  snapshotErrors: Error[] = [];
 
   replaceDocument(): void {
     this.documentId = `doc-test-${Number(this.documentId.split("-").at(-1)) + 1}`;
@@ -68,6 +70,8 @@ class TypedBrowserDriver implements DriverClient {
         return result({ windows: [ordinaryWindow()] });
       case "get_browser_state":
         if (effectiveArgs.target_id !== undefined) {
+          const error = this.snapshotErrors.shift();
+          if (error) throw error;
           if (this.failNextSnapshot) {
             this.failNextSnapshot = false;
             throw new Error("injected snapshot failure");
@@ -196,7 +200,7 @@ class TypedBrowserDriver implements DriverClient {
           role: "link",
           name: "Submit",
           value: null,
-          url: "https://example.com/results",
+          url: this.resultUrl,
           states: {},
           actions: ["click", "pointer"],
           frame: "main",
@@ -338,6 +342,21 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal((state.target?.tab as { status?: string } | undefined)?.status, "verified");
     assert.equal(state.target?.document.url, URL);
     assert.equal(state.target?.document.requestRelation, "exact");
+  });
+
+  it("keeps later controls addressable when a preceding destination URL is very long", async () => {
+    const { opensky, driver } = await harness();
+    driver.resultUrl = `https://example.com/results?signature=${"x".repeat(10_000)}`;
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    assert.match(state.text, /\[1\].*Submit.*urlPreview="https:\/\/example.com\/results\?signature=x+…"/);
+    assert.match(state.text, /\[2\].*Document.*actions=\[scroll\]/);
+    assert.ok(state.text.length < 2_000);
+    await opensky.click({ app: state.targetHandle, element_index: 1 });
+    const action = driver.calls.find((call) => call.tool === "browser_click");
+    assert.ok(action, "preview never replaces the opaque driver action route");
+    assert.equal(JSON.stringify(action).includes("urlPreview"), false);
+    assert.equal(JSON.stringify(action).includes("p41:1"), true);
+    await opensky.close();
   });
 
   it("opens an exact blank tab for the current browser.tabs.new lifecycle", async () => {
@@ -517,6 +536,60 @@ describe("OpenSky typed-browser contract", () => {
     );
     assert.equal(snapshots.length, 2, "one internal recheck confirms semantic stability");
     assert.equal(snapshots.every((call) => call.args.include_screenshot === false), true);
+  });
+
+  it("retries only the exact read after a navigation-invalidated AX frame", async () => {
+    const { opensky, driver } = await harness({ degradedRetryMs: 1_000 });
+    const target = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const before = driver.calls.length;
+    await opensky.press_key({ app: target.targetHandle, key: "Return" });
+    driver.snapshotErrors = [new Error("Accessibility.getFullAXTree failed: CDP Accessibility.getFullAXTree failed (-32602): Frame with the given frameId is not found.")];
+    const observed = await opensky.get_app_state({ app: target.targetHandle, query: "Query", includeScreenshot: false });
+    assert.match(observed.text, /Query/);
+    const calls = driver.calls.slice(before);
+    assert.equal(calls.filter((call) => call.tool === "browser_key").length, 1);
+    const reads = calls.filter((call) => call.tool === "get_browser_state");
+    assert.equal(reads.length, 2);
+    assert.deepEqual(reads[0]?.args, reads[1]?.args);
+    assert.deepEqual({ target: reads[1]?.args.target_id, tab: reads[1]?.args.tab_id, query: reads[1]?.args.query }, { target: TARGET_ID, tab: TAB_ID, query: "Query" });
+    assert.equal(calls.some((call) => ["browser_prepare", "browser_navigate", "launch_app"].includes(call.tool)), false);
+    await opensky.close();
+  });
+
+  it("bounds transient browser snapshot retries and retains the original exact target", async () => {
+    const { opensky, driver } = await harness({ degradedRetryMs: 1_000 });
+    const target = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const before = driver.calls.length;
+    driver.snapshotErrors = Array.from({ length: 4 }, () => new Error("CDP Accessibility.getFullAXTree failed (-32602): Frame with the given frameId is not found"));
+    await assert.rejects(opensky.get_app_state({ app: target.targetHandle, includeScreenshot: false }), { code: "browser_snapshot_transient_exhausted" });
+    const reads = driver.calls.slice(before);
+    assert.equal(reads.length, 3);
+    assert.ok(reads.every((call) => call.tool === "get_browser_state"));
+    assert.ok(reads.every((call) => JSON.stringify(call.args) === JSON.stringify(reads[0]?.args)));
+    driver.snapshotErrors = [];
+    assert.equal((await opensky.get_app_state({ app: target.targetHandle, includeScreenshot: false })).targetHandle, target.targetHandle);
+    await opensky.close();
+  });
+
+  it("does not retry unrelated snapshot errors or retry when the budget is disabled", async () => {
+    for (const [degradedRetryMs, message] of [
+      [1_000, "CDP Accessibility.getFullAXTree failed: permission denied"],
+      [1_000, "CDP Page.navigate failed: Frame with the given frameId is not found"],
+      [0, "CDP Accessibility.getFullAXTree failed: Frame with the given frameId is not found"],
+    ] as const) {
+      const { opensky, driver } = await harness({ degradedRetryMs });
+      const target = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      const error = new Error(message);
+      driver.snapshotErrors = [error];
+      const before = driver.calls.length;
+      await assert.rejects(opensky.get_app_state({ app: target.targetHandle, includeScreenshot: false }), (actual) => {
+        if (degradedRetryMs > 0) assert.equal(actual, error);
+        else assert.equal((actual as {code:string}).code, "browser_snapshot_transient_exhausted");
+        return true;
+      });
+      assert.equal(driver.calls.length - before, 1);
+      await opensky.close();
+    }
   });
 
   it("exposes driver semantic query results as fresh addressable browser state", async () => {
@@ -1149,7 +1222,7 @@ describe("OpenSky typed-browser contract", () => {
   });
 });
 
-async function harness(options: { browserStabilityTimeoutMs?: number } = {}) {
+async function harness(options: { browserStabilityTimeoutMs?: number; degradedRetryMs?: number } = {}) {
   const driver = new TypedBrowserDriver();
   const home = await mkdtemp(join(tmpdir(), "opensky-typed-browser-"));
   const opensky = createOpenSky({
@@ -1159,7 +1232,7 @@ async function harness(options: { browserStabilityTimeoutMs?: number } = {}) {
     session: SESSION,
     target: "mac",
     settleDelayMs: 0,
-    degradedRetryMs: 0,
+    degradedRetryMs: options.degradedRetryMs ?? 0,
     browserStabilityTimeoutMs: options.browserStabilityTimeoutMs ?? 0,
   });
   return { opensky, driver, home };

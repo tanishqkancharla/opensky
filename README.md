@@ -247,7 +247,10 @@ URL targets return page-scoped semantic state by default, omitting restored tabs
 favorites, toolbars, and application menus. Chromium URLs use a driver-owned
 isolated profile and exact typed target/tab binding, so they neither reuse nor
 close the user's existing tabs. Safe resolved destinations are shown as `url=`
-metadata on semantic links when the driver provides them. Use `close_target({app})` when a task explicitly
+metadata on semantic links when the driver provides them. Long destinations use
+an explicitly truncated `urlPreview=` (200 characters); interact through the
+element index, not the preview. This keeps long signed or tracking URLs from
+crowding useful controls out of the text budget. Use `close_target({app})` when a task explicitly
 asks to close that exact target. Call `close()` in a `finally` block when using
 the library directly; the CLI, REPL, and server entry points do this
 automatically on normal exit or termination.

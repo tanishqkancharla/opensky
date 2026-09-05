@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { asArray, asRecord, CuaDriverClient } from "./driver.js";
 import { BrowserSessionLeaseStore, legacyBrowserSessionOwnerPid } from "./browser-session-leases.js";
 import { invalidParams, OpenSkyError } from "./errors.js";
+import { displayUrlAttribute } from "./display-url.js";
 import { inferScreenshotScale, readImageMeta } from "./image-meta.js";
 import { parseXdotoolKey, toHotkeyKeys } from "./keys.js";
 import { detectTarget, homeDir } from "./platform.js";
@@ -1631,14 +1632,37 @@ export class OpenSky implements OpenSkyApi {
       this.screenshotDir,
       `${slug(resolved.name)}-${resolved.windowId}-${Date.now()}-${++this.screenshotSequence}.png`,
     );
-    const result = await this.driver.call("get_browser_state", {
+    // Navigation can invalidate the frame between CDP discovery and the AX
+    // read. Retry only that read, retaining the exact binding and arguments.
+    const request = {
       target_id: browser.targetId,
       tab_id: browser.tabId,
       session: browser.session,
       snapshot_format: "semantic_v2",
       include_screenshot: options.includeScreenshot,
       ...(options.query ? { query: options.query } : {}),
-    });
+    };
+    const retryDeadline = Date.now() + Math.max(0, this.degradedRetryMs);
+    let result: Awaited<ReturnType<DriverClient["call"]>>;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        result = await this.driver.call("get_browser_state", request);
+        break;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/\bAccessibility\.getFullAXTree\b/.test(message) || !/Frame with the given frameId is not found/i.test(message)) throw error;
+        browser.screenshotMapping = undefined;
+        const exhausted = () => new OpenSkyError(
+          `The exact browser snapshot remained unavailable after ${attempt} read attempt(s): ${message}. ` +
+            "Observe the same target again; no input, navigation, or binding change was retried.",
+          "browser_snapshot_transient_exhausted",
+        );
+        const remaining = retryDeadline - Date.now();
+        if (attempt >= 3 || remaining <= 0) throw exhausted();
+        await sleep(Math.min(100 * attempt, remaining));
+        if (Date.now() >= retryDeadline) throw exhausted();
+      }
+    }
     const structured = asRecord(result.structured) ?? {};
     if (structured.status !== "ok" || structured.mode !== "snapshot") {
       throw new OpenSkyError("The desktop helper did not return a semantic browser snapshot.");
@@ -2229,7 +2253,7 @@ function formatElement(element: SnapshotElement): string {
     ? ` value=${JSON.stringify(element.value)}`
     : "";
   const identifier = element.identifier ? ` id=${JSON.stringify(element.identifier)}` : "";
-  const url = element.url ? ` url=${JSON.stringify(element.url)}` : "";
+  const url = displayUrlAttribute(element.url);
   const semantics = semanticAttributes(element);
   return `[${element.element_index}] ${element.role ?? "AXUnknown"} ${primary}${value}${identifier}${url}${semantics}`;
 }
@@ -2442,7 +2466,7 @@ function renderBrowserState(
   const header = `Browser page: ${JSON.stringify(optionalString(page.title) ?? "Untitled")} (${optionalString(page.url) ?? "URL unavailable"})`;
   const actionLines = elements.map((element) => {
     const label = JSON.stringify(element.label ?? element.value ?? "");
-    const destination = element.url ? ` url=${JSON.stringify(element.url)}` : "";
+    const destination = displayUrlAttribute(element.url);
     const conciseActions = element.actions?.filter((action) =>
       // A clickable semantic node is already addressable through the normal
       // click tool. Advertising its lower-level pointer route as well spends

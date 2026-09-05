@@ -63,8 +63,9 @@ export function createCuaReplToolRuntime(
     label: "cua_repl",
     description:
       "Run JavaScript in a persistent, sandboxed native-style Computer Use session. The `cua` object is preloaded. " +
-      "Use `await cua.getApp(name)` for native apps or `await cua.createBrowserTab('chrome', url)` for a new exact owned tab. " +
-      "Browser signatures: cua.getBrowser({id?, url?}) selects a provider without navigation; browser.tabs.new() takes no arguments and opens about:blank; " +
+      "Bind once with `let app = await cua.getApp(name)` or `let tab = await cua.createBrowserTab('chrome', url)`; reuse that binding in later calls. " +
+      "Browser signatures: cua.getBrowser({id?, url?}) returns a Browser provider, NOT a Tab or Target; it neither navigates nor provides target actions. " +
+      "cua.getTab(id, {browser?, emit?}) retrieves an existing exact owned Tab; cua.listTabs({browser?, emit?}) lists owned tab IDs. browser.tabs.new() takes no arguments and opens about:blank; " +
       "browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(). " +
       "To open a URL use cua.createBrowserTab(id, url, {visible?, sessionName?}) or tab.goto(url). " +
       "Tab inventories include only this facade's owned tabs. An empty list does not establish that the user has no other tabs or windows. " +
@@ -77,6 +78,7 @@ export function createCuaReplToolRuntime(
       "Creation and observation methods emit their results automatically; do not console.log them or repeat getAXState after creation. " +
       "Observations wait for settled state; timers such as setTimeout are unavailable and unnecessary. " +
       "If an actionable item is omitted from a large page, getAXState({query: 'relevant text'}) returns fresh matching controls. " +
+      "Long link destinations are marked urlPreview; use the element index, not a truncated URL. " +
       "The sandbox has no process, require, filesystem, dynamic import, eval/Function code generation, or network API.",
     executionMode: "sequential",
     parameters: Type.Object({
