@@ -220,6 +220,14 @@ was empty and only the probe-created private runtime was removed. Evidence:
 [`../../e2e-epoch-37/probe-01/README.md`](../../e2e-epoch-37/probe-01/README.md).
 Real serial model evaluations and any efficiency improvement remain pending.
 
+Independent probe review also found a presentation inconsistency: fresh views
+suppressed the driver's stale `about:blank` title after navigation, while stored
+context printed it. Both now share the same placeholder normalization, without
+inventing a replacement title. A pure regression covers query/context/viewport
+and genuine blank pages; live recheck remains pending. The next probe also
+requires earlier-before-current source-outline order and proven complete group
+coverage for its small static fixtures, rather than mere substring presence.
+
 **SET-010 — inventory can briefly spawn background work:** the local CLI's
 finite-command telemetry path creates a short-lived detached process with the
 same executable, confusing a strict pre-install quiescence guard. Two guards

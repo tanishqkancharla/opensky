@@ -98,10 +98,18 @@ try {
       assert.equal(snapshotId(), currentSnapshot, "Context must not collect a replacement snapshot");
       assert.ok(nearby.includes(fixture.nearby), "An unmatched sibling qualifier must survive");
       const outerIndex = Number(nearby.match(/enclosing group \[(\d+)\]/)?.[1]);
-      assert.ok(Number.isSafeInteger(outerIndex), "A group must offer an outward structural anchor");
+      assert.ok(Number.isSafeInteger(outerIndex), `${fixture.name}: this fixture requires an outward structural anchor`);
       const outer = await tab.getAXState({ context: outerIndex });
       timeline.push({ case: fixture.name, operation: "outer context", args: { context: outerIndex }, result: outer });
-      assert.ok(outer.includes(fixture.outer), "The earlier sibling must be reachable through generic structure");
+      // Inspect only the source outline, never the separate ranked action or
+      // context-index inventories. Compare only the fixture's evidence strings.
+      const outline = outer.split("\n").filter((line) => /^\s*- /.test(line) && !/^- \[\d+\]/.test(line)).join("\n");
+      const earlierAt = outline.indexOf(JSON.stringify(fixture.outer));
+      const currentAt = outline.indexOf(JSON.stringify(fixture.nearby));
+      assert.ok(earlierAt >= 0 && currentAt > earlierAt,
+        `${fixture.name}: the source outline must show the earlier sibling before the current qualifier`);
+      assert.match(outer, /0 nodes before, 0 after omitted; group complete\./,
+        `${fixture.name}: this small static group must have fully proven collection coverage`);
       assert.equal(snapshotId(), currentSnapshot);
       const beforeRefusal = driver.tape.calls.length;
       const activeTab = tab;

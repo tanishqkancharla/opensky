@@ -7,6 +7,20 @@ import type { SnapshotElement } from "../src/types.js";
 const complete = { snapshot: { complete: true }, page: { title: "Example", url: "https://example.com" } };
 
 describe("source-faithful browser rendering (pure regression tests, not driver acceptance)", () => {
+  it("uses the same placeholder-title rule for fresh and stored page views", () => {
+    for (const scope of ["query", "context", "viewport"]) {
+      const rendered = renderBrowserObservation("", [], {
+        snapshot: { scope }, page: { title: "about:blank", url: "https://example.com" },
+      });
+      assert.match(rendered.text, /^Browser page: "Untitled" \(https:\/\/example.com\)/);
+      assert.doesNotMatch(rendered.text, /about:blank/);
+    }
+    const actualBlank = renderBrowserObservation("", [], { page: { title: "about:blank", url: "about:blank" } });
+    assert.match(actualBlank.text, /^Browser page: "about:blank" \(about:blank\)/);
+    const actualTitle = renderBrowserObservation("", [], complete);
+    assert.match(actualTitle.text, /^Browser page: "Example"/);
+  });
+
   it("spends context-anchor budget on named evidence or structural groups, never empty generic rows", () => {
     const elements: SnapshotElement[] = Array.from({ length: 80 }, (_, element_index) => ({
       element_index, role: "generic", readOnly: true, actions: [],

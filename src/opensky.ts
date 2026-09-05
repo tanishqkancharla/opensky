@@ -1850,10 +1850,7 @@ export class OpenSky implements OpenSkyApi {
     const priorDocumentId = browser.documentId;
     browser.url = optionalString(page.url);
     browser.documentId = optionalString(page.document_id);
-    const observedTitle = optionalString(page.title);
-    browser.title = observedTitle === "about:blank" && browser.url !== "about:blank"
-      ? undefined
-      : observedTitle;
+    browser.title = browserPageTitle(page);
     const rawElements = normalizeBrowserElements(structured.refs, structured.content_refs);
     const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
     const documentChanged =
@@ -1861,7 +1858,7 @@ export class OpenSky implements OpenSkyApi {
       (priorUrl !== undefined && browser.url !== undefined && priorUrl !== browser.url);
     const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, rawElements, true);
     const outline = optionalString(structured.outline) ?? "";
-    const rendered = renderBrowserObservation(outline, elements, { ...structured, page: { ...page, title: browser.title } }, options.query !== undefined);
+    const rendered = renderBrowserObservation(outline, elements, structured, options.query !== undefined);
     const snapshot = asRecord(structured.snapshot) ?? {};
     const screenshot = options.includeScreenshot
       ? await browserScreenshotFromResult(result.raw, structured, screenshotPath)
@@ -2702,6 +2699,13 @@ function mergeBrowserContextElements(previous: SnapshotElement[], incoming: Snap
   return { all: [...previous, ...visible.filter((element) => !byRef.has(element.browser_ref))], visible };
 }
 
+function browserPageTitle(page: Record<string, unknown>): string | undefined {
+  const title = optionalString(page.title);
+  // A just-navigated target can still report the launch placeholder. Apply the
+  // same presentation rule to fresh and stored views without inventing a title.
+  return title === "about:blank" && optionalString(page.url) !== "about:blank" ? undefined : title;
+}
+
 export function renderBrowserState(
   outline: string,
   elements: SnapshotElement[],
@@ -2721,7 +2725,7 @@ export function renderBrowserObservation(
 ): { text: string; truncated: boolean } {
   const page = asRecord(structured.page) ?? {};
   const snapshot = asRecord(structured.snapshot) ?? {};
-  const header = `Browser page: ${JSON.stringify(optionalString(page.title) ?? "Untitled")} (${optionalString(page.url) ?? "URL unavailable"})`;
+  const header = `Browser page: ${JSON.stringify(browserPageTitle(page) ?? "Untitled")} (${optionalString(page.url) ?? "URL unavailable"})`;
   const actionLines = elements.filter((element) => element.readOnly !== true).map((element) => {
     const label = JSON.stringify(element.label ?? element.value ?? "");
     const destination = displayUrlAttribute(element.url);
