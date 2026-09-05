@@ -612,7 +612,7 @@ describe("OpenSky typed-browser contract", () => {
     assert.doesNotMatch(state.text, /Semantic state is complete/);
     const unfiltered = await opensky.get_app_state({ app: state.targetHandle, disableDiff: true, includeScreenshot: false });
     assert.doesNotMatch(unfiltered.text, /Filtered semantic query/);
-    assert.match(unfiltered.text, /Semantic state is complete/);
+    assert.match(unfiltered.text, /Driver semantic collection is complete/);
     assert.equal(driver.calls.at(-1)?.args.query, undefined);
     const beforeRefusal = driver.calls.length;
     await assert.rejects(

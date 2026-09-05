@@ -2456,7 +2456,7 @@ function normalizeBrowserElements(value: unknown): SnapshotElement[] {
   });
 }
 
-function renderBrowserState(
+export function renderBrowserState(
   outline: string,
   elements: SnapshotElement[],
   structured: Record<string, unknown>,
@@ -2492,44 +2492,66 @@ function renderBrowserState(
     actions.push(line);
     actionCharacters += line.length + 1;
   }
-  if (actions.length < actionLines.length) {
-    actions.push(`- … ${actionLines.length - actions.length} lower-ranked actionable elements omitted; refresh after scrolling or narrowing the page.`);
-  }
+  const omittedActions = actionLines.length - actions.length;
+  const renderedOutline = compactBrowserOutline(outline);
+  const renderOmissions = [
+    renderedOutline.omittedLines ? `${renderedOutline.omittedLines} outline source lines omitted (only a prefix is shown)` : "",
+    omittedActions ? `${omittedActions} actionable elements omitted` : "",
+  ].filter(Boolean);
+  const renderCoverage = renderOmissions.length
+    ? `Rendered view is partial: ${renderOmissions.join("; ")}. Rendering limits are separate from driver collection completeness; omitted context cannot establish sibling order.`
+    : "";
   const queryScoped = queryRequested || snapshot.scope === "query";
   const coverage = queryScoped
     ? (snapshot.complete === false
         ? `Filtered semantic query view is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} matching nodes).`
-        : "Filtered semantic query view is complete for matching nodes.") +
+        : snapshot.complete === true
+          ? "Filtered semantic query view is complete for matching nodes."
+          : "Filtered semantic query completeness is unavailable.") +
       " Surrounding labels and page-wide order may be omitted; ancestor paths are context, not a complete list of siblings. Omit query for page context."
     : snapshot.complete === false
       ? `Semantic state is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} ranked nodes); visible and near-viewport controls are prioritized.`
-      : "Semantic state is complete.";
-  return [header, coverage, compactBrowserOutline(outline), actions.length ? `Actionable elements:\n${actions.join("\n")}` : ""]
+      : snapshot.complete === true
+        ? "Driver semantic collection is complete."
+        : "Driver semantic collection completeness is unavailable.";
+  return [
+    header, coverage, renderCoverage,
+    renderedOutline.abbreviatedContainers ? "Outline: a bare '-' is an unnamed generic container, not an action ref. Source AX indentation is retained." : "",
+    renderedOutline.text,
+    actions.length ? `Actionable elements (ranked, not page order):\n${actions.join("\n")}` : "",
+  ]
     .filter(Boolean)
     .join("\n");
 }
 
-function compactBrowserOutline(outline: string, maxCharacters = 10_000): string {
-  const kept: string[] = [];
-  const recentLabels: string[] = [];
-  let characters = 0;
-  for (const line of outline.split("\n")) {
-    if (/^\s*- generic(?:\s|$)/.test(line)) continue;
-    const label = line.match(/"((?:\\.|[^"\\])*)"/)?.[1];
-    if (/^\s*- statictext\b/.test(line) && label && recentLabels.includes(label)) continue;
-    const normalized = line.replace(/^\s+/, (indent) => " ".repeat(Math.min(indent.length, 8)));
-    if (characters + normalized.length + 1 > maxCharacters) {
-      kept.push("- … lower-ranked page content omitted");
-      break;
-    }
-    kept.push(normalized);
-    characters += normalized.length + 1;
-    if (label) {
-      recentLabels.push(label);
-      if (recentLabels.length > 3) recentLabels.shift();
-    }
+/**
+ * Preserve the driver's source order and indentation without interpreting it as
+ * a contiguous tree: semantic_v2 can interleave disconnected ancestor paths.
+ * Only exact bare generic lines are abbreviated. Every other retained source
+ * line is copied verbatim, including names, states, repeats and whitespace.
+ * The character budget covers the source prefix; coverage/legend are separate.
+ */
+export function compactBrowserOutline(outline: string, maxCharacters = 10_000): {
+  text: string;
+  omittedLines: number;
+  abbreviatedContainers: number;
+} {
+  if (!Number.isSafeInteger(maxCharacters) || maxCharacters < 0) {
+    throw new RangeError("outline character budget must be a non-negative safe integer");
   }
-  return kept.join("\n").trim();
+  const lines = outline === "" ? [] : outline.split("\n");
+  const kept: string[] = [];
+  let characters = 0;
+  let abbreviatedContainers = 0;
+  for (const line of lines) {
+    const normalized = line.replace(/^( *)- generic$/, "$1-");
+    const addition = normalized.length + (kept.length ? 1 : 0);
+    if (characters + addition > maxCharacters) break;
+    kept.push(normalized);
+    characters += addition;
+    if (normalized !== line) abbreviatedContainers++;
+  }
+  return { text: kept.join("\n"), omittedLines: lines.length - kept.length, abbreviatedContainers };
 }
 
 /** Keep top-level menu-bar context while dropping enormous, closed menu trees. */
