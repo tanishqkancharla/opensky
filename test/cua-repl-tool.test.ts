@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -86,6 +86,77 @@ describe("single-tool native-style cua evaluator", () => {
     }
   });
 
+  it("deduplicates screenshot observations across the strict host/VM byte bridge", async () => {
+    const screenshots: Buffer[] = [];
+    const homeDir = await mkdtemp(join(tmpdir(), "opensky-cua-repl-bytes-"));
+    const runtime = createCuaReplToolRuntime(screenshotDriver(screenshots), "mac", {
+      homeDir,
+      settleDelayMs: 0,
+    });
+    try {
+      const tool = runtime.tools[0]!;
+      await execute(tool, "bind-app", { code: "app = await cua.getApp('Example');" });
+
+      const emitted = await execute(tool, "emitted-screenshot", {
+        code: "await app.getAXStateAndScreenshot({emit:true})",
+      });
+      assert.equal((emitted.details as { emissions: number }).emissions, 1);
+      assert.deepEqual(emitted.content.map((item) => item.type), ["text", "image"]);
+      assert.equal(
+        emitted.content.filter((item) => item.type === "text").length,
+        1,
+        "the host emission and VM expression result represent one observation",
+      );
+      assert.deepEqual(
+        (emitted.details as { result: { screenshot: unknown } }).result.screenshot,
+        { __cuaBytes: screenshots.at(-1)!.toString("base64") },
+      );
+      assert.equal((emitted.content[1] as { type: "image"; data: string }).data, screenshots.at(-1)!.toString("base64"));
+
+      const silent = await execute(tool, "silent-screenshot", {
+        code: "await app.getAXStateAndScreenshot({emit:false})",
+      });
+      assert.equal((silent.details as { emissions: number }).emissions, 0);
+      assert.deepEqual(silent.content.map((item) => item.type), ["text", "image"]);
+      assert.equal((silent.content[1] as { type: "image"; data: string }).data, screenshots.at(-1)!.toString("base64"));
+
+      const sliced = await execute(tool, "sliced-screenshot", {
+        code: `
+          const slicedObservation = await app.getAXStateAndScreenshot({emit:false});
+          return slicedObservation.screenshot.subarray(1, slicedObservation.screenshot.length - 1);
+        `,
+      });
+      const expectedSlice = screenshots.at(-1)!.subarray(1, screenshots.at(-1)!.length - 1);
+      assert.equal((sliced.details as { emissions: number }).emissions, 0);
+      assert.deepEqual(sliced.content.map((item) => item.type), ["image"]);
+      assert.equal((sliced.content[0] as { type: "image"; data: string }).data, expectedSlice.toString("base64"));
+      assert.deepEqual(
+        (sliced.details as { result: unknown }).result,
+        { __cuaBytes: expectedSlice.toString("base64") },
+        "a cross-realm byte view must preserve its nonzero offset and bounded length",
+      );
+
+      const different = await execute(tool, "different-screenshot", {
+        code: `
+          const differentObservation = await app.getAXStateAndScreenshot({emit:true});
+          return {
+            state: differentObservation.state + "\\ngenuinely different",
+            screenshot: differentObservation.screenshot.subarray(1),
+          };
+        `,
+      });
+      assert.equal((different.details as { emissions: number }).emissions, 1);
+      assert.deepEqual(different.content.map((item) => item.type), ["text", "image", "text", "image"]);
+      assert.match((different.content[2] as { type: "text"; text: string }).text, /genuinely different$/);
+      const differentBytes = screenshots.at(-1)!;
+      assert.equal((different.content[1] as { type: "image"; data: string }).data, differentBytes.toString("base64"));
+      assert.equal((different.content[3] as { type: "image"; data: string }).data, differentBytes.subarray(1).toString("base64"));
+    } finally {
+      await runtime.close();
+      await rm(homeDir, { recursive: true, force: true });
+    }
+  });
+
   it("keeps the host bridge lexical and rejects process/fs/network escape routes", async () => {
     const runtime = createCuaReplToolRuntime(driver(), "mac", {
       homeDir: await mkdtemp(join(tmpdir(), "opensky-cua-repl-")),
@@ -138,6 +209,41 @@ function driver(): DriverClient {
     async call(tool, args = {}): Promise<DriverResult> {
       if (tool === "list_apps") {
         return result({ apps: [{ name: "Example", bundle_id: "com.example", running: true }] });
+      }
+      if (tool === "end_session") return result({ session: args.session, active: false });
+      throw new Error(`Unexpected driver call ${tool}`);
+    },
+  };
+}
+
+function screenshotDriver(screenshots: Buffer[]): DriverClient {
+  return {
+    async ensureDaemon() {},
+    async status() { return { running: true, text: "running" }; },
+    async call(tool, args = {}): Promise<DriverResult> {
+      if (tool === "list_apps") {
+        return result({ apps: [{ name: "Example", bundle_id: "com.example", pid: 123, running: true }] });
+      }
+      if (tool === "list_windows") {
+        return result({ windows: [{ window_id: 7, title: "Example", frame: { x: 0, y: 0, width: 800, height: 600 } }] });
+      }
+      if (tool === "get_window_state") {
+        // Serialization fixture bytes only; this does not test image decoding or real-driver acceptance.
+        const screenshot = Buffer.from([137, 80, 78, 71, screenshots.length + 1, 20, 30, 40]);
+        if (args.include_screenshot === true && typeof args.screenshot_out_file === "string") {
+          screenshots.push(screenshot);
+          await writeFile(args.screenshot_out_file, screenshot);
+        }
+        return result({
+          pid: 123,
+          window_id: 7,
+          snapshot_id: `snapshot-${screenshots.length}`,
+          tree_markdown: '[0] AXStaticText "Example state"',
+          elements: [{ element_index: 0, role: "AXStaticText", label: "Example state" }],
+          elements_complete: true,
+          screenshot_file_path: args.include_screenshot === true ? args.screenshot_out_file : undefined,
+          frame: { x: 0, y: 0, width: 800, height: 600 },
+        });
       }
       if (tool === "end_session") return result({ session: args.session, active: false });
       throw new Error(`Unexpected driver call ${tool}`);

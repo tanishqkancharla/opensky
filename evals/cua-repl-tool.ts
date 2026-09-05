@@ -340,7 +340,10 @@ function installSafeCuaBridge(repl: AsyncRepl, dispatch: (request: string) => Pr
 }
 
 function encodeBridgeValue(value: unknown): unknown {
-  if (value instanceof Uint8Array) return { __cuaBytes: Buffer.from(value).toString("base64") };
+  if (isBytes(value)) {
+    const bytes = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+    return { __cuaBytes: bytes.toString("base64") };
+  }
   if (Array.isArray(value)) return value.map(encodeBridgeValue);
   if (value && typeof value === "object") {
     if (typeof (value as { toJSON?: unknown }).toJSON === "function") return encodeBridgeValue((value as { toJSON(): unknown }).toJSON());
