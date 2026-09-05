@@ -26,6 +26,35 @@ describe("acceptance runner helpers", () => {
     assert.throws(() => parseOperatorSessions('{"sessions":[{"state":"active"}]}'), /string session id/);
   });
 
+  it("rejects truncated active or ending display labels rather than claiming owned absence", () => {
+    const owned = "opensky-e36-c5f3c6e1-fa03-4123-9999-owned-session";
+    for (const state of ["active", "ending"]) for (const session of [
+      "opensky-e36-c5f3c6e1-fa03-4…", "opensky-e36-c5f3c6e1-fa03-4...", "unrelated-long-label…",
+    ]) {
+      assert.throws(() => parseOperatorSessions(JSON.stringify({ count: 1, sessions: [{ session, state }] })), /absence is not proven/);
+      assert.throws(() => ownedSessionsStillLive([owned], [{ session, state }]), /absence is not proven/);
+    }
+  });
+
+  it("does not promote missing identities or inconsistent counts to an empty inventory", () => {
+    for (const session of ["", "  ", "\u0000", null]) {
+      assert.throws(() => parseOperatorSessions(JSON.stringify({ sessions: [{ session }] })));
+    }
+    for (const count of [1, -1, "0", null]) {
+      assert.throws(() => parseOperatorSessions(JSON.stringify({ count, sessions: [] })), /count/);
+    }
+    assert.deepEqual(parseOperatorSessions('{"count":0,"sessions":[]}'), []);
+    assert.deepEqual(ownedSessionsStillLive(["owned"], []), []);
+  });
+
+  it("conservatively matches display-normalized labels and returns the original owned identity", () => {
+    const first = "owned  session";
+    const second = "owned\u0000 session";
+    const observed = [{ session: "owned session", state: "ending" }];
+    assert.deepEqual(ownedSessionsStillLive([first, second], observed), [first, second]);
+    assert.deepEqual(ownedSessionsStillLive(["owned"], [{ session: "unrelated", state: "ending" }]), []);
+  });
+
   it("does not treat model-visible caught errors as successful MCP calls", () => {
     assert.match(toolFailureReason({
       status: "completed",

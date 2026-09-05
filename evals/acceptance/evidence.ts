@@ -8,19 +8,43 @@ export type OperatorSession = Readonly<{
 }>;
 
 export function parseOperatorSessions(stdout: string): OperatorSession[] {
-  const parsed = JSON.parse(stdout) as { sessions?: unknown };
-  if (!Array.isArray(parsed.sessions)) throw new Error("operator session inventory did not contain a sessions array");
+  const parsed = asRecord(JSON.parse(stdout));
+  if (!parsed || !Array.isArray(parsed.sessions)) throw new Error("operator session inventory did not contain a sessions array");
+  if (parsed.count !== undefined &&
+      (!Number.isSafeInteger(parsed.count) || parsed.count !== parsed.sessions.length)) {
+    throw new Error("operator session inventory count does not match its complete sessions array");
+  }
   return parsed.sessions.map((value, index) => {
     if (!value || typeof value !== "object" || typeof (value as { session?: unknown }).session !== "string") {
       throw new Error(`operator session inventory entry ${index} did not contain a string session id`);
     }
+    requireCompleteOperatorIdentity((value as OperatorSession).session);
     return value as OperatorSession;
   });
 }
 
 export function ownedSessionsStillLive(ownedSessionIds: readonly string[], sessions: readonly OperatorSession[]): string[] {
-  const owned = new Set(ownedSessionIds);
-  return sessions.map((session) => session.session).filter((session) => owned.has(session));
+  // Operator labels are display strings, not canonical IDs. Refuse truncated
+  // inventories even when called without the parser; [] must never mean an
+  // uncertain owned session is absent. Preserve original owned IDs in output.
+  for (const session of sessions) requireCompleteOperatorIdentity(session.session);
+  const observed = new Set(sessions.map(session => normalizeOperatorLabel(session.session)));
+  return [...new Set(ownedSessionIds)].filter(session => observed.has(normalizeOperatorLabel(session)));
+}
+
+function requireCompleteOperatorIdentity(value: unknown): asserts value is string {
+  if (typeof value !== "string" || !normalizeOperatorLabel(value)) {
+    throw new Error("operator session inventory contains an empty or unknown identity; owned-session absence is not proven");
+  }
+  if (value.includes("…") || value.includes("...")) {
+    throw new Error("operator session inventory contains a truncated or ambiguous display identity; owned-session absence is not proven. Retain cleanup evidence and obtain an unambiguous inventory.");
+  }
+}
+
+function normalizeOperatorLabel(value: string): string {
+  // Match the supported operator surface's control removal/whitespace folding.
+  // Collisions are possible, so a match is possible presence, never exact ID proof.
+  return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, "").replace(/\s+/gu, " ").trim();
 }
 
 export function toolFailureReason(options: {

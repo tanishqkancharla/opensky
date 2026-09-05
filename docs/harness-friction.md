@@ -13,7 +13,7 @@ Stable IDs are never reused. Update an entry's status and append evidence rather
 - **Open / proposed**: no implemented, accepted solution is claimed.
 - **Historical / superseded**: the finding remains useful provenance, but current behavior differs.
 
-Backfill scope is necessarily bounded. It covers the repository history through `d46d848`, current README/tests, comparison summaries from epochs 02–35, and selective raw/review artifacts where a summary identified a decisive issue. Epoch-36 additions distinguish implementation/fixtures from the real read-only transport probe; no new GUI/model acceptance is claimed. It does not assert that every raw event in every epoch was re-audited. Commit subjects were used only to locate changes; “fixed” below requires current source/tests or live evidence. Local run IDs are not promised as published GitHub artifacts.
+Backfill scope is necessarily bounded. It covers the repository history through `d46d848`, current README/tests, comparison summaries from epochs 02–35, and selective raw/review artifacts where a summary identified a decisive issue. Epoch-36 additions distinguish implementation/fixtures, the real read-only transport probe, and a failed real Amazon model comparison. It does not assert that every raw event in every epoch was re-audited. Commit subjects were used only to locate changes; “fixed” below requires current source/tests or live evidence. Local run IDs are not promised as published GitHub artifacts.
 
 ## Library and facade
 
@@ -50,6 +50,12 @@ Backfill scope is necessarily bounded. It covers the repository history through 
 | DRV-006 | An eligible exact phrase globally suppressed reordered all-term matches; a CSS-hidden or page-occluded phrase could also suppress visible fallback results. | Driver source `14452f2e64c114e99e4bad3c6c8cec744c5e74ee` retains eligible phrase and reordered all-term matches and ignores hidden/occluded nodes when deciding whether fallback is needed, without changing request/response fields or budgets. | Five fixtures failed before the fix and seven focused cases plus the full core suite passed afterward. The rebuilt e33 helper independently exposed the reordered Logitech title and recorded the new source SHA, providing **live confirmation of recall only**. See [`../../e2e-epoch-33/README.md`](../../e2e-epoch-33/README.md). This does not supply sibling context, page-order proof, first-item classification, or general parity (LIB-015). |
 
 ## Runtime and evaluator
+
+E36 real Amazon run: native passed (6 public calls); Pi failed (4 calls, 3 failed)
+when a real driver snapshot did not return. The timeout is a live finding, not an
+MCP efficiency win. Investigation and a focused local driver repair are pending;
+the original failed cleanup remains failed. Details and public timeline are in
+[`../../e2e-epoch-36/README.md`](../../e2e-epoch-36/README.md).
 
 | ID | Symptom and cause/layer | Disposition | Validation and evidence |
 | --- | --- | --- | --- |
@@ -91,6 +97,39 @@ Backfill scope is necessarily bounded. It covers the repository history through 
 | CLN-007 | Injected shared clients could silently use one base session; stale persisted handles could be used under a replacement proxy. Cleanup persistence failure also risked losing the retry obligation. | Inject each library instance's unique base label on sessionless calls, keep caller-owned transports open, single-flight load, quarantine foreign-proxy/unowned legacy targets before dispatch, and retain failed persistence for retry. Report unresolved ownership rather than deleting it. | **Contract-confirmed** in [`test/opensky-transport-ownership.test.ts`](../test/opensky-transport-ownership.test.ts), lifecycle and typed-browser tests. E36 real injected-client read/close probe passed, but shared consumers/crash paths remain fixture-only. Low-level explicit-session calls remain trusted escape hatches; automatic ownership is not a security boundary. |
 
 ## Evidence, metrics, and observability
+
+### CLN-008 — operator display labels are not exact session identities
+
+- **Symptom/layer:** e36 retained an ending session whose operator label was
+  truncated. Exact string matching incorrectly returned no matching owned IDs;
+  other gates still rejected cleanup, so the run was never accepted as clean.
+- **Fix:** canonical inventory parsing rejects empty/truncated identities and
+  inconsistent counts. Display normalization can establish possible presence,
+  never exact ownership. The external review validator uses the same helpers and
+  checks raw versus derived inventories instead of maintaining an exact-match
+  bypass. Retain leases and failed cleanup evidence on ambiguity.
+- **Evidence:** real e36 operator inventory; deterministic regression coverage
+  in [`test/acceptance-evidence.test.ts`](../test/acceptance-evidence.test.ts)
+  and external `validate_review.test.ts`. Full OpenSky unit/contract suite
+  **274/274**, build passed; external suite **49/49**. All 15 existing reviews
+  still validate; none were rewritten. This is **contract-confirmed**, not
+  successful crash cleanup.
+- **Tradeoff/open:** even an unrelated truncated label blocks an absence claim.
+  An unambiguous machine-readable identity surface is still needed. Restarting a
+  daemon and seeing an empty new generation does not create old session receipts.
+
+### RUN-012 — external transport finalization and source provenance
+
+The serial evaluator now opts into CLI or MCP explicitly, closes its own MCP
+transport after runtime drain/cleanup, and requires exact clean-exit provenance.
+Setup errors are covered; timeout stops further cleanup retry admission and
+reports whether cleanup work and the tape settled. Source worktree selection is
+explicit, with an exact intended revision that must be independently matched by
+real `get_config`; evaluator source hashes accompany each new run. The e36 failed
+GUI run exercised quarantine/forced-close failure, not successful crash reaping.
+The full external suite is **49/49**; strict TypeScript checking still reports
+two pre-existing `evals/tools.ts` typing errors outside `src`'s successful build.
+These remain open rather than being described as a clean whole-evaluator build.
 
 | ID | Symptom and cause/layer | Disposition | Validation and evidence |
 | --- | --- | --- | --- |
