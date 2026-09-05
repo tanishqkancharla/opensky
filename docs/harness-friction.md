@@ -208,9 +208,26 @@ permission-enabled rerun passed. External evaluator checks remain **65/65**.
 The packaged skill validator passed using an existing cached PyYAML dependency;
 no package or credential was installed. The controlled-page real-driver probe
 is implemented and strict-typechecked; its no-opt-in refusal was tested without
-opening a GUI. Driver source/test completion, signed
-deployment, and real serial model evaluations against pinned native baselines
-remain pending. No new GUI task or improvement score is claimed here.
+opening a GUI. Driver core tests passed (632 core, 2 parity, 3 lifecycle, 10
+focused context tests), then the signed helper was deployed with its existing
+certificate identity. The first real controlled-page probe confirmed the exact
+source `7f8daf9a` and passed article/list context, old-action preservation,
+read-only refusal and post-input invalidation checks. It **failed** on a missing
+table parent; all tiny groups also reported incomplete. This is a driver
+collection investigation, not a reason to weaken the probe or claim acceptance.
+All exact owned windows/sessions were closed, MCP exited cleanly, final inventory
+was empty and only the probe-created private runtime was removed. Evidence:
+[`../../e2e-epoch-37/probe-01/README.md`](../../e2e-epoch-37/probe-01/README.md).
+Real serial model evaluations and any efficiency improvement remain pending.
+
+**SET-010 — inventory can briefly spawn background work:** the local CLI's
+finite-command telemetry path creates a short-lived detached process with the
+same executable, confusing a strict pre-install quiescence guard. Two guards
+stopped safely before installation. Source inspection identified the telemetry
+worker; disabling telemetry only for the guard's inventory subprocess allowed
+an exact known serve-PID/zero-session check. No unknown process was killed and
+the saved telemetry preference was untouched. This is an operational workaround,
+not a general process-discovery fix.
 
 ### Epoch-36 follow-up and comparison policy
 
