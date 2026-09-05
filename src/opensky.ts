@@ -1683,7 +1683,7 @@ export class OpenSky implements OpenSkyApi {
       (priorUrl !== undefined && browser.url !== undefined && priorUrl !== browser.url);
     const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, rawElements, true);
     const outline = optionalString(structured.outline) ?? "";
-    const tree = renderBrowserState(outline, elements, { ...structured, page: { ...page, title: browser.title } });
+    const tree = renderBrowserState(outline, elements, { ...structured, page: { ...page, title: browser.title } }, options.query !== undefined);
     const snapshot = asRecord(structured.snapshot) ?? {};
     const screenshot = options.includeScreenshot
       ? await browserScreenshotFromResult(result.raw, structured, screenshotPath)
@@ -2460,6 +2460,7 @@ function renderBrowserState(
   outline: string,
   elements: SnapshotElement[],
   structured: Record<string, unknown>,
+  queryRequested = false,
 ): string {
   const page = asRecord(structured.page) ?? {};
   const snapshot = asRecord(structured.snapshot) ?? {};
@@ -2494,9 +2495,15 @@ function renderBrowserState(
   if (actions.length < actionLines.length) {
     actions.push(`- … ${actionLines.length - actions.length} lower-ranked actionable elements omitted; refresh after scrolling or narrowing the page.`);
   }
-  const coverage = snapshot.complete === false
-    ? `Semantic state is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} ranked nodes); visible and near-viewport controls are prioritized.`
-    : "Semantic state is complete.";
+  const queryScoped = queryRequested || snapshot.scope === "query";
+  const coverage = queryScoped
+    ? (snapshot.complete === false
+        ? `Filtered semantic query view is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} matching nodes).`
+        : "Filtered semantic query view is complete for matching nodes.") +
+      " Surrounding labels and page-wide order may be omitted; ancestor paths are context, not a complete list of siblings. Omit query for page context."
+    : snapshot.complete === false
+      ? `Semantic state is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} ranked nodes); visible and near-viewport controls are prioritized.`
+      : "Semantic state is complete.";
   return [header, coverage, compactBrowserOutline(outline), actions.length ? `Actionable elements:\n${actions.join("\n")}` : ""]
     .filter(Boolean)
     .join("\n");

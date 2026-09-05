@@ -13,6 +13,7 @@ import type {
   TargetHandle,
 } from "./types.js";
 
+/** Screenshot-pixel coordinates. Exact browser input requires a fresh same-tab screenshot mapping. */
 export type Vec2 = [x: number, y: number];
 export type NativeDirection = "up" | "down" | "left" | "right" | "u" | "d" | "l" | "r";
 export type NativeSelectionType = "text" | "cursor_before" | "cursor_after";
@@ -20,7 +21,7 @@ export type NativeSelectionType = "text" | "cursor_before" | "cursor_after";
 export interface ObservationOptions { emit?: boolean }
 export interface StateOptions extends ObservationOptions {
   disableDiffing?: boolean;
-  /** OpenSky extension: request a fresh semantic view narrowed to matching content. */
+  /** OpenSky extension: matching content only; surrounding labels and page-wide order may be omitted. */
   query?: string;
 }
 export interface PasteOptions { format?: PasteFormat }

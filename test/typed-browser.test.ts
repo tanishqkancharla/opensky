@@ -30,6 +30,7 @@ class TypedBrowserDriver implements DriverClient {
   failNextSnapshot = false;
   resultUrl = "https://example.com/results";
   snapshotErrors: Error[] = [];
+  snapshotComplete = true;
 
   replaceDocument(): void {
     this.documentId = `doc-test-${Number(this.documentId.split("-").at(-1)) + 1}`;
@@ -76,7 +77,7 @@ class TypedBrowserDriver implements DriverClient {
             this.failNextSnapshot = false;
             throw new Error("injected snapshot failure");
           }
-          return this.semanticSnapshot(effectiveArgs.include_screenshot === true);
+          return this.semanticSnapshot(effectiveArgs.include_screenshot === true, typeof effectiveArgs.query === "string");
         }
         if (this.failBind) throw new Error("injected bind failure");
         return result({
@@ -153,7 +154,7 @@ class TypedBrowserDriver implements DriverClient {
     }
   }
 
-  private semanticSnapshot(includeScreenshot = false): DriverResult {
+  private semanticSnapshot(includeScreenshot = false, queried = false): DriverResult {
     const structured = {
       status: "ok",
       mode: "snapshot",
@@ -162,8 +163,8 @@ class TypedBrowserDriver implements DriverClient {
       snapshot: {
         id: "p41",
         format: "semantic_v2",
-        complete: true,
-        scope: "viewport",
+        complete: this.snapshotComplete,
+        scope: queried ? "query" : "viewport",
         selected_nodes: 5,
         total_nodes: 5,
         node_budget: 300,
@@ -606,12 +607,31 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(queried?.args.query, "Releases");
     assert.match(state.text, /^Semantic query "Releases"; fresh accessibility state:/);
     assert.match(state.text, /\[1\].*Submit/);
+    assert.match(state.text, /Filtered semantic query view is complete for matching nodes/);
+    assert.match(state.text, /Surrounding labels and page-wide order may be omitted/);
+    assert.doesNotMatch(state.text, /Semantic state is complete/);
+    const unfiltered = await opensky.get_app_state({ app: state.targetHandle, disableDiff: true, includeScreenshot: false });
+    assert.doesNotMatch(unfiltered.text, /Filtered semantic query/);
+    assert.match(unfiltered.text, /Semantic state is complete/);
+    assert.equal(driver.calls.at(-1)?.args.query, undefined);
     const beforeRefusal = driver.calls.length;
     await assert.rejects(
       () => opensky.get_app_state({ app: "Calculator", query: "Releases" }),
       /query requires.*exact typed browser binding/,
     );
     assert.equal(driver.calls.length, beforeRefusal, "an unsupported query must not resolve or launch an app");
+  });
+
+  it("reports partial query counts as matching nodes, not page-wide coverage", async () => {
+    const { opensky, driver } = await harness();
+    driver.snapshotComplete = false;
+    const state = await opensky.open_target({
+      app: "Google Chrome", targets: [URL], includeScreenshot: false, query: "Submit",
+    });
+    assert.match(state.text, /Filtered semantic query view is partial \(5\/5 matching nodes\)/);
+    assert.match(state.text, /ancestor paths are context, not a complete list of siblings/);
+    assert.doesNotMatch(state.text, /Semantic state is (complete|partial)/);
+    await opensky.close();
   });
 
   it("maps public numeric indices back to exact typed browser refs", async () => {

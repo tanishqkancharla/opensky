@@ -63,6 +63,10 @@ describe("single-tool native-style cua evaluator", () => {
       assert.deepEqual(CUA_REPL_TOOL_NAMES, ["cua_repl"]);
       assert.equal(runtime.tools.length, 1);
       const tool = runtime.tools[0]!;
+      assert.match(tool.description, /scroll\(index \| \[x, y\], direction, pages\?\)/);
+      assert.match(tool.description, /drag\(\[fromX, fromY\], \[toX, toY\]\)/);
+      assert.match(tool.description, /fresh exact-tab screenshot/);
+      assert.match(tool.description, /not complete surrounding context/);
       const first = await execute(tool, "one", { code: "counter = 40; return ++counter" });
       const second = await execute(tool, "two", { code: "return ++counter" });
       assert.equal(first.content[0]?.type, "text");
