@@ -135,6 +135,19 @@ Strict TypeScript checking of the external runner and all its imports now passes
 the six relevant tool tests pass. This is compile/contract evidence, not GUI
 acceptance or proof of all cleanup timeout branches.
 
+### OBS-009 — reused run IDs could overwrite evidence
+
+The external runner previously reused directories, allowing an explicit old run
+ID to overwrite results or a Pi-only run to inherit stale provenance. It now
+atomically reserves a new directory and refuses reuse for every arm mode, before
+GUI/model work. Epoch/run IDs must be simple path segments. Four deterministic
+tests cover preservation of old files, racing reservations and path traversal;
+the full external suite is **53/53**. An actual runner invocation with the old
+e36 ID refused before either arm and preserved its manifest hash. This is
+**contract/boundary-confirmed**, not a new GUI result. Tradeoff: partial runs
+cannot be resumed into their old directory; use a fresh ID and retain the old
+attempt separately. Helper: external `fresh_run.ts`, included in provenance hashes.
+
 | ID | Symptom and cause/layer | Disposition | Validation and evidence |
 | --- | --- | --- | --- |
 | OBS-001 | Early reports counted Pi errors from the wrong payload field, so real tool failures could appear successful. Permission-denial prose without an `Error:` prefix was also at risk. | Canonical failure classification reads public status/result shapes and reporting exposes total plus failed calls. | **Contract-confirmed**; epoch-04 records the original parser correction, later scoring uses [`evals/acceptance/evidence.ts`](../evals/acceptance/evidence.ts). Historical metrics are not silently rewritten. |
