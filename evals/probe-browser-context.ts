@@ -35,9 +35,10 @@ const cases = [
     nearby: "Context qualifier: provisional.", outer: "Earlier record",
   },
   {
-    name: "wrapper-heavy list preserves trailing qualification and source nesting",
+    name: "wrapper-heavy list preserves trailing qualification across sibling wrappers",
     html: '<main><ul aria-label="Wrapped entries"><li><span>Earlier wrapped entry</span></li><li><button>Inspect wrapped</button>' +
-      '<div>'.repeat(20) + '<span>Context qualifier: conditional.</span>' + '</div>'.repeat(20) +
+      Array.from({ length: 10 }, (_, i) => `<div><span>Supporting detail ${i}</span></div>`).join('') +
+      '<div><span>Context qualifier: conditional.</span></div>' +
       '<div tabindex="0" aria-label="Focusable context">Retained stateful container</div></li></ul></main>',
     query: "Inspect wrapped", anchorRole: "button", anchorName: "Inspect wrapped",
     nearby: "Context qualifier: conditional.", outer: "Earlier wrapped entry",
@@ -45,8 +46,9 @@ const cases = [
   {
     name: "wrapper-heavy table preserves column and late cell qualification",
     html: '<main><table aria-label="Wrapped records"><tbody><tr><th>Earlier wrapped record</th><td>Ready</td></tr>' +
-      '<tr><th>Current wrapped record</th><td><button>Inspect wrapped record</button>' + '<div>'.repeat(20) +
-      '<span>Context qualifier: deferred.</span>' + '</div>'.repeat(20) + '</td></tr></tbody></table></main>',
+      '<tr><th>Current wrapped record</th><td><button>Inspect wrapped record</button>' +
+      Array.from({ length: 10 }, (_, i) => `<div><span>Record detail ${i}</span></div>`).join('') +
+      '<div><span>Context qualifier: deferred.</span></div></td></tr></tbody></table></main>',
     query: "Inspect wrapped record", anchorRole: "button", anchorName: "Inspect wrapped record",
     nearby: "Context qualifier: deferred.", outer: "Earlier wrapped record",
   },
