@@ -66,7 +66,8 @@ describe("single-tool native-style cua evaluator", () => {
       assert.match(tool.description, /scroll\(index \| \[x, y\], direction, pages\?\)/);
       assert.match(tool.description, /drag\(\[fromX, fromY\], \[toX, toY\]\)/);
       assert.match(tool.description, /fresh exact-tab screenshot/);
-      assert.match(tool.description, /not complete surrounding context/);
+      assert.match(tool.description, /complete matches do not imply complete surrounding evidence/);
+      assert.match(tool.description, /getAXState\(\{continuation: token\}\)/);
       const first = await execute(tool, "one", { code: "counter = 40; return ++counter" });
       const second = await execute(tool, "two", { code: "return ++counter" });
       assert.equal(first.content[0]?.type, "text");

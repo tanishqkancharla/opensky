@@ -61,6 +61,8 @@ export interface StoredSnapshot {
   viewKind?: "context";
   /** Opaque driver order domains learned for exact refs within this snapshot only. */
   contextDomains?: Record<string, string>;
+  /** Only context cursors actually returned for this exact stored snapshot. */
+  contextContinuations?: Record<string, import("./browser-context.js").ContextCursor>;
 }
 
 function managedSessions(value: unknown): string[] {

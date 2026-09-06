@@ -111,6 +111,8 @@ export interface OpenSky {
     query?: string;
     /** Read bounded context around a current browser index without collecting a new snapshot. */
     context_element_index?: number;
+    /** Consume a returned same-snapshot context cursor; never combines with a fresh query or screenshot. */
+    continuation?: string;
   }): Promise<AppState>;
   open_target(args: {
     app: string;
@@ -315,6 +317,8 @@ export interface WindowSnapshot {
   totalElementCount?: number;
   returnedElementCount?: number;
   documentChanged?: boolean;
+  contextDomains?: Record<string, string>;
+  contextContinuations?: Record<string, import("./browser-context.js").ContextCursor>;
 }
 
 export interface OpenSkyOptions {

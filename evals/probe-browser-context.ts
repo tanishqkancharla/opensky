@@ -34,6 +34,13 @@ const cases = [
     query: "Inspect record", anchorRole: "button", anchorName: "Inspect record",
     nearby: "Context qualifier: provisional.", outer: "Earlier record",
   },
+  {
+    name: "long nested list with adjacent stored windows",
+    html: '<main><ul aria-label="Ledger">' + Array.from({ length: 80 }, (_, i) =>
+      `<li><span>Ledger row ${String(i).padStart(2, "0")}</span><ol><li>Nested detail A</li><li>Nested detail B</li></ol>${i === 40 ? '<button>Inspect midpoint</button>' : ''}</li>`).join('') + '</ul></main>',
+    query: "Inspect midpoint", anchorRole: "button", anchorName: "Inspect midpoint",
+    nearby: "Ledger row 40", outer: "Ledger row 00", paginate: true,
+  },
 ] as const;
 
 if (process.env.OPENSKY_REAL_DRIVER !== "1") throw new Error("Set OPENSKY_REAL_DRIVER=1 to authorize isolated test browser windows.");
@@ -95,6 +102,9 @@ try {
         timeline.push({ case: fixture.name, operation: "query", args: { query: fixture.query }, result: queried });
         const anchor = findIndex(queried, fixture.anchorRole, fixture.anchorName);
         const currentSnapshot = snapshotId();
+        const automatic = queried.slice(0, queried.indexOf("Actionable elements"));
+        assert.match(automatic, /Evidence context/, "Query must include context without an extra request");
+        assert.ok(sourceOutline(automatic).includes(JSON.stringify(fixture.nearby)), "Automatic context must retain an unmatched qualifier");
         const callsBefore = driver.tape.calls.length;
         const nearby = await tab.getAXState({ context: anchor });
         timeline.push({ case: fixture.name, operation: "context", args: { context: anchor }, result: nearby });
@@ -107,13 +117,17 @@ try {
         timeline.push({ case: fixture.name, operation: "outer context", args: { context: outerIndex }, result: outer });
         // Inspect only the source outline, never the separate ranked action or
         // context-index inventories. Compare only the fixture's evidence strings.
-        const outline = outer.split("\n").filter((line) => /^\s*- /.test(line) && !/^- \[\d+\]/.test(line)).join("\n");
-        const earlierAt = outline.indexOf(JSON.stringify(fixture.outer));
-        const currentAt = outline.indexOf(JSON.stringify(fixture.nearby));
-        assert.ok(earlierAt >= 0 && currentAt > earlierAt,
-          `${fixture.name}: the source outline must show the earlier sibling before the current qualifier`);
-        assert.match(outer, /0 nodes before, 0 after omitted; group complete\./,
-          `${fixture.name}: this small static group must have fully proven collection coverage`);
+        if ("paginate" in fixture) {
+          await checkPagination(tab, outer, currentSnapshot, fixture.name);
+        } else {
+          const outline = sourceOutline(outer);
+          const earlierAt = outline.indexOf(JSON.stringify(fixture.outer));
+          const currentAt = outline.indexOf(JSON.stringify(fixture.nearby));
+          assert.ok(earlierAt >= 0 && currentAt > earlierAt,
+            `${fixture.name}: the source outline must show the earlier sibling before the current qualifier`);
+          assert.match(outer, /0 nodes before, 0 after omitted; group complete\./,
+            `${fixture.name}: this small static group must have fully proven collection coverage`);
+        }
         assert.equal(snapshotId(), currentSnapshot);
         const beforeRefusal = driver.tape.calls.length;
         const activeTab = tab;
@@ -191,6 +205,86 @@ function findIndex(text: string, role: string, name: string): number {
 function snapshotId(): unknown {
   const call = driver.tape.calls.findLast((call) => call.tool === "get_browser_state");
   return asRecord(asRecord(call?.result?.structured)?.snapshot)?.id;
+}
+
+function sourceOutline(text: string): string {
+  return text.split("\n").filter((line) => /^\s*- /.test(line) && !/^- \[\d+\]/.test(line)).join("\n");
+}
+
+function directionToken(text: string, direction: "Earlier" | "Later"): string | undefined {
+  const match = text.match(new RegExp(`${direction} context: getAXState\\(\\{continuation: ("(?:[^"\\\\]|\\\\.)*")\\}\\)`));
+  return match ? JSON.parse(match[1]!) as string : undefined;
+}
+
+/** Verify actor-visible source rows and exact stored cursor semantics separately.
+ * The wire is used only to check provenance/bounds, never to fill missing text.
+ */
+async function checkPagination(tab: Tab, initial: string, expectedSnapshot: unknown, caseName: string): Promise<void> {
+  const observedRows: number[] = [];
+  const issuedMembers = new Set<string>();
+  const seenTokens = new Set<string>();
+  let earlierToken: string | undefined;
+  let text = initial;
+  let previousBefore = -1;
+  let total: number | undefined;
+  const readPage = async (token: string) => {
+    assert.ok(!seenTokens.has(token), "Traversal must not repeat a consumed cursor");
+    seenTokens.add(token);
+    const before = driver.tape.calls.length;
+    const page = await tab.getAXState({ continuation: token });
+    timeline.push({ case: caseName, operation: "continuation", args: { continuation: token }, result: page });
+    assert.equal(driver.tape.calls.length, before + 1, "Continuation makes exactly one driver call");
+    assert.equal(snapshotId(), expectedSnapshot, "Continuation must not recapture");
+    const context = asRecord(asRecord(driver.tape.calls.at(-1)?.result?.structured)?.context);
+    assert.equal(context?.group_ref, group);
+    assert.equal(context?.order_domain, domain);
+    const count = driver.tape.calls.length;
+    await assert.rejects(() => tab.getAXState({ continuation: token }), /current browser snapshot/);
+    assert.equal(driver.tape.calls.length, count, "Reused cursor must fail before dispatch");
+    return page;
+  };
+  const initialContext = asRecord(asRecord(driver.tape.calls.at(-1)?.result?.structured)?.context);
+  const group = initialContext?.group_ref;
+  const domain = initialContext?.order_domain;
+  assert.equal(initialContext?.before_omitted, 0, "Reading a group starts at its beginning");
+  for (let pages = 0; ; pages++) {
+    assert.ok(pages < 100, "Traversal must make bounded progress");
+    const context = asRecord(asRecord(driver.tape.calls.at(-1)?.result?.structured)?.context);
+    assert.ok(context && Array.isArray(context.member_refs) && context.member_refs.length > 0);
+    assert.ok(context.member_refs.length <= 25);
+    const before = Number(context.before_omitted);
+    const after = Number(context.after_omitted);
+    assert.ok(before > previousBefore, "Later windows advance in source order");
+    previousBefore = before;
+    total ??= before + context.member_refs.length + after;
+    assert.equal(before + context.member_refs.length + after, total, "All windows describe one fixed materialized group");
+    for (const ref of context.member_refs) {
+      assert.equal(typeof ref, "string");
+      assert.ok(!issuedMembers.has(ref), "Adjacent later pages may not skip via overlapping member windows");
+      issuedMembers.add(ref);
+    }
+    observedRows.push(...[...sourceOutline(text).matchAll(/"Ledger row (\d{2})"/g)].map(match => Number(match[1])));
+    earlierToken ??= directionToken(text, "Earlier");
+    const token = directionToken(text, "Later");
+    if (!token) { assert.equal(after, 0, "No unreachable omitted tail on a static list"); break; }
+    assert.ok(after > 0);
+    text = await readPage(token);
+  }
+  assert.equal(issuedMembers.size, total, "Every materialized member must appear in a window");
+  assert.deepEqual([...new Set(observedRows)], Array.from({ length: 80 }, (_, i) => i), "Visible source outlines must expose every nested-list row in order");
+  assert.ok(earlierToken, "A later window must expose a usable earlier cursor");
+  let reverseBefore = total!;
+  for (let pages = 0; earlierToken; pages++) {
+    assert.ok(pages < 100);
+    text = await readPage(earlierToken);
+    const context = asRecord(asRecord(driver.tape.calls.at(-1)?.result?.structured)?.context);
+    const before = Number(context?.before_omitted);
+    assert.ok(before < reverseBefore, "Earlier windows advance toward the beginning");
+    reverseBefore = before;
+    earlierToken = directionToken(text, "Earlier");
+    if (!earlierToken) assert.equal(before, 0, "No unreachable omitted prefix");
+  }
+  assert.ok(sourceOutline(text).includes('"Ledger row 00"'), "Earlier traversal exposes the actual prefix, not a count alone");
 }
 
 function caseCleanupVerified(callStart: number): boolean {

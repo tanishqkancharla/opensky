@@ -71,6 +71,13 @@ desirable contracts, not executable OpenSky APIs.
        # A bounded result should offer a path onward, not hidden IDs to guess.
    ```
 
+   ```text
+   page = render_with_budget(stored_rows)
+   next_cursor = cursor_after(page.last_visible_row)
+   emit(page, next_cursor)  # Reserve space for the cursor separately.
+   # Advancing past collected-but-unshown rows would silently lose evidence.
+   ```
+
 6. Make failures actionable. Say what ran, what failed and what can safely happen next; never guess that retrying is harmless.
 
    ```text

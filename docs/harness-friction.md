@@ -192,8 +192,12 @@ is automatic same-snapshot query context plus explicitly consumable context
 continuations, not another warning or a weaker order criterion. See the
 [proposal and falsifiers](../../e2e-epoch-37/evidence-observation-plan.md).
 
-Full current checks: OpenSky **294/294** deterministic tests + build; external
+Full current checks: OpenSky **310/310** deterministic tests + build; external
 evaluator **89/89** + strict typecheck. These counts are not GUI acceptance.
+The current uninstalled candidate adds automatic query neighborhoods and
+same-snapshot directional continuation in OpenSky, its facade, evaluator tools
+and packaged instructions. Driver implementation/review and the expanded real
+probe remain pending; the four e37 model outcomes above are unchanged.
 Timelines, original protocol differences and raw comparison metrics are in
 [`../../e2e-epoch-37/README.md`](../../e2e-epoch-37/README.md). The following
 implementation/review history is retained rather than replacing failed probes
@@ -246,11 +250,27 @@ Real serial model evaluations and any efficiency improvement remain pending.
 that a long list of structural items can dead-end: item context stays within
 that item, and enclosing-list context restarts at its beginning. Unissued or
 unrendered sibling refs cannot safely be guessed. Documentation and evaluator
-tool guidance now state this limitation. A separately bound, read-only adjacent
-context cursor is **proposed, not implemented**, with long nested-list, boundary,
-frame, staleness and renderer-budget tests required before acceptance. This gap
+tool guidance initially stated this limitation. The new OpenSky candidate now
+accepts an exact emitted `continuation` token and validates snapshot/tab/frame/
+group/order-domain identity, single use, pending input and bounded output.
+Automatic query context is rendered before matching paths and ranked controls;
+standalone pages are not cut again by the ordinary outline budget. Tokens and
+coverage stay outside body budgets. This is **implemented and contract-tested
+on the OpenSky side, not yet real-driver accepted**. Driver work is under review,
+and the controlled probe now includes an 80-row nested list with complete
+actor-visible forward traversal, reverse prefix access, unchanged snapshot ID,
+single-RPC reads and reused-token refusal. This gap
 is generic and remains open even if the current small fixtures or model tasks
 pass. Do not mistake omitted-node counts for usable continuation capabilities.
+
+Independent malformed-response review found duplicate issued refs could silently
+overwrite one another and automatic blocks accepted noncanonical snapshot IDs
+or the wrong snapshot format. The candidate rejects these before issuing local
+cursor capabilities, including trailing-control-character tokens. Regression
+coverage is deterministic, not live acceptance. Automatic evidence costs up to
+six blocks / 96 members / 24,000 UTF-8 outline bytes; a standalone page is capped
+at 25 members / 12,000 bytes. No efficiency gain is claimed before fresh actors
+pass grounding and cleanup. No domain-specific extraction rules were added.
 
 Independent probe review also found a presentation inconsistency: fresh views
 suppressed the driver's stale `about:blank` title after navigation, while stored

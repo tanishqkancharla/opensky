@@ -226,7 +226,7 @@ export function createOpenSkyToolRuntime(
       name: "get_app_state",
       label: "get_app_state",
       description:
-        "Resolve an app name or exact target handle and return fresh accessibility state. First state is full; later states are compact diffs unless disableDiff is true. For an exact typed browser, query narrows a large page to matching content/current refs; context_element_index reads bounded surrounding structure from the same stored snapshot instead of capturing again. Context cannot combine with query or screenshots. Set include_screenshot only when pixels are needed.",
+        "Resolve an app name or exact target handle and return fresh accessibility state. First state is full; later states are compact diffs unless disableDiff is true. Exact browser queries include matches and bounded evidence neighborhoods when supported. context_element_index reads stored surrounding structure; continuation follows an emitted single-use earlier/later token without recapture. Neither combines with the other, query or screenshots. Input or fresh observation invalidates them. Local group coverage does not prove page-wide order or completeness. Set include_screenshot only when pixels are needed.",
       promptSnippet: "get_app_state: initial/recovery observation for a known app; actions observe by default.",
       parameters: Type.Object({
         app: Type.String({ description: "Display name, bundle id, or path" }),
@@ -235,6 +235,7 @@ export function createOpenSkyToolRuntime(
         include_app_chrome: Type.Optional(Type.Boolean({ description: "Exit legacy URL page scope; unavailable for exact typed browser bindings" })),
         query: Type.Optional(Type.String({ minLength: 1, description: "Exact typed browser only: semantic text to find and make addressable" })),
         context_element_index: Type.Optional(Type.Integer({ minimum: 0, description: "Current browser action or read-only content index: read stored surrounding group context, not fresh page state" })),
+        continuation: Type.Optional(Type.String({ minLength: 1, maxLength: 256, description: "Exact emitted earlier/later context token for this tab and stored snapshot; single-use" })),
       }),
       async execute(_id, params) {
         const { include_screenshot, include_app_chrome, ...stateArgs } = params;

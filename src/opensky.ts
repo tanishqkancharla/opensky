@@ -7,6 +7,8 @@ import { asArray, asRecord, CuaDriverClient } from "./driver.js";
 import { AsyncLifecycle } from "./async-lifecycle.js";
 import { StdioMcpDriverClient, type TransportCloseReceipt } from "./mcp-driver.js";
 import { BrowserSessionLeaseStore, legacyBrowserSessionOwnerPid } from "./browser-session-leases.js";
+import { contextBindings, contextFailure, CONTEXT_OUTLINE_BYTES, isContextToken, renderContextDirections,
+  validateContextBlock, validateQueryContexts, type ContextBlock } from "./browser-context.js";
 import { invalidParams, OpenSkyError } from "./errors.js";
 import { displayUrlAttribute } from "./display-url.js";
 import { inferScreenshotScale, readImageMeta } from "./image-meta.js";
@@ -197,12 +199,14 @@ export class OpenSky implements OpenSkyApi {
     includeAppChrome?: boolean;
     query?: string;
     context_element_index?: number;
+    continuation?: string;
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
-    if (args.context_element_index !== undefined) {
-      if (!Number.isSafeInteger(args.context_element_index) || args.context_element_index < 0 ||
+    if (args.context_element_index !== undefined || args.continuation !== undefined) {
+      if ((args.context_element_index !== undefined && (!Number.isSafeInteger(args.context_element_index) || args.context_element_index < 0)) ||
+          (args.continuation !== undefined && (!isContextToken(args.continuation) || args.context_element_index !== undefined)) ||
           args.query !== undefined || args.includeScreenshot === true || args.includeAppChrome === true) {
-        throw invalidParams("context_element_index requires a non-negative integer and cannot be combined with query, screenshot, or app chrome");
+        throw invalidParams("context/continuation requires one valid index or emitted cursor, and cannot be combined with query, screenshot, or app chrome");
       }
       await this.ensureLoaded();
       const bound = this.targetForSelector(args.app);
@@ -210,7 +214,7 @@ export class OpenSky implements OpenSkyApi {
         throw new OpenSkyError("context requires an existing exact typed browser binding. No app was launched or input sent.");
       }
       this.assertTargetUsable(bound);
-      return this.browserContext(bound, args.context_element_index);
+      return this.browserContext(bound, args.continuation ?? args.context_element_index!);
     }
     const exactTargetRequested = looksLikeTargetHandle(args.app);
     let resolved: ResolvedApp;
@@ -279,6 +283,8 @@ export class OpenSky implements OpenSkyApi {
         tree: snapshot.tree,
         elements: snapshot.elements,
         snapshotId: snapshot.snapshotId,
+        contextDomains: snapshot.contextDomains,
+        contextContinuations: snapshot.contextContinuations,
       };
     }
     await this.persist();
@@ -294,13 +300,17 @@ export class OpenSky implements OpenSkyApi {
   }
 
   /** Expand the stored observation; never settle/recollect or silently reinterpret an old index. */
-  private async browserContext(resolved: ResolvedApp, elementIndex: number): Promise<AppState> {
+  private async browserContext(resolved: ResolvedApp, selector: number | string): Promise<AppState> {
     const browser = resolved.browser!;
     const key = windowKey(resolved);
     const previous = this.memory.trees[key];
-    const anchor = previous?.elements.find((element) => element.element_index === elementIndex);
+    const continuation = typeof selector === "string" ? selector : undefined;
+    const expected = continuation && previous?.contextContinuations && Object.hasOwn(previous.contextContinuations, continuation)
+      ? previous.contextContinuations[continuation] : undefined;
+    const anchor = previous?.elements.find((element) => continuation
+      ? element.browser_ref === expected?.anchorRef : element.element_index === selector);
     const inputPending = () => this.lastActionAt.has(key) || this.browserMutationsPending.has(resolved.handle);
-    if (!previous?.snapshotId || !anchor?.browser_ref || inputPending()) {
+    if (!previous?.snapshotId || !anchor?.browser_ref || (continuation !== undefined && !expected) || inputPending()) {
       throw new OpenSkyError("context requires an index from the current browser snapshot with no intervening input. Observe the tab again first.");
     }
     const fail = () => new OpenSkyError(
@@ -309,15 +319,20 @@ export class OpenSky implements OpenSkyApi {
     );
     // AX-only observations never preserve a screenshot coordinate mapping.
     browser.screenshotMapping = undefined;
+    // Single-use at the local admission boundary too; an ambiguous delivery is
+    // not permission to replay the cursor. Driver independently enforces this.
+    if (continuation) delete previous.contextContinuations![continuation];
     let candidate: StoredSnapshot | undefined;
     try {
       const result = await this.driver.call("get_browser_state", {
         session: browser.session, target_id: browser.targetId, tab_id: browser.tabId,
-        snapshot_format: "semantic_v2", include_screenshot: false, context_ref: anchor.browser_ref,
+        snapshot_format: "semantic_v2", include_screenshot: false,
+        ...(continuation ? { continuation } : { context_ref: anchor.browser_ref }),
       });
       const structured = asRecord(result.structured) ?? {};
       const snapshot = asRecord(structured.snapshot) ?? {};
-      const context = asRecord(structured.context);
+      const incoming = normalizeBrowserElements(structured.refs, structured.content_refs);
+      const context = validateContextBlock(structured.context, { snapshotId: previous.snapshotId, elements: incoming, expected });
       if (this.memory.trees[key] !== previous || inputPending() ||
           structured.status !== "ok" || structured.mode !== "snapshot" ||
           structured.target_id !== browser.targetId || structured.tab_id !== browser.tabId ||
@@ -332,7 +347,6 @@ export class OpenSky implements OpenSkyApi {
           (context.group_complete && (context.before_omitted !== 0 || context.after_omitted !== 0 || !context.document_collection_complete))) {
         throw fail();
       }
-      const incoming = normalizeBrowserElements(structured.refs, structured.content_refs);
       if (!anchor.browserFrame || incoming.some((element) =>
         !isSnapshotRef(element.browser_ref, previous.snapshotId!) || element.browserFrame !== anchor.browserFrame ||
         (previous.contextDomains?.[element.browser_ref!] !== undefined && previous.contextDomains[element.browser_ref!] !== context.order_domain))) throw fail();
@@ -340,14 +354,22 @@ export class OpenSky implements OpenSkyApi {
       // Metadata must refer to this returned window, not an unrelated previously issued row.
       if (![context.anchor_ref, context.group_ref, context.parent_group_ref].filter((ref) => ref != null)
         .every((ref) => incoming.some((element) => element.browser_ref === ref))) throw fail();
-      const rendered = renderBrowserObservation(optionalString(structured.outline) ?? "", visible, structured, false, all);
+      const outline = optionalString(structured.outline) ?? "";
+      if ((context.member_refs || context.before_continuation || context.after_continuation || continuation) && Buffer.byteLength(outline, "utf8") > CONTEXT_OUTLINE_BYTES) throw fail();
+      const bindings = contextBindings([context], incoming);
+      if (Object.keys(bindings.contextContinuations).some(token => token === continuation ||
+          (previous.contextContinuations && Object.hasOwn(previous.contextContinuations, token)))) throw fail();
+      const contextContinuations = { ...previous.contextContinuations, ...bindings.contextContinuations };
+      if (Object.keys(contextContinuations).length > 1024) throw fail();
+      const rendered = renderBrowserObservation(outline, visible, structured, false, all);
       const window: WindowSnapshot = {
         pid: resolved.pid, windowId: resolved.windowId!, snapshotId: previous.snapshotId,
         tree: rendered.text, elements: all, screenshotPath: null,
         truncated: context.group_complete !== true || rendered.truncated,
       };
       candidate = { tree: window.tree, elements: all, snapshotId: window.snapshotId, viewKind: "context",
-        contextDomains: { ...previous.contextDomains, ...Object.fromEntries(incoming.map((element) => [element.browser_ref!, context.order_domain as string])) } };
+        contextDomains: { ...previous.contextDomains, ...Object.fromEntries(incoming.map((element) => [element.browser_ref!, context.order_domain as string])) },
+        contextContinuations };
       this.memory.trees[key] = candidate;
       await this.persist();
       if (this.memory.trees[key] !== candidate || inputPending()) throw fail();
@@ -1858,8 +1880,12 @@ export class OpenSky implements OpenSkyApi {
       (priorUrl !== undefined && browser.url !== undefined && priorUrl !== browser.url);
     const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, rawElements, true);
     const outline = optionalString(structured.outline) ?? "";
-    const rendered = renderBrowserObservation(outline, elements, structured, options.query !== undefined);
     const snapshot = asRecord(structured.snapshot) ?? {};
+    if (structured.query_contexts !== undefined && (!options.query || snapshot.format !== "semantic_v2" ||
+        snapshot.scope !== "query" || structured.target_id !== browser.targetId || structured.tab_id !== browser.tabId)) throw contextFailure();
+    const contexts = validateQueryContexts(structured.query_contexts, optionalString(snapshot.id) ?? "", elements);
+    const bindings = contextBindings(contexts, elements);
+    const rendered = renderBrowserObservation(outline, elements, structured, options.query !== undefined);
     const screenshot = options.includeScreenshot
       ? await browserScreenshotFromResult(result.raw, structured, screenshotPath)
       : undefined;
@@ -1879,6 +1905,7 @@ export class OpenSky implements OpenSkyApi {
       totalElementCount: totalNodes,
       returnedElementCount: selectedNodes,
       documentChanged,
+      ...bindings,
     };
   }
 
@@ -1918,6 +1945,8 @@ export class OpenSky implements OpenSkyApi {
             tree: snapshot.tree,
             elements: snapshot.elements,
             snapshotId: snapshot.snapshotId,
+            contextDomains: snapshot.contextDomains,
+            contextContinuations: snapshot.contextContinuations,
           };
         }
         const next = await this.snapshotWindow(resolved, {
@@ -1937,6 +1966,8 @@ export class OpenSky implements OpenSkyApi {
             tree: snapshot.tree,
             elements: snapshot.elements,
             snapshotId: snapshot.snapshotId,
+            contextDomains: snapshot.contextDomains,
+            contextContinuations: snapshot.contextContinuations,
           };
         }
         const captured = await this.snapshotWindow(resolved, {
@@ -2772,7 +2803,11 @@ export function renderBrowserObservation(
     contentCharacters += line.length + 1;
   }
   const omittedContent = contentElements.length - contentLines.length;
-  const renderedOutline = compactBrowserOutline(outline);
+  const context = asRecord(structured.context);
+  const queryContexts = asArray<ContextBlock>(structured.query_contexts);
+  // New context windows are bounded before cursor creation by the driver. A
+  // second prefix cut here would hide rows that the next cursor has passed.
+  const renderedOutline = compactBrowserOutline(outline, Array.isArray(context?.member_refs) ? outline.length : 10_000);
   const renderOmissions = [
     renderedOutline.omittedLines ? `${renderedOutline.omittedLines} outline source lines omitted (only a prefix is shown)` : "",
     omittedActions ? `${omittedActions} actionable elements omitted` : "",
@@ -2782,8 +2817,16 @@ export function renderBrowserObservation(
     ? `Rendered view is partial: ${renderOmissions.join("; ")}. Rendering limits are separate from driver collection completeness; omitted context cannot establish sibling order.`
     : "";
   const queryScoped = queryRequested || snapshot.scope === "query";
-  const context = asRecord(structured.context);
   const indexFor = (ref: unknown) => availableElements.find((element) => element.browser_ref === ref)?.element_index;
+  const evidence = queryContexts.map((block, index) => [
+    `Evidence context ${index + 1}: group [${indexFor(block.group_ref) ?? "unavailable"}]` +
+      (block.parent_group_ref ? `; enclosing group [${indexFor(block.parent_group_ref) ?? "unavailable"}]` : "") +
+      ". Same snapshot; source order only within this group/frame.",
+    `${block.before_omitted} nodes before, ${block.after_omitted} after omitted; group ${block.group_complete ? "complete" : "incomplete"}. ` +
+      `Document collection ${block.document_collection_complete ? "complete" : "incomplete"}; virtualized extent unknown.`,
+    block.outline ?? "",
+    renderContextDirections(block),
+  ].filter(Boolean).join("\n")).join("\n\n");
   const coverage = context
     ? `Same-snapshot context (not a new page capture). Group [${indexFor(context.group_ref) ?? "unavailable"}]` +
       (context.parent_group_ref ? `; enclosing group [${indexFor(context.parent_group_ref) ?? "unavailable"}]` : "") +
@@ -2797,7 +2840,9 @@ export function renderBrowserObservation(
         : snapshot.complete === true
           ? "Filtered semantic query view is complete for matching nodes."
           : "Filtered semantic query completeness is unavailable.") +
-      " Surrounding labels and page-wide order may be omitted; ancestor paths are not a complete list of siblings. Use context on an index for stored surrounding structure, or omit query for a fresh page capture."
+      (queryContexts.length
+        ? " Matching paths alone do not prove order. Evidence contexts below include nonmatching neighbors; use their coverage and continuation before making an order or absence claim."
+        : " Surrounding labels and page-wide order may be omitted; ancestor paths are not a complete list of siblings. Use context on an index for stored surrounding structure, or omit query for a fresh page capture.")
     : snapshot.complete === false
       ? `Semantic state is partial (${snapshot.selected_nodes ?? elements.length}/${snapshot.total_nodes ?? "?"} ranked nodes); visible and near-viewport controls are prioritized.`
       : snapshot.complete === true
@@ -2805,8 +2850,11 @@ export function renderBrowserObservation(
         : "Driver semantic collection completeness is unavailable.";
   const text = [
     header, coverage, renderCoverage,
+    evidence,
+    evidence ? "Matching paths (filtered, not a complete sibling list):" : "",
     renderedOutline.abbreviatedContainers ? "Outline: a bare '-' is an unnamed generic container, not an action ref. Source AX indentation is retained." : "",
     renderedOutline.text,
+    context ? renderContextDirections(context as unknown as ContextBlock) : "",
     actions.length ? `Actionable elements (ranked, not page order):\n${actions.join("\n")}` : "",
     contentLines.length ? `Context anchors (read-only; use getAXState({context: index}); not page order):\n${contentLines.join("\n")}` : "",
   ]

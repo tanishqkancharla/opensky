@@ -35,6 +35,9 @@ class TypedBrowserDriver implements DriverClient {
   snapshotOutline?: string;
   lastSnapshot?: Record<string, unknown>;
   contextResult?: (args: Record<string, unknown>) => DriverResult | Promise<DriverResult>;
+  continuationResult?: (args: Record<string, unknown>) => DriverResult | Promise<DriverResult>;
+  queryContexts?: unknown;
+  snapshotEnvelope?: Record<string, unknown>;
   clickResult?: () => DriverResult | Promise<DriverResult>;
 
   replaceDocument(): void {
@@ -77,13 +80,16 @@ class TypedBrowserDriver implements DriverClient {
       case "get_browser_state":
         if (effectiveArgs.target_id !== undefined) {
           if (effectiveArgs.context_ref !== undefined && this.contextResult) return this.contextResult(effectiveArgs);
+          if (effectiveArgs.continuation !== undefined && this.continuationResult) return this.continuationResult(effectiveArgs);
           const error = this.snapshotErrors.shift();
           if (error) throw error;
           if (this.failNextSnapshot) {
             this.failNextSnapshot = false;
             throw new Error("injected snapshot failure");
           }
-          return this.semanticSnapshot(effectiveArgs.include_screenshot === true, typeof effectiveArgs.query === "string");
+          const captured = this.semanticSnapshot(effectiveArgs.include_screenshot === true, typeof effectiveArgs.query === "string");
+          if (this.snapshotEnvelope) Object.assign((captured.structured as any).snapshot, this.snapshotEnvelope);
+          return captured;
         }
         if (this.failBind) throw new Error("injected bind failure");
         return result({
@@ -192,6 +198,7 @@ class TypedBrowserDriver implements DriverClient {
         '- button "Submit"',
         '- region "Results"',
       ].join("\n"),
+      ...(queried && this.queryContexts !== undefined ? { query_contexts: this.queryContexts } : {}),
       refs: [
         {
           ref: "p41:0",
@@ -269,6 +276,99 @@ class TypedBrowserDriver implements DriverClient {
 }
 
 describe("OpenSky typed-browser contract", () => {
+  it("rejects automatic context metadata outside a proven semantic query envelope", async () => {
+    for (const patch of [{ format: undefined }, { format: "legacy" }, { scope: "viewport" }, { id: "foreign" }, { id: "" }]) {
+      const { opensky, driver } = await harness();
+      const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      driver.queryContexts = [];
+      driver.snapshotEnvelope = patch;
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, query: "Submit", includeScreenshot: false }), /could not prove same-snapshot context/);
+    }
+  });
+
+  it("renders query neighborhoods automatically and consumes their exact cursor without recollection", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    driver.contentRefs = [
+      { ref: "p41:10", role: "region", name: "Repeated", actions: [], frame: "main" },
+      { ref: "p41:11", role: "main", name: "Document", actions: [], frame: "main" },
+    ];
+    const block = (contextFixture(driver, "p41:1").structured as any).context;
+    driver.queryContexts = [{ ...block, outline: '- region "Earlier sibling"\n  - statictext "Unmatched qualifier"',
+      member_refs: ["p41:10", "p41:1"], before_continuation: null, after_continuation: "context-after" }];
+    const observed = await opensky.get_app_state({ app: state.targetHandle, query: "Submit", includeScreenshot: false });
+    assert.match(observed.text, /Unmatched qualifier/);
+    assert.match(observed.text, /getAXState\(\{continuation: "context-after"\}\)/);
+    assert(observed.text.indexOf("Evidence context") < observed.text.indexOf("Actionable elements"));
+    driver.continuationResult = () => {
+      const response = contextFixture(driver, "p41:1");
+      const value = response.structured as any;
+      value.outline = '- statictext "Later unmatched item"';
+      value.context = { ...value.context, member_refs: ["p41:10"], before_omitted: 25, after_omitted: 0,
+        before_continuation: "context-before", after_continuation: null };
+      return response;
+    };
+    const before = driver.calls.length;
+    const next = await opensky.get_app_state({ app: state.targetHandle, continuation: "context-after" });
+    assert.equal(driver.calls.length, before + 1);
+    assert.equal(driver.calls.at(-1)!.args.continuation, "context-after");
+    assert.equal(driver.calls.at(-1)!.args.context_ref, undefined);
+    assert.equal(next.target?.document.freshness, "stored");
+    assert.match(next.text, /Later unmatched item/);
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: "context-after" }), /current browser snapshot/);
+    assert.equal(driver.calls.length, before + 1, "consumed cursor is refused before dispatch");
+    await opensky.click({ app: state.targetHandle, element_index: 1 });
+    assert.equal(driver.calls.at(-1)!.args.ref, "p41:1", "same-snapshot query action survives traversal");
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: "context-before" }), /no intervening input/);
+  });
+
+  it("does not accept invented, wrong-target or fresh-query-invalidated context cursors", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    driver.contextResult = () => {
+      const response = contextFixture(driver, "p41:1");
+      (response.structured as any).context.after_continuation = "context-after";
+      return response;
+    };
+    await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+    const before = driver.calls.length;
+    for (const args of [
+      { app: "Calculator", continuation: "context-after" },
+      { app: state.targetHandle, continuation: "invented" },
+      { app: state.targetHandle, continuation: "context-after", query: "x" },
+      { app: state.targetHandle, continuation: "context-after", context_element_index: 1 },
+      { app: state.targetHandle, continuation: "context-after", includeScreenshot: true },
+    ]) await assert.rejects(() => opensky.get_app_state(args));
+    assert.equal(driver.calls.length, before);
+    await opensky.get_app_state({ app: state.targetHandle, includeScreenshot: false });
+    const fresh = driver.calls.length;
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: "context-after" }), /current browser snapshot/);
+    assert.equal(driver.calls.length, fresh);
+  });
+
+  it("rejects foreign groups, frames, domains and reused tokens returned for a cursor", async () => {
+    for (const mutation of ["group", "frame", "domain", "reuse"] as const) {
+      const { opensky, driver } = await harness();
+      const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      driver.contextResult = () => {
+        const response = contextFixture(driver, "p41:1");
+        (response.structured as any).context.after_continuation = "context-after";
+        return response;
+      };
+      await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+      driver.continuationResult = () => {
+        const response = contextFixture(driver, "p41:1");
+        const value = response.structured as any;
+        if (mutation === "group") value.context.group_ref = "p41:11";
+        if (mutation === "frame") value.refs[0].frame = "oopif";
+        if (mutation === "domain") value.context.order_domain = "another-domain";
+        if (mutation === "reuse") value.context.after_continuation = "context-after";
+        return response;
+      };
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: "context-after" }), /could not prove same-snapshot context/);
+      await assert.rejects(() => opensky.click({ app: state.targetHandle, element_index: 1 }), /latest semantic browser snapshot/);
+    }
+  });
   it("fences context while input is in flight and after an ambiguous input failure", async () => {
     const { opensky, driver } = await harness();
     const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });

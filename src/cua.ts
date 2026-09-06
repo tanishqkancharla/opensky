@@ -21,10 +21,12 @@ export type NativeSelectionType = "text" | "cursor_before" | "cursor_after";
 export interface ObservationOptions { emit?: boolean }
 export interface StateOptions extends ObservationOptions {
   disableDiffing?: boolean;
-  /** OpenSky extension: matching content only; surrounding labels and page-wide order may be omitted. */
+  /** OpenSky extension: fresh matches with bounded evidence neighborhoods when supported, not complete page-wide order. */
   query?: string;
   /** OpenSky browser extension: bounded surrounding content from the same stored snapshot, not a fresh capture. */
   context?: number;
+  /** Consume an emitted context cursor without recollection or action-ref invalidation. */
+  continuation?: string;
 }
 export interface PasteOptions { format?: PasteFormat }
 export interface ClickOptions { mouseButton?: MouseButton; clickCount?: number }
@@ -303,11 +305,12 @@ export class CuaFacade {
 
   async state(handle: TargetHandle, options: StateOptions, screenshot: boolean): Promise<AppState> {
     this.assertOpen(handle);
-    if (options.context !== undefined && (screenshot || options.query !== undefined)) {
-      throw new OpenSkyError("context cannot be combined with query or a screenshot. Use getAXState({context: index}).");
+    if ((options.context !== undefined || options.continuation !== undefined) &&
+        (screenshot || options.query !== undefined || (options.context !== undefined && options.continuation !== undefined))) {
+      throw new OpenSkyError("context/continuation cannot be combined with each other, query or a screenshot.");
     }
     const pending = this.pendingStates.get(handle);
-    if (pending && !screenshot && options.disableDiffing !== true && options.query === undefined && options.context === undefined) {
+    if (pending && !screenshot && options.disableDiffing !== true && options.query === undefined && options.context === undefined && options.continuation === undefined) {
       this.pendingStates.delete(handle);
       return pending;
     }
@@ -320,6 +323,7 @@ export class CuaFacade {
       includeScreenshot: screenshot,
       ...(options.query === undefined ? {} : { query: options.query }),
       ...(options.context === undefined ? {} : { context_element_index: options.context }),
+      ...(options.continuation === undefined ? {} : { continuation: options.continuation }),
     });
     const tab = this.tabs.get(handle);
     if (tab && state.target?.tab?.status === "verified") {

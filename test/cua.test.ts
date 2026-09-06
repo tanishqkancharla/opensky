@@ -43,6 +43,20 @@ class FakeOpenSky {
 }
 
 describe("native-style cua facade", () => {
+  it("forwards emitted continuations and rejects mixed observation modes before dispatch", async () => {
+    const fake = new FakeOpenSky();
+    const tab = await createCua(fake as unknown as OpenSky).createBrowserTab("chrome", "https://example.com");
+    await tab.goto("https://next.example");
+    await tab.getAXState({ continuation: "context-token" });
+    assert.deepEqual(fake.calls.at(-1), { method: "get_app_state", args: {
+      app: "tgt_tab_1", disableDiff: undefined, includeScreenshot: false, continuation: "context-token",
+    } });
+    const before = fake.calls.length;
+    await assert.rejects(() => tab.getAXState({ query: "x", continuation: "context-token" }), /cannot be combined/);
+    await assert.rejects(() => tab.getAXState({ context: 1, continuation: "context-token" }), /cannot be combined/);
+    await assert.rejects(() => tab.getAXStateAndScreenshot({ continuation: "context-token" }), /cannot be combined/);
+    assert.equal(fake.calls.length, before);
+  });
   it("forwards context explicitly instead of consuming a pending navigation state", async () => {
     const fake = new FakeOpenSky();
     const cua = createCua(fake as unknown as OpenSky);

@@ -146,9 +146,9 @@ await blank.close();
 
 The facade provides camelCase, bound-target methods: `getState`, `listApps`, `getApp`, `listBrowsers`, `listTabs`, `getBrowser`, `createBrowserTab`, and `getTab`; current native-style `browser.tabs.new/get/list/selected` and `browser.nameSession`; target observations and actions; and exact-tab `goto`, `back`, `forward`, `reload`, and `close`. `getAXState()` is AX-only by default, `getScreenshot()` returns screenshot bytes, and `getAXStateAndScreenshot()` returns both. `disableDiffing` maps to the driver's diff control. As a generic OpenSky extension, facade observations also accept `query` to return a fresh semantic view narrowed to matching page content.
 
-Queried state contains matching content only: surrounding labels and page-wide ordering may be omitted, even when the filtered result is complete. `tab.getAXState({context: index})` expands around a current browser action or read-only content index **from the same stored snapshot**, without a fresh page capture or invalidating existing action references. It returns a bounded structural group with explicit before/after omissions; use returned group indices to read a group's beginning or enclosing-group indices to move outward. Read-only anchors cannot receive input. Context is a personal-fork capability under validation, not available in older helpers; it cannot combine with query or screenshots. After input, observe fresh state first. Omit both options for a new page capture; collection and rendering limits still apply.
+Queries retain matching paths and, with the capable personal-fork helper, automatically include bounded source-ordered evidence neighborhoods with unmatched labels and siblings. A complete set of matches still does not establish page-wide order or completeness. `tab.getAXState({context: index})` expands around a current browser action or read-only content index **from the same stored snapshot**, without a fresh page capture or invalidating existing action references. Returned group indices read a group's beginning; enclosing-group indices move outward. Read-only anchors cannot receive input.
 
-Context is a bounded neighborhood, **not pagination or complete tree traversal**. Repeating a group request restarts at its beginning. Omitted nested siblings may have no usable index, so traversal beyond that window is not guaranteed. Omission counts do not establish first/all/absence beyond the returned evidence. A snapshot-bound context cursor is pending, not part of the current API.
+For an emitted earlier/later cursor, use `tab.getAXState({continuation: token})`. It reads an adjacent window in the same stored group, without recapturing the page. Copy the token exactly: it is single-use and bound to the exact tab, snapshot, frame and group. Repeating a group request restarts at its beginning, not the next page. Context and continuation cannot combine with each other, query or screenshots; input or a fresh observation invalidates old tokens. These personal-fork capabilities are under real-driver validation; older helpers may omit automatic neighborhoods or cursors. An omission without a cursor does not establish traversability, and materialized group coverage never establishes unseen virtualized content or order across frames.
 
 Coordinates use screenshot-pixel tuples (`[x, y]`), not objects: `tab.click([x, y])`, `tab.scroll([x, y], "down", 1)`, and `tab.drag([fromX, fromY], [toX, toY])`. Browser coordinate input requires a fresh screenshot of that exact tab; an AX-only observation does not provide a mapping. Prefer current semantic indices when available.
 
@@ -160,6 +160,11 @@ list has an 8,000-character/120-entry budget (coverage text and headings are
 additional). A rendering omission is explicitly partial even if driver collection
 was complete. Action-list order is not page order. This renderer cannot recover
 context omitted by the driver, or infer exact relationships from duplicate labels.
+Automatic evidence neighborhoods have a separate shared limit of six groups,
+96 member nodes and 24,000 UTF-8 outline bytes. A context page has at most 25
+members and 12,000 UTF-8 outline bytes; it is not cut again by the ordinary
+outline budget. Omission metadata and continuation recipes remain outside those
+outline limits. These bounds are output budgets, not completeness guarantees.
 
 `getState()` labels its browser inventory with `tabInventoryScope: "facade-owned-only"`. An empty inventory means no facade-owned tabs were observed; it does not establish that the user has no pre-existing tabs or windows.
 
@@ -172,7 +177,7 @@ The original snake_case, app-argument API remains available for backward compati
 | Method | Cua Driver tools used |
 | --- | --- |
 | `list_apps()` | `list_apps` |
-| `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` collects matching content/current refs; `context_element_index` reads bounded same-snapshot context. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
+| `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` collects matches and bounded evidence neighborhoods; `context_element_index` and emitted `continuation` tokens read same-snapshot context. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
 | `open_target({app, targets, includeScreenshot?, query?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; `query` narrows that initial exact-browser observation. On macOS, native targets request a fresh app instance and bind only after proving a new pid with one uniquely revalidated ordinary window |
 | `navigate({app, url | action, includeScreenshot?, query?})` | Navigates an exact driver-owned typed tab to a URL or performs exact-tab back, forward, or reload, then returns settled state |
 | `close_target({app})` | Closes one exact driver-owned browser target or proven-owned macOS native window; refuses to close ordinary user-owned app/window/tab state |

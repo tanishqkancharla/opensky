@@ -42,19 +42,24 @@ return app.getAXState();
 
 The facade exposes exact target objects and camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Clipboard `paste`, hidden tabs, the in-app browser, optional browser capabilities, and host marks are explicitly unsupported or unavailable.
 
-The legacy API remains available:
+Browser queries include bounded source-ordered evidence neighborhoods when the
+helper supports them, retaining unmatched labels beside matches. These are local
+groups, not proof of page-wide order or completeness. For more context, use
+`tab.getAXState({context: index})` with a current action or read-only content index.
+Returned group indices read a group's beginning; enclosing-group indices move
+outward. Follow an emitted earlier/later recipe with
+`tab.getAXState({continuation: token})` to read the next stored window. Copy tokens
+exactly; they are single-use and bound to this tab and snapshot. Repeating a group
+restarts it rather than advancing. Respect omissions and frame boundaries before
+inferring first/all/absence. Read-only anchors cannot receive input.
 
-For browser context omitted by a filtered query, use `tab.getAXState({context: index})`
-with a current action or read-only content index. This reads the same stored
-snapshot, not a fresh capture. Returned group indices read a group's beginning;
-enclosing-group indices move outward. Respect before/after omissions and frame
-boundaries before inferring order. Read-only anchors cannot receive input.
-This is bounded neighborhood access, not pagination: repeating a group starts
-at its beginning, and omitted nested siblings may have no usable index. Do not
-infer first/all/absence beyond the returned evidence.
-Do not combine context with query or screenshots; after input, observe fresh
-state first. This extension requires the context-capable personal-fork helper;
-an unsupported helper fails closed and requires a fresh observation.
+Context and continuation read the same stored snapshot, not a fresh capture.
+Do not combine them with each other, query or screenshots; after input, observe
+fresh state first. These extensions require the capable personal-fork helper;
+older helpers may omit neighborhoods/cursors, and unsupported explicit context
+fails closed. An omission without a cursor is not proof that traversal is possible.
+
+The legacy API remains available:
 
 Refresh state after every action (or a short related group). Element indices are snapshots and go stale when the UI changes.
 
@@ -100,7 +105,7 @@ Prefer display names for actions when a bundle id looks ineffective. Always re-s
 opensky.target                    // "mac" | "win" | "linux"
 
 await opensky.list_apps()
-await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index? })
+await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation? })
 await opensky.open_target({ app, targets, includeScreenshot?, query? })
 await opensky.navigate({ app, url?, action?: "back" | "forward" | "reload", includeScreenshot?, query? }) // exactly one of url/action
 await opensky.close_target({ app })
@@ -126,7 +131,7 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 
 `id` is the bundle id when the helper provides one, otherwise the launch path. Kernel/system processes without app metadata are omitted. `lastUsedDate` is unix seconds. `useCount` is included when the helper reports it.
 
-### `get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index? })`
+### `get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation? })`
 
 Returns `{ app, targetHandle, text, screenshot, target? }`. `target` truthfully separates requested resources, native-window correlation, current AX document identity, and browser-tab verification. For an explicit resource, `target.handle` equals `targetHandle`. Treat `tab.status: "unverified"` literally; a new native window does not prove a new browser tab.
 
@@ -134,7 +139,7 @@ For an exact typed browser on a large page, pass `query` when the outline names 
 Semantic link entries may include safe resolved `url=` metadata. Use it to understand destinations without unnecessary navigation; continue to act through the opaque current-state element index.
 
 `context_element_index` is the legacy spelling of the facade's `context` option.
-It returns bounded stored-snapshot context with `target.document.freshness: "stored"`.
+Both it and `continuation` return bounded stored-snapshot context with `target.document.freshness: "stored"`.
 It never settles or captures a new page, grants input authority, or proves content
 has not changed since capture. Group completeness covers materialized nodes in
 the proven group/frame only; virtualized extent remains unknown.
