@@ -42,6 +42,7 @@ const cases = [
       '<div tabindex="0" aria-label="Focusable context">Retained stateful container</div></li></ul></main>',
     query: "Inspect wrapped", anchorRole: "button", anchorName: "Inspect wrapped",
     nearby: "Context qualifier: conditional.", outer: "Earlier wrapped entry",
+    retained: '- generic "Focusable context" [focusable=true]',
   },
   {
     name: "wrapper-heavy table preserves column and late cell qualification",
@@ -136,12 +137,13 @@ try {
         timeline.push({ case: fixture.name, operation: "context", args: { context: anchor }, result: nearby });
         assert.equal(driver.tape.calls.length, callsBefore + 1, "Context makes exactly one driver call");
         assert.equal(snapshotId(), currentSnapshot, "Context must not collect a replacement snapshot");
-        assert.ok(nearby.includes(fixture.nearby), "An unmatched sibling qualifier must survive");
+        assert.ok(sourceOutline(nearby).includes(JSON.stringify(fixture.nearby)), "An unmatched sibling qualifier must survive as its own source-outline value");
         const outerIndex = Number(nearby.match(/enclosing group \[(\d+)\]/)?.[1]);
         assert.ok(Number.isSafeInteger(outerIndex), `${fixture.name}: this fixture requires an outward structural anchor`);
         const outer = await tab.getAXState({ context: outerIndex });
         checkProjection();
         timeline.push({ case: fixture.name, operation: "outer context", args: { context: outerIndex }, result: outer });
+        if ("retained" in fixture) assert.ok(sourceOutline(outer).includes(fixture.retained), "A named stateful generic is evidence, not an empty wrapper");
         // Inspect only the source outline, never the separate ranked action or
         // context-index inventories. Compare only the fixture's evidence strings.
         if ("paginate" in fixture) {
