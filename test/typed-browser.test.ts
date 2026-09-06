@@ -283,10 +283,10 @@ describe("OpenSky typed-browser contract", () => {
     driver.contextResult = () => projectedContextFixture(driver);
     const before = driver.calls.length;
     const first = await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
-    assert.match(first.text, /14\/20 eligible AX nodes/);
+    assert.match(first.text, /14\/20 eligible stored AX nodes/);
     driver.continuationResult = () => projectedContextFixture(driver, true);
     const next = await opensky.get_app_state({ app: state.targetHandle, continuation: "projection-next" });
-    assert.match(next.text, /14\/20 eligible AX nodes/);
+    assert.match(next.text, /14\/20 eligible stored AX nodes/);
     assert.equal(next.target?.document.freshness, "stored");
     assert.equal(driver.calls.length, before + 2);
     assert(driver.calls.slice(before).every(call => call.tool === "get_browser_state"));
