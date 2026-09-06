@@ -60,6 +60,37 @@ const cases = [
     query: "Inspect midpoint", anchorRole: "button", anchorName: "Inspect midpoint",
     nearby: "Ledger row 40", outer: "Ledger row 00", paginate: true,
   },
+  {
+    name: "separated matches in one list each retain local and repeated qualifiers",
+    html: '<main><ul aria-label="Distributed entries">' + ['alpha', 'beta', 'gamma'].map(label =>
+      `<li><span>Context qualifier: ${label}.</span><button>Inspect entry ${label}</button><span>Repeated qualification</span>` +
+      Array.from({ length: 32 }, (_, i) => `<p>Entry detail ${label} ${i}</p>`).join('') + '</li>').join('') + '</ul></main>',
+    query: "Inspect entry", anchorRole: "button", anchorName: "Inspect entry gamma",
+    nearby: "Context qualifier: gamma.",
+    automaticQualifiers: ['Context qualifier: alpha.', 'Context qualifier: beta.', 'Context qualifier: gamma.'],
+    repeatedQualifier: 'Repeated qualification',
+  },
+  {
+    name: "late article matches share an enclosing group without losing local evidence",
+    html: '<main><article aria-label="Distributed reference"><h1>Distributed reference</h1>' +
+      ['early', 'middle', 'late'].map(label =>
+        `<p>Context qualifier: ${label} section.</p><button>Inspect section ${label}</button><p>Repeated qualification</p>` +
+        Array.from({ length: 32 }, (_, i) => `<p>Reference detail ${label} ${i}</p>`).join('')).join('') + '</article></main>',
+    query: "Inspect section", anchorRole: "button", anchorName: "Inspect section late",
+    nearby: "Context qualifier: late section.",
+    automaticQualifiers: ['Context qualifier: early section.', 'Context qualifier: middle section.', 'Context qualifier: late section.'],
+    repeatedQualifier: 'Repeated qualification',
+  },
+  {
+    name: "separated table rows retain distinct qualifiers rather than just matched controls",
+    html: '<main><table aria-label="Distributed records"><tbody>' + ['first', 'second', 'third'].map(label =>
+      `<tr><th>Record ${label}</th><td><p>Context qualifier: ${label} record.</p><button>Inspect record ${label}</button><p>Repeated qualification</p>` +
+      Array.from({ length: 32 }, (_, i) => `<p>Record detail ${label} ${i}</p>`).join('') + '</td></tr>').join('') + '</tbody></table></main>',
+    query: "Inspect record", anchorRole: "button", anchorName: "Inspect record third",
+    nearby: "Context qualifier: third record.",
+    automaticQualifiers: ['Context qualifier: first record.', 'Context qualifier: second record.', 'Context qualifier: third record.'],
+    repeatedQualifier: 'Repeated qualification',
+  },
 ] as const;
 
 if (process.env.OPENSKY_REAL_DRIVER !== "1") throw new Error("Set OPENSKY_REAL_DRIVER=1 to authorize isolated test browser windows.");
@@ -131,6 +162,16 @@ try {
         const automatic = queried.slice(0, matchingPathsAt);
         assert.match(automatic, /Evidence context/, "Query must include context without an extra request");
         assert.ok(sourceOutline(automatic).includes(JSON.stringify(fixture.nearby)), "Automatic context must retain an unmatched qualifier");
+        if ("automaticQualifiers" in fixture) {
+          const outline = sourceOutline(automatic);
+          for (const value of fixture.automaticQualifiers) {
+            assert.ok(outline.includes(`- statictext ${JSON.stringify(value)}`),
+              `Each separated match must expose its local qualifier as source text: ${value}`);
+          }
+          assert.equal(outline.split("\n").filter(line => line.trim() ===
+            `- statictext ${JSON.stringify(fixture.repeatedQualifier)}`).length, 3,
+          "Repeated qualifiers in distinct containers must not be deduplicated by label");
+        }
         const callsBefore = driver.tape.calls.length;
         const nearby = await tab.getAXState({ context: anchor });
         checkProjection();
@@ -138,6 +179,13 @@ try {
         assert.equal(driver.tape.calls.length, callsBefore + 1, "Context makes exactly one driver call");
         assert.equal(snapshotId(), currentSnapshot, "Context must not collect a replacement snapshot");
         assert.ok(sourceOutline(nearby).includes(JSON.stringify(fixture.nearby)), "An unmatched sibling qualifier must survive as its own source-outline value");
+        if ("automaticQualifiers" in fixture) {
+          // These large groups intentionally do not fit in one outer window.
+          // Exact old action authority must survive adding multiple contexts.
+          await tab.click(anchor);
+          await assert.rejects(() => tab!.getAXState({ context: anchor }), /no intervening input/);
+          return;
+        }
         const outerIndex = Number(nearby.match(/enclosing group \[(\d+)\]/)?.[1]);
         assert.ok(Number.isSafeInteger(outerIndex), `${fixture.name}: this fixture requires an outward structural anchor`);
         const outer = await tab.getAXState({ context: outerIndex });
@@ -240,6 +288,13 @@ function checkProjection(): void {
   const structured = asRecord(driver.tape.calls.at(-1)?.result?.structured);
   const contexts = structured?.context ? [structured.context] : structured?.query_contexts;
   assert.ok(Array.isArray(contexts) && contexts.length > 0);
+  if (structured?.query_contexts) {
+    assert.ok(contexts.length <= 6, "Automatic context must retain its block budget");
+    assert.ok(contexts.reduce((count, raw) => count + (asRecord(raw)?.member_refs as unknown[]).length, 0) <= 96,
+      "Automatic context must retain its member budget, including overlap");
+    assert.ok(contexts.reduce((count, raw) => count + Buffer.byteLength(String(asRecord(raw)?.outline ?? ""), "utf8"), 0) <= 24_000,
+      "Automatic context must retain its UTF-8 outline budget");
+  }
   for (const raw of contexts) {
     const context = asRecord(raw)!;
     if (expectedProjection === "none") assert.equal(context.member_projection, undefined);
