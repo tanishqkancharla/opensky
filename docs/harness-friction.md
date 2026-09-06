@@ -33,7 +33,7 @@ Backfill scope is necessarily bounded. It covers the repository history through 
 | LIB-012 | Saturated native AX trees hid later controls; full web trees and auxiliary help/action text consumed excessive context. | Preserve shallow native controls with explicit incomplete coverage, bound help text, compact passive action hints, reset at document boundaries, and separate driver completeness from renderer completeness. | Native shallow projection is **live-confirmed** by Activity Monitor epoch-17; web compaction/help bounding was exercised in browser tasks and is **contract-confirmed** in [`test/opensky.test.ts`](../test/opensky.test.ts). See [ab88cb3](https://github.com/tanishqkancharla/opensky/commit/ab88cb3148f797c91b9373287f7b30e1d94eb640), [23078a9](https://github.com/tanishqkancharla/opensky/commit/23078a993e50694c8abc43f3dff4ddc419e24fcb), [814e169](https://github.com/tanishqkancharla/opensky/commit/814e1692b94ccc7c7dacbd236555299dbffed6df). Native shallow projection and browser semantic selection are distinct limitations. |
 | LIB-013 | Early browser automation could reuse/restored tabs, fall through to native input, or guess the page scroller. | Driver-owned isolated Chromium sessions, exact target/tab binding, exact navigation/input, main-document scroll disambiguation, and no native fallback. | Isolated-session navigation, observation, and semantic input were **live-confirmed** across epochs 18–35; binding, no-fallback, and scroll-disambiguation safety branches are **contract-confirmed** in [`test/typed-browser.test.ts`](../test/typed-browser.test.ts). See [88858c1](https://github.com/tanishqkancharla/opensky/commit/88858c19571362a4d193552bbe9c75b7f45cb7f3), [b9b998e](https://github.com/tanishqkancharla/opensky/commit/b9b998e1013173534fe8124329a1e4d924491c50), [4ca99ad](https://github.com/tanishqkancharla/opensky/commit/4ca99ad08905ded039e5dd782cbea86f0cb7cb3d). Coordinate-scroll delivery still has the live gap in DRV-002. |
 | LIB-014 | The first native-style facade lacked current Browser-versus-Tab ergonomics and could invite invalid calls or unnecessary observations. | Bound `Browser.tabs.new/get/list/selected`, `nameSession`, exact `Tab.close`, installed-provider discovery, top-level known-URL shortcut, and pre-dispatch argument validation. Inventories are explicitly facade-owned-only; unsupported capabilities throw. | **Contract-confirmed**, with invalid-argument **boundary confirmation** against the real helper in epoch 27. See [`src/cua.ts`](../src/cua.ts), [`test/cua.test.ts`](../test/cua.test.ts), [`test/cua-repl-tool.test.ts`](../test/cua-repl-tool.test.ts), [58bc18a](https://github.com/tanishqkancharla/opensky/commit/58bc18abc0306c46e5e760173709715b4f17da31), [1d33c0c](https://github.com/tanishqkancharla/opensky/commit/1d33c0c409f224031e1ebc667e6e0ea3e5335fd1), [2a477eb](https://github.com/tanishqkancharla/opensky/commit/2a477eb7e3c3f010d5ea5e8490875086d67ebe69), [aba84df](https://github.com/tanishqkancharla/opensky/commit/aba84dfd66092ed476ab5476e5136d328372e10a). In-app browser, hidden creation, host metadata without callbacks, and user-tab discovery remain unsupported. |
-| LIB-015 | Filtered semantic queries were easy to mistake for complete ordered context: returned match ancestors can omit sibling/group labels, leading-prefix coverage, and relative document order. Dense-page classification and “first” claims failed repeatedly even when recall found the queried title. | Automatic query neighborhoods and exact same-snapshot context/continuation now pass controlled real article/list/table and long nested-list probes on driver `17b48d8`. Source order, read-only authority, and exact older action refs are preserved. | **Partially improved, still open**. Fresh e38 improves from 2/4 to 3/4 grounded task passes: automatic Contents context fixes Wikipedia; GitHub/HN still pass; Amazon lacks the selected product's first-organic proof and does not retrieve more. All four clean up. [Current results](../../e2e-epoch-38/README.md). Exact-phrase recall suppression was fixed separately in DRV-006. |
+| LIB-015 | Filtered semantic queries were easy to mistake for complete ordered context: returned match ancestors can omit sibling/group labels, leading-prefix coverage, and relative document order. Dense-page classification and “first” claims failed repeatedly even when recall found the queried title. | Automatic query neighborhoods, exact same-snapshot continuation and explicit semantic-evidence projection preserve source order, read-only authority and exact older action refs. Controlled real article/list/table and long nested-list probes pass on driver `be8a19a`. | **Live-improved; overall parity remains open**. Fresh e39 passes 4/4 independently grounded browser tasks, versus e38 3/4 and e37 2/4. Amazon now acquires its own Results-list prefix and sponsorship evidence, but costs 18 calls / 65.970s versus saved native 6 / 36.084s. All four clean up. This small batch does not isolate projection causality on dynamic websites. [Current results](../../e2e-epoch-39/README.md). Selection/readiness/text-fidelity gaps remain LIB-021/023/024. |
 | LIB-016 | The old browser renderer flattened depth, dropped named/stateful generic containers, deduplicated repeated labels across containers, and obscured omission boundaries. | Preserve source indentation, named/stateful containers and repeated labels; use a bare `-` only for unnamed generic containers; disclose separate outline/action budgets. | **Contract-confirmed**, offline-audited, and exercised live in e35—not blanket-accepted. [d46d848](https://github.com/tanishqkancharla/opensky/commit/d46d84840fd56cd5f1f3ee2ebebbc0097b027cf6), [`test/browser-rendering.test.ts`](../test/browser-rendering.test.ts), epoch-35 [`README.md`](../../e2e-epoch-35/README.md). HN passed both arms; Amazon Pi still failed ordered-context grounding. Across 64 saved observations, outline chars rose 7.6%; meaningful rows improved in 36, stayed equal in 11, and **fell in 17**, including 177 versus 194 on e34 Amazon. The driver-selected target was already absent, so rendering could not recover it. |
 | LIB-017 | A read-only control with an `AXTextField` role was described as directly editable even though it lacked settable/editable action evidence. | Emit direct-typing guidance only for controls with actual mutability evidence; hide unavailable action indices. | **Live-found** in epoch-10 System Information and **contract-confirmed** in [`test/opensky.test.ts`](../test/opensky.test.ts). This does not imply every text-like control is editable. |
 | LIB-018 | Exact-browser AX reads can transiently fail with a missing frame during navigation; broad retries could hide other failures or spend the action budget. | Retry only the recognized transient frame-read condition inside a bounded observation window, preserving the same exact target and arguments. | **Live-observed** as internal recovered reads in e32/e33 and **contract-confirmed** by [`test/typed-browser.test.ts`](../test/typed-browser.test.ts), [d869d05](https://github.com/tanishqkancharla/opensky/commit/d869d05acdec9106f3ce0d58e6d8072d43903f7f). It remains tool-layer latency even when the public call succeeds. |
@@ -312,10 +312,11 @@ nodes, not lossless source text. Do not report full-document evidence from that
 flag alone.
 
 **LIB-022 — structural wrappers consume evidence budgets:** e38's final Amazon
-query used all 96 automatic context member slots, 43 of them unnamed, valueless,
-stateless, actionless generic nodes. Only 5,461 of the available 24,000 outline
-bytes were used. This is a budget-density problem, separate from missing logs.
-The new private candidate projects these empty nodes out of the member budget
+query used all 96 automatic context member slots, 43 of them unnamed generic
+emitted refs. Only 5,461 of the available 24,000 outline bytes were used. The audit
+does not prove all 43 had no underlying state/action metadata or were removable.
+This identifies a budget-density issue, separate from missing logs.
+The installed private driver projects only proven empty-metadata nodes out of the member budget
 while retaining the original validated AX ancestor nesting. Named, valued,
 stateful, actionable and destination-bearing nodes stay in the evidence sequence.
 Exact anchor metadata remains available even when a blank anchor is not a member.
@@ -325,10 +326,15 @@ eligible stored source count and the projected-out count. Member counts, omitted
 cursors and group completeness explicitly concern that projection, not all raw
 AX nodes or unclipped source text. The projection is group-bound, not dependent
 on which anchor was queried; continuation validation pins its totals. Older
-helpers remain supported without inventing projection metadata. Validation:
-**implementation and focused contract checks in progress; not yet live accepted**.
-Controlled real-page probes add wrapper-heavy lists and tables with trailing
-qualifiers. Node and byte budgets remain unchanged for this isolated experiment.
+helpers remain supported without inventing projection metadata. **Controlled-real
+recovery confirmed in e39**: identical-hash article/list/table/long-list fixtures
+improve 4/6 to 6/6, recovering separate trailing qualifier nodes in wrapper-heavy
+list/table windows and retaining a named/stateful generic. All cases verify exact
+cleanup. The fresh serial model batch independently passes 4/4, but Amazon uses
+more calls/time than e38 or native; no causal website efficiency gain is claimed.
+OpenSky `5e43a2a` passes 316 deterministic tests/build; Cua `be8a19a` passes 645
+unit, 2 contract and 3 lifecycle tests. [Probe review](../../e2e-epoch-39/probe-review.md).
+Node and byte budgets remain unchanged for this isolated experiment.
 “No state” here means no retained semantic state: the existing collector keeps
 only a subset of AX properties. The projection does not restore information
 already removed during collection or text normalization.
@@ -340,8 +346,20 @@ cannot solve this: a wrapper-free list of three 12-node peers already exceeds a
 25-member window. This remains **open**. Candidate selection changes need to
 preserve meaningful evidence near late article matches as well as ordered list
 prefixes, without task/site labels or assuming a retrieved match was covered by
-its group's context. No model grounding improvement is claimed from projection
-or mechanically denser output alone.
+its group's context. The e39 batch improvement does not close this independently
+reproduced selection gap; mechanically denser output alone cannot prove grounding.
+
+**LIB-024 — stable stored evidence can precede useful materialization:** e39
+Amazon's first query snapshot `p25` has 298 stored nodes, mostly page navigation,
+and the actor reads eight continuations before refreshing. A later `p28` has
+2,616 stored nodes and yields the required Results-list proof. **Live symptom;
+fix open.** Stored pagination correctly preserves its snapshot; it cannot discover
+new content. This does not prove the exact loading cause, user interference or a
+projection regression. Next generic experiment: expose collection/readiness and
+match-coverage evidence so refresh versus stored expansion is an informed choice;
+test delayed content and header-only matches without site-specific waits or query
+labels. Never silently recollect while claiming the same cursor revision. Evidence:
+[full public Amazon timeline](../../e2e-epoch-39/run-e39-amazon-01/timeline-readable-v2.md).
 
 Independent probe review also found a presentation inconsistency: fresh views
 suppressed the driver's stale `about:blank` title after navigation, while stored
@@ -382,6 +400,20 @@ serial admission/cleanup happy path. No measured iteration-speedup or interrupte
 branch acceptance is claimed. Native-app cases are deliberately refused pending their distinct
 window-absence proof. No new API-key path, automatic install or retry was added.
 Procedure: [`../../../work/eval-scripts/ITERATION.md`](../../../work/eval-scripts/ITERATION.md).
+
+**RUN-016 — evidence-density diagnosis required manual reconstruction:** timeline
+rendering now derives `evidence-density.json` from original public tool-result text
+and driver tapes, with source/result hashes, exact unique context joins, member and
+byte counts, projection accounting and actual cursor consumption. Settling captures,
+private reasoning and oracle answers cannot fill actor-evidence gaps. **Implemented,
+12 deterministic audit tests and e39 artifact audit confirmed**; 101 external
+evaluator tests pass. The e38 Amazon query joins uniquely with 96 members / 43
+unnamed generic refs / 5,461 outline bytes. E39 Amazon's two query contexts join,
+but 11 standalone contexts remain uncorrelated because the host abbreviates generic
+outline rows; reviewers still have and cite their original full public results.
+Ambiguous/lossy joins remain explicit rather than selecting a convenient capture.
+Density is diagnostic, not a grounding score or a normalized token-cost measure.
+Source: [`../../../work/eval-scripts/evidence_density.ts`](../../../work/eval-scripts/evidence_density.ts).
 
 **SET-010 — inventory can briefly spawn background work:** the local CLI's
 finite-command telemetry path creates a short-lived detached process with the

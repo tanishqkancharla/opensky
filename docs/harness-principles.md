@@ -51,6 +51,13 @@ desirable contracts, not executable OpenSky APIs.
    # rows[0] is not necessarily the first row in source order.
    ```
 
+   ```text
+   expand(cursor) -> more_of(cursor.revision)
+   refresh(resource) -> new_observation(resource)
+   # Complete traversal of an old revision cannot reveal newly available data.
+   # Freshness and coverage are separate properties.
+   ```
+
 5. Compress repetition, not meaning. Preserve relationships, qualifiers and ordering; emit each result once.
 
    ```text
