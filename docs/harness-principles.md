@@ -57,6 +57,9 @@ desirable contracts, not executable OpenSky APIs.
    emit(context.rows_in_source_order, context.omitted_boundaries)
    assert context.revision == snapshot.revision
    # Expand stored evidence without fetching a different revision.
+   if context.has_more:
+       emit(context.next_cursor)
+       # A bounded result should offer a path onward, not hidden IDs to guess.
    ```
 
 6. Make failures actionable. Say what ran, what failed and what can safely happen next; never guess that retrying is harmless.

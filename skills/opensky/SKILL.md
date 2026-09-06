@@ -49,6 +49,9 @@ with a current action or read-only content index. This reads the same stored
 snapshot, not a fresh capture. Returned group indices read a group's beginning;
 enclosing-group indices move outward. Respect before/after omissions and frame
 boundaries before inferring order. Read-only anchors cannot receive input.
+This is bounded neighborhood access, not pagination: repeating a group starts
+at its beginning, and omitted nested siblings may have no usable index. Do not
+infer first/all/absence beyond the returned evidence.
 Do not combine context with query or screenshots; after input, observe fresh
 state first. This extension requires the context-capable personal-fork helper;
 an unsupported helper fails closed and requires a fresh observation.

@@ -80,7 +80,7 @@ export function createCuaReplToolRuntime(
       "Observations wait for settled state; timers such as setTimeout are unavailable and unnecessary. " +
       "getAXState({query: 'relevant text'}) captures fresh matching browser content, not complete surrounding context. " +
       "getAXState({context: index}) reads bounded surrounding structure from the same stored browser snapshot without a new capture; it cannot combine with query or screenshots. " +
-      "Context anchors are read-only. Group indices read the beginning of a group; enclosing-group indices move outward. Heed before/after omissions and frame boundaries before inferring order. " +
+      "Context anchors are read-only. Group indices read the beginning of a group; enclosing-group indices move outward. Repeating a group does not paginate; omitted nested siblings may be unreachable. Heed before/after omissions and frame boundaries before inferring order. " +
       "Long link destinations are marked urlPreview; use the element index, not a truncated URL. " +
       "The sandbox has no process, require, filesystem, dynamic import, eval/Function code generation, or network API.",
     executionMode: "sequential",

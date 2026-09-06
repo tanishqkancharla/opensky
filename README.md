@@ -148,6 +148,8 @@ The facade provides camelCase, bound-target methods: `getState`, `listApps`, `ge
 
 Queried state contains matching content only: surrounding labels and page-wide ordering may be omitted, even when the filtered result is complete. `tab.getAXState({context: index})` expands around a current browser action or read-only content index **from the same stored snapshot**, without a fresh page capture or invalidating existing action references. It returns a bounded structural group with explicit before/after omissions; use returned group indices to read a group's beginning or enclosing-group indices to move outward. Read-only anchors cannot receive input. Context is a personal-fork capability under validation, not available in older helpers; it cannot combine with query or screenshots. After input, observe fresh state first. Omit both options for a new page capture; collection and rendering limits still apply.
 
+Context is a bounded neighborhood, **not pagination or complete tree traversal**. Repeating a group request restarts at its beginning. Omitted nested siblings may have no usable index, so traversal beyond that window is not guaranteed. Omission counts do not establish first/all/absence beyond the returned evidence. A snapshot-bound context cursor is pending, not part of the current API.
+
 Coordinates use screenshot-pixel tuples (`[x, y]`), not objects: `tab.click([x, y])`, `tab.scroll([x, y], "down", 1)`, and `tab.drag([fromX, fromY], [toX, toY])`. Browser coordinate input requires a fresh screenshot of that exact tab; an AX-only observation does not provide a mapping. Prefer current semantic indices when available.
 
 Browser outlines retain the driver's source indentation, named/stateful containers,

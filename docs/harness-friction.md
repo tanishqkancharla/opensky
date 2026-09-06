@@ -220,6 +220,16 @@ was empty and only the probe-created private runtime was removed. Evidence:
 [`../../e2e-epoch-37/probe-01/README.md`](../../e2e-epoch-37/probe-01/README.md).
 Real serial model evaluations and any efficiency improvement remain pending.
 
+**LIB-020 — bounded context is not complete traversal:** source review found
+that a long list of structural items can dead-end: item context stays within
+that item, and enclosing-list context restarts at its beginning. Unissued or
+unrendered sibling refs cannot safely be guessed. Documentation and evaluator
+tool guidance now state this limitation. A separately bound, read-only adjacent
+context cursor is **proposed, not implemented**, with long nested-list, boundary,
+frame, staleness and renderer-budget tests required before acceptance. This gap
+is generic and remains open even if the current small fixtures or model tasks
+pass. Do not mistake omitted-node counts for usable continuation capabilities.
+
 Independent probe review also found a presentation inconsistency: fresh views
 suppressed the driver's stale `about:blank` title after navigation, while stored
 context printed it. Both now share the same placeholder normalization, without
