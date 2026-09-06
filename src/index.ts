@@ -11,6 +11,8 @@ export { CuaDriverClient, parseDriverOutput } from "./driver.js";
 export { StdioMcpDriverClient } from "./mcp-driver.js";
 export type { StdioMcpDriverOptions, TransportCloseReceipt } from "./mcp-driver.js";
 export { AsyncRepl, wrapAsync, startInteractiveRepl } from "./async-repl.js";
+export { createNodeReplOutput, installNodeReplOutput } from "./node-repl.js";
+export type { NodeReplOutput, ImageInput, ReplOutput } from "./node-repl.js";
 export { installSkill, uninstallSkill } from "./skill-install.js";
 export { OpenSkyError } from "./errors.js";
 export type {

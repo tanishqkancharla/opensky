@@ -127,6 +127,15 @@ The REPL evaluates each snippet as an async function body, so `await` works. A s
 
 The package exports `cua` for the singleton lifecycle and `createCua(opensky)` for an explicitly owned lifecycle. The CLI REPL preloads both `cua` and the legacy `opensky` object.
 
+The strict `cua_repl` evaluator follows Computer's explicit output behavior:
+observations emit automatically unless `emit:false`; plain expression/return
+values are not displayed. Use `nodeRepl.write(value)` and
+`await nodeRepl.emitImage(bytesOrDataUrl)` for explicit text and PNG/JPEG/WebP
+output. Hosts can import `createNodeReplOutput` / `installNodeReplOutput` for that
+integration. The general-purpose CLI retains its existing expression/log output.
+See [observed behavior and validation](docs/computer-parity.md) and
+[deferred driver/backend work](docs/driver-followups.md).
+
 ```js
 const app = await cua.getApp("Calculator");
 console.log(await app.getAXState());
@@ -168,7 +177,7 @@ outline limits. These bounds are output budgets, not completeness guarantees.
 
 `getState()` labels its browser inventory with `tabInventoryScope: "facade-owned-only"`. An empty inventory means no facade-owned tabs were observed; it does not establish that the user has no pre-existing tabs or windows.
 
-Browser-provider discovery uses the installed app catalog, so `getBrowser()` works in a clean session before OpenSky has created a tab. `browser.tabs.new()` creates an exact blank tab; the top-level `createBrowserTab(browser, url)` shortcut remains the efficient known-URL path. `nameSession()` labels future unique owned driver sessions. Tab discovery remains deliberately limited to exact tabs created by this facade; it does not enumerate or close user-owned tabs. Because each owned tab is an isolated browser session, `selected()` returns a tab only when exactly one live owned candidate exists and otherwise returns `undefined` instead of guessing. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred and Edge is the fallback. The in-app browser, hidden tab creation, clipboard paste, optional browser capabilities, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s or are unavailable. Paste currently fails closed for every target before touching the global clipboard because Cua Driver does not yet provide the compound primitive needed to restore safely around concurrent user clipboard changes.
+Browser-provider discovery uses the installed app catalog, so `getBrowser()` works in a clean session before OpenSky has created a tab. Provider documentation emits only on its first selection. `browser.tabs.new()` and `createBrowserTab(browser)` create exact blank tabs; supplying a URL opens it directly. `nameSession()` and an explicit creation `sessionName` label future unique owned driver sessions; omitted settings retain the provider's current value. `getAXState()` after navigation collects fresh state, with a full initial view rather than a diff against the undisplayed internal navigation snapshot. Tab discovery remains deliberately limited to exact tabs created by this facade; it does not enumerate or close user-owned tabs. Because each owned tab is an isolated browser session, `selected()` returns a tab only when exactly one live owned candidate exists and otherwise returns `undefined` instead of guessing. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred and Edge is the fallback. The in-app browser, hidden tab creation, clipboard paste, optional browser capabilities, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s or are unavailable. Paste currently fails closed for every target before touching the global clipboard because Cua Driver does not yet provide the compound primitive needed to restore safely around concurrent user clipboard changes.
 
 ## Legacy `opensky` API
 

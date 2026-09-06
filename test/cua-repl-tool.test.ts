@@ -8,6 +8,46 @@ import { createCuaReplToolRuntime, CUA_REPL_TOOL_NAMES } from "../evals/cua-repl
 import type { DriverClient, DriverResult } from "../src/types.js";
 
 describe("single-tool native-style cua evaluator", () => {
+  it("keeps emit:false and plain expressions silent, with explicit ordered nodeRepl output", async () => {
+    const runtime = createCuaReplToolRuntime(driver(), "mac", { homeDir: await mkdtemp(join(tmpdir(), "opensky-output-")) });
+    try {
+      const tool = runtime.tools[0]!;
+      const silent = await execute(tool, "silent", { code: "await cua.listApps({emit:false})" });
+      assert.deepEqual(silent.content, []);
+      assert.deepEqual((await execute(tool, "expression", { code: "40 + 2" })).content, []);
+      const emitted = await execute(tool, "ordered", { code: `
+        nodeRepl.write("before");
+        await cua.listApps();
+        nodeRepl.write("after");
+        nodeRepl.write(undefined);
+      ` });
+      assert.equal(emitted.content.length, 4);
+      assert.equal((emitted.content[0] as {text:string}).text, "before");
+      assert.match((emitted.content[1] as {text:string}).text, /Example/);
+      assert.equal((emitted.content[2] as {text:string}).text, "after");
+      assert.equal((emitted.content[3] as {text:string}).text, "undefined");
+    } finally { await runtime.close(); }
+  });
+
+  it("emits explicit images on every request and retains output before an error", async () => {
+    const runtime = createCuaReplToolRuntime(driver(), "mac", { homeDir: await mkdtemp(join(tmpdir(), "opensky-image-output-")) });
+    try {
+      const tool = runtime.tools[0]!;
+      const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWKsAAAAASUVORK5CYII=";
+      for (const id of ["first", "again"]) {
+        const response = await execute(tool, id, { code: `await nodeRepl.emitImage(${JSON.stringify(png)})` });
+        assert.deepEqual(response.content, [{ type: "image", mimeType: "image/png", data: png.split(",")[1] }]);
+      }
+      const failed = await execute(tool, "failed", { code: `nodeRepl.write("completed prefix"); await nodeRepl.emitImage("file:///private/test.png");` });
+      assert.equal(failed.isError, true);
+      assert.equal((failed.content[0] as {text:string}).text, "completed prefix");
+      assert.match(JSON.stringify(failed.content), /host asset resolver/);
+      const safe = await execute(tool, "safe", { code: "nodeRepl.write(typeof __output); nodeRepl.write(typeof nodeRepl.emitImage.constructor);" });
+      assert.equal((safe.content[0] as {text:string}).text, "undefined");
+      const escape = await execute(tool, "image-escape", { code: 'nodeRepl.write.constructor("return process")()' });
+      assert.equal(escape.isError, true);
+    } finally { await runtime.close(); }
+  });
   it("rejects invalid browser arguments before the bridge can discard them", async () => {
     const calls: string[] = [];
     const runtime = createCuaReplToolRuntime({
@@ -32,7 +72,7 @@ describe("single-tool native-style cua evaluator", () => {
         ];
         const messages = [];
         for (const attempt of attempts) { try { await attempt(); messages.push('UNEXPECTED SUCCESS'); } catch (error) { messages.push(error.message); } }
-        return messages;
+        nodeRepl.write(JSON.stringify(messages));
       ` });
       const invalidText = JSON.stringify(invalid.content);
       assert.doesNotMatch(invalidText, /UNEXPECTED SUCCESS/);
@@ -46,10 +86,20 @@ describe("single-tool native-style cua evaluator", () => {
           try { await browser.tabs.new(arg); errors.push('UNEXPECTED SUCCESS'); }
           catch (error) { errors.push(error.message); }
         }
-        return errors;
+        nodeRepl.write(JSON.stringify(errors));
       ` });
       assert.equal((JSON.stringify(invalidNew.content).match(/takes no arguments/g) ?? []).length, 3);
       assert.equal(calls.length, before, "tabs.new arguments must not open a blank tab");
+      const invalidUrl = await execute(tool, "invalid-null-url", { code: "await cua.createBrowserTab('chrome', null)" });
+      assert.equal(invalidUrl.isError, true);
+      assert.match(JSON.stringify(invalidUrl.content), /URL must be a string/);
+      assert.equal(calls.length, before, "an explicit null URL must not become an omitted URL");
+      const omittedUrl = await execute(tool, "omitted-url", { code: "await cua.createBrowserTab('chrome')" });
+      // This double intentionally stops at preparation. The facade tests prove
+      // blank-tab success; here we prove omission survives the JSON boundary.
+      assert.equal(omittedUrl.isError, true);
+      assert.match(JSON.stringify(omittedUrl.content), /Unexpected driver call browser_prepare/);
+      assert.ok(calls.includes("browser_prepare"));
     } finally {
       await runtime.close();
     }
@@ -68,8 +118,8 @@ describe("single-tool native-style cua evaluator", () => {
       assert.match(tool.description, /fresh exact-tab screenshot/);
       assert.match(tool.description, /complete matches do not imply complete surrounding evidence/);
       assert.match(tool.description, /getAXState\(\{continuation: token\}\)/);
-      const first = await execute(tool, "one", { code: "counter = 40; return ++counter" });
-      const second = await execute(tool, "two", { code: "return ++counter" });
+      const first = await execute(tool, "one", { code: "counter = 40; nodeRepl.write(++counter)" });
+      const second = await execute(tool, "two", { code: "nodeRepl.write(++counter)" });
       assert.equal(first.content[0]?.type, "text");
       assert.equal((first.content[0] as { text: string }).text, "41");
       assert.equal((second.content[0] as { text: string }).text, "42");
@@ -87,7 +137,7 @@ describe("single-tool native-style cua evaluator", () => {
     }
   });
 
-  it("deduplicates screenshot observations across the strict host/VM byte bridge", async () => {
+  it("emits each requested screenshot once and keeps silent bridge results diagnostic", async () => {
     const screenshots: Buffer[] = [];
     const homeDir = await mkdtemp(join(tmpdir(), "opensky-cua-repl-bytes-"));
     const runtime = createCuaReplToolRuntime(screenshotDriver(screenshots), "mac", {
@@ -118,8 +168,7 @@ describe("single-tool native-style cua evaluator", () => {
         code: "await app.getAXStateAndScreenshot({emit:false})",
       });
       assert.equal((silent.details as { emissions: number }).emissions, 0);
-      assert.deepEqual(silent.content.map((item) => item.type), ["text", "image"]);
-      assert.equal((silent.content[1] as { type: "image"; data: string }).data, screenshots.at(-1)!.toString("base64"));
+      assert.deepEqual(silent.content, [], "emit:false must suppress implicit expression output");
 
       const sliced = await execute(tool, "sliced-screenshot", {
         code: `
@@ -129,8 +178,7 @@ describe("single-tool native-style cua evaluator", () => {
       });
       const expectedSlice = screenshots.at(-1)!.subarray(1, screenshots.at(-1)!.length - 1);
       assert.equal((sliced.details as { emissions: number }).emissions, 0);
-      assert.deepEqual(sliced.content.map((item) => item.type), ["image"]);
-      assert.equal((sliced.content[0] as { type: "image"; data: string }).data, expectedSlice.toString("base64"));
+      assert.deepEqual(sliced.content, [], "return values are diagnostic only, not public output");
       assert.deepEqual(
         (sliced.details as { result: unknown }).result,
         { __cuaBytes: expectedSlice.toString("base64") },
@@ -147,11 +195,9 @@ describe("single-tool native-style cua evaluator", () => {
         `,
       });
       assert.equal((different.details as { emissions: number }).emissions, 1);
-      assert.deepEqual(different.content.map((item) => item.type), ["text", "image", "text", "image"]);
-      assert.match((different.content[2] as { type: "text"; text: string }).text, /genuinely different$/);
+      assert.deepEqual(different.content.map((item) => item.type), ["text", "image"]);
       const differentBytes = screenshots.at(-1)!;
       assert.equal((different.content[1] as { type: "image"; data: string }).data, differentBytes.toString("base64"));
-      assert.equal((different.content[3] as { type: "image"; data: string }).data, differentBytes.subarray(1).toString("base64"));
     } finally {
       await runtime.close();
       await rm(homeDir, { recursive: true, force: true });
@@ -165,7 +211,7 @@ describe("single-tool native-style cua evaluator", () => {
     try {
       const tool = runtime.tools[0]!;
       const globals = await execute(tool, "globals", {
-        code: "return {process:typeof process,require:typeof require,fetch:typeof fetch,dispatch:typeof __dispatch}",
+        code: "nodeRepl.write(JSON.stringify({process:typeof process,require:typeof require,fetch:typeof fetch,dispatch:typeof __dispatch}, null, 2))",
       });
       const text = (globals.content[0] as { text: string }).text;
       assert.match(text, /\"process\": \"undefined\"/);
@@ -230,7 +276,7 @@ function screenshotDriver(screenshots: Buffer[]): DriverClient {
       }
       if (tool === "get_window_state") {
         // Serialization fixture bytes only; this does not test image decoding or real-driver acceptance.
-        const screenshot = Buffer.from([137, 80, 78, 71, screenshots.length + 1, 20, 30, 40]);
+        const screenshot = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, screenshots.length + 1]);
         if (args.include_screenshot === true && typeof args.screenshot_out_file === "string") {
           screenshots.push(screenshot);
           await writeFile(args.screenshot_out_file, screenshot);

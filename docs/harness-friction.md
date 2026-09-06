@@ -17,6 +17,19 @@ Backfill scope is necessarily bounded. It covers the repository history through 
 
 ## Library and facade
 
+**LIB-025 — current Computer facade/output contracts:** September 5 live Computer
+probes confirm omitted-URL blank tabs, first-use-only provider documentation and
+silent `emit:false`/plain expressions. TypeScript now follows those behaviors,
+retains explicit provider session names, and exposes `nodeRepl.write`/`emitImage`
+in the strict CUA evaluator. Navigation observations are fresh and initially full
+instead of reusing an unseen cached snapshot, including after ambiguous failure.
+Regression tests cover bridge omission, output isolation/byte fidelity, repeated
+images and overlapping navigation reads. **Contract-confirmed implementation;
+reference behavior live-observed.** No new real-driver acceptance. Extra navigation
+reads trade latency for freshness; CUA cells using implicit result display must
+use explicit output. [Scope/evidence](computer-parity.md),
+[deferred driver and host requirements](driver-followups.md).
+
 | ID | Symptom and cause/layer | Disposition | Validation and evidence |
 | --- | --- | --- | --- |
 | LIB-001 | Scalar AX values and Boolean states (`value`, selected, enabled, checked, focused, expanded) were dropped, making visible control state ambiguous. | Renderer preserves scalar/state semantics and includes them in diffs. | Scalar/state output was **live-confirmed** by epoch-02 Preview and later native-app observations; coverage of the individual state branches is **contract-confirmed** in [`test/opensky.test.ts`](../test/opensky.test.ts). Implemented across [512f23d](https://github.com/tanishqkancharla/opensky/commit/512f23db327da3a01f746036ff4f09be617450ca) and follow-ups. |

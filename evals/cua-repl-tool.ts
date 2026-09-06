@@ -1,16 +1,14 @@
-import { createHash } from "node:crypto";
 import { Type } from "typebox";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 
 import { AsyncLifecycle } from "./async-lifecycle.js";
 import { AsyncRepl, AsyncReplError } from "../src/async-repl.js";
+import { installNodeReplOutput, imageOutput, type ReplOutput } from "../src/node-repl.js";
 import { createCua, type App, type Browser, type Tab } from "../src/cua.js";
 import { createOpenSky } from "../src/opensky.js";
 import type { DriverClient, OpenSkyOptions, OpenSkyTarget } from "../src/types.js";
 
-type Content =
-  | { type: "text"; text: string }
-  | { type: "image"; data: string; mimeType: "image/png" };
+type Content = ReplOutput;
 
 export const CUA_REPL_TOOL_NAMES = ["cua_repl"] as const;
 
@@ -34,6 +32,7 @@ export function createCuaReplToolRuntime(
   const targets = new Map<string, App | Tab>();
   const browsers = new Map<string, Browser>();
   const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
+  installNodeReplOutput(repl, (output) => activeEmissions?.push(output));
   const lifecycle = new AsyncLifecycle("CUA REPL runtime", () => opensky.close());
   let executionQueue: Promise<void> = Promise.resolve();
   installSafeCuaBridge(repl, async (request) => {
@@ -57,7 +56,6 @@ export function createCuaReplToolRuntime(
     });
   });
 
-  const emittedImages = new Set<string>();
   const tools = [defineTool({
     name: "cua_repl",
     label: "cua_repl",
@@ -77,6 +75,8 @@ export function createCuaReplToolRuntime(
       "Tabs additionally expose goto(url), back(), forward(), reload(), close(). Use numeric indices from fresh AX state; there are no Playwright locators. " +
       "For a browser field that exposes type but not click, use setValue(index, text) to replace its contents directly; do not click a non-clickable field. " +
       "Creation and observation methods emit their results automatically; do not console.log them or repeat getAXState after creation. " +
+      "Use nodeRepl.write(value) for text or values and await nodeRepl.emitImage(bytes | dataURL | {bytes, mimeType}) for PNG/JPEG/WebP images. " +
+      "Expression results are not displayed; emit:false suppresses automatic output. Explicit image emissions are always attached. File/remote image URLs require a host asset resolver and are unavailable here. " +
       "Observations wait for settled state; timers such as setTimeout are unavailable and unnecessary. " +
       "getAXState({query: 'relevant text'}) captures fresh matches with bounded source-ordered evidence neighborhoods when supported; complete matches do not imply complete surrounding evidence. " +
       "getAXState({context: index}) reads surrounding structure from the same stored browser snapshot. Follow emitted earlier/later recipes with getAXState({continuation: token}); tokens are single-use and bound to that tab/snapshot. Neither option combines with the other, query or screenshots; input or fresh observation invalidates them. " +
@@ -96,11 +96,8 @@ export function createCuaReplToolRuntime(
           try {
             const result = await repl.evaluate(params.code, "cua-repl");
             const values = [...activeEmissions, ...result.logs];
-            if (!isBindingDescriptor(result.value) && !activeEmissions.some((value) => equivalentOutput(value, result.value))) {
-              values.push(result.value);
-            }
             return {
-              content: values.flatMap((value) => renderValue(value, emittedImages)),
+              content: values.flatMap(renderValue),
               details: {
                 title: params.title,
                 code: params.code,
@@ -117,7 +114,7 @@ export function createCuaReplToolRuntime(
             return {
               isError: true,
               content: [
-                ...[...activeEmissions, ...logs].flatMap((value) => renderValue(value, emittedImages)),
+                ...[...activeEmissions, ...logs].flatMap(renderValue),
                 { type: "text" as const, text: `Error: ${message}\nEarlier actions in this cell may have completed. Existing bindings remain available; use the emitted state before retrying.` },
               ],
               details: {
@@ -171,7 +168,9 @@ async function dispatch(
       return { __cuaBinding: "app", handle: descriptor.targetHandle };
     }
     case "createBrowserTab": {
-      const target = await cua.createBrowserTab(...args as Parameters<typeof cua.createBrowserTab>);
+      // An omitted array entry becomes null across JSON; the VM validates the
+      // original URL before serialization, so only omission is restored here.
+      const target = await cua.createBrowserTab(args[0] as string, args[1] == null ? undefined : args[1] as string, args[2] as never);
       targets.set(target.id, target);
       return { __cuaBinding: "tab", handle: target.id, browserId: target.browserId };
     }
@@ -333,6 +332,7 @@ function installSafeCuaBridge(repl: AsyncRepl, dispatch: (request: string) => Pr
       },
       createBrowserTab: async (...args) => {
         if (args.length > 3) throw new Error("Invalid params: use cua.createBrowserTab(id, url, {visible?, sessionName?})");
+        if (args[1] !== undefined && typeof args[1] !== "string") throw new Error("Invalid params: createBrowserTab URL must be a string when supplied");
         const options = browserOptions(args[2], {visible:"boolean", sessionName:"string"}, "cua.createBrowserTab(id, url, {visible?, sessionName?})");
         return target(await call("createBrowserTab", [args[0], args[1], options]));
       },
@@ -354,20 +354,19 @@ function encodeBridgeValue(value: unknown): unknown {
   return value;
 }
 
-function renderValue(value: unknown, imageHashes: Set<string>): Content[] {
+function renderValue(value: unknown): Content[] {
   if (value === undefined) return [];
+  if (value && typeof value === "object" && "type" in value && (value.type === "text" || value.type === "image")) {
+    return [value as Content];
+  }
   if (isBytes(value)) {
-    const bytes = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
-    const hash = createHash("sha256").update(bytes).digest("hex");
-    if (imageHashes.has(hash)) return [{ type: "text", text: "Screenshot unchanged from a previously attached image." }];
-    imageHashes.add(hash);
-    return [{ type: "image", data: bytes.toString("base64"), mimeType: "image/png" }];
+    return [imageOutput(value)];
   }
   if (value && typeof value === "object" && "state" in value) {
     const pair = value as { state?: unknown; screenshot?: unknown };
     return [
       ...(typeof pair.state === "string" ? [{ type: "text" as const, text: pair.state }] : []),
-      ...(pair.screenshot ? renderValue(pair.screenshot, imageHashes) : []),
+      ...(pair.screenshot ? renderValue(pair.screenshot) : []),
     ];
   }
   return [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
@@ -375,18 +374,6 @@ function renderValue(value: unknown, imageHashes: Set<string>): Content[] {
 
 function isBytes(value: unknown): value is Uint8Array {
   return ArrayBuffer.isView(value) && Object.prototype.toString.call(value) === "[object Uint8Array]";
-}
-
-function isBindingDescriptor(value: unknown): boolean {
-  return Boolean(value && typeof value === "object" && (
-    "targetHandle" in value ||
-    ("browserId" in value && typeof (value as { documentation?: unknown }).documentation === "function")
-  ));
-}
-
-function equivalentOutput(left: unknown, right: unknown): boolean {
-  try { return JSON.stringify(encodeBridgeValue(left)) === JSON.stringify(encodeBridgeValue(right)); }
-  catch { return left === right; }
 }
 
 function asObject(value: unknown): Record<string, never> {

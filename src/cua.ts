@@ -163,7 +163,10 @@ const BROWSERS = Object.freeze({
 export class CuaFacade {
   private readonly tabs = new Map<string, OwnedTabRecord>();
   private readonly browserSessionNames = new Map<string, string>();
-  private readonly pendingStates = new Map<TargetHandle, AppState>();
+  private readonly documentedBrowsers = new Set<string>();
+  private readonly unobservedNavigations = new Map<TargetHandle, number>();
+  private readonly navigationVersions = new Map<TargetHandle, number>();
+  private navigationSequence = 0;
 
   constructor(
     readonly opensky: OpenSkyApi,
@@ -232,7 +235,13 @@ export class CuaFacade {
       throw new CuaUnsupportedError("getBrowser", "no supported installed browser provider is available");
     }
     const browser = new BoundBrowser(this, browserId);
-    this.options.emit?.(await browser.documentation());
+    if (!this.documentedBrowsers.has(browserId)) {
+      const documentation = await browser.documentation();
+      if (!this.documentedBrowsers.has(browserId)) {
+        this.options.emit?.(documentation);
+        this.documentedBrowsers.add(browserId);
+      }
+    }
     return browser;
   }
 
@@ -242,13 +251,16 @@ export class CuaFacade {
     const browserId = normalizeBrowserId(browser);
     const descriptor = BROWSERS[browserId as keyof typeof BROWSERS];
     if (!descriptor) throw new CuaUnsupportedError("createBrowserTab", `browser ${JSON.stringify(browser)} is not supported`);
-    const normalizedUrl = normalizeBrowserUrl(url ?? "");
+    const normalizedUrl = normalizeBrowserUrl(url === undefined ? "about:blank" : url);
     const sessionName = options.sessionName === undefined
       ? this.browserSessionNames.get(browserId)
       : normalizeBrowserSessionName(options.sessionName);
     if (options.visible === false) {
       throw new CuaUnsupportedError("createBrowserTab", "hidden browser tabs are unavailable; the isolated Chromium window is visible");
     }
+    // Like Computer, explicitly supplied settings apply to the provider before
+    // opening; later calls that omit them retain the configured value.
+    if (options.sessionName !== undefined) this.browserSessionNames.set(browserId, sessionName!);
     const state = await this.opensky.open_target({
       app: descriptor.app,
       targets: [normalizedUrl],
@@ -300,7 +312,14 @@ export class CuaFacade {
 
   prepareAction(handle: TargetHandle): void {
     this.assertOpen(handle);
-    this.pendingStates.delete(handle);
+  }
+
+  prepareNavigation(handle: TargetHandle): void {
+    this.prepareAction(handle);
+    // Also fence ambiguous navigation failures: the destination may have loaded.
+    const version = ++this.navigationSequence;
+    this.unobservedNavigations.set(handle, version);
+    this.navigationVersions.set(handle, version);
   }
 
   async state(handle: TargetHandle, options: StateOptions, screenshot: boolean): Promise<AppState> {
@@ -309,24 +328,24 @@ export class CuaFacade {
         (screenshot || options.query !== undefined || (options.context !== undefined && options.continuation !== undefined))) {
       throw new OpenSkyError("context/continuation cannot be combined with each other, query or a screenshot.");
     }
-    const pending = this.pendingStates.get(handle);
-    if (pending && !screenshot && options.disableDiffing !== true && options.query === undefined && options.context === undefined && options.continuation === undefined) {
-      this.pendingStates.delete(handle);
-      return pending;
-    }
-    // A stronger fresh observation supersedes any state captured by an earlier
-    // navigation, so never let that older state leak into a later call.
-    this.pendingStates.delete(handle);
+    // Navigation's settled state is internal. getAXState must observe again:
+    // loading, timers, and user input can change the page between calls.
+    const navigation = this.unobservedNavigations.get(handle);
+    const version = this.navigationVersions.get(handle);
+    const storedContext = options.context !== undefined || options.continuation !== undefined;
     const state = await this.opensky.get_app_state({
       app: handle,
-      disableDiff: options.disableDiffing,
+      disableDiff: navigation !== undefined && !storedContext ? true : options.disableDiffing,
       includeScreenshot: screenshot,
       ...(options.query === undefined ? {} : { query: options.query }),
       ...(options.context === undefined ? {} : { context_element_index: options.context }),
       ...(options.continuation === undefined ? {} : { continuation: options.continuation }),
     });
+    if (!storedContext && navigation !== undefined && this.unobservedNavigations.get(handle) === navigation) {
+      this.unobservedNavigations.delete(handle);
+    }
     const tab = this.tabs.get(handle);
-    if (tab && state.target?.tab?.status === "verified") {
+    if (tab && !tab.closed && version === this.navigationVersions.get(handle) && state.target?.tab?.status === "verified") {
       tab.title = state.target.tab.title ?? state.target.document.title;
       tab.url = state.target.tab.url ?? state.target.document.url;
     }
@@ -339,11 +358,8 @@ export class CuaFacade {
 
   closeTab(record: OwnedTabRecord): void {
     record.closed = true;
-    this.pendingStates.delete(record.handle);
-  }
-
-  rememberState(state: AppState): void {
-    this.pendingStates.set(state.targetHandle, state);
+    this.unobservedNavigations.delete(record.handle);
+    this.navigationVersions.delete(record.handle);
   }
 
   nameBrowserSession(browserId: string, name: string): void {
@@ -518,13 +534,12 @@ class BoundTab extends BoundTarget implements Tab {
   async markHandoff(): Promise<void> { this.facade.assertOpen(this.targetHandle); await this.facade.mark("handoff", this.record); }
 
   private async navigate(destination: { url: string } | { action: "back" | "forward" | "reload" }): Promise<void> {
-    this.facade.prepareAction(this.targetHandle);
+    this.facade.prepareNavigation(this.targetHandle);
     const state = "url" in destination
       ? await this.facade.opensky.navigate({ app: this.targetHandle, url: destination.url, includeScreenshot: false })
       : await this.facade.opensky.navigate({ app: this.targetHandle, action: destination.action, includeScreenshot: false });
     this.record.title = state.target?.tab?.status === "verified" ? state.target.tab.title : state.target?.document.title;
     this.record.url = state.target?.tab?.status === "verified" ? state.target.tab.url : state.target?.document.url;
-    this.facade.rememberState(state);
   }
 }
 
@@ -536,7 +551,7 @@ class BoundBrowser implements Browser {
   }
 
   async documentation(): Promise<string> {
-    return `OpenSky browser ${JSON.stringify(this.browserId)}: cua.getBrowser({id?, url?}) selects a provider; it does not navigate. browser.tabs.new() takes no arguments and opens about:blank. For a URL use cua.createBrowserTab(${JSON.stringify(this.browserId)}, url, {visible?, sessionName?}) or tab.goto(url). browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(); tab.close() closes its exact owned tab. User-owned tabs are not discoverable or closable.`;
+    return `OpenSky browser ${JSON.stringify(this.browserId)}: cua.getBrowser({id?, url?}) selects a provider; it does not navigate. browser.tabs.new() takes no arguments and opens about:blank. cua.createBrowserTab(${JSON.stringify(this.browserId)}, url?, {visible?, sessionName?}) also opens about:blank when URL is omitted. For a known URL supply it directly or use tab.goto(url). browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(); tab.close() closes its exact owned tab. User-owned tabs are not discoverable or closable.`;
   }
 
   async nameSession(name: string): Promise<void> { this.facade.nameBrowserSession(this.browserId, name); }

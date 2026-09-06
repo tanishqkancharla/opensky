@@ -43,6 +43,65 @@ class FakeOpenSky {
 }
 
 describe("native-style cua facade", () => {
+  it("opens a blank tab with an omitted URL and retains explicit provider settings", async () => {
+    const fake = new FakeOpenSky();
+    const cua = createCua(fake as unknown as OpenSky);
+    await cua.createBrowserTab("chrome", undefined, { sessionName: "  Parity  " });
+    await cua.createBrowserTab("chrome");
+    assert.deepEqual(fake.calls.filter(call => call.method === "open_target").map(call => call.args), [
+      { app: "Google Chrome", targets: ["about:blank"], includeScreenshot: false, sessionName: "Parity" },
+      { app: "Google Chrome", targets: ["about:blank"], includeScreenshot: false, sessionName: "Parity" },
+    ]);
+    await assert.rejects(() => cua.createBrowserTab("chrome", ""), /requires a URL/);
+    await assert.rejects(() => cua.createBrowserTab("chrome", null as never), /URL must be a string/);
+    await assert.rejects(() => cua.createBrowserTab("chrome", undefined, { visible: false, sessionName: "Rejected" }), CuaUnsupportedError);
+    await cua.createBrowserTab("chrome");
+    assert.equal((fake.calls.at(-1)!.args as { sessionName: string }).sessionName, "Parity");
+  });
+
+  it("emits browser documentation on first selection only, including aliases", async () => {
+    const fake = new FakeOpenSky();
+    fake.apps = [{ id: "com.google.chrome", displayName: "Google Chrome" }];
+    const emitted: unknown[] = [];
+    const cua = createCua(fake as unknown as OpenSky, { emit: value => emitted.push(value) });
+    const [browser] = await Promise.all([cua.getBrowser({ id: "chrome" }), cua.getBrowser({ id: "Google Chrome" })]);
+    await cua.getBrowser({ id: "Google Chrome" });
+    await cua.getBrowser();
+    assert.equal(emitted.length, 1);
+    assert.match(await browser.documentation(), /OpenSky browser/);
+    assert.equal(emitted.length, 1, "explicit documentation returns text for the caller to display");
+  });
+
+  it("requires a fresh full observation after ambiguous navigation failure", async () => {
+    const fake = new FakeOpenSky();
+    const cua = createCua(fake as unknown as OpenSky);
+    const tab = await cua.createBrowserTab("chrome", "https://example.com");
+    fake.navigate = async () => { throw new Error("observation failed after navigation"); };
+    await assert.rejects(() => tab.goto("https://next.example"), /observation failed/);
+    await tab.getAXState();
+    assert.deepEqual(fake.calls.at(-1)?.args, { app: tab.id, disableDiff: true, includeScreenshot: false });
+    await tab.getAXState();
+    assert.deepEqual(fake.calls.at(-1)?.args, { app: tab.id, disableDiff: undefined, includeScreenshot: false });
+  });
+
+  it("does not let an overlapping read clear a newer navigation's full-state requirement", async () => {
+    const fake = new FakeOpenSky();
+    const cua = createCua(fake as unknown as OpenSky);
+    const tab = await cua.createBrowserTab("chrome", "https://example.com");
+    await tab.goto("https://one.example");
+    const original = fake.get_app_state.bind(fake);
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    fake.get_app_state = async args => { await original(args); await gate; return state(tab.id, "old", undefined, "https://one.example/"); };
+    const reading = tab.getAXState();
+    await tab.goto("https://two.example");
+    release();
+    await reading;
+    assert.equal((await cua.listTabs({ emit: false }))[0]?.url, "https://two.example", "an older observation must not overwrite newer tab metadata");
+    fake.get_app_state = original;
+    await tab.getAXState();
+    assert.deepEqual(fake.calls.at(-1)?.args, { app: tab.id, disableDiff: true, includeScreenshot: false });
+  });
   it("forwards emitted continuations and rejects mixed observation modes before dispatch", async () => {
     const fake = new FakeOpenSky();
     const tab = await createCua(fake as unknown as OpenSky).createBrowserTab("chrome", "https://example.com");
@@ -146,8 +205,9 @@ describe("native-style cua facade", () => {
       { app: tab.id, action: "reload", includeScreenshot: false },
     ]);
     const callsBeforeSettledObservation = fake.calls.length;
-    assert.equal(await tab.getAXState({ emit: false }), "navigated:https://reload.example/");
-    assert.equal(fake.calls.length, callsBeforeSettledObservation, "the settled navigation state should satisfy the next observation");
+    assert.equal(await tab.getAXState({ emit: false }), `state:${tab.id}`);
+    assert.equal(fake.calls.length, callsBeforeSettledObservation + 1, "navigation must not serve a cached observation");
+    assert.deepEqual(fake.calls.at(-1)?.args, { app: tab.id, disableDiff: true, includeScreenshot: false }, "first visible state cannot diff against an unseen navigation snapshot");
     await tab.goto("https://action-after-navigation.example/");
     await tab.pressKey("Return");
     const callsBeforeFreshObservation = fake.calls.length;
@@ -320,7 +380,6 @@ describe("native-style cua facade", () => {
     const fake = new FakeOpenSky();
     const cua = createCua(fake as unknown as OpenSky);
     await assert.rejects(() => cua.createBrowserTab("iab", "https://example.com"), CuaUnsupportedError);
-    await assert.rejects(() => cua.createBrowserTab("chrome"), CuaUnsupportedError);
     const normalized = await cua.createBrowserTab("chrome", "example.com");
     assert.deepEqual(fake.calls.at(-1), {
       method: "open_target",
