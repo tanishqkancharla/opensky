@@ -35,6 +35,22 @@ const cases = [
     nearby: "Context qualifier: provisional.", outer: "Earlier record",
   },
   {
+    name: "wrapper-heavy list preserves trailing qualification and source nesting",
+    html: '<main><ul aria-label="Wrapped entries"><li><span>Earlier wrapped entry</span></li><li><button>Inspect wrapped</button>' +
+      '<div>'.repeat(20) + '<span>Context qualifier: conditional.</span>' + '</div>'.repeat(20) +
+      '<div tabindex="0" aria-label="Focusable context">Retained stateful container</div></li></ul></main>',
+    query: "Inspect wrapped", anchorRole: "button", anchorName: "Inspect wrapped",
+    nearby: "Context qualifier: conditional.", outer: "Earlier wrapped entry",
+  },
+  {
+    name: "wrapper-heavy table preserves column and late cell qualification",
+    html: '<main><table aria-label="Wrapped records"><tbody><tr><th>Earlier wrapped record</th><td>Ready</td></tr>' +
+      '<tr><th>Current wrapped record</th><td><button>Inspect wrapped record</button>' + '<div>'.repeat(20) +
+      '<span>Context qualifier: deferred.</span>' + '</div>'.repeat(20) + '</td></tr></tbody></table></main>',
+    query: "Inspect wrapped record", anchorRole: "button", anchorName: "Inspect wrapped record",
+    nearby: "Context qualifier: deferred.", outer: "Earlier wrapped record",
+  },
+  {
     name: "long nested list with adjacent stored windows",
     html: '<main><ul aria-label="Ledger">' + Array.from({ length: 80 }, (_, i) =>
       `<li><span>Ledger row ${String(i).padStart(2, "0")}</span><ol><li>Nested detail A</li><li>Nested detail B</li></ol>${i === 40 ? '<button>Inspect midpoint</button>' : ''}</li>`).join('') + '</ul></main>',
@@ -46,6 +62,10 @@ const cases = [
 if (process.env.OPENSKY_REAL_DRIVER !== "1") throw new Error("Set OPENSKY_REAL_DRIVER=1 to authorize isolated test browser windows.");
 const binary = process.env.CUA_DRIVER_BINARY;
 const expectedSource = process.env.EVAL_EXPECTED_DRIVER_SHA;
+const expectedProjection = process.env.EVAL_EXPECTED_MEMBER_PROJECTION;
+if (expectedProjection !== undefined && expectedProjection !== "semantic_evidence_v1" && expectedProjection !== "none") {
+  throw new Error("EVAL_EXPECTED_MEMBER_PROJECTION must be semantic_evidence_v1 or none.");
+}
 if (!binary || !expectedSource || !/^[a-f0-9]{40}$/.test(expectedSource)) {
   throw new Error("An explicit CUA_DRIVER_BINARY and exact EVAL_EXPECTED_DRIVER_SHA are required; no install/start fallback.");
 }
@@ -58,7 +78,7 @@ if (revision.status !== 0 || status.status !== 0) throw new Error("Cannot establ
 const openskySource = { revision: revision.stdout.trim(), dirty: status.stdout.length !== 0 };
 await writeFile(join(output, "declaration.json"), JSON.stringify({
   classification: "real-driver-controlled-page-integration", modelEvaluation: false,
-  startedAt: new Date().toISOString(), output, home, session, binary, expectedSource, openskySource,
+  startedAt: new Date().toISOString(), output, home, session, binary, expectedSource, expectedProjection, openskySource,
   fixtures: cases.map((fixture) => ({ ...fixture, sha256: createHash("sha256").update(fixture.html).digest("hex") })),
   cleanup: "Exact probe-owned tabs and sessions only; retain runtime unless receipts, clean transport exit and empty operator inventory prove cleanup.",
 }, null, 2) + "\n", { flag: "wx", mode: 0o600 });
@@ -100,6 +120,7 @@ try {
         tab = await cua.createBrowserTab("chrome", `http://127.0.0.1:${address.port}/${index}`, { sessionName: `context-${index}` });
         const queried = await tab.getAXState({ query: fixture.query });
         timeline.push({ case: fixture.name, operation: "query", args: { query: fixture.query }, result: queried });
+        checkProjection();
         const anchor = findIndex(queried, fixture.anchorRole, fixture.anchorName);
         const currentSnapshot = snapshotId();
         const matchingPathsAt = queried.indexOf("Matching paths (filtered, not a complete sibling list):");
@@ -109,6 +130,7 @@ try {
         assert.ok(sourceOutline(automatic).includes(JSON.stringify(fixture.nearby)), "Automatic context must retain an unmatched qualifier");
         const callsBefore = driver.tape.calls.length;
         const nearby = await tab.getAXState({ context: anchor });
+        checkProjection();
         timeline.push({ case: fixture.name, operation: "context", args: { context: anchor }, result: nearby });
         assert.equal(driver.tape.calls.length, callsBefore + 1, "Context makes exactly one driver call");
         assert.equal(snapshotId(), currentSnapshot, "Context must not collect a replacement snapshot");
@@ -116,6 +138,7 @@ try {
         const outerIndex = Number(nearby.match(/enclosing group \[(\d+)\]/)?.[1]);
         assert.ok(Number.isSafeInteger(outerIndex), `${fixture.name}: this fixture requires an outward structural anchor`);
         const outer = await tab.getAXState({ context: outerIndex });
+        checkProjection();
         timeline.push({ case: fixture.name, operation: "outer context", args: { context: outerIndex }, result: outer });
         // Inspect only the source outline, never the separate ranked action or
         // context-index inventories. Compare only the fixture's evidence strings.
@@ -187,7 +210,7 @@ finally {
     catch (error) { failure ??= error; }
   }
   const report = { classification: "real-driver-controlled-page-integration", modelEvaluation: false,
-    expectedSource, openskySource, session, before, after, cleanupVerified, transport, timeline, assertionFailures,
+    expectedSource, expectedProjection, openskySource, session, before, after, cleanupVerified, transport, timeline, assertionFailures,
     passed: !failure && cleanupVerified, error: failure instanceof Error ? failure.message : failure };
   await writeFile(join(output, "report.json"), JSON.stringify(report, null, 2) + "\n", { flag: "wx", mode: 0o600 });
   await writeFile(join(output, "driver-tape.json"), JSON.stringify(driver.tape, null, 2) + "\n", { flag: "wx", mode: 0o600 });
@@ -207,6 +230,23 @@ function findIndex(text: string, role: string, name: string): number {
 function snapshotId(): unknown {
   const call = driver.tape.calls.findLast((call) => call.tool === "get_browser_state");
   return asRecord(asRecord(call?.result?.structured)?.snapshot)?.id;
+}
+
+function checkProjection(): void {
+  const structured = asRecord(driver.tape.calls.at(-1)?.result?.structured);
+  const contexts = structured?.context ? [structured.context] : structured?.query_contexts;
+  assert.ok(Array.isArray(contexts) && contexts.length > 0);
+  for (const raw of contexts) {
+    const context = asRecord(raw)!;
+    if (expectedProjection === "none") assert.equal(context.member_projection, undefined);
+    if (expectedProjection === "semantic_evidence_v1") assert.equal(context.member_projection, expectedProjection);
+    if (context.member_projection) {
+      assert.equal(context.member_projection, "semantic_evidence_v1");
+      assert.ok(Array.isArray(context.member_refs) && context.member_refs.length > 0);
+      assert.equal(Number(context.before_omitted) + context.member_refs.length + Number(context.after_omitted) +
+        Number(context.projected_out_nodes), context.source_member_nodes, "Projection must account for every eligible raw AX member");
+    }
+  }
 }
 
 function sourceOutline(text: string): string {
@@ -236,12 +276,15 @@ async function checkPagination(tab: Tab, initial: string, expectedSnapshot: unkn
     seenTokens.add(token);
     const before = driver.tape.calls.length;
     const page = await tab.getAXState({ continuation: token });
+    checkProjection();
     timeline.push({ case: caseName, operation: "continuation", args: { continuation: token }, result: page });
     assert.equal(driver.tape.calls.length, before + 1, "Continuation makes exactly one driver call");
     assert.equal(snapshotId(), expectedSnapshot, "Continuation must not recapture");
     const context = asRecord(asRecord(driver.tape.calls.at(-1)?.result?.structured)?.context);
     assert.equal(context?.group_ref, group);
     assert.equal(context?.order_domain, domain);
+    assert.equal(context?.source_member_nodes, initialContext?.source_member_nodes);
+    assert.equal(context?.projected_out_nodes, initialContext?.projected_out_nodes);
     const count = driver.tape.calls.length;
     await assert.rejects(() => tab.getAXState({ continuation: token }), /current browser snapshot/);
     assert.equal(driver.tape.calls.length, count, "Reused cursor must fail before dispatch");

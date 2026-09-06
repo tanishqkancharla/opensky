@@ -7,7 +7,7 @@ import { asArray, asRecord, CuaDriverClient } from "./driver.js";
 import { AsyncLifecycle } from "./async-lifecycle.js";
 import { StdioMcpDriverClient, type TransportCloseReceipt } from "./mcp-driver.js";
 import { BrowserSessionLeaseStore, legacyBrowserSessionOwnerPid } from "./browser-session-leases.js";
-import { contextBindings, contextFailure, CONTEXT_OUTLINE_BYTES, isContextToken, renderContextDirections,
+import { contextBindings, contextFailure, CONTEXT_OUTLINE_BYTES, isContextToken, renderContextDirections, renderContextProjection,
   validateContextBlock, validateQueryContexts, type ContextBlock } from "./browser-context.js";
 import { invalidParams, OpenSkyError } from "./errors.js";
 import { displayUrlAttribute } from "./display-url.js";
@@ -333,6 +333,8 @@ export class OpenSky implements OpenSkyApi {
       const snapshot = asRecord(structured.snapshot) ?? {};
       const incoming = normalizeBrowserElements(structured.refs, structured.content_refs);
       const context = validateContextBlock(structured.context, { snapshotId: previous.snapshotId, elements: incoming, expected });
+      if (context.member_projection && (snapshot.selected_nodes !== context.member_refs!.length ||
+          snapshot.total_nodes !== context.source_member_nodes! - context.projected_out_nodes!)) throw fail();
       if (this.memory.trees[key] !== previous || inputPending() ||
           structured.status !== "ok" || structured.mode !== "snapshot" ||
           structured.target_id !== browser.targetId || structured.tab_id !== browser.tabId ||
@@ -2822,6 +2824,7 @@ export function renderBrowserObservation(
     `Evidence context ${index + 1}: group [${indexFor(block.group_ref) ?? "unavailable"}]` +
       (block.parent_group_ref ? `; enclosing group [${indexFor(block.parent_group_ref) ?? "unavailable"}]` : "") +
       ". Same snapshot; source order only within this group/frame.",
+    renderContextProjection(block),
     `${block.before_omitted} nodes before, ${block.after_omitted} after omitted; group ${block.group_complete ? "complete" : "incomplete"}. ` +
       `Document collection ${block.document_collection_complete ? "complete" : "incomplete"}; virtualized extent unknown.`,
     block.outline ?? "",
@@ -2849,7 +2852,7 @@ export function renderBrowserObservation(
         ? "Driver semantic collection is complete."
         : "Driver semantic collection completeness is unavailable.";
   const text = [
-    header, coverage, renderCoverage,
+    header, context ? renderContextProjection(context as unknown as ContextBlock) : "", coverage, renderCoverage,
     evidence,
     evidence ? "Matching paths (filtered, not a complete sibling list):" : "",
     renderedOutline.abbreviatedContainers ? "Outline: a bare '-' is an unnamed generic container, not an action ref. Source AX indentation is retained." : "",

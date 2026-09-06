@@ -6,6 +6,9 @@ export interface ContextCursor {
   groupRef: string;
   orderDomain: string;
   frame: string;
+  memberProjection?: "semantic_evidence_v1";
+  sourceMemberNodes?: number;
+  projectedOutNodes?: number;
 }
 
 export interface ContextBlock {
@@ -22,6 +25,11 @@ export interface ContextBlock {
   virtualized_extent: "unknown";
   member_refs?: string[];
   outline?: string;
+  /** Absent on older helpers. Counts/cursors cover this explicit projection,
+   * not raw AX nodes or full source text. */
+  member_projection?: "semantic_evidence_v1";
+  source_member_nodes?: number;
+  projected_out_nodes?: number;
 }
 
 export const QUERY_CONTEXT_LIMITS = { blocks: 6, members: 96, outlineBytes: 24_000, tokens: 12 } as const;
@@ -79,9 +87,19 @@ export function validateContextBlock(raw: unknown, options: {
         !block.member_refs.every(ref => snapshotRef(ref, options.snapshotId) && byRef.get(ref)?.browserFrame === frame)) throw contextFailure();
   }
   if (options.automatic && (typeof block.outline !== "string" || Buffer.byteLength(block.outline, "utf8") > QUERY_CONTEXT_LIMITS.outlineBytes)) throw contextFailure();
+  const projectionFields = ["member_projection", "source_member_nodes", "projected_out_nodes"] as const;
+  if (projectionFields.some(key => Object.hasOwn(block, key))) {
+    if (block.member_projection !== "semantic_evidence_v1" ||
+        ![block.source_member_nodes, block.projected_out_nodes].every(n => Number.isSafeInteger(n) && n! >= 0) ||
+        !Array.isArray(block.member_refs) || block.member_refs.length === 0) throw contextFailure();
+    const total = block.before_omitted + block.member_refs.length + block.after_omitted + block.projected_out_nodes!;
+    if (!Number.isSafeInteger(total) || total !== block.source_member_nodes) throw contextFailure();
+  }
   const expected = options.expected;
   if (expected && (block.anchor_ref !== expected.anchorRef || block.group_ref !== expected.groupRef ||
-      block.order_domain !== expected.orderDomain || frame !== expected.frame)) throw contextFailure();
+      block.order_domain !== expected.orderDomain || frame !== expected.frame ||
+      block.member_projection !== expected.memberProjection || block.source_member_nodes !== expected.sourceMemberNodes ||
+      block.projected_out_nodes !== expected.projectedOutNodes)) throw contextFailure();
   return block;
 }
 
@@ -114,11 +132,20 @@ export function contextBindings(blocks: ContextBlock[], elements: SnapshotElemen
       if (!token) continue;
       if (Object.hasOwn(contextContinuations, token)) throw contextFailure();
       contextContinuations[token] = { anchorRef: block.anchor_ref, groupRef: block.group_ref,
-        orderDomain: block.order_domain, frame: byRef.get(block.anchor_ref)!.browserFrame! };
+        orderDomain: block.order_domain, frame: byRef.get(block.anchor_ref)!.browserFrame!,
+        ...(block.member_projection ? { memberProjection: block.member_projection,
+          sourceMemberNodes: block.source_member_nodes, projectedOutNodes: block.projected_out_nodes } : {}) };
     }
   }
   if (Object.keys(contextContinuations).length > QUERY_CONTEXT_LIMITS.tokens) throw contextFailure();
   return { contextDomains, contextContinuations };
+}
+
+export function renderContextProjection(block: ContextBlock): string {
+  if (block.member_projection !== "semantic_evidence_v1") return "";
+  return `Member projection: ${block.source_member_nodes! - block.projected_out_nodes!}/${block.source_member_nodes} eligible stored AX nodes; ` +
+    `${block.projected_out_nodes} generic nodes with no retained name/value/destination/state/action metadata excluded from the member budget. ` +
+    "Ancestor nesting is retained. Counts, cursors and group completeness describe semantic evidence, not all AX nodes or lossless text.";
 }
 
 /** Cursors/coverage are outside outline budgets. Never hide the route onward. */

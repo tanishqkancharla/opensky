@@ -61,6 +61,13 @@ desirable contracts, not executable OpenSky APIs.
    ```
 
    ```text
+   evidence = omit_empty_wrappers(source, preserve_relationships=true)
+   emit(evidence, counts={source: size(source), projected: size(evidence)})
+   # A compressed view's completeness must name what was compressed.
+   # Names, values, states, actions and qualifiers are not empty wrappers.
+   ```
+
+   ```text
    match = search(snapshot, query)
    context = expand(snapshot, match.ref)
    emit(context.rows_in_source_order, context.omitted_boundaries)

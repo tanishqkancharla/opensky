@@ -311,6 +311,38 @@ long-label/qualifier tests; group completeness currently concerns materialized
 nodes, not lossless source text. Do not report full-document evidence from that
 flag alone.
 
+**LIB-022 — structural wrappers consume evidence budgets:** e38's final Amazon
+query used all 96 automatic context member slots, 43 of them unnamed, valueless,
+stateless, actionless generic nodes. Only 5,461 of the available 24,000 outline
+bytes were used. This is a budget-density problem, separate from missing logs.
+The new private candidate projects these empty nodes out of the member budget
+while retaining the original validated AX ancestor nesting. Named, valued,
+stateful, actionable and destination-bearing nodes stay in the evidence sequence.
+Exact anchor metadata remains available even when a blank anchor is not a member.
+
+Every new context declares `member_projection: semantic_evidence_v1`, the
+eligible stored source count and the projected-out count. Member counts, omitted ranges,
+cursors and group completeness explicitly concern that projection, not all raw
+AX nodes or unclipped source text. The projection is group-bound, not dependent
+on which anchor was queried; continuation validation pins its totals. Older
+helpers remain supported without inventing projection metadata. Validation:
+**implementation and focused contract checks in progress; not yet live accepted**.
+Controlled real-page probes add wrapper-heavy lists and tables with trailing
+qualifiers. Node and byte budgets remain unchanged for this isolated experiment.
+“No state” here means no retained semantic state: the existing collector keeps
+only a subset of AX properties. The projection does not restore information
+already removed during collection or text normalization.
+
+**LIB-023 — first-anchor coalescing can leave later matches uncovered:** automatic
+query context currently emits one window at the first source match per enclosing
+group, even when later matches fall outside it. Empty-wrapper projection alone
+cannot solve this: a wrapper-free list of three 12-node peers already exceeds a
+25-member window. This remains **open**. Candidate selection changes need to
+preserve meaningful evidence near late article matches as well as ordered list
+prefixes, without task/site labels or assuming a retrieved match was covered by
+its group's context. No model grounding improvement is claimed from projection
+or mechanically denser output alone.
+
 Independent probe review also found a presentation inconsistency: fresh views
 suppressed the driver's stale `about:blank` title after navigation, while stored
 context printed it. Both now share the same placeholder normalization, without

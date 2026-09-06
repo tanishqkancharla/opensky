@@ -276,6 +276,71 @@ class TypedBrowserDriver implements DriverClient {
 }
 
 describe("OpenSky typed-browser contract", () => {
+  // Deterministic protocol fixtures, not real-driver acceptance evidence.
+  it("accepts coherent projected context counts and preserves same-snapshot continuation authority", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    driver.contextResult = () => projectedContextFixture(driver);
+    const before = driver.calls.length;
+    const first = await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+    assert.match(first.text, /14\/20 eligible AX nodes/);
+    driver.continuationResult = () => projectedContextFixture(driver, true);
+    const next = await opensky.get_app_state({ app: state.targetHandle, continuation: "projection-next" });
+    assert.match(next.text, /14\/20 eligible AX nodes/);
+    assert.equal(next.target?.document.freshness, "stored");
+    assert.equal(driver.calls.length, before + 2);
+    assert(driver.calls.slice(before).every(call => call.tool === "get_browser_state"));
+    await opensky.click({ app: state.targetHandle, element_index: 1 });
+    assert.equal(driver.calls.at(-1)!.args.ref, "p41:1", "coherent projection preserves the original action ref");
+  });
+
+  for (const count of ["selected_nodes", "total_nodes"] as const) {
+    it(`invalidates cached authority without input when projected snapshot ${count} contradicts its context`, async () => {
+      const { opensky, driver } = await harness();
+      const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      driver.contextResult = () => projectedContextFixture(driver);
+      await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+      driver.contextResult = () => {
+        const response = projectedContextFixture(driver);
+        (response.structured as any).snapshot[count] += 1;
+        return response;
+      };
+      const before = driver.calls.length;
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 }),
+        { code: "browser_context_unavailable" });
+      assert.equal(driver.calls.length, before + 1);
+      assert.equal(driver.calls.at(-1)!.tool, "get_browser_state");
+      await assert.rejects(() => opensky.click({ app: state.targetHandle, element_index: 1 }), /latest semantic browser snapshot/);
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: "projection-next" }), /current browser snapshot/);
+      assert.equal(driver.calls.length, before + 1, "neither stale input nor cached cursor may dispatch");
+    });
+  }
+
+  it("rejects a continuation that changes eligible projection size despite coherent unchanged source totals", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    driver.contextResult = () => projectedContextFixture(driver);
+    await opensky.get_app_state({ app: state.targetHandle, context_element_index: 1 });
+    driver.continuationResult = () => {
+      const response = projectedContextFixture(driver, true);
+      const value = response.structured as any;
+      value.context.projected_out_nodes = 7;
+      value.context.after_omitted = 9;
+      value.snapshot.total_nodes = 13;
+      // Still internally coherent: 2 before + 2 members + 9 after + 7 excluded = 20 source.
+      // Only the immutable cursor's previously issued 14-member projection exposes the mismatch.
+      return response;
+    };
+    const before = driver.calls.length;
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: "projection-next" }),
+      { code: "browser_context_unavailable" });
+    assert.equal(driver.calls.length, before + 1);
+    assert.equal(driver.calls.at(-1)!.tool, "get_browser_state");
+    await assert.rejects(() => opensky.click({ app: state.targetHandle, element_index: 1 }), /latest semantic browser snapshot/);
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: "projection-next" }), /current browser snapshot/);
+    assert.equal(driver.calls.length, before + 1, "failed projection invalidates input and continuation authority");
+  });
+
   it("rejects automatic context metadata outside a proven semantic query envelope", async () => {
     for (const patch of [{ format: undefined }, { format: "legacy" }, { scope: "viewport" }, { id: "foreign" }, { id: "" }]) {
       const { opensky, driver } = await harness();
@@ -1643,6 +1708,25 @@ function legacyBrowserBinding(query: string) {
 
 function result(structured: unknown): DriverResult {
   return { structured, text: "ok", raw: structured };
+}
+
+/** Deterministic protocol fixture only; real helper acceptance is a separate evaluation. */
+function projectedContextFixture(driver: TypedBrowserDriver, later = false): DriverResult {
+  const response = contextFixture(driver, "p41:1");
+  const value = response.structured as any;
+  if (later) value.content_refs.push(
+    { ref: "p41:12", role: "heading", name: "Later heading", actions: [], frame: "main" },
+    { ref: "p41:13", role: "paragraph", name: "Later qualifier", actions: [], frame: "main" },
+  );
+  Object.assign(value.snapshot, { selected_nodes: 2, total_nodes: 14 });
+  Object.assign(value.context, {
+    member_projection: "semantic_evidence_v1", source_member_nodes: 20, projected_out_nodes: 6,
+    member_refs: later ? ["p41:12", "p41:13"] : ["p41:10", "p41:1"],
+    before_omitted: later ? 2 : 0, after_omitted: later ? 10 : 12,
+    before_continuation: later ? "projection-back" : null,
+    after_continuation: later ? "projection-next-2" : "projection-next",
+  });
+  return response;
 }
 
 /** Deterministic protocol fixture only; real helper acceptance is a separate evaluation. */

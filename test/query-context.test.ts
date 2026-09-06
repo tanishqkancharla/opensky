@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { contextBindings, isContextToken, renderContextDirections, validateContextBlock, validateQueryContexts, type ContextBlock } from "../src/browser-context.js";
+import { contextBindings, isContextToken, renderContextDirections, renderContextProjection, validateContextBlock, validateQueryContexts, type ContextBlock } from "../src/browser-context.js";
 import { renderBrowserObservation } from "../src/opensky.js";
 import type { SnapshotElement } from "../src/types.js";
 
@@ -15,6 +15,41 @@ const block = (patch: Partial<ContextBlock> = {}): ContextBlock => ({
 const rejects = (f: () => unknown) => assert.throws(f, { code: "browser_context_unavailable" });
 
 describe("same-snapshot query context contract (pure fixtures)", () => {
+  it("validates and explicitly describes semantic projection without inventing source completeness", () => {
+    const value = block({ member_projection: "semantic_evidence_v1", source_member_nodes: 12, projected_out_nodes: 10 });
+    assert.deepEqual(validateQueryContexts([value], "p7", elements), [value]);
+    assert.match(renderContextProjection(value), /2\/12 eligible stored AX nodes/);
+    assert.match(renderContextProjection(value), /not all AX nodes or lossless text/);
+    assert.equal(renderContextProjection(block()), "");
+    for (const patch of [
+      { member_projection: undefined }, { member_projection: "full_source" },
+      { projected_out_nodes: undefined }, { source_member_nodes: undefined },
+      { projected_out_nodes: -1 }, { projected_out_nodes: 0.5 }, { source_member_nodes: NaN },
+      { source_member_nodes: 11 }, { source_member_nodes: Number.MAX_SAFE_INTEGER + 1 },
+      { projected_out_nodes: Number.MAX_SAFE_INTEGER }, { member_refs: [] },
+    ]) rejects(() => validateQueryContexts([{ ...value, ...patch }], "p7", elements));
+    rejects(() => validateQueryContexts([block({ projected_out_nodes: 0 })], "p7", elements));
+    const rendered = renderBrowserObservation("", elements, { query_contexts: [value] }, true);
+    assert.ok(rendered.text.indexOf("Member projection:") < rendered.text.indexOf("group complete."));
+    const direct = renderBrowserObservation("", elements, { context: value });
+    assert.ok(direct.text.indexOf("Member projection:") < direct.text.indexOf("group complete."));
+  });
+
+  it("binds the immutable projection domain and totals to continuation authority", () => {
+    const value = block({ member_projection: "semantic_evidence_v1", source_member_nodes: 14, projected_out_nodes: 10,
+      after_omitted: 2, group_complete: false, after_continuation: "next-projection" });
+    const expected = contextBindings([value], elements).contextContinuations["next-projection"]!;
+    assert.equal(expected.sourceMemberNodes, 14);
+    validateContextBlock(value, { snapshotId: "p7", elements, expected });
+    for (const patch of [
+      { source_member_nodes: 15, projected_out_nodes: 11 },
+      { member_projection: undefined, source_member_nodes: undefined, projected_out_nodes: undefined },
+    ]) rejects(() => validateContextBlock({ ...value, ...patch }, { snapshotId: "p7", elements, expected }));
+    rejects(() => validateContextBlock(block({ after_omitted: 2, group_complete: false }), { snapshotId: "p7", elements, expected }));
+    // A projected-out exact anchor remains a metadata identity, not an extra member.
+    validateContextBlock({ ...value, member_refs: ["p7:1", "p7:3"] }, { snapshotId: "p7", elements, expected });
+  });
+
   it("accepts valid automatic contexts and preserves source content and exact cursor authority", () => {
     const value = block({ before_omitted: 4, before_continuation: "opaque-before", group_complete: false });
     assert.deepEqual(validateQueryContexts([value], "p7", elements), [value]);
