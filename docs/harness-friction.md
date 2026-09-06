@@ -52,6 +52,13 @@ stable domain, and old-reference tests; independent follow-up found no blocker.
 Future typed mutation tools must join the dispatch fence. Real integration and
 cross-process state transactions are still separate requirements.
 
+E40 integrated fault tests found that rejecting malformed **fresh query** metadata
+could still leave the preceding snapshot's input/cursor authority cached. The
+candidate now invalidates that failed read's preceding tree and screenshot mapping,
+without clearing a newer successful tree; page identity is published only after
+validation succeeds. This additional failure-path correction is contract-tested,
+not acceptance from injecting faults into the user's real browser.
+
 ## Driver and transport boundary
 
 | ID | Symptom and cause/layer | Disposition | Validation and evidence |
@@ -339,23 +346,38 @@ Node and byte budgets remain unchanged for this isolated experiment.
 only a subset of AX properties. The projection does not restore information
 already removed during collection or text normalization.
 
-**LIB-023 — first-anchor coalescing can leave later matches uncovered:** automatic
-query context currently emits one window at the first source match per enclosing
-group, even when later matches fall outside it. Empty-wrapper projection alone
-cannot solve this: a wrapper-free list of three 12-node peers already exceeds a
-25-member window. This remains **open**. Candidate selection changes need to
-preserve meaningful evidence near late article matches as well as ordered list
-prefixes, without task/site labels or assuming a retrieved match was covered by
-its group's context. The e39 batch improvement does not close this independently
-reproduced selection gap; mechanically denser output alone cannot prove grounding.
+**LIB-023 — first-anchor coalescing can leave later matches uncovered:** the
+installed baseline emits one window at the first source match per enclosing group,
+even when later matches fall outside it. E40's real baseline passes 6/9 controlled
+cases: three new list/article/table cases match every intended control but omit
+later local qualifiers while using only 20–22 of 96 available member slots. All
+exact owned sessions close. Empty-wrapper projection alone cannot solve this.
+
+**Candidate implemented; live validation pending.** Driver selection skips only
+exact anchors covered by an actually returned member window of the same group,
+after clipping. Multiple windows may retain the same group identity. Independent
+review caught the host's former blanket duplicate-group rejection; the host now
+accepts distinct ranges only with consistent total/projection/parent/domain/
+collection metadata and exact overlapping offset-to-ref mappings. Duplicate
+windows and tokens remain rejected. Overlap still spends the shared 6-block /
+96-member / 24,000-byte budget; one anchor's membership does not establish full
+item or qualifier coverage. No site/task labels or new waiting policy are added.
+[E40 evidence](../../e2e-epoch-40/README.md). The e39 batch improvement does not
+close this gap, and denser output alone cannot prove fresh model grounding.
 
 **LIB-024 — stable stored evidence can precede useful materialization:** e39
-Amazon's first query snapshot `p25` has 298 stored nodes, mostly page navigation,
-and the actor reads eight continuations before refreshing. A later `p28` has
-2,616 stored nodes and yields the required Results-list proof. **Live symptom;
-fix open.** Stored pagination correctly preserves its snapshot; it cannot discover
-new content. This does not prove the exact loading cause, user interference or a
-projection regression. Next generic experiment: expose collection/readiness and
+Amazon's `p25` automatic neighborhood shows navigation, but its matching paths
+already include results-count and sponsored-card evidence. The actor reads eight
+continuations through all 213 projected / 298 eligible stored root members before
+refreshing. The fresh unfiltered `p26` already has 2,783 ranked candidates before
+scroll; later `p28` has 2,616 eligible stored root members and yields the required
+Results-list proof. These two count types are not interchangeable. **Live symptom;
+fix open.** Correction: the first snapshot was not entirely header-only, and growth
+cannot be attributed specifically to scrolling. Stored pagination correctly
+preserves its snapshot; it cannot discover new content. This does not prove the
+exact loading cause, user interference or a projection regression. Two equal
+selected-ref signatures can end current settling after a 150ms poll; equal
+observations are not proof of readiness. Next generic experiment: expose collection/readiness and
 match-coverage evidence so refresh versus stored expansion is an informed choice;
 test delayed content and header-only matches without site-specific waits or query
 labels. Never silently recollect while claiming the same cursor revision. Evidence:

@@ -38,6 +38,7 @@ class TypedBrowserDriver implements DriverClient {
   continuationResult?: (args: Record<string, unknown>) => DriverResult | Promise<DriverResult>;
   queryContexts?: unknown;
   snapshotEnvelope?: Record<string, unknown>;
+  snapshotResult?: (captured: DriverResult) => DriverResult | Promise<DriverResult>;
   clickResult?: () => DriverResult | Promise<DriverResult>;
 
   replaceDocument(): void {
@@ -89,6 +90,7 @@ class TypedBrowserDriver implements DriverClient {
           }
           const captured = this.semanticSnapshot(effectiveArgs.include_screenshot === true, typeof effectiveArgs.query === "string");
           if (this.snapshotEnvelope) Object.assign((captured.structured as any).snapshot, this.snapshotEnvelope);
+          if (this.snapshotResult) return this.snapshotResult(captured);
           return captured;
         }
         if (this.failBind) throw new Error("injected bind failure");
@@ -276,6 +278,136 @@ class TypedBrowserDriver implements DriverClient {
 }
 
 describe("OpenSky typed-browser contract", () => {
+  // Deferred protocol fixtures only, not real-driver acceptance.
+  it("preserves a newer successful query identity, input and cursors when an older malformed query finishes late", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    driver.queryContexts = separatedQueryContextFixture(driver);
+    let release!: (value: DriverResult) => void;
+    let captured!: DriverResult;
+    let started!: () => void;
+    const admitted = new Promise<void>(resolve => { started = resolve; });
+    driver.snapshotResult = response => {
+      captured = structuredClone(response);
+      const value = captured.structured as any;
+      value.query_contexts[1].order_domain = "conflicting-old-domain";
+      value.page = { url: "https://example.com/rejected-old", title: "Rejected old title", document_id: "rejected-old-document" };
+      started();
+      return new Promise(resolve => { release = resolve; });
+    };
+    const pending = opensky.get_app_state({ app: state.targetHandle, query: "Submit", includeScreenshot: false });
+    const rejected = assert.rejects(pending, { code: "browser_context_unavailable" });
+    await admitted;
+    driver.snapshotResult = undefined;
+    driver.replaceDocument();
+    await opensky.get_app_state({ app: state.targetHandle, query: "Submit", includeScreenshot: true });
+    const memory = Reflect.get(opensky, "memory") as any;
+    const browser = memory.targets[state.targetHandle!].browser;
+    const newerIdentity = { url: browser.url, documentId: browser.documentId, title: browser.title };
+    const newerTree = memory.trees[state.targetHandle!];
+    const newerMapping = browser.screenshotMapping;
+    assert.equal(newerIdentity.documentId, "doc-test-2");
+    assert(newerMapping, "newer successful screenshot establishes coordinate mapping");
+    release(captured);
+    await rejected;
+    assert.strictEqual(memory.trees[state.targetHandle!], newerTree);
+    assert.strictEqual(browser.screenshotMapping, newerMapping);
+    assert.deepEqual({ url: browser.url, documentId: browser.documentId, title: browser.title }, newerIdentity);
+    driver.continuationResult = () => {
+      const response = contextFixture(driver, "p41:1");
+      const value = response.structured as any;
+      value.content_refs = driver.contentRefs;
+      value.context = { ...(driver.queryContexts as Array<Record<string, unknown>>)[0], before_omitted: 2, after_omitted: 2,
+        member_refs: ["p41:14", "p41:15"], before_continuation: null, after_continuation: null };
+      Object.assign(value.snapshot, { selected_nodes: 2, total_nodes: 6 });
+      return response;
+    };
+    const before = driver.calls.length;
+    await opensky.get_app_state({ app: state.targetHandle, continuation: "separated-later" });
+    assert.equal(driver.calls.length, before + 1);
+    await opensky.click({ app: state.targetHandle, element_index: 1 });
+    assert.equal(driver.calls.at(-1)!.args.ref, "p41:1");
+    assert.deepEqual({ url: browser.url, documentId: browser.documentId, title: browser.title }, newerIdentity);
+  });
+
+  it("clears prior screenshot mapping as well as input and cursors after a rejected fresh query", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: true });
+    const memory = Reflect.get(opensky, "memory") as any;
+    const browser = memory.targets[state.targetHandle!].browser;
+    assert(browser.screenshotMapping);
+    driver.queryContexts = separatedQueryContextFixture(driver);
+    (driver.queryContexts as any[])[1].order_domain = "conflicting-domain";
+    await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, query: "Submit", includeScreenshot: false }),
+      { code: "browser_context_unavailable" });
+    assert.equal(browser.screenshotMapping, undefined);
+    assert.equal(memory.trees[state.targetHandle!], undefined);
+    const before = driver.calls.length;
+    await assert.rejects(() => opensky.click({ app: state.targetHandle, x: 1, y: 1 }));
+    assert.equal(driver.calls.length, before, "rejected fresh read cannot leave coordinate authority behind");
+  });
+
+  // Deterministic protocol fixtures only; not real-driver acceptance.
+  it("accepts separated same-group query windows and independently consumes every issued cursor", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+    const blocks = separatedQueryContextFixture(driver);
+    driver.queryContexts = blocks;
+    const queried = await opensky.get_app_state({ app: state.targetHandle, query: "Submit", includeScreenshot: false });
+    assert.match(queried.text, /First local qualifier/);
+    assert.match(queried.text, /Second local qualifier/);
+    const bindings: Record<string, string> = { "separated-later": "p41:1", "separated-earlier": "p41:12" };
+    driver.continuationResult = args => {
+      const anchor = bindings[String(args.continuation)]!;
+      const response = contextFixture(driver, anchor);
+      const value = response.structured as any;
+      value.content_refs = driver.contentRefs;
+      value.context = { ...blocks[0], anchor_ref: anchor, before_omitted: 2, after_omitted: 2,
+        member_refs: ["p41:14", "p41:15"], before_continuation: null, after_continuation: null };
+      Object.assign(value.snapshot, { selected_nodes: 2, total_nodes: 6 });
+      return response;
+    };
+    const before = driver.calls.length;
+    for (const token of Object.keys(bindings)) {
+      const page = await opensky.get_app_state({ app: state.targetHandle, continuation: token });
+      assert.equal(page.target?.document.freshness, "stored");
+      assert.equal(driver.calls.at(-1)!.args.continuation, token);
+      const dispatched = driver.calls.length;
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: token }), /current browser snapshot/);
+      assert.equal(driver.calls.length, dispatched);
+    }
+    assert.equal(driver.calls.length, before + 2);
+    assert(driver.calls.slice(before).every(call => call.tool === "get_browser_state"));
+    await opensky.click({ app: state.targetHandle, element_index: 1 });
+    assert.equal(driver.calls.at(-1)!.args.ref, "p41:1", "query action survives both independent stored-window reads");
+  });
+
+  it("invalidates prior input and cursors after conflicting same-group query metadata", async () => {
+    for (const mutation of ["total", "parent", "moved-ref", "overlap"] as const) {
+      const { opensky, driver } = await harness();
+      const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      const blocks = separatedQueryContextFixture(driver);
+      driver.queryContexts = blocks;
+      await opensky.get_app_state({ app: state.targetHandle, query: "Submit", includeScreenshot: false });
+      const corrupted = structuredClone(blocks);
+      if (mutation === "total") { corrupted[1]!.after_omitted = 1; corrupted[1]!.source_member_nodes = 9; }
+      if (mutation === "parent") corrupted[1]!.parent_group_ref = "p41:13";
+      if (mutation === "moved-ref") corrupted[1]!.member_refs = ["p41:1", "p41:13"];
+      if (mutation === "overlap") { corrupted[1]!.before_omitted = 1; corrupted[1]!.after_omitted = 3; }
+      driver.queryContexts = corrupted;
+      const before = driver.calls.length;
+      await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, query: "Submit", includeScreenshot: false }),
+        { code: "browser_context_unavailable" });
+      assert.equal(driver.calls.length, before + 1);
+      assert.equal(driver.calls.at(-1)!.tool, "get_browser_state");
+      await assert.rejects(() => opensky.click({ app: state.targetHandle, element_index: 1 }), /latest semantic browser snapshot/);
+      for (const token of ["separated-later", "separated-earlier"]) {
+        await assert.rejects(() => opensky.get_app_state({ app: state.targetHandle, continuation: token }), /current browser snapshot/);
+      }
+      assert.equal(driver.calls.length, before + 1, `${mutation}: no input or stale cursor may dispatch`);
+    }
+  });
+
   // Deterministic protocol fixtures, not real-driver acceptance evidence.
   it("accepts coherent projected context counts and preserves same-snapshot continuation authority", async () => {
     const { opensky, driver } = await harness();
@@ -1708,6 +1840,23 @@ function legacyBrowserBinding(query: string) {
 
 function result(structured: unknown): DriverResult {
   return { structured, text: "ok", raw: structured };
+}
+
+/** Deterministic protocol fixture only; real helper acceptance is a separate evaluation. */
+function separatedQueryContextFixture(driver: TypedBrowserDriver): Array<Record<string, any>> {
+  driver.contentRefs = [
+    { ref: "p41:10", role: "region", name: "Shared group", actions: [], frame: "main" },
+    { ref: "p41:11", role: "main", name: "Document", actions: [], frame: "main" },
+    ...[12, 13, 14, 15].map(n => ({ ref: `p41:${n}`, role: "paragraph", name: `Local evidence ${n}`, actions: [], frame: "main" })),
+  ];
+  const base = (contextFixture(driver, "p41:1").structured as any).context;
+  const projection = { member_projection: "semantic_evidence_v1", source_member_nodes: 8, projected_out_nodes: 2 };
+  return [
+    { ...base, ...projection, member_refs: ["p41:10", "p41:1"], before_omitted: 0, after_omitted: 4,
+      outline: '- statictext "First local qualifier"', before_continuation: null, after_continuation: "separated-later" },
+    { ...base, ...projection, anchor_ref: "p41:12", member_refs: ["p41:12", "p41:13"], before_omitted: 4, after_omitted: 0,
+      outline: '- statictext "Second local qualifier"', before_continuation: "separated-earlier", after_continuation: null },
+  ];
 }
 
 /** Deterministic protocol fixture only; real helper acceptance is a separate evaluation. */

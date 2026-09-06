@@ -109,8 +109,37 @@ export function validateQueryContexts(raw: unknown, snapshotId: string, elements
   const blocks = raw.map(block => validateContextBlock(block, { snapshotId, elements, automatic: true }));
   if (blocks.reduce((sum, block) => sum + block.member_refs!.length, 0) > QUERY_CONTEXT_LIMITS.members ||
       blocks.reduce((sum, block) => sum + Buffer.byteLength(block.outline!, "utf8"), 0) > QUERY_CONTEXT_LIMITS.outlineBytes) throw contextFailure();
-  const groups = blocks.map(block => `${block.order_domain}:${block.group_ref}`);
-  if (new Set(groups).size !== groups.length) throw contextFailure();
+  // Distinct windows may describe one group. Treat their offsets as one fixed
+  // member sequence: overlap must agree, and a ref cannot move within it.
+  const groups = new Map<string, { first: ContextBlock; total: number; ranges: Set<string>;
+    byOffset: Map<number, string>; byRef: Map<string, number> }>();
+  for (const block of blocks) {
+    const start = block.before_omitted;
+    const end = start + block.member_refs!.length;
+    const total = end + block.after_omitted;
+    if (!Number.isSafeInteger(total)) throw contextFailure();
+    let group = groups.get(block.group_ref);
+    if (!group) {
+      group = { first: block, total, ranges: new Set(), byOffset: new Map(), byRef: new Map() };
+      groups.set(block.group_ref, group);
+    }
+    const first = group.first;
+    if (total !== group.total || block.order_domain !== first.order_domain ||
+        (block.parent_group_ref ?? null) !== (first.parent_group_ref ?? null) ||
+        block.document_collection_complete !== first.document_collection_complete ||
+        block.member_projection !== first.member_projection || block.source_member_nodes !== first.source_member_nodes ||
+        block.projected_out_nodes !== first.projected_out_nodes) throw contextFailure();
+    const range = `${start}:${end}`;
+    if (group.ranges.has(range)) throw contextFailure();
+    group.ranges.add(range);
+    for (const [index, ref] of block.member_refs!.entries()) {
+      const offset = start + index;
+      if ((group.byOffset.has(offset) && group.byOffset.get(offset) !== ref) ||
+          (group.byRef.has(ref) && group.byRef.get(ref) !== offset)) throw contextFailure();
+      group.byOffset.set(offset, ref);
+      group.byRef.set(ref, offset);
+    }
+  }
   contextBindings(blocks, elements); // Check duplicate tokens and conflicting domains too.
   return blocks;
 }

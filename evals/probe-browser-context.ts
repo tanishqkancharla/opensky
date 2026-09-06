@@ -168,9 +168,27 @@ try {
             assert.ok(outline.includes(`- statictext ${JSON.stringify(value)}`),
               `Each separated match must expose its local qualifier as source text: ${value}`);
           }
-          assert.equal(outline.split("\n").filter(line => line.trim() ===
-            `- statictext ${JSON.stringify(fixture.repeatedQualifier)}`).length, 3,
-          "Repeated qualifiers in distinct containers must not be deduplicated by label");
+          assert.ok(outline.split("\n").filter(line => line.trim() ===
+            `- statictext ${JSON.stringify(fixture.repeatedQualifier)}`).length >= 3,
+          "Repeated qualifiers must stay visible; overlapping windows may repeat them");
+          // Public text proves visibility; exact wire refs independently prove
+          // these are three source members rather than one repeated three times.
+          const structured = asRecord(driver.tape.calls.at(-1)?.result?.structured)!;
+          const blocks = structured.query_contexts as Array<Record<string, unknown>>;
+          const refs = [...structured.refs as Array<Record<string, unknown>>,
+            ...structured.content_refs as Array<Record<string, unknown>>];
+          const emittedMembers = new Set(blocks.flatMap(block => block.member_refs as string[]));
+          const repeatedRefs = new Set(refs.filter(ref => ref.role === "statictext" &&
+            ref.name === fixture.repeatedQualifier && emittedMembers.has(String(ref.ref))).map(ref => String(ref.ref)));
+          assert.equal(repeatedRefs.size, 3, "Repeated qualification must retain three distinct source identities");
+          for (const value of fixture.automaticQualifiers) {
+            const qualifier = refs.find(ref => ref.role === "statictext" && ref.name === value);
+            assert.ok(qualifier && blocks.some(block => (block.member_refs as string[]).includes(String(qualifier.ref)) &&
+              (block.member_refs as string[]).some(ref => repeatedRefs.has(ref)) &&
+              String(block.outline).includes(`- statictext ${JSON.stringify(value)}`) &&
+              String(block.outline).includes(`- statictext ${JSON.stringify(fixture.repeatedQualifier)}`)),
+            "Each local qualification must coexist with a distinct-source repeated value in its emitted context");
+          }
         }
         const callsBefore = driver.tape.calls.length;
         const nearby = await tab.getAXState({ context: anchor });

@@ -1752,7 +1752,21 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(`No window found for ${resolved.name} (pid ${resolved.pid})`);
     }
     if (resolved.browser) {
-      return this.snapshotBrowser(resolved, options);
+      const key = windowKey(resolved);
+      const previous = this.memory.trees[key];
+      try {
+        return await this.snapshotBrowser(resolved, options);
+      } catch (error) {
+        // A fresh read may already have replaced the driver's snapshot before
+        // its metadata fails validation. Do not retain old input/cursor authority,
+        // and do not erase a newer successful concurrent observation.
+        if (this.memory.trees[key] === previous) {
+          delete this.memory.trees[key];
+          resolved.browser.screenshotMapping = undefined;
+          await this.persist().catch(() => undefined);
+        }
+        throw error;
+      }
     }
     await mkdirPrivate(this.screenshotDir);
     const screenshotPath = options.screenshotPath ?? join(this.screenshotDir, `${slug(resolved.name)}-${resolved.windowId}.png`);
@@ -1872,14 +1886,13 @@ export class OpenSky implements OpenSkyApi {
     const page = asRecord(structured.page) ?? {};
     const priorUrl = browser.url;
     const priorDocumentId = browser.documentId;
-    browser.url = optionalString(page.url);
-    browser.documentId = optionalString(page.document_id);
-    browser.title = browserPageTitle(page);
+    const nextUrl = optionalString(page.url);
+    const nextDocumentId = optionalString(page.document_id);
     const rawElements = normalizeBrowserElements(structured.refs, structured.content_refs);
     const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
     const documentChanged =
-      (priorDocumentId !== undefined && browser.documentId !== undefined && priorDocumentId !== browser.documentId) ||
-      (priorUrl !== undefined && browser.url !== undefined && priorUrl !== browser.url);
+      (priorDocumentId !== undefined && nextDocumentId !== undefined && priorDocumentId !== nextDocumentId) ||
+      (priorUrl !== undefined && nextUrl !== undefined && priorUrl !== nextUrl);
     const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, rawElements, true);
     const outline = optionalString(structured.outline) ?? "";
     const snapshot = asRecord(structured.snapshot) ?? {};
@@ -1892,6 +1905,9 @@ export class OpenSky implements OpenSkyApi {
       ? await browserScreenshotFromResult(result.raw, structured, screenshotPath)
       : undefined;
     const mapping = screenshotMappingFrom(structured);
+    browser.url = nextUrl;
+    browser.documentId = nextDocumentId;
+    browser.title = browserPageTitle(page);
     browser.screenshotMapping = options.includeScreenshot && screenshot && mapping ? mapping : undefined;
     const selectedNodes = optionalFiniteNumber(snapshot.selected_nodes) ?? rawElements.length;
     const totalNodes = optionalFiniteNumber(snapshot.total_nodes) ?? selectedNodes;

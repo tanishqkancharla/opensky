@@ -15,6 +15,49 @@ const block = (patch: Partial<ContextBlock> = {}): ContextBlock => ({
 const rejects = (f: () => unknown) => assert.throws(f, { code: "browser_context_unavailable" });
 
 describe("same-snapshot query context contract (pure fixtures)", () => {
+  const window = (start: number, end: number, patch: Partial<ContextBlock> = {}) => block({
+    anchor_ref: `p7:${start}`, before_omitted: start, after_omitted: 10 - end,
+    member_refs: elements.slice(start, end).map(element => element.browser_ref!),
+    group_complete: false, outline: `Window ${start} to ${end}`, ...patch,
+  });
+
+  it("accepts separate and coherent overlapping windows within one exact group", () => {
+    const blocks = [window(0, 4, { after_continuation: "first-next" }),
+      window(2, 6, { before_continuation: "middle-back" }),
+      window(6, 10, { before_continuation: "last-back" })];
+    assert.deepEqual(validateQueryContexts(blocks, "p7", elements), blocks);
+    const bindings = contextBindings(blocks, elements).contextContinuations;
+    assert.equal(bindings["first-next"].anchorRef, "p7:0");
+    assert.equal(bindings["middle-back"].anchorRef, "p7:2");
+    assert.equal(bindings["last-back"].anchorRef, "p7:6");
+    assert.equal(new Set(Object.values(bindings).map(cursor => cursor.groupRef)).size, 1);
+  });
+
+  it("rejects duplicate ranges, shifted refs and conflicting same-group overlap", () => {
+    const first = window(0, 4);
+    rejects(() => validateQueryContexts([first, { ...first, anchor_ref: "p7:3" }], "p7", elements));
+    rejects(() => validateQueryContexts([first, window(2, 6, { member_refs: ["p7:3", "p7:2", "p7:4", "p7:5"] })], "p7", elements));
+    rejects(() => validateQueryContexts([first, window(6, 10, { member_refs: ["p7:0", "p7:7", "p7:8", "p7:9"] })], "p7", elements));
+  });
+
+  it("pins same-group totals, parent, order domain and collection status across windows", () => {
+    for (const patch of [{ after_omitted: 1 }, { parent_group_ref: null }, { order_domain: "different" },
+      { document_collection_complete: false }]) {
+      rejects(() => validateQueryContexts([window(0, 4), window(6, 10, patch)], "p7", elements));
+    }
+    rejects(() => validateQueryContexts([window(1, 2, { after_omitted: Number.MAX_SAFE_INTEGER })], "p7", elements));
+  });
+
+  it("requires identical explicit projections across separate windows of one group", () => {
+    const projection = { member_projection: "semantic_evidence_v1", source_member_nodes: 30, projected_out_nodes: 20 } as const;
+    const first = window(0, 4, projection);
+    const last = window(6, 10, projection);
+    assert.deepEqual(validateQueryContexts([first, last], "p7", elements), [first, last]);
+    rejects(() => validateQueryContexts([first, window(6, 10)], "p7", elements));
+    rejects(() => validateQueryContexts([window(0, 4), last], "p7", elements));
+    rejects(() => validateQueryContexts([first, { ...last, source_member_nodes: 31, projected_out_nodes: 21 }], "p7", elements));
+  });
+
   it("validates and explicitly describes semantic projection without inventing source completeness", () => {
     const value = block({ member_projection: "semantic_evidence_v1", source_member_nodes: 12, projected_out_nodes: 10 });
     assert.deepEqual(validateQueryContexts([value], "p7", elements), [value]);
