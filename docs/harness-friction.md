@@ -17,6 +17,7 @@ Backfill scope is necessarily bounded. It covers the repository history through 
 
 ## Library and facade
 
+
 **LIB-025 — current Computer facade/output contracts:** September 5 live Computer
 probes confirm omitted-URL blank tabs, first-use-only provider documentation and
 silent `emit:false`/plain expressions. TypeScript now follows those behaviors,
@@ -106,6 +107,17 @@ the original failed cleanup remains failed. Details and public timeline are in
 | RUN-011 | Unique runtime base-session injection broke exact matching of historical tapes that omitted base sessions. Standalone replay also leaked inert temporary homes on failure. | Strict replay stays default; explicitly named `v1_implicit_base_session` compatibility permits only the declared base label where the recorded call omitted it. Reports identify retrospective/non-acceptance evidence and applied indices. Exact temporary home is removed in `finally`, without invented cleanup tape events. | **Contract-confirmed**, driver-tape tests 13/13. [`evals/replay.ts`](../evals/replay.ts), [`evals/driver-tape.ts`](../evals/driver-tape.ts). Historical expected files are unchanged. Standalone frozen expected-report comparison still fails on existing `requestDispatch` projection drift (`unknown` versus `sent`); that regression remains open. Old leaked directories were not deleted without individual review. |
 
 ## Setup, permissions, and CI
+
+**SET-009 — consumer-style SDK E2E drafts:** the existing fake-driver contract
+suite does not establish successful SDK-to-desktop workflows. The new isolated
+[`e2e/`](../e2e/README.md) package follows the user-provided testing skill: Vitest
+fixtures, package-root SDK imports, a real local test page/native documents,
+13 positive workflow bodies and one separately grouped rejection body. Fourteen
+further scenarios are explicitly TODO until their real collaborators/capabilities
+exist. **Draft/typecheck/collection only; no E2E execution or driver acceptance.**
+No mocks or synthetic driver results. Existing unit tests remain intact. Codex
+in-app browser and host retention features are explicitly outside OpenSky parity.
+See [scenario contracts and remaining fixture work](../e2e/scenarios.md).
 
 | ID | Symptom and cause/layer | Disposition | Validation and evidence |
 | --- | --- | --- | --- |

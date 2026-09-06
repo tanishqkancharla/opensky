@@ -1,0 +1,75 @@
+import { expect } from "vitest";
+import { actionIndex, leafText, screenshotCenter, test } from "../fixtures/sdk.js";
+import { canvasPage, collectionPage, latePage } from "../fixtures/site.js";
+
+// Positive acceptance targets. Paste/scroll may fail against today's driver.
+// Do not turn an unsupported-operation error into a passing expectation.
+test("PASTE-B01: pastes multiline text as one real paste into a textarea", async ({ sdk, tab, site }) => {
+  const field = actionIndex(await tab.getAXState({ emit: false, disableDiffing: true }), "textbox", "Draft message");
+  await sdk.press_key({ app: tab.id, element_index: field, key: "End" });
+  await tab.paste("First line\nSecond line", { format: "text" });
+
+  await expect.poll(async () => (await site.read()).text).toBe("First line\nSecond line");
+  expect(await site.read()).toMatchObject({ pasteCount: 1, trustedPaste: true });
+  expect(await tab.getAXState({ emit: false })).toContain("Second line");
+});
+
+test("PASTE-B02: pastes HTML formatting into a rich editor", async ({ sdk, tab, site }) => {
+  const field = actionIndex(await tab.getAXState({ emit: false, disableDiffing: true }), "textbox", "Rich message");
+  await sdk.press_key({ app: tab.id, element_index: field, key: "End" });
+  await tab.paste("<strong>Priority</strong> note", { format: "html" });
+
+  await expect.poll(async () => (await site.read()).text).toBe("Priority note");
+  // The running editor reports computed font weight, not an exact HTML serialization.
+  expect((await site.read()).bold).toBe(true);
+});
+
+test("PASTE-B03: inserts Markdown source literally in the browser editor", async ({ sdk, tab, site }) => {
+  const field = actionIndex(await tab.getAXState({ emit: false, disableDiffing: true }), "textbox", "Rich message");
+  await sdk.press_key({ app: tab.id, element_index: field, key: "End" });
+  await tab.paste("**Priority** note", { format: "md" });
+
+  await expect.poll(async () => (await site.read()).text).toBe("**Priority** note");
+  expect((await site.read()).bold).toBe(false);
+});
+
+const canvasTest = test.extend({ html: canvasPage });
+canvasTest("SCROLL-B01: moves a custom canvas with trusted screenshot-coordinate scroll", async ({ tab, site }) => {
+  // The fixture fills the viewport with its canvas. Derive coordinates from the
+  // exact tab's screenshot; make no intervening AX read that invalidates mapping.
+  const center = screenshotCenter(await tab.getScreenshot({ emit: false }));
+  await tab.scroll(center, "down", 1);
+
+  await expect.poll(() => site.read()).toMatchObject({ moved: true, trustedWheel: true });
+  expect(await tab.getAXState({ emit: false })).toContain("Canvas moved down");
+});
+
+for (const kind of ["list", "article", "table"] as const) {
+  const collectionTest = test.extend({ html: collectionPage(kind) });
+  collectionTest(`CONTEXT-B-${kind}: retains the qualifier for each separated match`, async ({ tab }) => {
+    const state = await tab.getAXState({ query: "Inspect", emit: false });
+    // Read standalone text leaves. A concatenated ancestor name containing the
+    // answer does not establish that the qualifier itself was retained.
+    const text = leafText(state);
+    for (const name of ["alpha", "beta", "gamma"]) {
+      actionIndex(state, "button", `Inspect ${name}`);
+      expect(text).toContain(`Qualifier ${name}: provisional`);
+    }
+  });
+}
+
+const fidelityText = "Price < 10 & café — 東京 😀";
+const fidelityTest = test.extend({ html: `<main><p>Price &lt; 10 &amp; café — 東京 😀</p></main>` });
+fidelityTest("TEXT-B01: preserves Unicode and punctuation in the observed text", async ({ tab }) => {
+  expect(leafText(await tab.getAXState({ emit: false, disableDiffing: true }))).toContain(fidelityText);
+});
+
+const lateTest = test.extend({ html: latePage });
+lateTest("FRESH-B01: observes a late result after the page has completed loading it", async ({ tab, site }) => {
+  const button = actionIndex(await tab.getAXState({ emit: false, disableDiffing: true }), "button", "Load later result");
+  await tab.click(button);
+  // This is the real page reporting its completed DOM mutation. No repeated
+  // SDK action or AX polling masks a stale first post-completion observation.
+  await expect.poll(async () => (await site.read()).phase).toBe("ready");
+  expect(await tab.getAXState({ emit: false })).toContain("Later result ready");
+});
