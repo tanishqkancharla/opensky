@@ -12,6 +12,7 @@ import { StdioMcpDriverClient } from "../src/mcp-driver.js";
 import { createOpenSky } from "../src/opensky.js";
 import { parseOperatorSessions, successfulEndSessionId } from "./acceptance/evidence.js";
 import { RecordingDriverClient } from "./driver-tape.js";
+import { executeProbeCase } from "./probe-case-loop.js";
 
 // Cases describe generic structural relationships, not a website-specific extraction recipe.
 const cases = [
@@ -59,6 +60,7 @@ const client = new StdioMcpDriverClient({ binaryPath: binary, autoInstall: false
 const driver = new RecordingDriverClient(client, { classification: "real-driver-controlled-page-integration", expectedSource });
 const opensky = createOpenSky({ driver, session, homeDir: home, settleDelayMs: 0 });
 const timeline: Array<Record<string, unknown>> = [];
+const assertionFailures: Array<{ case: string; error: string }> = [];
 const cua = createCua(opensky);
 const server = createServer((request, response) => {
   const fixture = cases[Number(request.url?.slice(1))];
@@ -85,40 +87,59 @@ try {
   assert.ok(address && typeof address !== "string");
   for (const [index, fixture] of cases.entries()) {
     let tab: Tab | undefined;
-    try {
-      tab = await cua.createBrowserTab("chrome", `http://127.0.0.1:${address.port}/${index}`, { sessionName: `context-${index}` });
-      const queried = await tab.getAXState({ query: fixture.query });
-      timeline.push({ case: fixture.name, operation: "query", args: { query: fixture.query }, result: queried });
-      const anchor = findIndex(queried, fixture.anchorRole, fixture.anchorName);
-      const currentSnapshot = snapshotId();
-      const callsBefore = driver.tape.calls.length;
-      const nearby = await tab.getAXState({ context: anchor });
-      timeline.push({ case: fixture.name, operation: "context", args: { context: anchor }, result: nearby });
-      assert.equal(driver.tape.calls.length, callsBefore + 1, "Context makes exactly one driver call");
-      assert.equal(snapshotId(), currentSnapshot, "Context must not collect a replacement snapshot");
-      assert.ok(nearby.includes(fixture.nearby), "An unmatched sibling qualifier must survive");
-      const outerIndex = Number(nearby.match(/enclosing group \[(\d+)\]/)?.[1]);
-      assert.ok(Number.isSafeInteger(outerIndex), `${fixture.name}: this fixture requires an outward structural anchor`);
-      const outer = await tab.getAXState({ context: outerIndex });
-      timeline.push({ case: fixture.name, operation: "outer context", args: { context: outerIndex }, result: outer });
-      // Inspect only the source outline, never the separate ranked action or
-      // context-index inventories. Compare only the fixture's evidence strings.
-      const outline = outer.split("\n").filter((line) => /^\s*- /.test(line) && !/^- \[\d+\]/.test(line)).join("\n");
-      const earlierAt = outline.indexOf(JSON.stringify(fixture.outer));
-      const currentAt = outline.indexOf(JSON.stringify(fixture.nearby));
-      assert.ok(earlierAt >= 0 && currentAt > earlierAt,
-        `${fixture.name}: the source outline must show the earlier sibling before the current qualifier`);
-      assert.match(outer, /0 nodes before, 0 after omitted; group complete\./,
-        `${fixture.name}: this small static group must have fully proven collection coverage`);
-      assert.equal(snapshotId(), currentSnapshot);
-      const beforeRefusal = driver.tape.calls.length;
-      const activeTab = tab;
-      await assert.rejects(() => activeTab.click(outerIndex), /does not support/);
-      assert.equal(driver.tape.calls.length, beforeRefusal, "Read-only group cannot dispatch input");
-      await tab.click(anchor); // Original same-snapshot action authority remains valid; fixture button has no external effect.
-      await assert.rejects(() => activeTab.getAXState({ context: anchor }), /no intervening input/);
-      timeline.push({ case: fixture.name, checksPassed: true });
-    } finally { if (tab) await tab.close(); }
+    const caseCallStart = driver.tape.calls.length;
+    const outcome = await executeProbeCase({
+      run: async () => {
+        tab = await cua.createBrowserTab("chrome", `http://127.0.0.1:${address.port}/${index}`, { sessionName: `context-${index}` });
+        const queried = await tab.getAXState({ query: fixture.query });
+        timeline.push({ case: fixture.name, operation: "query", args: { query: fixture.query }, result: queried });
+        const anchor = findIndex(queried, fixture.anchorRole, fixture.anchorName);
+        const currentSnapshot = snapshotId();
+        const callsBefore = driver.tape.calls.length;
+        const nearby = await tab.getAXState({ context: anchor });
+        timeline.push({ case: fixture.name, operation: "context", args: { context: anchor }, result: nearby });
+        assert.equal(driver.tape.calls.length, callsBefore + 1, "Context makes exactly one driver call");
+        assert.equal(snapshotId(), currentSnapshot, "Context must not collect a replacement snapshot");
+        assert.ok(nearby.includes(fixture.nearby), "An unmatched sibling qualifier must survive");
+        const outerIndex = Number(nearby.match(/enclosing group \[(\d+)\]/)?.[1]);
+        assert.ok(Number.isSafeInteger(outerIndex), `${fixture.name}: this fixture requires an outward structural anchor`);
+        const outer = await tab.getAXState({ context: outerIndex });
+        timeline.push({ case: fixture.name, operation: "outer context", args: { context: outerIndex }, result: outer });
+        // Inspect only the source outline, never the separate ranked action or
+        // context-index inventories. Compare only the fixture's evidence strings.
+        const outline = outer.split("\n").filter((line) => /^\s*- /.test(line) && !/^- \[\d+\]/.test(line)).join("\n");
+        const earlierAt = outline.indexOf(JSON.stringify(fixture.outer));
+        const currentAt = outline.indexOf(JSON.stringify(fixture.nearby));
+        assert.ok(earlierAt >= 0 && currentAt > earlierAt,
+          `${fixture.name}: the source outline must show the earlier sibling before the current qualifier`);
+        assert.match(outer, /0 nodes before, 0 after omitted; group complete\./,
+          `${fixture.name}: this small static group must have fully proven collection coverage`);
+        assert.equal(snapshotId(), currentSnapshot);
+        const beforeRefusal = driver.tape.calls.length;
+        const activeTab = tab;
+        await assert.rejects(() => activeTab.click(outerIndex), /does not support/);
+        assert.equal(driver.tape.calls.length, beforeRefusal, "Read-only group cannot dispatch input");
+        await tab.click(anchor); // Original same-snapshot action authority remains valid; fixture button has no external effect.
+        await assert.rejects(() => activeTab.getAXState({ context: anchor }), /no intervening input/);
+      },
+      cleanup: async () => {
+        if (!tab) return false;
+        await tab.close();
+        return caseCleanupVerified(caseCallStart);
+      },
+    });
+    if (outcome.assertionFailure) {
+      const error = outcome.assertionFailure.message;
+      assertionFailures.push({ case: fixture.name, error });
+      timeline.push({ case: fixture.name, checksPassed: false, assertionFailure: error, cleanupVerified: true });
+    } else {
+      timeline.push({ case: fixture.name, checksPassed: true, cleanupVerified: true });
+    }
+  }
+  if (assertionFailures.length > 0) {
+    failure = new Error(`${assertionFailures.length} controlled fixture assertion(s) failed: ${assertionFailures
+      .map((entry) => `${entry.case}: ${entry.error}`)
+      .join("; ")}`);
   }
 } catch (error) { failure = error; }
 finally {
@@ -150,7 +171,7 @@ finally {
     catch (error) { failure ??= error; }
   }
   const report = { classification: "real-driver-controlled-page-integration", modelEvaluation: false,
-    expectedSource, openskySource, session, before, after, cleanupVerified, transport, timeline,
+    expectedSource, openskySource, session, before, after, cleanupVerified, transport, timeline, assertionFailures,
     passed: !failure && cleanupVerified, error: failure instanceof Error ? failure.message : failure };
   await writeFile(join(output, "report.json"), JSON.stringify(report, null, 2) + "\n", { flag: "wx", mode: 0o600 });
   await writeFile(join(output, "driver-tape.json"), JSON.stringify(driver.tape, null, 2) + "\n", { flag: "wx", mode: 0o600 });
@@ -170,4 +191,15 @@ function findIndex(text: string, role: string, name: string): number {
 function snapshotId(): unknown {
   const call = driver.tape.calls.findLast((call) => call.tool === "get_browser_state");
   return asRecord(asRecord(call?.result?.structured)?.snapshot)?.id;
+}
+
+function caseCleanupVerified(callStart: number): boolean {
+  const calls = driver.tape.calls.slice(callStart);
+  const prepared = [...new Set(calls
+    .filter((call) => call.tool === "browser_prepare")
+    .map((call) => call.args.session)
+    .filter((owned): owned is string => typeof owned === "string" && owned.length > 0))];
+  if (prepared.length === 0) return false;
+  const ended = calls.filter((call) => call.tool === "end_session");
+  return prepared.every((owned) => ended.some((call) => successfulEndSessionId(call) === owned));
 }

@@ -238,6 +238,22 @@ and genuine blank pages; live recheck remains pending. The next probe also
 requires earlier-before-current source-outline order and proven complete group
 coverage for its small static fixtures, rather than mere substring presence.
 
+**RUN-014 — fail-fast controlled probes hid later fixture defects:** probe 02
+stopped at the first article completeness assertion even though that case's
+exact owned browser session closed successfully, so list and table checks never
+ran. The probe now records clean assertion failures and continues serially only
+after the case's `browser_prepare` sessions each have matching inactive
+`end_session` receipts. Missing/failed cleanup, transport failures, ordinary
+operational errors, and assertions wrapping an operational error remain
+terminal before the next fixture is admitted. This policy is
+**contract-confirmed**, not real-driver acceptance, in
+[`test/probe-browser-context.test.ts`](../test/probe-browser-context.test.ts).
+Probe 03 independently passed all article/list/table checks with exact cleanup
+before this orchestration change; it validates the capability, not the new
+continue-on-clean-assertion branch. Evidence:
+[`../../e2e-epoch-37/probe-02/README.md`](../../e2e-epoch-37/probe-02/README.md),
+[`../../e2e-epoch-37/probe-03/README.md`](../../e2e-epoch-37/probe-03/README.md).
+
 **SET-010 — inventory can briefly spawn background work:** the local CLI's
 finite-command telemetry path creates a short-lived detached process with the
 same executable, confusing a strict pre-install quiescence guard. Two guards
