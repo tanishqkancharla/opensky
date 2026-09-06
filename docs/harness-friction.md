@@ -272,6 +272,17 @@ six blocks / 96 members / 24,000 UTF-8 outline bytes; a standalone page is cappe
 at 25 members / 12,000 bytes. No efficiency gain is claimed before fresh actors
 pass grounding and cleanup. No domain-specific extraction rules were added.
 
+**LIB-021 — node coverage is not full-text fidelity:** independent source audit
+found the existing driver `clean_semantic_text` keeps at most 1,000 characters
+per normalized node string without a truncation marker. Context cursors traverse
+stored nodes, so they cannot recover a qualifier past that text prefix. This is
+an **open, pre-existing source-level limitation**, not a demonstrated cause of
+the e37 failures or a new regression from pagination. A future generic fix must
+preserve explicit text-truncation metadata and an evidence retrieval path, with
+long-label/qualifier tests; group completeness currently concerns materialized
+nodes, not lossless source text. Do not report full-document evidence from that
+flag alone.
+
 Independent probe review also found a presentation inconsistency: fresh views
 suppressed the driver's stale `about:blank` title after navigation, while stored
 context printed it. Both now share the same placeholder normalization, without

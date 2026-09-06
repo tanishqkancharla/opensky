@@ -102,7 +102,9 @@ try {
         timeline.push({ case: fixture.name, operation: "query", args: { query: fixture.query }, result: queried });
         const anchor = findIndex(queried, fixture.anchorRole, fixture.anchorName);
         const currentSnapshot = snapshotId();
-        const automatic = queried.slice(0, queried.indexOf("Actionable elements"));
+        const matchingPathsAt = queried.indexOf("Matching paths (filtered, not a complete sibling list):");
+        assert.ok(matchingPathsAt > 0, "Automatic evidence must be distinct from matching paths");
+        const automatic = queried.slice(0, matchingPathsAt);
         assert.match(automatic, /Evidence context/, "Query must include context without an extra request");
         assert.ok(sourceOutline(automatic).includes(JSON.stringify(fixture.nearby)), "Automatic context must retain an unmatched qualifier");
         const callsBefore = driver.tape.calls.length;
@@ -222,10 +224,12 @@ function directionToken(text: string, direction: "Earlier" | "Later"): string | 
 async function checkPagination(tab: Tab, initial: string, expectedSnapshot: unknown, caseName: string): Promise<void> {
   const observedRows: number[] = [];
   const issuedMembers = new Set<string>();
+  const forwardMembers: string[] = [];
   const seenTokens = new Set<string>();
   let earlierToken: string | undefined;
   let text = initial;
-  let previousBefore = -1;
+  let previousEnd = 0;
+  let finalPageStart = 0;
   let total: number | undefined;
   const readPage = async (token: string) => {
     assert.ok(!seenTokens.has(token), "Traversal must not repeat a consumed cursor");
@@ -254,17 +258,19 @@ async function checkPagination(tab: Tab, initial: string, expectedSnapshot: unkn
     assert.ok(context.member_refs.length <= 25);
     const before = Number(context.before_omitted);
     const after = Number(context.after_omitted);
-    assert.ok(before > previousBefore, "Later windows advance in source order");
-    previousBefore = before;
+    assert.equal(before, previousEnd, "Later windows must be contiguous in source order");
+    previousEnd = before + context.member_refs.length;
+    finalPageStart = before;
     total ??= before + context.member_refs.length + after;
     assert.equal(before + context.member_refs.length + after, total, "All windows describe one fixed materialized group");
     for (const ref of context.member_refs) {
       assert.equal(typeof ref, "string");
       assert.ok(!issuedMembers.has(ref), "Adjacent later pages may not skip via overlapping member windows");
       issuedMembers.add(ref);
+      forwardMembers.push(ref);
     }
     observedRows.push(...[...sourceOutline(text).matchAll(/"Ledger row (\d{2})"/g)].map(match => Number(match[1])));
-    earlierToken ??= directionToken(text, "Earlier");
+    earlierToken = directionToken(text, "Earlier");
     const token = directionToken(text, "Later");
     if (!token) { assert.equal(after, 0, "No unreachable omitted tail on a static list"); break; }
     assert.ok(after > 0);
@@ -273,17 +279,20 @@ async function checkPagination(tab: Tab, initial: string, expectedSnapshot: unkn
   assert.equal(issuedMembers.size, total, "Every materialized member must appear in a window");
   assert.deepEqual([...new Set(observedRows)], Array.from({ length: 80 }, (_, i) => i), "Visible source outlines must expose every nested-list row in order");
   assert.ok(earlierToken, "A later window must expose a usable earlier cursor");
-  let reverseBefore = total!;
+  let expectedReverseEnd = finalPageStart;
   for (let pages = 0; earlierToken; pages++) {
     assert.ok(pages < 100);
     text = await readPage(earlierToken);
     const context = asRecord(asRecord(driver.tape.calls.at(-1)?.result?.structured)?.context);
     const before = Number(context?.before_omitted);
-    assert.ok(before < reverseBefore, "Earlier windows advance toward the beginning");
-    reverseBefore = before;
+    assert.ok(context && Array.isArray(context.member_refs) && context.member_refs.length > 0);
+    assert.equal(before + context.member_refs.length, expectedReverseEnd, "Earlier windows must be contiguous toward the beginning");
+    assert.deepEqual(context.member_refs, forwardMembers.slice(before, expectedReverseEnd), "Reverse traversal returns the same exact source members");
+    expectedReverseEnd = before;
     earlierToken = directionToken(text, "Earlier");
     if (!earlierToken) assert.equal(before, 0, "No unreachable omitted prefix");
   }
+  assert.equal(expectedReverseEnd, 0, "Reverse traversal covers the whole prefix");
   assert.ok(sourceOutline(text).includes('"Ledger row 00"'), "Earlier traversal exposes the actual prefix, not a count alone");
 }
 
