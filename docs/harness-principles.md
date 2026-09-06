@@ -15,13 +15,22 @@ desirable contracts, not executable OpenSky APIs.
    }
    ```
 
-2. Return useful evidence with completed work. Avoid calls that only retrieve a result already available.
+2. Return useful evidence with completed work. Include the context needed to interpret it, not just a pointer or warning that context is missing.
 
    ```text
    result = run_tests()
    if result.failed:
        fix(result.failed_tests, result.relevant_errors)
        # No separate fetch_logs() needed.
+   ```
+
+   ```text
+   search(query) -> {
+       matches: [group(label, ordered_rows, nearby_qualifiers)],
+       coverage: PARTIAL,
+       more: exact_revision_bound_cursor
+   }
+   # A match should arrive with its meaning, and a usable path to what is omitted.
    ```
 
 3. Bind actions to explicit resources. Validate identity and arguments before side effects; do not rely on ambient focus or shared mutable state.
