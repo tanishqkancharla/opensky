@@ -33,7 +33,7 @@ Backfill scope is necessarily bounded. It covers the repository history through 
 | LIB-012 | Saturated native AX trees hid later controls; full web trees and auxiliary help/action text consumed excessive context. | Preserve shallow native controls with explicit incomplete coverage, bound help text, compact passive action hints, reset at document boundaries, and separate driver completeness from renderer completeness. | Native shallow projection is **live-confirmed** by Activity Monitor epoch-17; web compaction/help bounding was exercised in browser tasks and is **contract-confirmed** in [`test/opensky.test.ts`](../test/opensky.test.ts). See [ab88cb3](https://github.com/tanishqkancharla/opensky/commit/ab88cb3148f797c91b9373287f7b30e1d94eb640), [23078a9](https://github.com/tanishqkancharla/opensky/commit/23078a993e50694c8abc43f3dff4ddc419e24fcb), [814e169](https://github.com/tanishqkancharla/opensky/commit/814e1692b94ccc7c7dacbd236555299dbffed6df). Native shallow projection and browser semantic selection are distinct limitations. |
 | LIB-013 | Early browser automation could reuse/restored tabs, fall through to native input, or guess the page scroller. | Driver-owned isolated Chromium sessions, exact target/tab binding, exact navigation/input, main-document scroll disambiguation, and no native fallback. | Isolated-session navigation, observation, and semantic input were **live-confirmed** across epochs 18–35; binding, no-fallback, and scroll-disambiguation safety branches are **contract-confirmed** in [`test/typed-browser.test.ts`](../test/typed-browser.test.ts). See [88858c1](https://github.com/tanishqkancharla/opensky/commit/88858c19571362a4d193552bbe9c75b7f45cb7f3), [b9b998e](https://github.com/tanishqkancharla/opensky/commit/b9b998e1013173534fe8124329a1e4d924491c50), [4ca99ad](https://github.com/tanishqkancharla/opensky/commit/4ca99ad08905ded039e5dd782cbea86f0cb7cb3d). Coordinate-scroll delivery still has the live gap in DRV-002. |
 | LIB-014 | The first native-style facade lacked current Browser-versus-Tab ergonomics and could invite invalid calls or unnecessary observations. | Bound `Browser.tabs.new/get/list/selected`, `nameSession`, exact `Tab.close`, installed-provider discovery, top-level known-URL shortcut, and pre-dispatch argument validation. Inventories are explicitly facade-owned-only; unsupported capabilities throw. | **Contract-confirmed**, with invalid-argument **boundary confirmation** against the real helper in epoch 27. See [`src/cua.ts`](../src/cua.ts), [`test/cua.test.ts`](../test/cua.test.ts), [`test/cua-repl-tool.test.ts`](../test/cua-repl-tool.test.ts), [58bc18a](https://github.com/tanishqkancharla/opensky/commit/58bc18abc0306c46e5e760173709715b4f17da31), [1d33c0c](https://github.com/tanishqkancharla/opensky/commit/1d33c0c409f224031e1ebc667e6e0ea3e5335fd1), [2a477eb](https://github.com/tanishqkancharla/opensky/commit/2a477eb7e3c3f010d5ea5e8490875086d67ebe69), [aba84df](https://github.com/tanishqkancharla/opensky/commit/aba84dfd66092ed476ab5476e5136d328372e10a). In-app browser, hidden creation, host metadata without callbacks, and user-tab discovery remain unsupported. |
-| LIB-015 | Filtered semantic queries were easy to mistake for complete ordered context: returned match ancestors can omit sibling/group labels, leading-prefix coverage, and relative document order. Dense-page classification and “first” claims failed repeatedly even when recall found the queried title. | Same-snapshot `getAXState({context: index})` is implemented and passes controlled real article/list/table probes on driver `29c27e6`. It reads generic structure, exposes read-only group/parent anchors, and preserves old action capabilities. Warnings alone are insufficient; contextual defaults and traversable omissions are the next generic work. | **Open at model/observation level**. Fresh e37 Amazon and Wikipedia still fail order grounding; neither actor invoked context. GitHub/HN pass when decisive header/rank evidence is initially visible. All four real runs cleaned up. Controlled capability acceptance is not task parity. [Current results](../../e2e-epoch-37/README.md), [contract](../../e2e-epoch-37/context-contract.md). Exact-phrase recall suppression was fixed separately in DRV-006. |
+| LIB-015 | Filtered semantic queries were easy to mistake for complete ordered context: returned match ancestors can omit sibling/group labels, leading-prefix coverage, and relative document order. Dense-page classification and “first” claims failed repeatedly even when recall found the queried title. | Automatic query neighborhoods and exact same-snapshot context/continuation now pass controlled real article/list/table and long nested-list probes on driver `17b48d8`. Source order, read-only authority, and exact older action refs are preserved. | **Partially improved, still open**. Fresh e38 improves from 2/4 to 3/4 grounded task passes: automatic Contents context fixes Wikipedia; GitHub/HN still pass; Amazon lacks the selected product's first-organic proof and does not retrieve more. All four clean up. [Current results](../../e2e-epoch-38/README.md). Exact-phrase recall suppression was fixed separately in DRV-006. |
 | LIB-016 | The old browser renderer flattened depth, dropped named/stateful generic containers, deduplicated repeated labels across containers, and obscured omission boundaries. | Preserve source indentation, named/stateful containers and repeated labels; use a bare `-` only for unnamed generic containers; disclose separate outline/action budgets. | **Contract-confirmed**, offline-audited, and exercised live in e35—not blanket-accepted. [d46d848](https://github.com/tanishqkancharla/opensky/commit/d46d84840fd56cd5f1f3ee2ebebbc0097b027cf6), [`test/browser-rendering.test.ts`](../test/browser-rendering.test.ts), epoch-35 [`README.md`](../../e2e-epoch-35/README.md). HN passed both arms; Amazon Pi still failed ordered-context grounding. Across 64 saved observations, outline chars rose 7.6%; meaningful rows improved in 36, stayed equal in 11, and **fell in 17**, including 177 versus 194 on e34 Amazon. The driver-selected target was already absent, so rendering could not recover it. |
 | LIB-017 | A read-only control with an `AXTextField` role was described as directly editable even though it lacked settable/editable action evidence. | Emit direct-typing guidance only for controls with actual mutability evidence; hide unavailable action indices. | **Live-found** in epoch-10 System Information and **contract-confirmed** in [`test/opensky.test.ts`](../test/opensky.test.ts). This does not imply every text-like control is editable. |
 | LIB-018 | Exact-browser AX reads can transiently fail with a missing frame during navigation; broad retries could hide other failures or spend the action budget. | Retry only the recognized transient frame-read condition inside a bounded observation window, preserving the same exact target and arguments. | **Live-observed** as internal recovered reads in e32/e33 and **contract-confirmed** by [`test/typed-browser.test.ts`](../test/typed-browser.test.ts), [d869d05](https://github.com/tanishqkancharla/opensky/commit/d869d05acdec9106f3ce0d58e6d8072d43903f7f). It remains tool-layer latency even when the public call succeeds. |
@@ -175,9 +175,36 @@ attempt separately. Helper: external `fresh_run.ts`, included in provenance hash
 
 ## Current parity boundary
 
+### Epoch-38 contextual defaults: 3/4 fresh task passes
+
+Clean OpenSky `72df0de` and installed signed driver `17b48d8` pass the expanded
+controlled real probe, including all 80 nested-list rows and 64 forward/reverse
+continuation reads without recapture. An independent archive audit confirms
+visible evidence, exact stored identities and cleanup. The serial Pi Terra/medium
+matrix then passes Wikipedia, GitHub and HN; Amazon remains unsupported. Automatic
+Contents context now supplies Wikipedia's zero-omitted prefix and first-heading
+proof. No actor consumes a context cursor, so live model adoption of pagination
+remains unproven despite controlled integration acceptance.
+
+All four model runs have zero public tool errors and verified exact cleanup;
+Amazon has one recovered underlying frame-read error. Calls / seconds are
+Amazon 5 / 30.548, Wikipedia 6 / 24.286, GitHub 4 / 18.337, HN 4 / 17.899.
+Native baselines were reused without new native inference. Do not declare a
+winner: Amazon fails grounding; other baselines have recorded protocol drift.
+Evidence and human-readable public timelines:
+[`../../e2e-epoch-38/README.md`](../../e2e-epoch-38/README.md).
+
+Next observation issue: one enclosing-group neighborhood can leave other
+matching items without their own qualifiers or an adequately proven prefix.
+Amazon's selected title remains only in filtered paths while partial contextual
+blocks describe other nearby items. Test generic per-match coverage associations
+and evidence-preserving sparse structure before spending another model run.
+Do not add website rules or weaken ordinal grounding. The new defaults cost
+additional visible text on Amazon/Wikipedia; success and payload are separate.
+
 ### Epoch-37 controlled acceptance and model-evidence gap
 
-Latest status: real installed driver `29c27e6` and OpenSky `7ecac56` passed the
+Historical status: real installed driver `29c27e6` and OpenSky `7ecac56` passed the
 controlled article/list/table probe 03; updated probe orchestration `0449be5`
 passed probe 04 with exact per-case and final cleanup. Four new serial Pi
 Terra/medium runs reused pinned native baselines: Amazon and Wikipedia still
@@ -194,10 +221,11 @@ continuations, not another warning or a weaker order criterion. See the
 
 Full current checks: OpenSky **310/310** deterministic tests + build; external
 evaluator **89/89** + strict typecheck. These counts are not GUI acceptance.
-The current uninstalled candidate adds automatic query neighborhoods and
+The e38 candidate adds automatic query neighborhoods and
 same-snapshot directional continuation in OpenSky, its facade, evaluator tools
-and packaged instructions. Driver implementation/review and the expanded real
-probe remain pending; the four e37 model outcomes above are unchanged.
+and packaged instructions. Driver core tests pass 643/643; implementation/source
+review, release build, signed deployment and the expanded real probe are complete.
+The four historical e37 outcomes above remain unchanged; e38 is separate evidence.
 Timelines, original protocol differences and raw comparison metrics are in
 [`../../e2e-epoch-37/README.md`](../../e2e-epoch-37/README.md). The following
 implementation/review history is retained rather than replacing failed probes
@@ -255,9 +283,9 @@ accepts an exact emitted `continuation` token and validates snapshot/tab/frame/
 group/order-domain identity, single use, pending input and bounded output.
 Automatic query context is rendered before matching paths and ranked controls;
 standalone pages are not cut again by the ordinary outline budget. Tokens and
-coverage stay outside body budgets. This is **implemented and contract-tested
-on the OpenSky side, not yet real-driver accepted**. Driver work is under review,
-and the controlled probe now includes an 80-row nested list with complete
+coverage stay outside body budgets. This is **implemented, contract-tested and
+controlled-real-driver confirmed in e38**, not general website/model acceptance.
+The controlled probe includes an 80-row nested list with complete
 actor-visible forward traversal, reverse prefix access, unchanged snapshot ID,
 single-RPC reads and reused-token refusal. This gap
 is generic and remains open even if the current small fixtures or model tasks
@@ -317,8 +345,9 @@ reuses the existing evaluator, preflights all cases, pins source revisions and
 six baseline hashes, and admits the next case only after child exit plus exact
 session/MCP/target cleanup evidence. Public review can overlap the next GUI case;
 GUI itself stays serial. Twenty-four queue/receipt regressions and a four-case
-no-model preflight pass; no live model-matrix acceptance or measured speedup is
-claimed yet. Native-app cases are deliberately refused pending their distinct
+no-model preflight pass; the e38 four-case live matrix also passes its exact
+serial admission/cleanup happy path. No measured iteration-speedup or interrupted
+branch acceptance is claimed. Native-app cases are deliberately refused pending their distinct
 window-absence proof. No new API-key path, automatic install or retry was added.
 Procedure: [`../../../work/eval-scripts/ITERATION.md`](../../../work/eval-scripts/ITERATION.md).
 
