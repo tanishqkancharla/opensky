@@ -642,3 +642,14 @@ concurrent cases. Existing positive assertions remain unchanged, including
 paste and scrolling. Native probes will use temporary documents and exact owned
 targets on the explicitly authorized Mac. Status: baseline execution pending;
 this entry does not claim the remaining capabilities are implemented.
+
+Baseline [34160820624](https://github.com/tanishqkancharla/opensky/actions/runs/34160820624)
+ran all ten browser cases: STALE-B01, TEXT-B01 and FRESH-B01 passed; paste,
+scrolling and all three context cases failed. Investigation found that the
+existing `tanishq/query-context` branch (through `335b605b2`) had never been
+integrated into the renamed driver. It is now merged, preserving its original
+commits, at `d3100981785e8407a7589fbd1aff989d0e72594d`. The SDK lane pins this
+combined build for real validation; paste/scroll remain separate capability work.
+The first local native baseline was blocked before selection by unavailable AX
+window mapping, with exact cleanup also refused; recovery state is retained.
+The user has since granted permission and local recovery is in progress.
