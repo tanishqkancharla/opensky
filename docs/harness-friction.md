@@ -664,3 +664,32 @@ real paste scenarios retain their trusted-event, multiline and formatting
 assertions. Build and E2E typecheck passed locally. The local Node suite reached
 a sandbox loopback-listen denial; normal CI remains its validation environment.
 The workflow now pins paste candidate `a92fac8a44d3574570b69f70dd8cbe432256acbe`.
+
+
+**SET-016 — paste, wheel input and truthful native failures (2026-09-07):**
+SDK `8f955ca` with driver `a92fac8a44d3574570b69f70dd8cbe432256acbe` passed
+9/10 browser cases in [34163189757](https://github.com/tanishqkancharla/opensky/actions/runs/34163189757),
+including all three real paste formats. Driver build/unit checks passed on all
+three OSes in [34163145256](https://github.com/tanishqkancharla/cua/actions/runs/34163145256).
+Native paste is still unimplemented.
+
+Driver `f089f489a021c19ef84f5c75530ca589c82bc5ac` queues trusted wheel gestures
+without explicit native focus activation and preserves CLI error envelopes.
+SDK `65819a3` passed SCROLL-B01 with a real X11 foreground witness in
+[34164047110](https://github.com/tanishqkancharla/opensky/actions/runs/34164047110);
+the full workflow passed all ten browser cases. All 336 SDK checks passed locally.
+
+The user granted the development app AX/screen permissions and moved TextEdit.
+The helper reports its own `com.opensky.driver` permissions as granted, but the
+retained test window still had no AXWindows entry even after a helper restart.
+A native diagnostic proved AXFocusedWindow and AXMainWindow map to the exact
+CGWindowID and expose controls. Driver `fefef610e` integrates these exact candidates
+without selecting by title. Real native SDK selection/cleanup remains pending.
+The SDK now surfaces the observed `bring_to_front_exact_window_unverified` code,
+partial effect details, and a no-replay warning instead of returning success.
+
+The updated macOS CLI was also driven through the real SDK against the existing
+permissioned daemon. It preserved the original `bring_to_front` diagnostic,
+`bring_to_front_exact_window_unverified` code and exact partial-effect payload.
+The first AX candidate had missing FFI/import declarations; `38c05be79` corrects
+those compile errors and is the next macOS build candidate.

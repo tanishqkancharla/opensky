@@ -192,7 +192,7 @@ outline limits. These bounds are output budgets, not completeness guarantees.
 
 `getState()` labels its browser inventory with `tabInventoryScope: "facade-owned-only"`. An empty inventory means no facade-owned tabs were observed; it does not establish that the user has no pre-existing tabs or windows.
 
-Browser-provider discovery uses the installed app catalog, so `getBrowser()` works in a clean session before OpenSky has created a tab. Provider documentation emits only on its first selection. `browser.tabs.new()` and `createBrowserTab(browser)` create exact blank tabs; supplying a URL opens it directly. `nameSession()` and an explicit creation `sessionName` label future unique owned driver sessions; omitted settings retain the provider's current value. `getAXState()` after navigation collects fresh state, with a full initial view rather than a diff against the undisplayed internal navigation snapshot. Tab discovery remains deliberately limited to exact tabs created by this facade; it does not enumerate or close user-owned tabs. Because each owned tab is an isolated browser session, `selected()` returns a tab only when exactly one live owned candidate exists and otherwise returns `undefined` instead of guessing. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred and Edge is the fallback. The in-app browser, hidden tab creation, clipboard paste, optional browser capabilities, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s or are unavailable. Paste currently fails closed for every target before touching the global clipboard because Cua Driver does not yet provide the compound primitive needed to restore safely around concurrent user clipboard changes.
+Browser-provider discovery uses the installed app catalog, so `getBrowser()` works in a clean session before OpenSky has created a tab. Provider documentation emits only on its first selection. `browser.tabs.new()` and `createBrowserTab(browser)` create exact blank tabs; supplying a URL opens it directly. `nameSession()` and an explicit creation `sessionName` label future unique owned driver sessions; omitted settings retain the provider's current value. `getAXState()` after navigation collects fresh state, with a full initial view rather than a diff against the undisplayed internal navigation snapshot. Tab discovery remains deliberately limited to exact tabs created by this facade; it does not enumerate or close user-owned tabs. Because each owned tab is an isolated browser session, `selected()` returns a tab only when exactly one live owned candidate exists and otherwise returns `undefined` instead of guessing. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred and Edge is the fallback. The in-app browser, hidden tab creation, optional browser capabilities, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s or are unavailable. Exact browser tabs support real clipboard paste in text, HTML, and literal Markdown formats. Native paste remains unavailable pending a compound clipboard transaction.
 
 ## Legacy `opensky` API
 
@@ -208,7 +208,7 @@ The original snake_case, app-argument API remains available for backward compati
 | `bring_to_front({app})` | `bring_to_front` with the exact bound window |
 | `click` | Native `click` / `double_click`; exact tabs use a semantic ref or fresh screenshot coordinates with proven pixel-to-CSS metadata |
 | `drag` | Native `drag`; exact tabs use semantic `browser_pointer` drag or screenshot coordinates only with proven pixel-to-CSS metadata |
-| `paste` | Temporarily fails closed before touching the global clipboard; safe paste needs a compound driver primitive |
+| `paste` | Exact browser paste with text/HTML/literal Markdown; native paste remains unavailable |
 | `perform_secondary_action` | Supported `click` actions (`press`/`show_menu`/`open`/…), `bring_to_front`, or Delete |
 | `press_key` | Native `press_key` / `hotkey`; exact tabs use trusted `browser_key` with optional type-capable element targeting |
 | `scroll` | Native `scroll`; exact tabs use a semantic scroll ref or fresh screenshot coordinates with proven pixel-to-CSS metadata |
@@ -298,11 +298,14 @@ indices or screenshot coordinates. Coordinate drag is enabled only after a fresh
 browser screenshot supplies an explicit screenshot-pixel to viewport-CSS mapping.
 No browser action falls through to native window input.
 
-`paste` is temporarily unavailable for both native and browser targets. The former
-clipboard bridge could overwrite a clipboard change made concurrently by the user,
-and current driver clipboard formats do not provide the needed atomic contract.
-OpenSky fails before target resolution or clipboard access and does not silently
-replace paste with typing.
+`paste` targets the currently focused editable control in an exact browser tab,
+using a fresh semantic ref and a real Chromium paste command. Text supports
+multiple lines, HTML preserves rich formatting, and Markdown is literal source.
+Browser paste leaves the supplied content on the clipboard, without restoration.
+The driver serializes its clipboard writes and refuses a detected change before
+delivery; this is not an atomic transaction with unrelated OS clipboard writers.
+Native paste remains unavailable pending compound delivery and safe conditional
+clipboard restoration. OpenSky never silently substitutes typing for paste.
 
 URL targets return page-scoped semantic state by default, omitting restored tabs,
 favorites, toolbars, and application menus. Chromium URLs use a driver-owned

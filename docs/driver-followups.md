@@ -3,7 +3,8 @@
 The 2026-09-06 rename makes OpenSky Driver the exclusive native backend.
 Native implementation now belongs in the `tanishqkancharla/cua` fork under
 `libs/cua-driver`; SDK integration and consumer tests remain in OpenSky.
-These capability gaps remain deferred: renaming the driver does not fix them.
+The table records the broader acceptance work; partial implementations and exact
+validation results are recorded below. Renaming alone did not fix these gaps.
 Historical evidence IDs refer to [harness-friction.md](harness-friction.md).
 Historical failures were not rerun or reclassified as passes here.
 
@@ -21,7 +22,7 @@ real-fixture prerequisites and pending cases stated separately.
 | Browser paste (LIB-009/014) | Exact-tab paste with actual paste semantics, format negotiation, and page-scoped input. Computer documents Markdown as source text and no browser clipboard restoration. Do not silently implement paste with typing. | Textarea/contenteditable and a paste-event listener: multiline values, HTML, Markdown source, event delivery and exact-tab isolation. |
 | Existing browser tabs and provider identity (LIB-014) | Enumerate provider/profile/tab IDs and selected tab; bind to an existing tab using verified provider identity. Distinguish user-owned from agent-created tabs. Current isolated owned sessions cannot establish the user's inventory. | Two profiles, duplicate titles/URLs, close/reopen with reused numeric IDs, explicit tab mentions, selected-tab changes, and cleanup that leaves user tabs open. |
 | macOS/Linux trusted coordinate scroll (DRV-002) | Exact-tab trusted scrolling without silently activating a different window; preserve the underlying rejection when the platform refuses it. | A real canvas/custom scroller after a same-tab screenshot; movement visible in fresh state; background/Space changes, stale mapping and sibling isolation. |
-| Semantic collection/context and text fidelity (LIB-015/021/022/023/024) | Retain required AX properties, text, source identity, order and qualifiers before projection. Supply bounded context/continuation with correct omissions and lifetime. Report readiness/change epochs if the source can prove them. | Repeat the declared generic article/list/table and separated-match probes against the exact driver build; test delayed content and virtualized lists without claiming completeness from an unchanged subset. The earlier e40 driver candidate remains separately awaiting live acceptance. |
+| Semantic collection/context and text fidelity (LIB-015/021/022/023/024) | Retain required AX properties, text, source identity, order and qualifiers before projection. Supply bounded context/continuation with correct omissions and lifetime. Report readiness/change epochs if the source can prove them. | Repeat the declared generic article/list/table and separated-match probes against the exact driver build; test delayed content and virtualized lists without claiming completeness from an unchanged subset. The integrated query-context implementation passed the three collection cases in SDK run 34162512013; broader continuation/virtualization acceptance remains separate. |
 | Exact action refusal details (DRV-003/005) | Preserve inner error code, reason and structured payload through the driver, CLI and MCP projection. A TypeScript parser cannot reconstruct discarded details. | Actual refused input with matching inner and public diagnostics; unknown delivery must never be automatically replayed. Existing TypeScript MCP support stays opt-in until its separate acceptance is complete. |
 | Finder/Desktop and Safari/WebKit (DRV-001/SET-007) | Address Finder's nonordinary Desktop/file surface and prove exact Safari/WebKit page/window identity and input authority. | Open the requested resource, verify identity from fresh state, act on it, and clean up only proven-owned targets. |
 | Native text selection/range actions (LIB-007/008) | Atomic exact-element selection/range updates when the current targeted-key route cannot deliver correct semantics or bounded latency. | Unicode, multiline and repeated-text disambiguation; cursor-before/after; background focus; visible control/selection change rather than a nominal acknowledgment. |
@@ -42,8 +43,8 @@ driver would be misleading:
   only supported operations, not fabricated objects.
 - **Approval mediation and real-driver CI** (SET-004/005): a host/runner must supply
   consent handling and a provisioned, permissioned desktop. The fork now provides remote Linux/Windows desktop harnesses and three-OS
-  build/unit CI (SET-012). macOS GUI acceptance remains unconfigured because no
-  separate Mac is available. No tests or API stubs substitute for that deployment.
+  build/unit CI (SET-012). The user subsequently authorized local macOS GUI testing; its results must be
+  recorded separately from hosted build/unit checks. No tests or API stubs substitute for that deployment.
 - **Concurrent state persistence** (CLN-006): locking/versioned transactions belong
   in the TypeScript session store; native ownership receipts and crash recovery
   are separate requirements. The current pass preserves the existing limitation.
@@ -68,3 +69,22 @@ passed STALE-B01 against that exact build with zero discarded/replacement/siblin
 activations, a real retire action, and exact owned-tab cleanup. SCROLL-B01
 remained failing.
 This narrow fix does not complete the other capabilities in the table.
+
+## Subsequent implementation evidence (2026-09-07)
+
+- Browser text/HTML/Markdown paste is implemented through the exact driver editor
+  and passed all three real SDK cases in [34163189757](https://github.com/tanishqkancharla/opensky/actions/runs/34163189757).
+  Native clipboard transactions, concurrent clipboard interference, and sibling
+  tab paste isolation still require their separate acceptance cases.
+- Query-context integration passed list/article/table context, and the same run
+  passed Unicode/text and delayed-content observations (9/10 browser cases).
+- Driver `f089f489a021c19ef84f5c75530ca589c82bc5ac` adds trusted mouse wheel gestures
+  without the explicit focus activation in CDP dispatchMouseEvent. SCROLL-B01 passed
+  visible movement and independent X11 foreground-focus history in
+  [34164047110](https://github.com/tanishqkancharla/opensky/actions/runs/34164047110).
+  Other platforms, Spaces, stale mappings and sibling scrollers remain separate.
+- That driver preserves CLI tool-error envelopes and nonzero exit status. The SDK
+  also detects partial activation from older flattened replies, verified against
+  the retained real TextEdit target.
+- macOS `fefef610e6b259cea47fbf35b3098f65947a9d3e` adds exact focused/main AX window
+  candidates when AppKit omits them from AXWindows. Real SDK validation is pending.

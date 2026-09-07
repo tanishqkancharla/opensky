@@ -40,7 +40,7 @@ await app.click(13);
 return app.getAXState();
 ```
 
-The facade exposes exact target objects and camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Clipboard `paste`, hidden tabs, the in-app browser, optional browser capabilities, and host marks are explicitly unsupported or unavailable.
+The facade exposes exact target objects and camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Exact browser tabs support clipboard paste in text, HTML, and literal Markdown formats. Native paste, hidden tabs, the in-app browser, optional browser capabilities, and host marks remain unsupported or unavailable.
 
 Browser queries include bounded source-ordered evidence neighborhoods when the
 helper supports them, retaining unmatched labels beside matches. These are local
@@ -220,10 +220,12 @@ fails closed and never falls through to native input.
 
 ### `paste`
 
-Paste is temporarily unavailable for every target. Safe paste needs a compound
-driver primitive that cannot overwrite a concurrent user clipboard change.
-The call fails before resolving the target or touching the clipboard, and never
-silently substitutes `type_text` because typing and paste semantics differ.
+Exact browser paste uses the currently focused editable element from fresh state.
+It delivers a real paste event with text, HTML, or literal Markdown source and
+leaves the supplied content on the clipboard. Establish editor focus through a
+current type-capable ref first. Native paste remains unavailable pending a
+compound clipboard transaction with safe restoration. Never substitute typing
+without considering the different event and newline semantics.
 
 ### `drag`
 
@@ -273,7 +275,7 @@ Do not click through OS permission prompts, password dialogs, or "are you sure" 
 - Always derive indices from fresh state.
 - Treat action failures as ambiguous until state is refreshed. An action may take effect even if the promise rejects.
 - Prefer `set_value()` for exact multiline replacement.
-- `paste()` is unavailable; do not substitute typing unless typing semantics are acceptable.
+- Browser `paste()` leaves the supplied content on the clipboard; native paste remains unavailable. Do not substitute typing unless its semantics are acceptable.
 - Avoid newlines in `type_text()` when Return could submit.
 - Do not target the agent/IDE itself (Cursor, Codex, Terminal hosting the agent) for safety.
 

@@ -1,10 +1,10 @@
 # OpenSky SDK E2E drafts
 
-**Status: two SDK cases executed on hosted Linux; stale-reference regression passes after a driver fix, trusted scrolling remains failing.**
+**Status: all ten browser SDK cases pass on hosted Linux, including real paste and background scrolling with foreground-focus isolation. Native macOS acceptance is still in progress.**
 There are 14 implemented test bodies (13 successful workflows and one rejection)
 and 14 explicitly pending scenarios. A passing typecheck or test listing is not
-driver acceptance. Unsupported paste/scroll operations should produce failing
-E2E results when these drafts are first run, not passing rejection assertions.
+driver acceptance. Missing capabilities produce failing E2E results, not passing
+rejection assertions.
 
 Yes, OpenSky has an SDK: the `opensky-cua` package exports `createOpenSky`,
 `createCua`, `OpenSky`, bound app/tab interfaces and configuration types through
@@ -132,7 +132,7 @@ sibling-isolation assertions still require their first real SDK/driver run.
 ## Hosted Linux SDK runs
 
 `.github/workflows/sdk-e2e.yml` builds OpenSky Driver from the fork at
-`59bdc18e03a276fa98c556f6110ba7791e97d101` and runs SCROLL-B01 and STALE-B01
+the exact revision pinned in the workflow and runs all ten browser cases
 in separate disposable GitHub-hosted Ubuntu desktops. It uses the public built
 SDK, standalone Chrome, Xvfb, a session D-Bus, and a real driver daemon. The runner
 selects unrestricted driver permissions and disables Chrome's sandbox because
@@ -142,9 +142,10 @@ behavior. No GUI process starts on the developer's desktop.
 Each case retains driver identity, SDK SHA, browser version, logs, a desktop
 recording, public final screenshot/AX diagnostics, and SDK recovery directories
 for 14 days. Diagnostics run after the test so they cannot refresh its input
-mapping. Tests have no retries and each matrix case owns its VM. Paste remains
-an unimplemented SDK capability and is not counted as passing by this lane.
-macOS GUI coverage still needs a separately provisioned desktop.
+mapping. Tests have no retries and each matrix case owns its VM. The Linux scroll
+fixture additionally starts an independent xterm, brings it forward with the
+window manager, and watches X11 active-window changes during the SDK action.
+The user has authorized local macOS testing; native acceptance remains separate.
 
 ### Additional input-fidelity coverage to adapt
 
@@ -189,3 +190,23 @@ is green on Linux, Windows and macOS at that same driver SHA. This is one live
 Linux SDK regression pass, not full driver parity or cross-platform GUI
 certification. Documentation-only commits after these SHAs do not change the
 tested implementation.
+
+### Browser paste and background scroll (2026-09-07)
+
+[Run 34163189757](https://github.com/tanishqkancharla/opensky/actions/runs/34163189757)
+at SDK `8f955ca` / driver `a92fac8a44d3574570b69f70dd8cbe432256acbe`
+passed nine cases: all paste formats, list/article/table context, stale refs,
+text fidelity and delayed content. SCROLL-B01 still failed.
+
+The next candidate is SDK `65819a3` / driver
+`f089f489a021c19ef84f5c75530ca589c82bc5ac`, in
+[run 34164047110](https://github.com/tanishqkancharla/opensky/actions/runs/34164047110).
+SCROLL-B01 passed visible movement, trusted wheel receipt, unchanged independent
+foreground-window history, and exact tab cleanup. The complete workflow passed all ten browser cases.
+All 336 existing SDK checks and the E2E typecheck passed locally.
+
+The first local TextEdit run failed before selection because AXWindows was empty;
+cleanup refused as well. A read-only native diagnostic found that AXFocusedWindow
+and AXMainWindow still expose the exact owned CGWindowID and its controls. A
+macOS driver fix is being built and will be tested separately; these diagnostics
+do not count as successful SDK selection or cleanup.
