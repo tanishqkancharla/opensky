@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OPENSKY_DRIVER_REF: a92fac8a44d3574570b69f70dd8cbe432256acbe
+  OPENSKY_DRIVER_REF: f089f489a021c19ef84f5c75530ca589c82bc5ac
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -90,7 +90,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            xvfb xauth dbus-x11 at-spi2-core openbox picom ffmpeg \
+            xvfb xauth dbus-x11 at-spi2-core openbox picom ffmpeg xterm xdotool x11-utils \
             libpipewire-0.3-0 libei1 libxkbcommon0 libxtst6
           google-chrome --version
           chrome_payload="$(readlink -f "$(command -v google-chrome)")"

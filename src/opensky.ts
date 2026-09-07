@@ -1002,8 +1002,18 @@ export class OpenSky implements OpenSkyApi {
         `Application ${JSON.stringify(resolved.name)} has no exact ordinary window to bring forward. Observe again first.`,
       );
     }
-    await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: boundWindow });
+    const result = await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: boundWindow });
     this.markAction(resolved);
+    // Older driver CLIs flattened the error envelope into a successful exit.
+    // A partial activation can already have changed app focus, so never retry.
+    const outcome = asRecord(result.structured);
+    if (outcome?.activated === false || outcome?.status === "partial" || outcome?.status === "failed") {
+      throw new OpenSkyError(
+        `The driver could not verify that exact window ${boundWindow} is visible and frontmost. App focus may already have changed; observe before retrying.`,
+        typeof outcome.code === "string" ? outcome.code : undefined,
+        outcome,
+      );
+    }
     await this.settleAfterAction(resolved);
   }
 

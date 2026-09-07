@@ -1,6 +1,7 @@
 import { expect } from "vitest";
 import { actionIndex, leafText, screenshotCenter, scrollMarkerTop, test } from "../fixtures/sdk.js";
 import { canvasPage, collectionPage, latePage } from "../fixtures/site.js";
+import { backgroundTest } from "../fixtures/desktop.js";
 
 // Positive acceptance targets. Paste/scroll may fail against today's driver.
 // Do not turn an unsupported-operation error into a passing expectation.
@@ -33,13 +34,14 @@ test("PASTE-B03: inserts Markdown source literally in the browser editor", async
   expect((await site.read()).bold).toBe(false);
 });
 
-const canvasTest = test.extend({ html: canvasPage });
-canvasTest("SCROLL-B01: moves a custom canvas with trusted screenshot-coordinate scroll", async ({ tab, site }) => {
+const canvasTest = backgroundTest.extend({ html: canvasPage });
+canvasTest("SCROLL-B01: moves a custom canvas with trusted screenshot-coordinate scroll", async ({ tab, site, foregroundApp }) => {
   const before = await tab.getScreenshot({ emit: false });
   await tab.scroll(screenshotCenter(before), "down", 3);
 
   await expect.poll(async () => scrollMarkerTop(await tab.getScreenshot({ emit: false }))).toBeLessThan(scrollMarkerTop(before));
   await expect.poll(async () => (await site.read()).trustedWheel).toBe(true);
+  expect(new Set(foregroundApp.activeWindows())).toEqual(new Set([foregroundApp.windowId]));
 });
 
 for (const kind of ["list", "article", "table"] as const) {

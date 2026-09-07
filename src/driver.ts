@@ -79,7 +79,7 @@ export class CuaDriverClient implements DriverClient {
       const refusal = refusalFromResult(parsed.result);
       throw driverError(
         refusal?.message || parsed.message || result.stderr.trim() || `${tool} failed.`,
-        refusal?.code,
+        refusal?.code || firstNonemptyString(asRecord(parsed.result.structured)?.code),
         parsed.result.structured,
       );
     }
