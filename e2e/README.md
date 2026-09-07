@@ -1,6 +1,6 @@
 # OpenSky SDK E2E drafts
 
-**Status: all ten browser SDK cases pass on hosted Linux, including real paste and background scrolling with foreground-focus isolation. Native macOS acceptance is still in progress.**
+**Status: all ten browser SDK cases pass on hosted Linux, including real paste and background scrolling with foreground-focus isolation. The native exact-document opening/close case also passes on macOS; selection and paste acceptance remain in progress.**
 There are 15 implemented test bodies (14 successful workflows and one rejection)
 and 14 explicitly pending scenarios. A passing typecheck or test listing is not
 driver acceptance. Missing capabilities produce failing E2E results, not passing
@@ -213,3 +213,16 @@ and AXMainWindow still expose the exact owned CGWindowID and its controls. A
 macOS driver fix at `38c05be79` passed its build/unit matrix and awaits renewed
 permission for the rebuilt development app; these diagnostics
 do not count as successful SDK selection or cleanup.
+
+### Native document opening verified (2026-09-07)
+
+OPEN-N01 passed on the user-authorized macOS 15.7.9 desktop with SDK `5f42f0c`
+and the local driver runtime code from `aa31c70ee`. It read the requested file,
+closed that target, and observed the same-named sibling still open; fixture
+teardown completed. The run took 17.66 seconds. This verifies document binding
+and close, not the separate native selection or paste cases.
+
+The same SDK/driver commits passed all ten hosted browser cases in
+[34167084511](https://github.com/tanishqkancharla/opensky/actions/runs/34167084511);
+driver build/unit checks passed on all three OSes in
+[34167061105](https://github.com/tanishqkancharla/cua/actions/runs/34167061105).

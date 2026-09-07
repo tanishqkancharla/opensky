@@ -76,9 +76,10 @@ This narrow fix does not complete the other capabilities in the table.
   same-named documents: optional exact AXDocument URLs in the driver inventory,
   canonical file matching and independent ownership verification in the SDK.
   OPEN-N01 covers opening/closing the requested file with a same-named sibling.
-  Local builds/checks pass; live acceptance is pending the rebuilt app's TCC
-  refresh. See SET-017 in the friction ledger. Native selection and paste remain
-  separate unresolved workflows.
+  OPEN-N01 passed on macOS 15.7.9 with SDK `5f42f0c` and driver runtime code
+  `aa31c70ee`, including exact close and a surviving readable sibling. See
+  SET-017 in the friction ledger. Native selection and paste remain separate
+  unresolved workflows; stable development signing is tracked in SET-018.
 
 - Browser text/HTML/Markdown paste is implemented through the exact driver editor
   and passed all three real SDK cases in [34163189757](https://github.com/tanishqkancharla/opensky/actions/runs/34163189757).

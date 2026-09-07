@@ -722,6 +722,24 @@ Failures now include the launched PID and candidate IDs for diagnosis.
 OPEN-N01 exercises the real public SDK with distinct contents in same-named
 files and verifies that closing the requested target leaves its sibling
 readable. Local SDK checks (336), TypeScript builds and focused macOS driver
-tests passed. The changed development binary requires renewed TCC grants;
-live regression acceptance remains pending that refresh. No selection/paste
-success or broad macOS parity is claimed by these checks.
+tests passed. After refreshing the grants, OPEN-N01 passed on the user-authorized macOS
+15.7.9 desktop: the requested document was read and closed while its same-named
+sibling remained readable; fixture teardown also completed. Tested SDK
+`5f42f0cf3350d6a30a3978c6b6277b1b8443253b` and driver runtime code from
+`aa31c70eef01d60e9f1571a218bdce021b392940` (local Cargo build; subsequent
+driver source differences were formatting, unit-test and documentation only).
+All ten hosted browser cases also passed in
+[34167084511](https://github.com/tanishqkancharla/opensky/actions/runs/34167084511),
+and the driver passed all three OS build/unit jobs in
+[34167061105](https://github.com/tanishqkancharla/cua/actions/runs/34167061105).
+Native selection/paste and broad macOS parity remain separate acceptance work.
+
+**SET-018 — ad-hoc development signing invalidates repeated grants:** the local
+app was signed with `codesign --sign -`; its observed designated requirement
+was a binary-specific cdhash. Replacing the executable therefore changed its
+identity despite keeping the same bundle ID/path. Stable certificate-backed
+development signing and a consistent designated requirement are needed before
+further routine binary replacement. No signing certificate or Keychain item
+was created in this work. See [Apple TN3127](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
+The repeated grants were for the same Accessibility/Screen Recording rights,
+not an expansion of requested access.
