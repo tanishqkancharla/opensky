@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test as base } from "vitest";
@@ -16,7 +16,9 @@ export const test = base.extend<BrowserFixtures>({
     }
     const binaryPath = (process.env.OPENSKY_DRIVER_BINARY ?? process.env.CUA_DRIVER_BINARY);
     if (!binaryPath) throw new Error("OPENSKY_DRIVER_BINARY must identify the already installed helper. No auto-install/start.");
-    const homeDir = await mkdtemp(join(tmpdir(), "opensky-sdk-e2e-"));
+    const artifactRoot = process.env.OPENSKY_E2E_ARTIFACT_DIR ?? tmpdir();
+    await mkdir(artifactRoot, { recursive: true });
+    const homeDir = await mkdtemp(join(artifactRoot, "opensky-sdk-e2e-"));
     const sdk = createOpenSky({
       homeDir,
       screenshotFormat: "png",
@@ -42,6 +44,17 @@ export const test = base.extend<BrowserFixtures>({
     const tab = await cua.createBrowserTab(process.env.OPENSKY_E2E_BROWSER ?? "chrome", site.url, { sessionName: "SDK E2E" });
     try { await use(tab); }
     finally {
+      if (process.env.OPENSKY_E2E_ARTIFACT_DIR) {
+        const directory = await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR, "tab-"));
+        // Diagnostics happen after the test: they cannot refresh its action mapping.
+        for (const [name, capture] of [
+          ["final.png", () => tab.getScreenshot({ emit: false })],
+          ["final-ax.txt", () => tab.getAXState({ emit: false, disableDiffing: true })],
+        ] as const) {
+          try { await writeFile(join(directory, name), await capture()); }
+          catch (error) { console.error(`Could not retain ${name}:`, error); }
+        }
+      }
       if ((await cua.listTabs({ emit: false })).some(info => info.id === tab.id)) await tab.close();
     }
   },

@@ -601,3 +601,16 @@ and collection of 14 implemented cases passed. No real-driver execution or new
 parity acceptance is claimed. E2E dependencies are now locked; local legacy peer
 resolution avoids npm's `edgesOut` crash for the nested `file:..` dependency.
 The inherited Rust mock-based unit tests remain distinct from consumer acceptance.
+
+
+**SET-014 — first isolated SDK desktop lane (2026-09-07):** native Rust harness
+results did not establish that consumers could complete the same workflows
+through the SDK. A new hosted Linux workflow builds the pinned OpenSky fork,
+then drives SCROLL-B01 and STALE-B01 through the built public SDK in separate
+real Chrome/X11 desktops. Setup selects unrestricted permissions and disables
+the browser sandbox on disposable runners; these configurations do not certify
+approval or sandbox behavior. Fixture-managed final screenshots/AX, recovery
+state, daemon logs and recordings are retained. Diagnostics occur after the test
+to avoid refreshing action mappings. Status: configuration and static checks
+only until the first remote run is recorded below. macOS GUI and unsupported
+paste remain outside this initial lane's acceptance claims.

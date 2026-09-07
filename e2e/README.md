@@ -128,3 +128,30 @@ The 2026-09-07 experience-focused revision passed the SDK build, E2E TypeScript
 check, fixture-script syntax check, and collection of all 14 implemented cases.
 No desktop E2E was executed for that revision. Pixel movement and visible
 sibling-isolation assertions still require their first real SDK/driver run.
+
+## Hosted Linux SDK runs
+
+`.github/workflows/sdk-e2e.yml` builds OpenSky Driver from the fork at
+`637723da86b3ea42aadf9e12047258a4499d361c` and runs SCROLL-B01 and STALE-B01
+in separate disposable GitHub-hosted Ubuntu desktops. It uses the public built
+SDK, standalone Chrome, Xvfb, a session D-Bus, and a real driver daemon. The runner
+selects unrestricted driver permissions and disables Chrome's sandbox because
+of the hosted environment; this lane does not establish approval or sandbox
+behavior. No GUI process starts on the developer's desktop.
+
+Each case retains driver identity, SDK SHA, browser version, logs, a desktop
+recording, public final screenshot/AX diagnostics, and SDK recovery directories
+for 14 days. Diagnostics run after the test so they cannot refresh its input
+mapping. Tests have no retries and each matrix case owns its VM. Paste remains
+an unimplemented SDK capability and is not counted as passing by this lane.
+macOS GUI coverage still needs a separately provisioned desktop.
+
+### Additional input-fidelity coverage to adapt
+
+The [CUA first-person movement benchmark](https://github.com/trycua/cua-driver-fps-bench)
+is a useful example for held keys, mouse movement and pointer lock with real game
+outcomes and recordings. Its agent reads privileged `window.__state` through
+JavaScript. For SDK experience acceptance, a future scenario should act and
+observe through public SDK screenshots/AX, assert visible progress, and preserve
+input diagnostics separately. Its Linux container recipe does not solve macOS
+GUI provisioning. No benchmark code or Fleet infrastructure is adopted here.
