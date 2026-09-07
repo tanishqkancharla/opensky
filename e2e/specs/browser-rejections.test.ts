@@ -7,10 +7,9 @@ staleTest("STALE-B01: refuses an obsolete control without clicking another contr
   const before = await tab.getAXState({ emit: false, disableDiffing: true });
   const discarded = actionIndex(before, "button", "Discard control");
   await tab.click(actionIndex(before, "button", "Retire disposable control"));
-  await expect.poll(async () => (await site.read()).removedClicks).toBe(0);
+  await expect.poll(async () => (await site.read()).phase).toBe("retired");
 
   // Intentionally stale reference: rejection cases are separate from workflows.
   await expect(tab.click(discarded)).rejects.toThrow();
-  expect(await tab.getAXState({ emit: false })).toContain("Control removed");
-  expect((await site.read()).removedClicks).toBe(0);
+  expect(await tab.getAXState({ emit: false })).toContain("Discarded: 0; replacement: 0; sibling: 0; retire: 1");
 });

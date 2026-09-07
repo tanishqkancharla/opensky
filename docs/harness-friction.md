@@ -585,3 +585,19 @@ is green on all three platforms at
 `637723da86b3ea42aadf9e12047258a4499d361c`, including embedded source identity.
 Documentation-only commits afterward do not change the tested code. macOS GUI
 and full cross-platform/standalone-browser certification remain unclaimed.
+
+
+**SET-013 — test the consumer's actual experience (2026-09-07):** the SDK
+scroll draft treated a trusted wheel receipt as movement even though its canvas
+never redrew. Its stale-reference case observed only the removed control and
+could miss input sent to a surviving control. The canvas now scrolls and redraws
+actual content, and the assertion compares the visible document marker in public
+SDK screenshots. The stale fixture supplies a replacement and sibling plus
+visible activation counts; the test checks a fresh SDK observation after the
+refusal. Context assertions no longer contain a procedural loop. Practical
+runner configuration remains acceptable; it does not substitute for real public
+operations and external outcomes. The SDK build, E2E typecheck, script syntax,
+and collection of 14 implemented cases passed. No real-driver execution or new
+parity acceptance is claimed. E2E dependencies are now locked; local legacy peer
+resolution avoids npm's `edgesOut` crash for the nested `file:..` dependency.
+The inherited Rust mock-based unit tests remain distinct from consumer acceptance.

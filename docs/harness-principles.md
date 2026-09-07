@@ -149,5 +149,7 @@ desirable contracts, not executable OpenSky APIs.
             record_failure(run)  # Fewer calls cannot turn failure into a win.
     ```
 
+11. Test the driver's experience through the real service boundary. Use the same public actions available to human, agent, and code drivers, and verify their observable outcomes. Practical environment configuration is acceptable when explicit; it must not manufacture behavior. An event receipt or internal callback count is not a substitute for the intended result.
+
 Update a principle only when a finding generalizes beyond one task or tool.
 Prefer fixing the interface over teaching the model another exception.

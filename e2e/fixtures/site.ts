@@ -10,10 +10,12 @@ export interface PageState {
   pasteText?: string;
   pasteHtml?: string;
   trustedPaste?: boolean;
-  moved?: boolean;
   trustedWheel?: boolean;
   phase?: string;
   removedClicks?: number;
+  replacementClicks?: number;
+  siblingClicks?: number;
+  retireClicks?: number;
 }
 
 export interface Site {
@@ -92,15 +94,28 @@ for (const editor of document.querySelectorAll('textarea,[contenteditable]')) {
 
 export const canvasPage = `
 <style>html,body{margin:0;height:100%;overflow:hidden}canvas{display:block;width:100vw;height:100vh}output{position:fixed;top:8px;left:8px;pointer-events:none}</style>
-<canvas aria-label="Canvas scroller"></canvas><output aria-live="polite">Canvas at start</output>
+<canvas aria-label="Canvas scroller"></canvas><output aria-live="polite">Scroll position: 0</output>
 <script>${report}
 const canvas = document.querySelector('canvas');
 canvas.width = innerWidth; canvas.height = innerHeight;
-canvas.getContext('2d').fillRect(0,0,innerWidth,innerHeight);
+const context = canvas.getContext('2d');
+let offset = 0;
+function draw() {
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#202020';
+  context.font = '24px sans-serif';
+  for (let row = 0; row < 8; row++) context.fillText('Document section ' + (row + 1), 24, 80 + row * 100 - offset);
+  context.fillStyle = '#ff0000';
+  context.fillRect(canvas.width * 0.25, canvas.height * 0.6 - offset, canvas.width * 0.5, 24);
+  document.querySelector('output').textContent = 'Scroll position: ' + Math.round(offset);
+}
+draw();
 canvas.addEventListener('wheel', event => {
   if (event.isTrusted && event.deltaY > 0) {
-    document.querySelector('output').textContent = 'Canvas moved down';
-    report({moved:true,trustedWheel:true});
+    offset = Math.min(canvas.height * 0.5, offset + event.deltaY);
+    draw();
+    report({trustedWheel: event.isTrusted});
   }
 });
 </script>`;
@@ -128,12 +143,28 @@ document.querySelector('button').onclick = () => setTimeout(() => {
 
 export const stalePage = `
 <button id="discard">Discard control</button><button id="retire">Retire disposable control</button>
-<output aria-live="polite">Control present</output>
+<button id="sibling">Sibling control</button>
+<output id="phase" aria-live="polite">Control present</output>
+<output id="counts" aria-live="polite">Discarded: 0; replacement: 0; sibling: 0; retire: 0</output>
 <script>${report}
-document.querySelector('#discard').onclick = () => report({removedClicks:1});
+const counts = {removedClicks: 0, replacementClicks: 0, siblingClicks: 0, retireClicks: 0};
+function publish() {
+  document.querySelector('#counts').textContent = 'Discarded: ' + counts.removedClicks + '; replacement: ' + counts.replacementClicks + '; sibling: ' + counts.siblingClicks + '; retire: ' + counts.retireClicks;
+  report(counts);
+}
+document.querySelector('#discard').onclick = () => { counts.removedClicks++; publish(); };
+document.querySelector('#sibling').onclick = () => { counts.siblingClicks++; publish(); };
 document.querySelector('#retire').onclick = () => {
-  document.querySelector('#discard').remove();
-  document.querySelector('output').textContent = 'Control removed';
-  report({removedClicks:0});
+  counts.retireClicks++;
+  const discarded = document.querySelector('#discard');
+  if (discarded) {
+    const replacement = document.createElement('button');
+    replacement.textContent = 'Replacement control';
+    replacement.onclick = () => { counts.replacementClicks++; publish(); };
+    discarded.replaceWith(replacement);
+    document.querySelector('#phase').textContent = 'Control replaced';
+  }
+  publish();
+  report({phase: 'retired'});
 };
 </script>`;

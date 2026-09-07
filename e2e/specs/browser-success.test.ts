@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import { actionIndex, leafText, screenshotCenter, test } from "../fixtures/sdk.js";
+import { actionIndex, leafText, screenshotCenter, scrollMarkerTop, test } from "../fixtures/sdk.js";
 import { canvasPage, collectionPage, latePage } from "../fixtures/site.js";
 
 // Positive acceptance targets. Paste/scroll may fail against today's driver.
@@ -35,26 +35,22 @@ test("PASTE-B03: inserts Markdown source literally in the browser editor", async
 
 const canvasTest = test.extend({ html: canvasPage });
 canvasTest("SCROLL-B01: moves a custom canvas with trusted screenshot-coordinate scroll", async ({ tab, site }) => {
-  // The fixture fills the viewport with its canvas. Derive coordinates from the
-  // exact tab's screenshot; make no intervening AX read that invalidates mapping.
-  const center = screenshotCenter(await tab.getScreenshot({ emit: false }));
-  await tab.scroll(center, "down", 1);
+  const before = await tab.getScreenshot({ emit: false });
+  await tab.scroll(screenshotCenter(before), "down", 3);
 
-  await expect.poll(() => site.read()).toMatchObject({ moved: true, trustedWheel: true });
-  expect(await tab.getAXState({ emit: false })).toContain("Canvas moved down");
+  await expect.poll(async () => scrollMarkerTop(await tab.getScreenshot({ emit: false }))).toBeLessThan(scrollMarkerTop(before));
+  await expect.poll(async () => (await site.read()).trustedWheel).toBe(true);
 });
 
 for (const kind of ["list", "article", "table"] as const) {
   const collectionTest = test.extend({ html: collectionPage(kind) });
   collectionTest(`CONTEXT-B-${kind}: retains the qualifier for each separated match`, async ({ tab }) => {
     const state = await tab.getAXState({ query: "Inspect", emit: false });
-    // Read standalone text leaves. A concatenated ancestor name containing the
-    // answer does not establish that the qualifier itself was retained.
-    const text = leafText(state);
-    for (const name of ["alpha", "beta", "gamma"]) {
-      actionIndex(state, "button", `Inspect ${name}`);
-      expect(text).toContain(`Qualifier ${name}: provisional`);
-    }
+    expect(leafText(state)).toEqual(expect.arrayContaining([
+      "Qualifier alpha: provisional",
+      "Qualifier beta: provisional",
+      "Qualifier gamma: provisional",
+    ]));
   });
 }
 

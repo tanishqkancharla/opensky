@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test as base } from "vitest";
+import { PNG } from "pngjs";
 import { createCua, createOpenSky, type CuaFacade, type OpenSky, type Tab, type TargetHandle } from "opensky-cua";
 import { editorPage, servePage, type Site } from "./site.js";
 
@@ -69,6 +70,19 @@ export function screenshotCenter(png: Uint8Array): [number, number] {
   const bytes = Buffer.from(png.buffer, png.byteOffset, png.byteLength);
   if (!bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error("Expected SDK PNG screenshot");
   return [bytes.readUInt32BE(16) / 2, bytes.readUInt32BE(20) / 2];
+}
+
+/** Locate the visible red document marker in the actual public SDK screenshot. */
+export function scrollMarkerTop(png: Uint8Array): number {
+  const { width, height, data } = PNG.sync.read(Buffer.from(png));
+  const columns = [0.35, 0.5, 0.65].map(fraction => Math.floor(width * fraction));
+  for (let y = 0; y < height; y++) {
+    if (columns.every(x => {
+      const pixel = (y * width + x) * 4;
+      return data[pixel]! > 200 && data[pixel + 1]! < 80 && data[pixel + 2]! < 80 && data[pixel + 3]! > 200;
+    })) return y;
+  }
+  throw new Error("The document marker is not visible in the SDK screenshot");
 }
 
 export const nativeText = "α 😀 one needle.\nβ 😀 two needle.\n";

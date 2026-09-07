@@ -13,7 +13,7 @@ package exports; they do not import `src/` or inject a `DriverClient`.
 
 ## Tested boundary
 
-The path is **public SDK → real installed Cua Driver → real browser/native app →
+The path is **public SDK → real installed OpenSky Driver → real browser/native app →
 public AX state, the app's HTTP backend, or a saved document**. This is SDK E2E
 coverage, not a test of a separate UI built on the SDK, and not model evaluation.
 
@@ -23,6 +23,20 @@ fixture-managed isolation. These are library tests using
 [Vitest fixtures](https://vitest.dev/guide/test-context.html#test-extend).
 Playwright would be appropriate for testing an SDK consumer's UI; driving the
 desktop through Playwright here would bypass the SDK boundary under test.
+
+The test driver should use the same public operations and observations available
+to human, agent, and programmatic consumers. Practical configuration (an isolated
+home, a selected driver build, serial desktop execution, and explicit permission
+mode) is acceptable when documented; it must not substitute a fake service or
+make a requested operation succeed only in tests. A page's receipt of an event
+alone does not prove the user's intended outcome.
+
+The scroll fixture now redraws actual canvas content. Its assertion locates the
+visible document marker in successive SDK screenshots and requires upward movement;
+the trusted-wheel receipt is supplementary. The stale-reference fixture replaces
+the removed control and exposes visible activation counts for it, its replacement,
+a surviving sibling, and the retire action. The assertion checks the fresh SDK
+observation for unchanged counts after rejection.
 
 Each test owns one behavior. Fixture setup supplies a unique local HTTP page or
 an existing temporary TextEdit document. Scenario SDK actions and their assertions
@@ -57,13 +71,15 @@ From the OpenSky repository root:
 npm ci
 npm run build
 cd e2e
-npm install --ignore-scripts
+npm ci --ignore-scripts
 npm run typecheck
 npm run list
 ```
 
 The E2E package is separate from the existing Node test suite; this draft does
-not migrate or replace that suite. Vitest is pinned to 4.1.11. Listing tests does
+not migrate or replace that suite. Vitest is pinned to 4.1.11 and test dependencies are locked. The local `.npmrc`
+uses legacy peer resolution to avoid npm's `edgesOut` crash with the nested
+`file:..` SDK dependency; it does not alter SDK or driver behavior. Listing tests does
 not instantiate the lazy desktop fixtures. Vitest's default list omits TODO cases;
 their declarations and prerequisites remain visible in the files above.
 
@@ -98,7 +114,7 @@ The statically declared TODOs require a deliberate implementation step first.
 
 ## Current validation
 
-TypeScript checks all fixtures/specs against the existing built SDK, and Vitest
+TypeScript checks all fixtures/specs against the built SDK, and Vitest
 collects all 14 implemented cases. Inline page scripts were syntax-checked.
 No E2E body was run, and no driver or production SDK code was changed in this pass.
 The native AX role resolver and all live timing/cleanup assumptions still need
@@ -106,3 +122,9 @@ their first real-driver run. HTTP polling waits only for observations; it never
 retries SDK actions. The late-content case waits for the actual page's completion
 signal, so it establishes freshness after completion, not a general page-readiness
 or latency guarantee.
+
+
+The 2026-09-07 experience-focused revision passed the SDK build, E2E TypeScript
+check, fixture-script syntax check, and collection of all 14 implemented cases.
+No desktop E2E was executed for that revision. Pixel movement and visible
+sibling-isolation assertions still require their first real SDK/driver run.
