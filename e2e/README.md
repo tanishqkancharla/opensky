@@ -208,5 +208,6 @@ All 336 existing SDK checks and the E2E typecheck passed locally.
 The first local TextEdit run failed before selection because AXWindows was empty;
 cleanup refused as well. A read-only native diagnostic found that AXFocusedWindow
 and AXMainWindow still expose the exact owned CGWindowID and its controls. A
-macOS driver fix is being built and will be tested separately; these diagnostics
+macOS driver fix at `38c05be79` passed its build/unit matrix and awaits renewed
+permission for the rebuilt development app; these diagnostics
 do not count as successful SDK selection or cleanup.

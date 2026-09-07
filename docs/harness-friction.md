@@ -693,3 +693,10 @@ permissioned daemon. It preserved the original `bring_to_front` diagnostic,
 `bring_to_front_exact_window_unverified` code and exact partial-effect payload.
 The first AX candidate had missing FFI/import declarations; `38c05be79` corrects
 those compile errors and is the next macOS build candidate.
+
+Driver `38c05be79d0bfc7ae03d57ccb82ca6319998c736` passed the complete build/unit
+matrix in [34164488643](https://github.com/tanishqkancharla/cua/actions/runs/34164488643).
+The development app now contains that exact artifact. Re-signing the rebuilt
+binary changed its ad-hoc identity, so macOS is waiting for renewed permission;
+the user has been asked to re-enable it. Native GUI acceptance and cleanup of
+the retained scratch windows are still outstanding.

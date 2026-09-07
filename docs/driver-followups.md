@@ -86,5 +86,6 @@ This narrow fix does not complete the other capabilities in the table.
 - That driver preserves CLI tool-error envelopes and nonzero exit status. The SDK
   also detects partial activation from older flattened replies, verified against
   the retained real TextEdit target.
-- macOS `fefef610e6b259cea47fbf35b3098f65947a9d3e` adds exact focused/main AX window
-  candidates when AppKit omits them from AXWindows. Real SDK validation is pending.
+- macOS `38c05be79d0bfc7ae03d57ccb82ca6319998c736` adds exact focused/main AX window
+  candidates when AppKit omits them from AXWindows. The three-OS build/unit matrix
+  passed; real SDK validation awaits reauthorization of the rebuilt Mac app.
