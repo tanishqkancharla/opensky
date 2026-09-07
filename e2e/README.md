@@ -1,6 +1,6 @@
 # OpenSky SDK E2E drafts
 
-**Status: first two SDK cases executed on hosted Linux; both exposed product failures.**
+**Status: two SDK cases executed on hosted Linux; stale-reference regression passes after a driver fix, trusted scrolling remains failing.**
 There are 14 implemented test bodies (13 successful workflows and one rejection)
 and 14 explicitly pending scenarios. A passing typecheck or test listing is not
 driver acceptance. Unsupported paste/scroll operations should produce failing
@@ -171,3 +171,21 @@ completed both selected cases with real Chrome and exact-tab cleanup:
 Recordings and public final observations are in the per-case run artifacts.
 The eight other implemented browser cases and four native cases remain unrun
 in this SDK lane. Filtered-out cases are not passing acceptance evidence.
+
+### Corrected-build result
+
+[Run 34160341420](https://github.com/tanishqkancharla/opensky/actions/runs/34160341420)
+at SDK `a6f9fa042a0f03c5bbd9abee8672e77e2d027431` / driver
+`59bdc18e03a276fa98c556f6110ba7791e97d101`:
+
+- **STALE-B01 passed**, including the real retire action, stale-click refusal,
+  fresh public counts `Discarded: 0; replacement: 0; sibling: 0; retire: 1`,
+  and exact owned-tab cleanup. Its recording is 5.4 seconds.
+- **SCROLL-B01 failed**, still with `route_unavailable` before trusted delivery.
+  The overall workflow remains red, accurately reflecting this capability gap.
+
+The driver's [build/unit matrix](https://github.com/tanishqkancharla/cua/actions/runs/34160289413)
+is green on Linux, Windows and macOS at that same driver SHA. This is one live
+Linux SDK regression pass, not full driver parity or cross-platform GUI
+certification. Documentation-only commits after these SHAs do not change the
+tested implementation.

@@ -63,5 +63,8 @@ not itself implement a valid delivery route.
 STALE-B01 additionally found that CDP retained a detached control and the shared
 DOM click path still called its handler. OpenSky Driver candidate `59bdc18e0`
 checks node attachment in the same JS turn as dispatch and reports stale refs
-without clicking; the SDK scenario is being rerun against that exact build.
+without clicking. [SDK run 34160341420](https://github.com/tanishqkancharla/opensky/actions/runs/34160341420)
+passed STALE-B01 against that exact build with zero discarded/replacement/sibling
+activations, a real retire action, and exact owned-tab cleanup. SCROLL-B01
+remained failing.
 This narrow fix does not complete the other capabilities in the table.

@@ -623,3 +623,12 @@ The fork candidate `59bdc18e03a276fa98c556f6110ba7791e97d101` checks attachment
 in the same JS turn as click dispatch and preserves unknown delivery. The SDK
 workflow now pins that candidate for regression validation. No synthetic input
 fallback or passing expected-refusal assertion replaces the scroll requirement.
+
+Regression validation [34160341420](https://github.com/tanishqkancharla/opensky/actions/runs/34160341420)
+at SDK `a6f9fa042a0f03c5bbd9abee8672e77e2d027431` and the exact fork candidate
+passed STALE-B01 with fresh visible counts `Discarded: 0; replacement: 0;
+sibling: 0; retire: 1` and exact-tab cleanup. SCROLL-B01 still failed before
+trusted delivery, so the overall lane remains red. Public observations and
+recordings are retained in each case artifact. The driver build/unit matrix
+[34160289413](https://github.com/tanishqkancharla/cua/actions/runs/34160289413)
+passed Linux, Windows and macOS; those checks do not certify native GUI parity.
