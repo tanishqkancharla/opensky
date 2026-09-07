@@ -41,8 +41,9 @@ driver would be misleading:
   need actual provider implementations. Inventory/capability APIs should advertise
   only supported operations, not fabricated objects.
 - **Approval mediation and real-driver CI** (SET-004/005): a host/runner must supply
-  consent handling and a provisioned, permissioned desktop. No tests or API stubs
-  substitute for that deployment.
+  consent handling and a provisioned, permissioned desktop. The fork now provides remote Linux/Windows desktop harnesses and three-OS
+  build/unit CI (SET-012). macOS GUI acceptance remains unconfigured because no
+  separate Mac is available. No tests or API stubs substitute for that deployment.
 - **Concurrent state persistence** (CLN-006): locking/versioned transactions belong
   in the TypeScript session store; native ownership receipts and crash recovery
   are separate requirements. The current pass preserves the existing limitation.

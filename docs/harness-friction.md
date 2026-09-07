@@ -554,3 +554,19 @@ new macOS app needs initial permission grants. Legacy class imports and env
 aliases remain compatible, with identity validation enforced. Validation is
 recorded in the fork's `libs/cua-driver/docs/opensky-validation.md`. No desktop
 E2E acceptance or installed-app migration is claimed.
+
+**SET-012 — remote driver validation without taking over the user's desktop
+(2026-09-07):** local native-driver tests compete with the user's active GUI and
+can alter focus, clipboard, and permission state. The fork now has an OpenSky
+GitHub Actions workflow on branch `opensky-driver`: builds and driver/contract/core
+unit tests on Linux, Windows, and macOS; opt-in canonical Linux X11 and Windows
+interactive desktop lanes; exact commit provenance and retained logs/recordings.
+The history lanes now resolve the renamed installed OpenSky executable. No local
+GUI runner or daemon is started. The first diagnostic native run is
+[34149118620](https://github.com/tanishqkancharla/cua/actions/runs/34149118620)
+at `407c83ae8276e5e7df134858e9ad3b9a1506a856`; its job results are the evidence,
+not this infrastructure entry. These Rust harnesses do not execute the separate
+SDK consumer E2E drafts or resolve the deferred parity capabilities. The user
+has no separate Mac available, so macOS GUI/TCC acceptance remains unconfigured;
+the hosted macOS lane establishes compilation/unit coverage only. Remote usage
+and platform limits are in the fork's `libs/cua-driver/docs/opensky-remote-testing.md`.
