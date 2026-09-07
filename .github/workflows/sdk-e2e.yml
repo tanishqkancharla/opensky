@@ -64,8 +64,9 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
-        scenario: [SCROLL-B01, STALE-B01]
+        scenario: [PASTE-B01, PASTE-B02, PASTE-B03, SCROLL-B01, STALE-B01, CONTEXT-B-list, CONTEXT-B-article, CONTEXT-B-table, TEXT-B01, FRESH-B01]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@v4

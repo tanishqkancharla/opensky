@@ -632,3 +632,13 @@ trusted delivery, so the overall lane remains red. Public observations and
 recordings are retained in each case artifact. The driver build/unit matrix
 [34160289413](https://github.com/tanishqkancharla/cua/actions/runs/34160289413)
 passed Linux, Windows and macOS; those checks do not certify native GUI parity.
+
+
+**SET-015 — broaden consumer baselines and enable local macOS probes (2026-09-07):**
+the user authorized implementing the remaining capabilities and using their Mac
+for macOS-specific verification. The hosted SDK lane now selects all ten
+implemented browser cases, each on an isolated desktop, with at most three
+concurrent cases. Existing positive assertions remain unchanged, including
+paste and scrolling. Native probes will use temporary documents and exact owned
+targets on the explicitly authorized Mac. Status: baseline execution pending;
+this entry does not claim the remaining capabilities are implemented.
