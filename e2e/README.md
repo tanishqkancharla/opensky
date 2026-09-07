@@ -1,6 +1,6 @@
 # OpenSky SDK E2E drafts
 
-**Status: drafted, typechecked and collected; not executed against a desktop.**
+**Status: first two SDK cases executed on hosted Linux; both exposed product failures.**
 There are 14 implemented test bodies (13 successful workflows and one rejection)
 and 14 explicitly pending scenarios. A passing typecheck or test listing is not
 driver acceptance. Unsupported paste/scroll operations should produce failing
@@ -116,7 +116,7 @@ The statically declared TODOs require a deliberate implementation step first.
 
 TypeScript checks all fixtures/specs against the built SDK, and Vitest
 collects all 14 implemented cases. Inline page scripts were syntax-checked.
-No E2E body was run, and no driver or production SDK code was changed in this pass.
+The initial draft did not run E2E bodies; the first remote results follow below.
 The native AX role resolver and all live timing/cleanup assumptions still need
 their first real-driver run. HTTP polling waits only for observations; it never
 retries SDK actions. The late-content case waits for the actual page's completion
@@ -132,7 +132,7 @@ sibling-isolation assertions still require their first real SDK/driver run.
 ## Hosted Linux SDK runs
 
 `.github/workflows/sdk-e2e.yml` builds OpenSky Driver from the fork at
-`637723da86b3ea42aadf9e12047258a4499d361c` and runs SCROLL-B01 and STALE-B01
+`59bdc18e03a276fa98c556f6110ba7791e97d101` and runs SCROLL-B01 and STALE-B01
 in separate disposable GitHub-hosted Ubuntu desktops. It uses the public built
 SDK, standalone Chrome, Xvfb, a session D-Bus, and a real driver daemon. The runner
 selects unrestricted driver permissions and disables Chrome's sandbox because
@@ -155,3 +155,19 @@ JavaScript. For SDK experience acceptance, a future scenario should act and
 observe through public SDK screenshots/AX, assert visible progress, and preserve
 input diagnostics separately. Its Linux container recipe does not solve macOS
 GUI provisioning. No benchmark code or Fleet infrastructure is adopted here.
+
+### First live baseline
+
+[Run 34159847059](https://github.com/tanishqkancharla/opensky/actions/runs/34159847059)
+at SDK `a4330d5` / driver `637723da86b3ea42aadf9e12047258a4499d361c`
+completed both selected cases with real Chrome and exact-tab cleanup:
+
+- SCROLL-B01 failed before input: trusted standalone input is unavailable on
+  Linux under the driver's background-delivery contract. No movement acceptance.
+- STALE-B01 failed: the removed button's handler still ran; the retained public
+  AX observation showed `Discarded: 1`. The fork now checks attachment atomically
+  with DOM click dispatch; the workflow is pinned to that candidate for rerun.
+
+Recordings and public final observations are in the per-case run artifacts.
+The eight other implemented browser cases and four native cases remain unrun
+in this SDK lane. Filtered-out cases are not passing acceptance evidence.

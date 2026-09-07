@@ -614,3 +614,12 @@ state, daemon logs and recordings are retained. Diagnostics occur after the test
 to avoid refreshing action mappings. Status: configuration and static checks
 only until the first remote run is recorded below. macOS GUI and unsupported
 paste remain outside this initial lane's acceptance claims.
+
+The first run [34159847059](https://github.com/tanishqkancharla/opensky/actions/runs/34159847059)
+completed both selected cases at SDK `a4330d5` / driver `637723da86b3ea42aadf9e12047258a4499d361c`:
+SCROLL-B01 was refused by Linux's standalone trusted-input limitation; STALE-B01
+incorrectly activated the detached button (`Discarded: 1` in final public AX).
+The fork candidate `59bdc18e03a276fa98c556f6110ba7791e97d101` checks attachment
+in the same JS turn as click dispatch and preserves unknown delivery. The SDK
+workflow now pins that candidate for regression validation. No synthetic input
+fallback or passing expected-refusal assertion replaces the scroll requirement.
