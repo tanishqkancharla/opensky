@@ -108,7 +108,7 @@ export class StdioMcpDriverClient implements DriverClient {
   constructor(options: StdioMcpDriverOptions = {}) {
     this.env = { ...(options.env ?? process.env) };
     this.target = exactTarget(options.target ?? detectTarget());
-    this.socket = explicitSocket(options.socket ?? this.env.CUA_DRIVER_SOCKET);
+    this.socket = explicitSocket(options.socket ?? this.env.OPENSKY_DRIVER_SOCKET ?? this.env.CUA_DRIVER_SOCKET);
     this.session = optionalNonemptyString(options.session, "session");
     this.helper = new CuaDriverClient({ ...options, env: this.env, session: this.session, socket: this.socket });
     this.maxLineBytes = positiveInteger(options.maxLineBytes, DEFAULT_MAX_LINE_BYTES, "maxLineBytes");
@@ -242,7 +242,7 @@ export class StdioMcpDriverClient implements DriverClient {
       if (!initialized || typeof initialized.protocolVersion !== "string" ||
           !SUPPORTED_PROTOCOL_VERSIONS.has(initialized.protocolVersion) ||
           !capabilities || !asRecord(capabilities.tools) ||
-          asRecord(initialized.serverInfo)?.name !== "cua-driver") {
+          asRecord(initialized.serverInfo)?.name !== "opensky-driver") {
         throw driverError("desktop helper returned a malformed MCP initialize result", "mcp_protocol_error");
       }
       await this.notification("notifications/initialized", {});

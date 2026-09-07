@@ -78,7 +78,7 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
   const results: CaseResult[] = [];
   if (options.local) {
     if (options.harnesses.some((name) => name !== "opensky")) throw new Error("--local currently supports --harness opensky only; native parity needs a provisioned native plugin.");
-    const driver = new CuaDriverClient({ binaryPath: process.env.CUA_DRIVER_BINARY, socket: process.env.CUA_DRIVER_SOCKET, autoInstall: false, autoStart: false });
+    const driver = new CuaDriverClient({ binaryPath: (process.env.OPENSKY_DRIVER_BINARY ?? process.env.CUA_DRIVER_BINARY), socket: (process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET), autoInstall: false, autoStart: false });
     const status = await driver.status();
     const permissions = await driver.permissionStatus();
     await writeFile(join(options.outputDir, "preflight.json"), JSON.stringify({ status, permissions }, null, 2));

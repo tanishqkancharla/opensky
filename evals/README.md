@@ -49,7 +49,7 @@ quiescent helper and explicit source revision are required before opening a tab.
 
 ```bash
 OPENSKY_REAL_DRIVER=1 \
-CUA_DRIVER_BINARY=/absolute/path/to/cua-driver-local \
+OPENSKY_DRIVER_BINARY=/absolute/path/to/opensky-driver \
 EVAL_EXPECTED_DRIVER_SHA="REPLACE_WITH_EXACT_CONTEXT_CAPABLE_COMMIT_SHA" \
 node --import tsx evals/probe-browser-context.ts
 ```

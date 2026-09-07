@@ -7,7 +7,7 @@ export {
   CuaTargetNotFoundError,
   CuaUnsupportedError,
 } from "./cua.js";
-export { CuaDriverClient, parseDriverOutput } from "./driver.js";
+export { CuaDriverClient, OpenSkyDriverClient, parseDriverOutput } from "./driver.js";
 export { StdioMcpDriverClient } from "./mcp-driver.js";
 export type { StdioMcpDriverOptions, TransportCloseReceipt } from "./mcp-driver.js";
 export { AsyncRepl, wrapAsync, startInteractiveRepl } from "./async-repl.js";
@@ -47,3 +47,5 @@ export type {
   Target,
   Vec2,
 } from "./cua.js";
+
+export type { CuaDriverOptions, OpenSkyDriverOptions } from "./driver.js";

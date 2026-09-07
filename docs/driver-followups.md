@@ -1,7 +1,9 @@
 # Deferred driver and backend work
 
-Per the user's 2026-09-05 instruction, this pass makes no driver changes.
-These are capability requirements for a later pass, not implemented fixes.
+The 2026-09-06 rename makes OpenSky Driver the exclusive native backend.
+Native implementation now belongs in the `tanishqkancharla/cua` fork under
+`libs/cua-driver`; SDK integration and consumer tests remain in OpenSky.
+These capability gaps remain deferred: renaming the driver does not fix them.
 Historical evidence IDs refer to [harness-friction.md](harness-friction.md).
 Historical failures were not rerun or reclassified as passes here.
 

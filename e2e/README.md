@@ -74,7 +74,7 @@ helper and standalone Chrome (or Edge), run from `e2e/`:
 
 ```sh
 OPENSKY_REAL_DRIVER=1 \
-CUA_DRIVER_BINARY=/absolute/path/to/cua-driver \
+OPENSKY_DRIVER_BINARY=/absolute/path/to/opensky-driver \
 npm test -- specs/browser-success.test.ts
 ```
 

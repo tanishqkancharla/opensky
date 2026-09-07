@@ -13,6 +13,7 @@ export interface CuaDriverOptions {
   appPath?: string;
   timeoutMs?: number;
   autoStart?: boolean;
+  /** Retained for source compatibility. OpenSky never downloads upstream Cua Driver. */
   autoInstall?: boolean;
   startTimeoutMs?: number;
   session?: string;
@@ -20,16 +21,16 @@ export interface CuaDriverOptions {
   env?: NodeJS.ProcessEnv;
 }
 
-const INSTALL_SH = "https://cua.ai/driver/install.sh";
-const INSTALL_PS1 = "https://cua.ai/driver/install.ps1";
+const INSTALL_HELP = "Build OpenSky Driver from https://github.com/tanishqkancharla/cua using libs/cua-driver/scripts/install.sh (install.ps1 on Windows), then run `opensky doctor`.";
 const PERMISSION_HELP =
-  "In System Settings, enable Accessibility and Screen Recording for the desktop helper that appeared (it may be labeled CuaDriver), then run `opensky doctor` again.";
+  "In System Settings, enable Accessibility and Screen Recording for the desktop helper that appeared (OpenSky Driver), then run `opensky doctor` again.";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class CuaDriverClient implements DriverClient {
   readonly sessionOwnership = { kind: "cli-explicit" } as const;
   private daemonReady = false;
+  private verifiedBinary?: { path: string; promise: Promise<string> };
 
   constructor(private readonly options: CuaDriverOptions = {}) {}
 
@@ -92,6 +93,7 @@ export class CuaDriverClient implements DriverClient {
     if (!binary) {
       return { running: false, text: "desktop helper not found" };
     }
+    await this.verifyBinary(binary);
     const result = await this.exec(binary, this.withSocket(["status"]), 4_000);
     return {
       running: result.code === 0,
@@ -101,32 +103,37 @@ export class CuaDriverClient implements DriverClient {
 
   async ensureHelper(): Promise<string> {
     const existing = await this.resolveBinary();
-    if (existing) return existing;
+    if (existing) return this.verifyBinary(existing);
     const override = this.binaryOverride();
     if (override) {
-      throw driverError(`opensky desktop helper is not installed or executable at the configured path ${JSON.stringify(override)}. Correct --driver or the helper binary environment override.`);
+      throw driverError(`opensky desktop helper is not installed or executable at the configured path ${JSON.stringify(override)}. ${INSTALL_HELP}`);
     }
-    if (!this.autoInstallEnabled()) {
-      throw driverError("opensky desktop helper is not installed. Run `opensky doctor`.");
-    }
+    throw driverError(`OpenSky Driver is not installed. ${INSTALL_HELP}`);
+  }
 
-    process.stderr.write("Installing opensky desktop helper…\n");
-    const installed = await runOfficialInstaller(detectTarget(), this.driverEnv());
-    if (installed.code !== 0) {
-      throw driverError(
-        [
-          "opensky could not install the desktop helper.",
-          (installed.stderr || installed.stdout).trim() || `installer exited ${installed.code}`,
-          "Check your network and retry `opensky doctor`.",
-        ].join(" "),
-      );
-    }
-
-    const binary = await this.resolveBinary();
-    if (!binary) {
-      throw driverError("opensky installed the desktop helper but could not find it. Retry `opensky doctor`.");
-    }
-    return binary;
+  /** Check offline product metadata before any daemon start, MCP or GUI call. */
+  private verifyBinary(binary: string): Promise<string> {
+    if (this.verifiedBinary?.path === binary) return this.verifiedBinary.promise;
+    const promise = (async () => {
+      // Upstream ignores unknown flags and may enter MCP mode. Use its known,
+      // offline --version flag first so rejecting it cannot start a daemon.
+      const version = await this.exec(binary, ["--version"], 4_000);
+      if (version.code !== 0 || !/^opensky-driver\s+\S+\s*$/.test(version.stdout.trim())) {
+        throw driverError(`The helper at ${JSON.stringify(binary)} is not OpenSky Driver. ${INSTALL_HELP}`);
+      }
+      const result = await this.exec(binary, ["--opensky-driver-identity"], 4_000);
+      let identity: Record<string, unknown> | null | undefined;
+      try { identity = asRecord(JSON.parse(result.stdout)); } catch { /* handled below */ }
+      if (result.code !== 0 || !identity || identity.product !== "opensky-driver" || identity.protocolVersion !== 1) {
+        throw driverError(`The helper at ${JSON.stringify(binary)} is not a compatible OpenSky Driver. Upstream Cua Driver and pre-rename local builds are not supported. ${INSTALL_HELP}`);
+      }
+      return binary;
+    })();
+    this.verifiedBinary = { path: binary, promise };
+    void promise.catch(() => {
+      if (this.verifiedBinary?.promise === promise) this.verifiedBinary = undefined;
+    });
+    return promise;
   }
 
   async grantPermissions(): Promise<{ stdout: string; stderr: string; code: number }> {
@@ -137,6 +144,7 @@ export class CuaDriverClient implements DriverClient {
   async permissionStatus(): Promise<Record<string, unknown> | null> {
     const binary = await this.resolveBinary();
     if (!binary) return null;
+    await this.verifyBinary(binary);
     const result = await this.exec(binary, this.withSocket(["permissions", "status", "--json"]), 4_000);
     try {
       return JSON.parse(result.stdout) as Record<string, unknown>;
@@ -162,7 +170,7 @@ export class CuaDriverClient implements DriverClient {
     const binary = await this.requireBinary();
     const target = detectTarget();
     if (target === "mac") {
-      const appPath = this.configuredAppPath() ?? await appBundleForDriver(binary);
+      const appPath = await appBundleForDriver(binary);
       // Reuse an in-flight helper launch. `open -n` creates competing daemon
       // instances when multiple first-run commands arrive together.
       const opened = appPath ? await this.exec(
@@ -204,8 +212,13 @@ export class CuaDriverClient implements DriverClient {
     if (override) {
       return (await isExecutable(override)) ? override : null;
     }
+    const appPath = this.configuredAppPath();
+    if (appPath) {
+      const binary = join(appPath, "Contents", "MacOS", "opensky-driver");
+      return (await isExecutable(binary)) ? binary : null;
+    }
     const candidates = [
-      ...pathCandidates("cua-driver", this.driverEnv().PATH),
+      ...pathCandidates(detectTarget() === "win" ? "opensky-driver.exe" : "opensky-driver", this.driverEnv().PATH),
       ...defaultHelperPaths(this.configuredAppPath()),
     ].filter((value): value is string => Boolean(value));
 
@@ -215,24 +228,16 @@ export class CuaDriverClient implements DriverClient {
     return null;
   }
 
-  private autoInstallEnabled(): boolean {
-    if (this.options.autoInstall === false) return false;
-    // An explicit selection must never silently install/use another helper.
-    if (this.binaryOverride()) return false;
-    const env = this.options.env ?? process.env;
-    if (env.OPENSKY_AUTOINSTALL === "0") return false;
-    return true;
-  }
-
   private binaryOverride(): string | undefined {
     const env = this.options.env ?? process.env;
-    // Preserve the legacy PATH-over-OPENSKY precedence; the new BINARY alias
-    // takes priority over both. An API/CLI path always wins.
-    return this.options.binaryPath || env.CUA_DRIVER_BINARY || env.CUA_DRIVER_PATH || env.OPENSKY_DRIVER;
+    // OpenSky configuration wins over legacy Cua aliases. Every selected binary
+    // must pass the product identity check before it can be used.
+    return this.options.binaryPath || env.OPENSKY_DRIVER_BINARY || env.OPENSKY_DRIVER || env.CUA_DRIVER_BINARY || env.CUA_DRIVER_PATH;
   }
 
   private configuredAppPath(): string | undefined {
-    return this.options.appPath || (this.options.env ?? process.env).CUA_DRIVER_APP_PATH;
+    const env = this.options.env ?? process.env;
+    return this.options.appPath || env.OPENSKY_DRIVER_APP_PATH || env.CUA_DRIVER_APP_PATH;
   }
 
   private driverEnv(): NodeJS.ProcessEnv {
@@ -250,8 +255,10 @@ export class CuaDriverClient implements DriverClient {
   }
 
   private withSocket(args: string[]): string[] {
-    if (!this.options.socket) return args;
-    return ["--socket", this.options.socket, ...args];
+    const env = this.options.env ?? process.env;
+    const socket = this.options.socket ?? env.OPENSKY_DRIVER_SOCKET ?? env.CUA_DRIVER_SOCKET;
+    if (!socket) return args;
+    return ["--socket", socket, ...args];
   }
 
   private async execDriver(args: string[], timeoutMs: number) {
@@ -481,13 +488,13 @@ export async function appBundleForDriver(binary: string): Promise<string | undef
 
 function defaultHelperPaths(appPath?: string): string[] {
   const home = homedir();
-  const app = appPath ?? "/Applications/CuaDriver.app";
+  const app = appPath ?? "/Applications/OpenSkyDriver.app";
   return [
-    join(home, ".local", "bin", "cua-driver"),
-    join(home, ".local", "bin", "cua-driver.exe"),
-    "/usr/local/bin/cua-driver",
-    "/opt/homebrew/bin/cua-driver",
-    join(app, "Contents/MacOS/cua-driver"),
+    join(home, ".local", "bin", "opensky-driver"),
+    join(home, ".local", "bin", "opensky-driver.exe"),
+    "/usr/local/bin/opensky-driver",
+    "/opt/homebrew/bin/opensky-driver",
+    join(app, "Contents/MacOS/opensky-driver"),
   ];
 }
 
@@ -499,57 +506,6 @@ function pathCandidates(binaryName: string, pathValue = process.env.PATH): strin
     .map((entry) => join(entry, binaryName));
 }
 
-function runOfficialInstaller(
-  target: OpenSkyTarget,
-  env: NodeJS.ProcessEnv,
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  if (target === "win") {
-    return execCommand(
-      "powershell.exe",
-      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", `irm ${INSTALL_PS1} | iex`],
-      env,
-      180_000,
-    );
-  }
-  return execCommand("bash", ["-lc", `curl -fsSL ${INSTALL_SH} | bash`], env, 180_000);
-}
-
-function execCommand(
-  command: string,
-  args: string[],
-  env: NodeJS.ProcessEnv,
-  timeoutMs: number,
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk: string) => {
-      stdout += chunk;
-    });
-    child.stderr.on("data", (chunk: string) => {
-      stderr += chunk;
-    });
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      reject(driverError(`desktop helper installer timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ stdout, stderr, code: code ?? 1 });
-    });
-  });
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -557,3 +513,6 @@ function sleep(ms: number): Promise<void> {
 export function platformTarget(): OpenSkyTarget {
   return detectTarget();
 }
+
+export { CuaDriverClient as OpenSkyDriverClient };
+export type OpenSkyDriverOptions = CuaDriverOptions;

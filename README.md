@@ -12,7 +12,7 @@ functions retain JavaScript lexical scope. `globalThis` and `__openskyLogs` are
 reserved declaration names. Screenshot bytes printed to the strict evaluator's
 console are summarized; observation methods attach the image directly.
 
-`opensky` is an open computer-use library, async Node REPL, and agent skill backed by [Cua Driver](https://cua.ai/cua-driver) (`cua-driver call …`). It includes a native-style `cua` facade and preserves the original flat `opensky` API. The facade intentionally reports unsupported operations instead of claiming complete `@oai/sky` coverage.
+`opensky` is an open computer-use library, async Node REPL, and agent skill backed by [OpenSky Driver](https://github.com/tanishqkancharla/cua), our fork of Cua Driver (`opensky-driver call …`). It includes a native-style `cua` facade and preserves the original flat `opensky` API. The facade intentionally reports unsupported operations instead of claiming complete `@oai/sky` coverage.
 
 Harness development is tracked in the [friction and fixes ledger](docs/harness-friction.md)
 and the concise, cross-domain [harness principles](docs/harness-principles.md).
@@ -35,16 +35,31 @@ npm install -g opensky-cua
 opensky doctor
 ```
 
-If the helper runs on a non-default or sandbox-exposed socket, set
-`CUA_DRIVER_SOCKET=/path/to/cua-driver.sock` or pass `--socket <path>`.
+OpenSky requires **OpenSky Driver**, built from our `tanishqkancharla/cua` fork.
+From the OpenSky Driver checkout, run `bash libs/cua-driver/scripts/install.sh`
+(macOS/Linux), or `libs/cua-driver/scripts/install.ps1` (Windows). The source
+installer requires Rust and the platform build tools. Fork release downloads are
+not available yet; `opensky doctor` reports the setup instructions if it is missing.
+It never downloads or falls back to upstream Cua Driver.
 
-For a custom helper, set `CUA_DRIVER_BINARY=/absolute/path/to/helper` (legacy
-aliases: `CUA_DRIVER_PATH`, then `OPENSKY_DRIVER`). An explicit `--driver` wins
-over environment overrides. An invalid explicit path fails without installing
-or selecting a different helper. On macOS, OpenSky resolves the helper's app
-from the executable's bundle ancestry; `CUA_DRIVER_APP_PATH` can specify it.
+The executable is `opensky-driver` (`opensky-driver.exe` on Windows). On macOS
+it lives in `/Applications/OpenSkyDriver.app`, displayed as **OpenSky Driver**.
+Grant Accessibility and Screen Recording to that app, then run `opensky doctor`.
+The renamed app has its own permission identity; existing Cua grants do not transfer.
 
-`opensky doctor` downloads the native desktop helper if needed and starts it. On macOS, System Settings will ask for **Accessibility** and **Screen Recording**. Enable both for the helper app that appears (it may be labeled CuaDriver), then run `opensky doctor` again.
+Set `OPENSKY_DRIVER_BINARY=/absolute/path/to/opensky-driver` to select a build.
+Precedence: `--driver` / `driverOptions.binaryPath`, `OPENSKY_DRIVER_BINARY`,
+`OPENSKY_DRIVER`, then legacy `CUA_DRIVER_BINARY` / `CUA_DRIVER_PATH`.
+All selected builds must report the OpenSky Driver identity protocol; old
+`cua-driver-local` builds must be rebuilt from the renamed fork.
+`OPENSKY_DRIVER_APP_PATH` selects a macOS bundle when no binary override is set.
+An explicit missing selection fails without falling back to PATH.
+
+For a non-default socket, use `OPENSKY_DRIVER_SOCKET` (legacy `CUA_DRIVER_SOCKET`)
+or `--socket`. Both transports share the same executable validation. The SDK
+exports `OpenSkyDriverClient` and `OpenSkyDriverOptions`; the old `CuaDriverClient`
+name remains an alias for source compatibility. `autoInstall` remains accepted
+but no longer downloads a helper.
 
 From this repo instead of npm:
 

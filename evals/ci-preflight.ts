@@ -13,12 +13,12 @@ const version = (command: string, args: string[]) => {
 await writeFile(`${dir}/provenance.json`, JSON.stringify({
   commit: process.env.GITHUB_SHA ?? version('git', ['rev-parse', 'HEAD']),
   node: process.version, platform: process.platform, architecture: process.arch,
-  driver: version(process.env.CUA_DRIVER_BINARY ?? 'cua-driver', ['--version']),
-  driverPin: process.env.CUA_DRIVER_RS_VERSION ?? null,
+  driver: version((process.env.OPENSKY_DRIVER_BINARY ?? process.env.CUA_DRIVER_BINARY) ?? 'opensky-driver', ['--version']),
+  driverPin: process.env.OPENSKY_DRIVER_REF ?? null,
   model: 'openai/gpt-5.6-terra', reasoning: 'medium', capturedAt: new Date().toISOString(),
 }, null, 2));
 const session = `opensky-ci-probe-${process.pid}`;
-const driver = new CuaDriverClient({ session, binaryPath: process.env.CUA_DRIVER_BINARY, autoInstall: false });
+const driver = new CuaDriverClient({ session, binaryPath: (process.env.OPENSKY_DRIVER_BINARY ?? process.env.CUA_DRIVER_BINARY), autoInstall: false });
 const sky = createOpenSky({ driver, session, homeDir: `${dir}/probe-home` });
 let failure: unknown;
 let cleanupFailure: unknown;

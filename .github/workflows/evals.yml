@@ -34,7 +34,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     needs: validate
     runs-on: macos-15
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,16 +42,28 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Install real driver
+      - name: Require an exact fork revision
         env:
-          CUA_DRIVER_RS_VERSION: ${{ vars.CUA_DRIVER_RS_VERSION }}
+          OPENSKY_DRIVER_REF: ${{ vars.OPENSKY_DRIVER_REF }}
+        run: |
+          [[ "$OPENSKY_DRIVER_REF" =~ ^[0-9a-f]{40}$ ]] || { echo 'Set OPENSKY_DRIVER_REF to a published OpenSky Driver commit'; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          repository: tanishqkancharla/cua
+          ref: ${{ vars.OPENSKY_DRIVER_REF }}
+          path: .driver-source
+      - name: Build OpenSky Driver from the pinned fork
+        env:
+          CUA_DRIVER_SOURCE_SHA: ${{ vars.OPENSKY_DRIVER_REF }}
         run: |
           mkdir -p evals/runs/ci
-          curl --fail --silent --show-error --location https://cua.ai/driver/install.sh -o "$RUNNER_TEMP/cua-install.sh"
-          bash "$RUNNER_TEMP/cua-install.sh"
+          bash .driver-source/libs/cua-driver/scripts/install.sh --release
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          open -n -g -a CuaDriver --args serve
+          "$HOME/.local/bin/opensky-driver" --opensky-driver-identity
+          open -g /Applications/OpenSkyDriver.app --args serve
       - name: Real desktop capability probe
+        env:
+          OPENSKY_DRIVER_REF: ${{ vars.OPENSKY_DRIVER_REF }}
         run: node --import tsx evals/ci-preflight.ts
       - name: Evaluate OpenSky with Terra (serial cases)
         env:

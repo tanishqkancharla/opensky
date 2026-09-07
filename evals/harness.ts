@@ -436,8 +436,8 @@ async function runPiSession(opts: {
 
 function localDriver(): CuaDriverClient {
   return new CuaDriverClient({
-    binaryPath: process.env.CUA_DRIVER_BINARY?.trim() || undefined,
-    socket: process.env.CUA_DRIVER_SOCKET?.trim() || undefined,
+    binaryPath: (process.env.OPENSKY_DRIVER_BINARY ?? process.env.CUA_DRIVER_BINARY)?.trim() || undefined,
+    socket: (process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET)?.trim() || undefined,
     autoInstall: false,
     autoStart: false,
   });

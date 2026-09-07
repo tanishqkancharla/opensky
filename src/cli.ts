@@ -42,12 +42,11 @@ Environment:
   OPENSKY_HOME                      session/screenshot/repl state directory (mode 0700)
   OPENSKY_SESSION                    helper session label (default unique per runtime)
   OPENSKY_REPL_TOKEN                 token for opensky serve (generated into repl.json)
-  OPENSKY_AUTOINSTALL=0             do not download the desktop helper
   OPENSKY_DRIVER                    override helper binary path
-  CUA_DRIVER_BINARY                 override helper binary (before CUA_DRIVER_PATH/OPENSKY_DRIVER)
+  OPENSKY_DRIVER_BINARY             select an OpenSky Driver build (identity checked)
   CUA_DRIVER_PATH                   legacy helper binary override
   CUA_DRIVER_APP_PATH               explicit macOS helper app (otherwise derived from binary)
-  CUA_DRIVER_SOCKET                 connect to an existing helper socket
+  OPENSKY_DRIVER_SOCKET             connect to an existing OpenSky Driver socket
 
 Examples:
   opensky eval 'await opensky.list_apps()'
@@ -187,7 +186,7 @@ async function runStop(flags: Flags): Promise<number> {
 async function runDoctor(flags: Flags): Promise<number> {
   const driver = new CuaDriverClient({
     binaryPath: flags.driver,
-    socket: flags.socket ?? process.env.CUA_DRIVER_SOCKET,
+    socket: flags.socket ?? process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET,
     autoStart: true,
   });
   let helperError: string | undefined;
@@ -219,7 +218,7 @@ async function runDoctor(flags: Flags): Promise<number> {
   if (helperError || !binary || !status.running) {
     if (process.platform === "darwin") {
       process.stderr.write(
-        "If the helper is installed but not running, enable Accessibility and Screen Recording in System Settings for the app that appeared (it may be labeled CuaDriver), then run `opensky doctor` again.\n",
+        "If the helper is installed but not running, enable Accessibility and Screen Recording in System Settings for the app that appeared (OpenSky Driver), then run `opensky doctor` again.\n",
       );
     }
     return 1;
@@ -271,7 +270,7 @@ function createContext(flags: Flags) {
     transport: flags.transport,
     driverOptions: {
       binaryPath: flags.driver,
-      socket: flags.socket ?? process.env.CUA_DRIVER_SOCKET,
+      socket: flags.socket ?? process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET,
       autoStart: process.env.OPENSKY_AUTOSTART !== "0",
     },
   });

@@ -539,3 +539,18 @@ OpenSky has live successes across native apps and browser tasks, including e35 H
 6. auxiliary native-window ownership and transactional cross-process target state (CLN-001/CLN-006).
 
 The epoch-35 renderer is intentionally not described as an efficiency fix: it preserves more structure overall while increasing outline characters and sometimes losing meaningful tail rows under a fixed budget. Likewise, fail-closed behavior, exact cleanup, and truthful scope labels are safety wins even where the underlying operation remains unavailable.
+
+
+**SET-011 — exclusive OpenSky Driver identity (2026-09-06):** default discovery
+previously selected released `cua-driver`, while parity work required an explicit
+`cua-driver-local` override. Discovery now selects `opensky-driver`; both
+transports check offline version/identity before any daemon operation. Missing
+or incompatible builds fail with fork build instructions, without downloading
+upstream. Explicit app selection resolves the chosen executable's own bundle.
+The fork uses a separate daemon namespace, MCP name, and SDK contract version.
+CI requires an exact fork SHA and VM checks require a preinstalled fork.
+This is a breaking helper migration: old local builds need rebuilding and the
+new macOS app needs initial permission grants. Legacy class imports and env
+aliases remain compatible, with identity validation enforced. Validation is
+recorded in the fork's `libs/cua-driver/docs/opensky-validation.md`. No desktop
+E2E acceptance or installed-app migration is claimed.

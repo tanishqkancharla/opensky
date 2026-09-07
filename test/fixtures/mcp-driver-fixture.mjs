@@ -1,10 +1,24 @@
 #!/usr/bin/env node
 
+if (process.argv.slice(2).join(" ") === "--version") {
+  process.stdout.write("opensky-driver fixture\n");
+  process.exit(0);
+}
+
+if (process.argv.slice(2).join(" ") === "--opensky-driver-identity") {
+  process.stdout.write(JSON.stringify({product: "opensky-driver", protocolVersion: 1}) + "\n");
+  process.exit(0);
+}
+
 // Inert newline-delimited JSON-RPC fixture. It never loads or contacts Cua.
 const argv = process.argv.slice(2);
 const mode = process.env.MCP_FIXTURE_MODE ?? "normal";
 if (!argv.includes("mcp")) {
   if (argv.includes("status")) {
+    if (process.env.EXPECT_STATUS_ARGS && JSON.stringify(argv) !== process.env.EXPECT_STATUS_ARGS) {
+      process.stderr.write("unexpected status socket arguments\n");
+      process.exit(65);
+    }
     if (mode === "slow-status") await new Promise(resolve => setTimeout(resolve, 120));
     process.stdout.write("fixture running\n");
     process.exit(0);
@@ -72,7 +86,7 @@ function handle(request) {
       result: {
         protocolVersion: mode === "unsupported-version" ? "1900-01-01" : "2025-06-18",
         capabilities: mode === "missing-capabilities" ? {} : { tools: {} },
-        serverInfo: { name: "cua-driver", version: "fixture" },
+        serverInfo: { name: "opensky-driver", version: "fixture" },
       },
     });
     return;

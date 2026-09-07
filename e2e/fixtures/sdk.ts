@@ -13,8 +13,8 @@ export const test = base.extend<BrowserFixtures>({
     if (process.env.OPENSKY_REAL_DRIVER !== "1") {
       throw new Error("Draft E2E: set OPENSKY_REAL_DRIVER=1 only on a provisioned disposable desktop. No driver was contacted.");
     }
-    const binaryPath = process.env.CUA_DRIVER_BINARY;
-    if (!binaryPath) throw new Error("CUA_DRIVER_BINARY must identify the already installed helper. No auto-install/start.");
+    const binaryPath = (process.env.OPENSKY_DRIVER_BINARY ?? process.env.CUA_DRIVER_BINARY);
+    if (!binaryPath) throw new Error("OPENSKY_DRIVER_BINARY must identify the already installed helper. No auto-install/start.");
     const homeDir = await mkdtemp(join(tmpdir(), "opensky-sdk-e2e-"));
     const sdk = createOpenSky({
       homeDir,

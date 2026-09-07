@@ -1,7 +1,7 @@
 {
   "name": "opensky-cua",
   "version": "0.1.2",
-  "description": "Open computer-use library with legacy and native-style CUA APIs, backed by Cua Driver",
+  "description": "Open computer-use library with legacy and native-style CUA APIs, backed by OpenSky Driver",
   "type": "module",
   "bin": {
     "opensky": "./dist/cli.js"

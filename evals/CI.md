@@ -28,7 +28,7 @@ Run the declarative cases on an already provisioned machine with:
 npm run evals -- browser.eval.ts --local --harness opensky --model openai/gpt-5.6-terra --output evals/runs/manual
 ```
 
-Local mode does not install or launch the helper. Optional `CUA_DRIVER_BINARY`
+Local mode does not install or launch the helper. Optional `OPENSKY_DRIVER_BINARY`
 and `CUA_DRIVER_SOCKET` select an explicit helper. `--list` lists cases without
 launching the model or desktop. Local native Codex comparison is intentionally
 unavailable until its plugin is explicitly provisioned; OpenSky scores are not

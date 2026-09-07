@@ -76,18 +76,13 @@ async function checkGuestOs(vm: EvalVm): Promise<Check> {
 }
 
 async function checkDesktopHelper(vm: EvalVm): Promise<Check> {
-  const which = await vm.shell(
-    "command -v cua-driver || ls /Users/lume/.local/bin/cua-driver /usr/local/bin/cua-driver /Applications/CuaDriver.app >/dev/null && echo found",
-  );
-  const text = `${which.stdout}\n${which.stderr}`.trim();
-  if (which.success && text) {
-    return { name: "cua-driver present", ok: true, detail: text.slice(0, 300) };
-  }
-  process.stdout.write("Installing cua-driver on the macOS VM…\n");
-  const install = await vm.shell('/bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"');
-  const grant = await vm.shell("cua-driver permissions grant || /Users/lume/.local/bin/cua-driver permissions grant || true");
-  const detail = `${install.stdout}\n${install.stderr}\n${grant.stdout}\n${grant.stderr}`.trim();
-  return { name: "cua-driver present", ok: install.success, detail: detail.slice(0, 800) };
+  const result = await vm.shell("opensky-driver --version");
+  const text = `${result.stdout}\n${result.stderr}`.trim();
+  return {
+    name: "OpenSky Driver present",
+    ok: result.success && /^opensky-driver\s+\S+/.test(result.stdout.trim()),
+    detail: text.slice(0, 800) || "Build and install OpenSky Driver from the fork in the VM before this check. No upstream fallback.",
+  };
 }
 
 async function checkListApps(opensky: ReturnType<typeof createOpenSky>): Promise<Check> {

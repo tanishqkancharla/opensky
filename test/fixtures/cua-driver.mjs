@@ -1,4 +1,14 @@
 #!/usr/bin/env node
+
+if (process.argv.slice(2).join(" ") === "--version") {
+  process.stdout.write("opensky-driver fixture\n");
+  process.exit(0);
+}
+
+if (process.argv.slice(2).join(" ") === "--opensky-driver-identity") {
+  process.stdout.write(JSON.stringify({product: "opensky-driver", protocolVersion: 1}) + "\n");
+  process.exit(0);
+}
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 

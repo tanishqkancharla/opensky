@@ -5,7 +5,7 @@ description: Drive native desktop apps through an async Node REPL with a native-
 
 # opensky
 
-Use the `opensky` CLI. It is an **async Node REPL** with native-style `cua` and legacy `opensky` objects preloaded. Do not call `cua-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
+Use the `opensky` CLI. It is an **async Node REPL** with native-style `cua` and legacy `opensky` objects preloaded. Do not call `opensky-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
 
 ```bash
 opensky eval --json 'await opensky.list_apps()'
@@ -19,7 +19,7 @@ opensky eval --json 'await opensky.list_apps()'
 opensky doctor
 ```
 
-For a helper on an explicit socket, set `CUA_DRIVER_SOCKET` or pass `--socket <path>`.
+For a helper on an explicit socket, set `OPENSKY_DRIVER_SOCKET` (legacy `CUA_DRIVER_SOCKET`) or pass `--socket <path>`.
 
 If `opensky doctor` reports the helper is missing or not running, tell the user to run:
 
@@ -27,7 +27,7 @@ If `opensky doctor` reports the helper is missing or not running, tell the user 
 opensky doctor
 ```
 
-On macOS they must enable **Accessibility** and **Screen Recording** in System Settings for the helper app that appears (it may be labeled CuaDriver), then run `opensky doctor` again. Do not ask them to install cua-driver separately.
+On macOS they must enable **Accessibility** and **Screen Recording** in System Settings for the helper app that appears (OpenSky Driver), then run `opensky doctor` again. If missing, build OpenSky Driver from the tanishqkancharla/cua fork using libs/cua-driver/scripts/install.sh (install.ps1 on Windows). Upstream Cua Driver is not supported.
 
 ## Canonical loop
 
