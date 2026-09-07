@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { chmod, readFile } from "node:fs/promises";
+import { chmod, readFile, realpath } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { asArray, asRecord, CuaDriverClient } from "./driver.js";
 import { AsyncLifecycle } from "./async-lifecycle.js";
@@ -431,9 +432,13 @@ export class OpenSky implements OpenSkyApi {
     if (typed) return typed;
     // Cua Driver's close_window is intentionally exact and cooperative. On
     // macOS, request a distinct application instance so ownership can be
-    // proven from a new PID plus one freshly verified ordinary window. Other
-    // platforms do not currently support this launch/close contract.
+    // proven from a new PID plus the exact document (or a sole ordinary
+    // window when document metadata is unavailable). Other platforms do not
+    // currently support this launch/close contract.
     const requestFreshNativeInstance = this.target === "mac";
+    const requestedDocument = requestFreshNativeInstance && args.targets.length === 1
+      ? await canonicalDocumentPath(args.targets[0]!)
+      : undefined;
     const preLaunchPids = listedPids(listed);
     const previousPid = Number(match?.pid);
     const previousWindows = !requestFreshNativeInstance && Number.isFinite(previousPid) && previousPid > 0
@@ -498,13 +503,31 @@ export class OpenSky implements OpenSkyApi {
         `(${String(structured.error)}). No keyboard or pointer input was sent.`,
       );
     }
+    if (requestedDocument && launchRequestWasSent(structured) && !preLaunchPids.has(pid)) {
+      // AppKit may restore unrelated documents into a new process. Wait for
+      // the requested AXDocument instead of requiring the process to have only
+      // one window, adopting a same-title sibling, or replaying the open.
+      const deadline = Date.now() + 5_000;
+      do {
+        windows = windowsFrom((await this.driver.call("list_windows", {
+          pid, include_document_urls: true,
+        })).structured);
+        windowSource = "post_launch_list";
+        if ((windows.length > 0 && !windows.some(window => "document_url" in window)) ||
+            await requestedDocumentWindow(windows, requestedDocument) !== undefined ||
+            Date.now() >= deadline) break;
+        await sleep(200);
+      } while (true);
+    }
     const newWindows = windows.filter((window) =>
       typeof window.window_id === "number" && !previousIds.has(window.window_id),
     );
     const matchingWindows = windows.filter((window) => windowMatchesTargets(window, args.targets));
     const candidates = newWindows.length > 0 ? newWindows : matchingWindows.length > 0 ? matchingWindows : windows;
     const freshOrdinaryWindows = windows.filter(isOrdinaryWindow);
-    const freshWindowId = freshOrdinaryWindows.length === 1 &&
+    const freshWindowId = requestedDocument && windows.some(window => "document_url" in window)
+      ? await requestedDocumentWindow(windows, requestedDocument)
+      : freshOrdinaryWindows.length === 1 &&
         typeof freshOrdinaryWindows[0]?.window_id === "number" && freshOrdinaryWindows[0].window_id > 0
       ? freshOrdinaryWindows[0].window_id
       : undefined;
@@ -524,12 +547,14 @@ export class OpenSky implements OpenSkyApi {
       !preLaunchPids.has(pid) &&
       launchIdentityMatches(args.app, match, structured) &&
       windowId !== undefined
-      ? await this.verifyNativeCloseAuthority(pid, windowId)
+      ? await this.verifyNativeCloseAuthority(pid, windowId, requestedDocument)
       : undefined;
     if (requestFreshNativeInstance && !nativeCloseAuthority) {
       throw new OpenSkyError(
         `The desktop helper could not prove that ${JSON.stringify(args.app)} created one fresh, uniquely ` +
           "request-correlated native window. No existing or title-matched window was adopted, and no keyboard or pointer input was sent.",
+        "native_target_unproven",
+        { pid, requested: args.targets, candidateWindowIds: freshOrdinaryWindows.map(window => window.window_id) },
       );
     }
     const resolved: ResolvedApp = {
@@ -1736,10 +1761,15 @@ export class OpenSky implements OpenSkyApi {
   private async verifyNativeCloseAuthority(
     pid: number,
     windowId: number,
+    requestedDocument?: string,
   ): Promise<ResolvedApp["nativeCloseAuthority"]> {
-    const verified = windowsFrom((await this.driver.call("list_windows", { pid })).structured)
+    const verified = windowsFrom((await this.driver.call("list_windows", {
+      pid, ...(requestedDocument ? { include_document_urls: true } : {}),
+    })).structured)
       .filter(isOrdinaryWindow);
-    if (verified.length !== 1 || verified[0]?.window_id !== windowId) return undefined;
+    if (requestedDocument && verified.some(window => "document_url" in window)) {
+      if (await requestedDocumentWindow(verified, requestedDocument) !== windowId) return undefined;
+    } else if (verified.length !== 1 || verified[0]?.window_id !== windowId) return undefined;
     return {
       kind: "request_created_exact_window",
       proof: "macos_new_application_instance",
@@ -2587,6 +2617,32 @@ function launchDispatchRefused(structured: Record<string, unknown>): boolean {
 
 function launchRequestWasSent(structured: Record<string, unknown>): boolean {
   return asRecord(structured.launch_state)?.requested === true;
+}
+
+async function canonicalDocumentPath(target: string): Promise<string | undefined> {
+  try {
+    const path = target.startsWith("file:") ? fileURLToPath(target)
+      : /^[a-z][a-z0-9+.-]*:/i.test(target) ? undefined
+      : target === "~" ? homedir()
+      : target.startsWith("~/") ? join(homedir(), target.slice(2)) : target;
+    return path ? await realpath(path) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function requestedDocumentWindow(
+  windows: Record<string, unknown>[],
+  requestedPath: string,
+): Promise<number | undefined> {
+  const matches: number[] = [];
+  for (const window of windows.filter(isOrdinaryWindow)) {
+    if (typeof window.window_id !== "number" || window.window_id <= 0 ||
+        typeof window.document_url !== "string" || !window.document_url.startsWith("file:")) continue;
+    if (await canonicalDocumentPath(window.document_url) === requestedPath) matches.push(window.window_id);
+  }
+  const unique = [...new Set(matches)];
+  return unique.length === 1 ? unique[0] : undefined;
 }
 
 function listedPids(apps: Record<string, unknown>[]): Set<number> {

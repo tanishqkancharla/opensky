@@ -1,7 +1,7 @@
 # OpenSky SDK E2E drafts
 
 **Status: all ten browser SDK cases pass on hosted Linux, including real paste and background scrolling with foreground-focus isolation. Native macOS acceptance is still in progress.**
-There are 14 implemented test bodies (13 successful workflows and one rejection)
+There are 15 implemented test bodies (14 successful workflows and one rejection)
 and 14 explicitly pending scenarios. A passing typecheck or test listing is not
 driver acceptance. Missing capabilities produce failing E2E results, not passing
 rejection assertions.
@@ -55,6 +55,8 @@ Codex's in-app browser and is not part of this acceptance suite.
   Unicode/punctuation fidelity and fresh observations after late content.
 - [Native workflows](specs/native-success.test.ts): real multiline paste and
   three disambiguated text-selection/cursor workflows in TextEdit.
+- [Native document opening](specs/native-open.test.ts): opening the exact file
+  when another document has the same filename, then closing only that target.
 - [Rejection supplement](specs/browser-rejections.test.ts): obsolete control
   references cannot act on a different control.
 - [Pending cases](specs/needs-real-fixture.todo.test.ts) and
@@ -115,7 +117,7 @@ The statically declared TODOs require a deliberate implementation step first.
 ## Current validation
 
 TypeScript checks all fixtures/specs against the built SDK, and Vitest
-collects all 14 implemented cases. Inline page scripts were syntax-checked.
+collects all 15 implemented cases. Inline page scripts were syntax-checked.
 The initial draft did not run E2E bodies; the first remote results follow below.
 The native AX role resolver and all live timing/cleanup assumptions still need
 their first real-driver run. HTTP polling waits only for observations; it never

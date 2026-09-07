@@ -72,6 +72,14 @@ This narrow fix does not complete the other capabilities in the table.
 
 ## Subsequent implementation evidence (2026-09-07)
 
+- Native opening now has a candidate fix for TextEdit restoring unrelated
+  same-named documents: optional exact AXDocument URLs in the driver inventory,
+  canonical file matching and independent ownership verification in the SDK.
+  OPEN-N01 covers opening/closing the requested file with a same-named sibling.
+  Local builds/checks pass; live acceptance is pending the rebuilt app's TCC
+  refresh. See SET-017 in the friction ledger. Native selection and paste remain
+  separate unresolved workflows.
+
 - Browser text/HTML/Markdown paste is implemented through the exact driver editor
   and passed all three real SDK cases in [34163189757](https://github.com/tanishqkancharla/opensky/actions/runs/34163189757).
   Native clipboard transactions, concurrent clipboard interference, and sibling

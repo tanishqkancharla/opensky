@@ -700,3 +700,28 @@ The development app now contains that exact artifact. Re-signing the rebuilt
 binary changed its ad-hoc identity, so macOS is waiting for renewed permission;
 the user has been asked to re-enable it. Native GUI acceptance and cleanup of
 the retained scratch windows are still outstanding.
+
+**SET-017 — restored TextEdit documents blocked exact opening (2026-09-07):**
+After both macOS grants were confirmed under `com.opensky.driver`, SELECT-N01
+failed during `open_target`, before selection. TextEdit restored two older
+`sdk-draft.txt` documents beside the requested one in its new process. All three
+had the same title; a read-only native diagnostic exposed three distinct
+`AXDocument` file URLs. The SDK's sole-window requirement rejected this valid
+open. No input was sent and the scratch files were retained.
+
+The driver now supports opt-in `list_windows(pid, include_document_urls: true)`.
+It joins fresh AXWindow and WindowServer records by PID and CGWindowID and
+returns `document_url`, or null when unavailable. The SDK canonicalizes file
+paths (including macOS `/var` versus `/private/var` aliases), waits for exactly
+one matching document, and independently rechecks it before retaining exact
+close authority. It never uses the title to resolve restored siblings. Older
+drivers without this metadata retain the existing sole-window requirement;
+missing/ambiguous metadata from the new driver does not authorize a window.
+Failures now include the launched PID and candidate IDs for diagnosis.
+
+OPEN-N01 exercises the real public SDK with distinct contents in same-named
+files and verifies that closing the requested target leaves its sibling
+readable. Local SDK checks (336), TypeScript builds and focused macOS driver
+tests passed. The changed development binary requires renewed TCC grants;
+live regression acceptance remains pending that refresh. No selection/paste
+success or broad macOS parity is claimed by these checks.
