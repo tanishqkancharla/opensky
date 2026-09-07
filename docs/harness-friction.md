@@ -570,3 +570,18 @@ SDK consumer E2E drafts or resolve the deferred parity capabilities. The user
 has no separate Mac available, so macOS GUI/TCC acceptance remains unconfigured;
 the hosted macOS lane establishes compilation/unit coverage only. Remote usage
 and platform limits are in the fork's `libs/cua-driver/docs/opensky-remote-testing.md`.
+Remote native evidence for SET-012 is now recorded at the initial fork SHA:
+Linux/X11 has 32 delivered actions and seven expected refusals; Windows has 39
+delivered and four expected refusals. Both reports have zero failed/skipped
+cells and passed preflight/video validation. The initial workflow's build jobs
+exposed a stale contract assertion, and broader Windows core checks exposed
+Unix-only/canonical-path fixtures and a startup-instruction word-budget issue.
+Those are corrected in later fork commits; exact SHAs and run links are in the
+fork guide. These native subsets establish remote harness viability, not full
+Computer parity or SDK consumer E2E acceptance.
+The final build/unit matrix
+[34150504250](https://github.com/tanishqkancharla/cua/actions/runs/34150504250)
+is green on all three platforms at
+`637723da86b3ea42aadf9e12047258a4499d361c`, including embedded source identity.
+Documentation-only commits afterward do not change the tested code. macOS GUI
+and full cross-platform/standalone-browser certification remain unclaimed.
