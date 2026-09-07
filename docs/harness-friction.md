@@ -653,3 +653,14 @@ combined build for real validation; paste/scroll remain separate capability work
 The first local native baseline was blocked before selection by unavailable AX
 window mapping, with exact cleanup also refused; recovery state is retained.
 The user has since granted permission and local recovery is in progress.
+
+The integrated context candidate passed all list/article/table cases in
+[34162512013](https://github.com/tanishqkancharla/opensky/actions/runs/34162512013),
+bringing the baseline to six passes and four failures (three paste, one scroll).
+Browser paste now delegates through the public facade to the exact driver's
+`browser_type` paste mode, after observing the current focused editable ref.
+Obsolete unit assertions requiring browser paste to reject were removed; the
+real paste scenarios retain their trusted-event, multiline and formatting
+assertions. Build and E2E typecheck passed locally. The local Node suite reached
+a sandbox loopback-listen denial; normal CI remains its validation environment.
+The workflow now pins paste candidate `a92fac8a44d3574570b69f70dd8cbe432256acbe`.

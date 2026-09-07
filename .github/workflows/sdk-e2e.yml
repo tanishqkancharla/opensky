@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OPENSKY_DRIVER_REF: d3100981785e8407a7589fbd1aff989d0e72594d
+  OPENSKY_DRIVER_REF: a92fac8a44d3574570b69f70dd8cbe432256acbe
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 

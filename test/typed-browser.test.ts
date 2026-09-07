@@ -1307,7 +1307,6 @@ describe("OpenSky typed-browser contract", () => {
     const before = driver.calls.length;
 
     await assert.rejects(() => opensky.click({ app: "Google Chrome", x: 10, y: 20 }), /No native foreground or coordinate input was sent/);
-    await assert.rejects(() => opensky.paste({ app: "Google Chrome", text: "unsafe" }), /safe paste requires.*No clipboard.*was touched/s);
     await assert.rejects(() => opensky.type_text({ app: "Google Chrome", x: 5, y: 6, text: "unsafe" }), /No native foreground or coordinate input was sent/);
     await assert.rejects(() => opensky.scroll({ app: "Google Chrome", x: 20, y: 30, direction: "up" }), /No native foreground or coordinate input was sent/);
     await assert.rejects(() => opensky.bring_to_front({ app: "Google Chrome" }), /No native foreground or coordinate input was sent/);

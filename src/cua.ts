@@ -438,12 +438,6 @@ abstract class BoundTarget implements Target {
 
   async paste(text: string, options: PasteOptions = {}): Promise<void> {
     this.facade.assertOpen(this.targetHandle);
-    if (this instanceof BoundTab) {
-      throw new CuaUnsupportedError(
-        "Tab.paste",
-        "Cua Driver has no safe clipboard paste route; use setValue(elementIndex, text), or click a semantic editable target before typeText when typing semantics are acceptable",
-      );
-    }
     await this.facade.opensky.paste({ app: this.targetHandle, text, format: options.format });
   }
 

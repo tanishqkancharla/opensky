@@ -388,7 +388,6 @@ describe("native-style cua facade", () => {
     await normalized.close();
     const tab = await cua.createBrowserTab("chrome", "https://example.com");
     const before = fake.calls.length;
-    await assert.rejects(() => tab.paste("text"), /no safe clipboard paste route/);
     await assert.rejects(() => tab.markDeliverable(), /no host callback was configured/);
     await assert.rejects(() => tab.markHandoff(), /no host callback was configured/);
     assert.equal(fake.calls.length, before);

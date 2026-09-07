@@ -1105,6 +1105,24 @@ export class OpenSky implements OpenSkyApi {
     if (format !== "text" && format !== "md" && format !== "html") {
       throw invalidParams();
     }
+    await this.ensureLoaded();
+    const resolved = this.targetForSelector(args.app);
+    if (resolved?.browser) {
+      this.assertTargetUsable(resolved);
+      // Paste follows the current editor, as it does for a human. Refresh only
+      // the exact tab to bind that editor; never reuse a pre-action focus flag.
+      await this.get_app_state({ app: resolved.handle, includeScreenshot: false, disableDiff: true });
+      const element = this.uniqueFocusedBrowserTypeElement(resolved);
+      await this.driver.call("browser_type", {
+        target_id: resolved.browser.targetId,
+        tab_id: resolved.browser.tabId,
+        session: resolved.browser.session,
+        ref: element.browser_ref,
+        mode: "paste", format, text: args.text,
+      });
+      this.markAction(resolved);
+      return;
+    }
     throw new OpenSkyError(
       "paste is temporarily unavailable because safe paste requires a compound desktop-helper primitive " +
         "that cannot overwrite a concurrent user clipboard change. No clipboard, app, window, tab, or input was touched. " +
