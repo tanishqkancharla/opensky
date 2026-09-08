@@ -2119,3 +2119,13 @@ not proof of a resolved timing issue. The two independent checks now keep
 separate artifacts and run without bail so Unicode failure cannot hide the
 shortcut outcome. The suspected remapping/event-delivery timing needs a
 reproducible correction; no timing patch has been implemented yet.
+
+Unicode timing candidate 0524101f8 adds an X11 reply barrier after each remapped
+character and before restoring its keymap. The prior text paths only flushed
+requests and later performed a final round-trip after individual guards had
+already dropped. This is a suspected delivery-order race, not yet confirmed
+resolved. The same ordering precaution is documented in xdotool's
+`xdo_send_keysequence_window_list_do` (https://github.com/jordansissel/xdotool/blob/master/xdo.c).
+The candidate is tested across three fresh Linux desktops; each independently
+runs Unicode saved-text and menu-accelerator checks, keeps its own screenshots,
+DOCX, keyboard mappings and cleanup receipt, and does not consume model budget.
