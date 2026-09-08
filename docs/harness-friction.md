@@ -1459,3 +1459,60 @@ types. CI explicitly builds the real executable and allows 30 minutes for the
 combined native build/test job; this is independent of uncapped agent runs.
 Python syntax and workflow YAML passed. Real loader execution on this candidate
 is pending CI, as are TypeScript native SDK tests and Windows uninstall execution.
+
+
+**SET-053 — native document fixture ownership and stale app discovery (2026-09-08):**
+The first Unicode selection retry prelaunched TextEdit and then called SDK
+open_target, which intentionally creates another macOS app instance. This was
+fixture composition error. Neither the failed editor lookup nor its cleanup
+failure is selection acceptance. After bounded ownership verification, both
+owned processes exited and the unchanged temporary document was removed.
+Native reference inspection during recovery returned after roughly five hours;
+the cause of that delay is unknown. Recovery used the bounded lifecycle helper.
+Evidence: native-selection-unicode-1, including recovery-cleanup.json.
+
+The fixture now opens its document in one Launch Services operation and attaches
+the SDK without auto-launch. Retry 2 was blocked by a locked desktop before any
+app launch; scratch cleanup passed. Retry 3 opened visible TextEdit PID 48904,
+but the public SDK selected PID 58643. After cleanup, the original daemon still
+listed 58643 as running while ps confirmed it absent. Both driver permissions
+were true. Selection was never attempted. Owned app exit and file removal passed.
+Evidence: native-selection-unicode-2 and native-selection-unicode-3, including
+sdk-initial.txt, fixture-readiness.json and driver-textedit-after-cleanup.json.
+
+The no-overlay daemon joined its server thread instead of running AppKit's main
+loop; NSWorkspace application properties stopped refreshing. A bare CFRunLoop
+repair failed the live launch probe (native-app-discovery-1); no UI/process/file
+was left behind. Sharing the existing accessory NSApplication loop with the
+no-overlay mode passed real public-SDK discovery after launch and after quit
+(native-app-discovery-2). This creates no overlay or Dock icon. It is a macOS
+repair; no new Windows/Linux behavior is claimed.
+
+Permanent Vitest APP-N01/02 then passed (16.29 s) against a temporary signed
+build of driver fa11d162c plus the main-loop diff. The same daemon served all
+observations. Fixtures launch/quit a real TextEdit document; assertions use only
+public SDK isRunning outcomes. Inventory does not need AX/screen grants; this
+fixture verifies exact daemon identity without requesting or requiring those
+grants. Input/capture evaluation gates still require both by default. The
+explicit requiredPermissions field distinguishes these evidence scopes.
+All owned apps, scratch documents, private daemon/socket and temporary bundle
+were cleaned up. Evidence: native-app-discovery-e2e-1. SDK E2E typecheck passed.
+The final save diagnostic now preserves refusal evidence without masking the
+original test error; independent process-exit proof still controls file removal.
+Unicode selection and final candidate GUI acceptance remain pending. No model
+calls or model spending occurred in these attempts.
+
+**SET-054 — real SDK CI completed; Hermes rename fixture repaired (2026-09-08):**
+Driver fa11d162c CI 34205193943 passed all portable contract jobs, pinned MCP
+discovery, generated binding freshness, Rust SDK, external C ABI, real Python
+loader, TypeScript native SDK and packaging checks. Windows unit CI 34205193777
+passed, including uninstall parsing/order and public ValidateOnly preserve/purge
+checks. These supersede the pending execution statements in SET-051/052, but do
+not establish GUI parity or complete Windows uninstall/reinstall acceptance.
+
+Linux 34205193892 and Nix 34205193824 failed because the Hermes CLI fixture
+still staged and expected skills/cua-driver after the public skill became
+opensky-driver. Corrected those two fixture paths; preserved CUA_DRIVER_RS_HOME,
+which the implementation still uses. The real CLI test passed locally (one test,
+0.72 s after compilation). No desktop apps or model calls were involved.
+The next CI candidate must verify the full Linux/Nix jobs.

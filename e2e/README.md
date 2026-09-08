@@ -242,3 +242,16 @@ The same SDK/driver commits passed all ten hosted browser cases in
 [34167084511](https://github.com/tanishqkancharla/opensky/actions/runs/34167084511);
 driver build/unit checks passed on all three OSes in
 [34167061105](https://github.com/tanishqkancharla/cua/actions/runs/34167061105).
+
+
+### macOS app discovery regression (2026-09-08)
+
+APP-N01 and APP-N02 in `specs/native-app-discovery.test.ts` exercise a real
+TextEdit launch and quit after earlier SDK inventory calls. Both passed locally
+in 16.29 s with the no-overlay AppKit-loop repair applied to driver fa11d162c.
+Evidence: `evals/runs/native-app-discovery-e2e-1` includes exact process cleanup.
+These inventory tests need the real macOS daemon and an unlocked desktop, but
+no AX or screen-capture grants. Other GUI tests retain both permission gates.
+No mock app, daemon restart between observations, or fabricated state is used.
+The Unicode selection retry uncovered this discovery bug before selection ran;
+it remains unaccepted until separately rerun on the permissioned fixed driver.

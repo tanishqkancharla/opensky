@@ -4,7 +4,7 @@ import { OpenSkyDriverClient } from "../../src/driver.js";
 
 /** Query the daemon that will actually receive actions, not the CLI's default
  * permission-status route. Never start a daemon or request a TCC grant here. */
-export async function verifyDriverRuntime(options: { binaryPath: string; socket?: string; artifacts: string }) {
+export async function verifyDriverRuntime(options: { binaryPath: string; socket?: string; artifacts: string; requirePermissions?: boolean }) {
   const driver = new OpenSkyDriverClient({
     binaryPath: options.binaryPath, socket: options.socket,
     autoStart: false, autoInstall: false,
@@ -23,7 +23,7 @@ export async function verifyDriverRuntime(options: { binaryPath: string; socket?
     if (await realpath(source.executable) !== configuredExecutable) {
       throw new Error(`Driver runtime mismatch: configured ${configuredExecutable}, connected to ${source.executable}`);
     }
-    if (permissions.accessibility !== true || permissions.screen_recording !== true) {
+    if (options.requirePermissions !== false && (permissions.accessibility !== true || permissions.screen_recording !== true)) {
       throw new Error("The selected OpenSky daemon needs Accessibility and Screen Recording before GUI evaluation");
     }
   } catch (cause) {
@@ -31,7 +31,7 @@ export async function verifyDriverRuntime(options: { binaryPath: string; socket?
   }
   await writeFile(join(options.artifacts, "driver-runtime.json"), JSON.stringify({
     capturedAt: new Date().toISOString(), configuredExecutable, socket: options.socket ?? null,
-    permissions, error, ready: error === null,
+    permissions, requiredPermissions: options.requirePermissions !== false, error, ready: error === null,
   }, null, 2));
   if (error) throw new Error(error);
   return permissions!;

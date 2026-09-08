@@ -62,20 +62,26 @@ if args.count == 2 && args[1] == "desktop-state" {
         state["focusedWindowAX"] = lines
     }
     emit(state)
-} else if (4...6).contains(args.count) && args[1] == "launch" {
+} else if (4...7).contains(args.count) && args[1] == "launch" {
     guard NSRunningApplication.runningApplications(withBundleIdentifier: args[3]).isEmpty else {
         fputs("App already running; setup refused\n", stderr); exit(1)
     }
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.createsNewApplicationInstance = true
     configuration.arguments = args.count >= 5 ? (try! JSONSerialization.jsonObject(with: Data(args[4].utf8)) as! [String]) : ["-ApplePersistenceIgnoreState", "YES"]
-    if args.count == 6 { configuration.environment = try! JSONSerialization.jsonObject(with: Data(args[5].utf8)) as! [String: String] }
-    NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: args[2]), configuration: configuration) { app, error in
+    if args.count >= 6 { configuration.environment = try! JSONSerialization.jsonObject(with: Data(args[5].utf8)) as! [String: String] }
+    let documents = args.count == 7 ? (try! JSONSerialization.jsonObject(with: Data(args[6].utf8)) as! [String]) : []
+    let completion: (NSRunningApplication?, Error?) -> Void = { app, error in
         guard let app = app, let receipt = identity(app) else {
             fputs("App launch failed: \(String(describing: error))\n", stderr); exit(1)
         }
         emit(receipt)
         exit(0)
+    }
+    if documents.isEmpty {
+        NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: args[2]), configuration: configuration, completionHandler: completion)
+    } else {
+        NSWorkspace.shared.open(documents.map { URL(fileURLWithPath: $0) }, withApplicationAt: URL(fileURLWithPath: args[2]), configuration: configuration, completionHandler: completion)
     }
     RunLoop.current.run()
 } else if args.count == 5 && ["activate", "quit", "stop-disposable"].contains(args[1]), let pid = pid_t(args[2]), let launched = Double(args[4]) {

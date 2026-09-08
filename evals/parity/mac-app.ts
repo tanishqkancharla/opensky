@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const exec = promisify(execFile);
 type Identity = { pid: number; bundleId: string; launchedAt: number };
 type OwnedApp = Identity & { activate(): Promise<{ accepted: boolean }>; inspect(options?: { accessibility?: boolean }): Promise<Identity & { finishedLaunching: boolean; activationPolicy: number; focusedWindowAX?: string[]; windows: { title: string; windowId: number; onScreen: boolean }[] }> };
-type AppFixtureOptions = { bundleId: string; appPath: string; artifacts: string; launchArguments?: string[]; launchEnvironment?: Record<string, string>; disposableProfile?: boolean };
+type AppFixtureOptions = { bundleId: string; appPath: string; artifacts: string; launchArguments?: string[]; launchEnvironment?: Record<string, string>; openDocuments?: string[]; disposableProfile?: boolean };
 
 /** Own an exact Launch Services process, independent of either evaluated SDK.
  * Refuse to start when that app is in use: the bundle-based native reference
@@ -37,14 +37,17 @@ async function withCompiledMacApp<T>(options: AppFixtureOptions, temporary: stri
     throw error;
   }
   const list = async (): Promise<Identity[]> => JSON.parse((await exec(helper, ["list", options.bundleId], { timeout: 10_000 })).stdout);
-  if ((await list()).length) throw new Error(`${options.bundleId} is already running; no app was launched or altered`);
+  if ((await list()).length) {
+    await writeFile(join(options.artifacts, "cleanup.json"), JSON.stringify({ status: "passed", launched: false, verifiedExited: true, reason: "existing app prevented fixture launch" }, null, 2));
+    throw new Error(`${options.bundleId} is already running; no app was launched or altered`);
+  }
   // Launch Services returns the exact new NSRunningApplication, not a PID
   // guessed from a process-list difference. The launch option is per-process.
-  const owned = JSON.parse((await exec(helper, ["launch", options.appPath, options.bundleId, JSON.stringify(options.launchArguments ?? ["-ApplePersistenceIgnoreState", "YES"]), JSON.stringify(options.launchEnvironment ?? {})], { timeout: 30_000 })).stdout) as Identity;
+  const owned = JSON.parse((await exec(helper, ["launch", options.appPath, options.bundleId, JSON.stringify(options.launchArguments ?? ["-ApplePersistenceIgnoreState", "YES"]), JSON.stringify(options.launchEnvironment ?? {}), JSON.stringify(options.openDocuments ?? [])], { timeout: 30_000 })).stdout) as Identity;
   let result: T | undefined;
   let actionError: unknown;
   try {
-    await writeFile(join(options.artifacts, "app-ownership.json"), JSON.stringify({ ...owned, appPath: options.appPath, restoreState: false }, null, 2));
+    await writeFile(join(options.artifacts, "app-ownership.json"), JSON.stringify({ ...owned, appPath: options.appPath, openDocuments: options.openDocuments ?? [], restoreState: false }, null, 2));
     result = await use({ ...owned,
       activate: async () => JSON.parse((await exec(helper, ["activate", String(owned.pid), owned.bundleId, String(owned.launchedAt)], { timeout: 10_000 })).stdout),
       inspect: async (inspectOptions) => JSON.parse((await exec(helper, [inspectOptions?.accessibility ? "inspect-ax" : "inspect", String(owned.pid)], { timeout: 10_000 })).stdout),
