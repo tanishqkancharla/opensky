@@ -1,14 +1,17 @@
 # Paired parity evaluations
 
-Status: two pinned OSWorld smoke tasks; initial attempts are characterization,
-not yet a validated paired baseline or a general parity score.
+Status: the two-task smoke campaign completed with two valid pairs. Both
+interfaces passed heading alignment and failed lowercasing. This is a small
+paired baseline, not a general parity score. The first five-task campaign
+stopped at a false screenshot-program rejection in its third task; that guard
+is corrected and the campaign must be rerun.
 The [initial smoke results](smoke-results.md) record both attempts per task,
 their separate upstream/content scores, cleanup, timing and estimated spend.
 Three additional Writer tasks are now pinned for the five-task stage: whole-text
 font, H2O subscript, and last-paragraph strike-through. Their original inputs,
 gold outputs and unmodified upstream metric functions are included. Separate
 guards cover all text/table fonts and per-character formatting, including
-partial subscript changes that the upstream metric accepts. All 29 real-file
+partial subscript changes that the upstream metric accepts. All 30 real-file
 grader, policy, admission and spending checks pass. The full 20-task set is not frozen yet.
 
 ## Run a gated campaign

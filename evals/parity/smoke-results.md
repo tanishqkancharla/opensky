@@ -69,3 +69,26 @@ new matched native comparison. At this checkpoint the cumulative conservative
 estimate is **$2.0151012**, with no unsettled reservations and a $50 review
 threshold. The expanded harness passes 24 budget/policy/document-grading checks;
 the gated two- then five-task campaign remains to be run.
+
+## Frozen smoke campaign 2
+
+`campaign-smoke-2`, SDK/harness `1dc22f6`, completed all four attempts with
+stable fingerprints, bounded transport receipts, verified process liveness
+before teardown, and successful cleanup/scratch removal.
+
+| Task / interface | Guarded task result | Admitted calls | Agent elapsed | Cleanup |
+| --- | --- | ---: | ---: | --- |
+| Heading / native | Pass | 3 | 24.52 s | Normal quit |
+| Heading / OpenSky | Pass | 5 | 42.33 s | Normal quit |
+| Lowercase / OpenSky | Fail | 11 | 110.21 s | Verified disposable-process fallback |
+| Lowercase / native | Fail | 11 | 90.89 s | Normal quit |
+
+Both interfaces succeeded on 1/2 tasks; the pair outcomes were one **both pass**
+and one **neither pass**. Two tasks do not establish general parity. Cumulative
+estimated evaluation spend after this campaign was $3.6283252.
+
+The first five-task campaign then completed the heading pair (both pass) and
+lowercase pair (OpenSky pass/native fail). Native's font attempt was interrupted
+by a guard that rejected an equivalent inline screenshot import. That third
+pair remains unscored and the campaign incomplete. SET-032 records the fix and
+the audited cumulative estimate of $5.1207228. Original artifacts remain intact.

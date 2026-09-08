@@ -22,6 +22,7 @@ export class DesktopProgramPolicy {
       const member = (node: any, object: string, method?: string) => node?.type === "MemberExpression" && !node.computed && node.object?.type === "Identifier" && node.object.name === object && (method === undefined || node.property?.name === method);
       const imported = (node: any, source: string) => node?.type === "AwaitExpression" && node.argument?.type === "ImportExpression" && !node.argument.options && node.argument.source?.value === source;
       const importedSky = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "sky" && imported(node.object, "@oai/sky");
+      const importedMember = (node: any, source: string, method: string) => node?.type === "MemberExpression" && !node.computed && node.property?.name === method && imported(node.object, source);
       const screenshotURL = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "url" && node.object?.type === "MemberExpression" && !node.object.computed && node.object.property?.name === "screenshot" && states.has(node.object.object?.name);
       const value = (node: any): boolean => {
         if (!node) return false;
@@ -34,9 +35,10 @@ export class DesktopProgramPolicy {
         if (node.type === "MemberExpression") return !node.computed && !forbidden.has(node.property?.name) && value(node.object);
         if (node.type !== "CallExpression" || node.optional) return false;
         if (member(node.callee, "Object", "keys") && node.arguments.length === 1 && node.arguments[0].type === "Identifier" && ["sky", "app"].includes(node.arguments[0].name)) return true;
-        if (member(node.callee, "fs", "readFile") && imports.has("fs")) {
+        if (this.scope.backend === "native" && ((member(node.callee, "fs", "readFile") && imports.has("fs")) || importedMember(node.callee, "node:fs/promises", "readFile"))) {
           const path = node.arguments[0];
-          return node.arguments.length === 1 && path?.type === "CallExpression" && path.callee?.name === "fileURLToPath" && imports.has("fileURLToPath") && path.arguments.length === 1 && screenshotURL(path.arguments[0]);
+          const converter = (path?.callee?.name === "fileURLToPath" && imports.has("fileURLToPath")) || importedMember(path?.callee, "node:url", "fileURLToPath");
+          return node.arguments.length === 1 && path?.type === "CallExpression" && converter && path.arguments.length === 1 && screenshotURL(path.arguments[0]);
         }
         if (!node.arguments.every(value)) return false;
         if (member(node.callee, "JSON", "stringify")) return node.arguments.length === 1;

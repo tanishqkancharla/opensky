@@ -978,3 +978,15 @@ prevents claiming cleanup and preserves scratch files for recovery. Desktop
 readiness is recorded after unsuccessful task callbacks too. These new liveness
 paths still need real-run validation; no crash is claimed from the off-screen
 observations above.
+
+**SET-032 — inline screenshot imports were falsely rejected (2026-09-07):**
+The first five-task campaign completed two valid pairs, then interrupted the
+native font arm at a legitimate screenshot cell. It used inline imports of
+`node:fs/promises` and `node:url` around the screenshot URL returned by
+`get_app_state`; the guard only recognized named imports. Both equivalent forms
+are now admitted, while literal paths and fabricated screenshot objects remain
+refused. The interrupted attempt and original campaign stay invalid and are
+retained. Its owned LibreOffice PID 29879 quit normally and scratch removal
+passed. All 11 policy/admission checks pass. The terminal-turn usage audit
+settled the interrupted reservation; the cumulative estimate is $5.1207228
+with no outstanding reservations. A new frozen campaign remains to be completed.
