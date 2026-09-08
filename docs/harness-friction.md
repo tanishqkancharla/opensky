@@ -1828,3 +1828,33 @@ restrictions. The new scope is not yet wired to an agent dispatch: disposable
 desktop verification, runtime fingerprinting, remote spending reservations and
 matched Terra runs remain required. The official-package probe now records its
 Codex/Node REPL executable paths to support that work without guessing paths.
+
+**SET-065 — Verified Linux launcher/process mismatch and exact-runtime preflight (2026-09-08):**
+Runs 34270522761 and 34271818879 both finished with two passing browser SDK
+smokes, a passing native document check and an OpenSky discovery failure.
+The latter run captured `libreoffice-startcenter` and `libreoffice-writer`
+as not running, while the visible owned window belonged to `soffice.bin` and
+reported WM_CLASS `libreoffice`, `libreoffice-writer`. The installed Writer
+launcher declares `StartupWMClass=libreoffice-writer` and `Exec=libreoffice --writer`.
+Evidence: `evals/runs/linux-office-smoke-2`; both app groups exited and temporary
+files were removed. These results remain deterministic, not agent parity.
+
+Driver c2705becf associates window classes/app IDs with installed launchers
+before executable-basename fallback. A bare suite launcher with the exact same
+launcher executable also maps to the component's process; other components and
+different installation paths are not inferred as running. No fixture selector
+or document outcome was changed. The Linux adapter supplies X11 WM_CLASS and
+Wayland app IDs through its existing dispatch; Wayland runtime verification is
+still outstanding. Focused matching/parser checks and the same public document
+test will run remotely against the pinned candidate; only formatting has been
+validated locally for this Linux-only Rust code.
+
+The official Linux probe confirmed both `resources/codex` and
+`resources/cua_node/bin/node_repl`. Environment recording now supports Linux OS,
+LibreOffice binary, configurable Codex executable and native Linux binary hashes.
+Linux daemon verification binds the private listening socket inode to the owned
+process, checks its executable/start time, compares its reported source revision,
+and requires X11 plus a working accessibility bus. The office CI fixture now runs
+these actual preflights before input. Local E2E/harness TypeScript and shell
+checks pass; remote acceptance is pending. Linux editor fingerprints explicitly
+remain unsupported. No agent dispatch or new model spend occurred.

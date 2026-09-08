@@ -15,7 +15,11 @@ async function sha256(path: string): Promise<string> {
 
 /** Fingerprint actual code/assets, including uncommitted work. Never serialize
  * auth configuration or environment values into portable result artifacts. */
-export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; python: string; vscodePath?: string; nativeConfig?: string; artifacts: string; scoringProfile?: { name: string; sha256: string | null } }) {
+export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; python: string; codex?: string; vscodePath?: string; nativeConfig?: string; artifacts: string; scoringProfile?: { name: string; sha256: string | null } }) {
+  const linux = platform() === "linux";
+  if (!linux && platform() !== "darwin") throw new Error("No environment fingerprint implemented for this platform");
+  if (linux && options.vscodePath) throw new Error("Linux editor fingerprinting must be implemented before editor evaluations");
+  const codex = options.codex ?? join(homedir(), ".local/bin/codex");
   const files: Record<string, string> = {};
   async function walk(directory: string) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -40,7 +44,8 @@ export async function recordEnvironment(options: { repo: string; appPath: string
   if (nativeConfig) {
     const servicePath = nativeConfig.env?.SKY_CUA_SERVICE_PATH;
     const moduleDirectories = String(nativeConfig.env?.NODE_REPL_NODE_MODULE_DIRS ?? "").split(delimiter);
-    if (!servicePath || !moduleDirectories[0]) throw new Error("Native backend identity unavailable; do not dispatch an unversioned reference");
+    const linuxBinary = nativeConfig.env?.OAI_SKY_LINUX_BIN;
+    if (!(linux ? linuxBinary : servicePath) || !moduleDirectories[0]) throw new Error("Native backend identity unavailable; do not dispatch an unversioned reference");
     const packageRoot = join(moduleDirectories[0], "@oai/sky");
     const packageJson = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
     const clientFiles: Record<string, string> = {};
@@ -52,27 +57,35 @@ export async function recordEnvironment(options: { repo: string; appPath: string
       }
     }
     await hashClient(join(packageRoot, "dist"));
-    const executable = await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleExecutable", join(servicePath, "Contents/Info.plist")]);
+    const executable = linux ? undefined : await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleExecutable", join(servicePath, "Contents/Info.plist")]);
     nativeReference = {
       nodeReplSha256: await sha256(nativeConfig.command), skyVersion: packageJson.version,
       clientFiles: Object.fromEntries(Object.entries(clientFiles).sort(([a], [b]) => a.localeCompare(b))),
-      serviceExecutableSha256: await sha256(join(servicePath, "Contents/MacOS", executable)),
-      serviceInfoPlistSha256: await sha256(join(servicePath, "Contents/Info.plist")),
+      ...(linux ? {
+        serviceExecutableSha256: await sha256(linuxBinary),
+      } : {
+        serviceExecutableSha256: await sha256(join(servicePath, "Contents/MacOS", executable!)),
+        serviceInfoPlistSha256: await sha256(join(servicePath, "Contents/Info.plist")),
+      }),
     };
   }
   await writeFile(join(options.artifacts, "environment.json"), JSON.stringify({
-    capturedAt: new Date().toISOString(), osVersion: await command("/usr/bin/sw_vers", ["-productVersion"]), platform: platform(), release: release(), architecture: arch(), node: process.version,
+    capturedAt: new Date().toISOString(), osVersion: linux ? await readFile("/etc/os-release", "utf8") : await command("/usr/bin/sw_vers", ["-productVersion"]), platform: platform(), release: release(), architecture: arch(), node: process.version,
     sdkCommit: await command("git", ["rev-parse", "HEAD"]),
     worktreeDirty: !!(await command("git", ["status", "--porcelain"])),
     codeAndAssetsSha256: createHash("sha256").update(JSON.stringify(sorted)).digest("hex"), files: sorted,
     scoringProfile: options.scoringProfile ?? null,
     driver: { sha256: await sha256(options.driver), identity: JSON.parse(await command(options.driver, ["--opensky-driver-identity"])) },
-    codex: { sha256: await sha256(join(homedir(), ".local/bin/codex")), version: await command(join(homedir(), ".local/bin/codex"), ["--version"]) },
+    codex: { sha256: await sha256(codex), version: await command(codex, ["--version"]) },
     python: {
       executableSha256: await sha256(options.python), version: await command(options.python, ["--version"]),
       packages: JSON.parse(await command(options.python, ["-c", "import importlib.metadata,json; print(json.dumps(sorted((d.metadata['Name'],d.version) for d in importlib.metadata.distributions())))"])),
     },
-    libreOffice: {
+    libreOffice: linux ? {
+      version: await command(join(options.appPath, "program/soffice"), ["--version"]),
+      executableSha256: await sha256(join(options.appPath, "program/soffice.bin")),
+      launcherSha256: await sha256(join(options.appPath, "program/soffice")),
+    } : {
       version: await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleShortVersionString", join(options.appPath, "Contents/Info.plist")]),
       executableSha256: await sha256(join(options.appPath, "Contents/MacOS/soffice")),
       infoPlistSha256: await sha256(join(options.appPath, "Contents/Info.plist")),

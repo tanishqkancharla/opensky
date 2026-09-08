@@ -15,7 +15,8 @@ const binaryPath = process.env.OPENSKY_DRIVER_BINARY;
 if (!homeDir || !binaryPath) throw new Error("Provide OPENSKY_HOME and OPENSKY_DRIVER_BINARY; automatic installation/start is disabled.");
 await mkdir(homeDir, { recursive: true });
 const socket = process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET;
-await verifyDriverRuntime({ binaryPath, socket, artifacts: homeDir });
+await verifyDriverRuntime({ binaryPath, socket, artifacts: homeDir,
+  ...(process.platform === "linux" ? { ownedLinuxPid: Number(process.env.OPENSKY_OWNED_DRIVER_PID) } : {}) });
 const driver = new OpenSkyDriverClient({ binaryPath, socket, autoInstall: false, autoStart: false });
 const runtime = createCuaReplToolRuntime(driver, detectTarget(), { homeDir });
 const policy = process.env.PARITY_DESKTOP_SCOPE && new DesktopProgramPolicy(JSON.parse(process.env.PARITY_DESKTOP_SCOPE));

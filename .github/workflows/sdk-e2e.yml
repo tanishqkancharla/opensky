@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OPENSKY_DRIVER_REF: ac13520622d2cb346a0f03c53b73a87980fe6661
+  OPENSKY_DRIVER_REF: c2705becf4af404ca79ee696deed2ddea7736d32
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -48,6 +48,8 @@ jobs:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
         run: |
           cargo build --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
+          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml window_installed_matches
+          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml parses_minimal_entry
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/debug/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json

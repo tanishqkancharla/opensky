@@ -28,6 +28,8 @@ trap cleanup EXIT
 openbox > "$OPENSKY_LINUX_OFFICE_ARTIFACT/openbox.log" 2>&1 & owned+=("$!")
 "$OPENSKY_DRIVER_BINARY" serve --no-overlay --socket "$OPENSKY_DRIVER_SOCKET" \
   > "$OPENSKY_LINUX_OFFICE_ARTIFACT/driver.log" 2>&1 & owned+=("$!")
+export OPENSKY_OWNED_DRIVER_PID="$!"
+export OPENSKY_EVAL_PYTHON="$(command -v python)"
 ready=0
 for attempt in $(seq 1 60); do
   if "$OPENSKY_DRIVER_BINARY" status --socket "$OPENSKY_DRIVER_SOCKET" >/dev/null 2>&1; then ready=1; break; fi
@@ -37,6 +39,7 @@ done
 "$OPENSKY_DRIVER_BINARY" --opensky-driver-identity > "$OPENSKY_LINUX_OFFICE_ARTIFACT/driver-identity.json"
 libreoffice --version > "$OPENSKY_LINUX_OFFICE_ARTIFACT/libreoffice-version.txt"
 printf '%s\n' "$GITHUB_SHA" > "$OPENSKY_LINUX_OFFICE_ARTIFACT/sdk-source-sha.txt"
+node --import tsx e2e/ci/linux-environment.ts
 cd e2e
 npm test -- specs/linux-office.test.ts --reporter=verbose --reporter=json \
   --outputFile.json="$OPENSKY_LINUX_OFFICE_ARTIFACT/results.json"

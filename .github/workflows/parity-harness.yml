@@ -32,5 +32,5 @@ jobs:
         run: |
           npm run typecheck --prefix e2e
           npx tsc --noEmit --target ES2022 --module Node16 --moduleResolution Node16 --strict --skipLibCheck --esModuleInterop evals/parity/*.ts evals/parity/osworld/*.ts
-          npm test --prefix e2e -- specs/parity-budget.test.ts specs/parity-policy.test.ts specs/parity-admission.test.ts specs/osworld-score.test.ts specs/osworld-expanded-score.test.ts
+          npm test --prefix e2e -- specs/parity-budget.test.ts specs/parity-policy.test.ts specs/linux-parity-policy.test.ts specs/parity-admission.test.ts specs/osworld-score.test.ts specs/osworld-expanded-score.test.ts
       # This job deliberately reports harness checks, not agent or GUI success.
