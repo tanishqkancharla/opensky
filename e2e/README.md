@@ -255,3 +255,21 @@ no AX or screen-capture grants. Other GUI tests retain both permission gates.
 No mock app, daemon restart between observations, or fabricated state is used.
 The Unicode selection retry uncovered this discovery bug before selection ran;
 it remains unaccepted until separately rerun on the permissioned fixed driver.
+
+
+### Unicode selection correctness verified (2026-09-08)
+
+SELECT-N01 and both cursor-edge cases now pass against real TextEdit saved files.
+The SDK translates UTF-16 match offsets into composed-character cursor steps on
+macOS. A baseline overshot after two emoji and corrupted the requested range;
+the fixed replacement preserves the punctuation and newline. The fixture parser
+also accepts the actual SDK accessibility bullets.
+
+Evidence: `evals/runs/native-selection-unicode-5` (failed baseline), `-6`
+(passing replacement), and `native-selection-cursor-1` (two passing edge cases).
+Each uses the unchanged permissioned aa31c70ee driver in a private instance with
+its default AppKit loop active. All owned app/file/process/socket cleanup passed.
+These runs verify SDK selection behavior, not the latest driver candidate.
+They take about 40–47 seconds each; atomic driver range selection remains needed
+for latency and broader control coverage. The separate native paste case was
+not run here. The broad SDK unit/contract suite also passed 339/339 checks.

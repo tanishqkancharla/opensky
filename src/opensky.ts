@@ -1454,17 +1454,34 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(`Text ${JSON.stringify(args.text)} was not found in element ${args.element_index}`);
     }
 
+    // macOS arrows move by composed characters, while JavaScript offsets are
+    // UTF-16 code units. Translating those offsets directly to key presses
+    // overshoots after emoji and can replace unrelated text.
+    let beforeMoves = index;
+    let moves = args.text.length;
+    if (this.target === "mac") {
+      const boundaries = [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(haystack)]
+        .map(segment => segment.index);
+      boundaries.push(haystack.length);
+      const start = boundaries.indexOf(index);
+      const end = boundaries.indexOf(index + args.text.length);
+      if (start < 0 || end < 0) {
+        throw new OpenSkyError("The requested text splits a composed character; keyboard selection cannot address that range safely.");
+      }
+      beforeMoves = start;
+      moves = end - start;
+    }
+
     await this.pressElementKey(
       resolved,
       args.element_index,
       "home",
       this.target === "mac" ? ["cmd"] : ["ctrl"],
     );
-    for (let i = 0; i < index; i += 1) {
+    for (let i = 0; i < beforeMoves; i += 1) {
       await this.pressElementKey(resolved, args.element_index, "right");
     }
     if (selectionType === "cursor_before") return;
-    const moves = args.text.length;
     if (selectionType === "cursor_after") {
       for (let i = 0; i < moves; i += 1) {
         await this.pressElementKey(resolved, args.element_index, "right");

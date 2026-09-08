@@ -1516,3 +1516,58 @@ opensky-driver. Corrected those two fixture paths; preserved CUA_DRIVER_RS_HOME,
 which the implementation still uses. The real CLI test passed locally (one test,
 0.72 s after compilation). No desktop apps or model calls were involved.
 The next CI candidate must verify the full Linux/Nix jobs.
+
+
+**SET-055 — Unicode selection overshot the requested text (2026-09-08):**
+To isolate SDK behavior without another permission grant, started a private
+instance of the unchanged, already-authorized aa31c70ee driver with its default
+AppKit event loop/overlay enabled. The original daemon remained untouched.
+Retry 4 observed the correct TextEdit AXTextArea, but nativeEditorIndex rejected
+the SDK's leading bullet. Accept both current bullet and legacy plain index
+lines. This was a fixture parser error, not a selection failure.
+
+Retry 5 then executed selection and saved `two nechosen` instead of
+`two chosen.` followed by the original newline. The SDK converted UTF-16 offsets
+directly into Right-arrow presses, overshooting by two positions after two
+emoji. On macOS, translate the match boundaries into composed-character steps
+using Intl.Segmenter. Refuse a match splitting a grapheme before sending input.
+Windows/Linux cursor logic remains unchanged; no native behavior there is
+inferred from this macOS result.
+
+Retry 6 passed the exact real saved-file assertion in 47.58 s. The same original
+driver and document input were used before/after the SDK change. All test app,
+file, private daemon and socket cleanup passed. Evidence:
+`evals/runs/native-selection-unicode-4`, `-5`, and `-6`. This proves this emoji
+selection example; it does not certify every macOS control or the latest driver
+candidate, whose signing identity still lacks TCC grants. Atomic native range
+selection and its latency are still open: this correct short edit remains slow.
+The first broad SDK regression attempt was blocked by sandbox EPERM binding the
+existing local REPL test server; the authorized rerun is recorded separately.
+No model calls or spending occurred.
+
+**SET-056 — historical campaign failures obscured the stop reasons (2026-09-08):**
+The status canvas kept showing generic Failed labels for the old bounded profile.
+The audited partial campaign contains ten valid task pairs: 14 of their 20 arms
+hit the old deadline/call budget; six finished but failed saved-file checks.
+Nine tasks were not run and one pair is excluded for setup/policy problems.
+The canvas now labels old-limit cutoffs distinctly and calls the table historical
+and partial. Original scores remain unchanged: a cutoff with a failed saved-file
+check still failed under that old profile. No uncapped campaign or new agent
+success is inferred from today’s SDK/driver regressions. This is presentation
+clarification backed by the summary and audit, not a score reclassification.
+
+
+SET-055 validation completion: cursor-before and cursor-after each passed their
+real saved-file assertion (40.00 s and 47.24 s; 87.48 s suite total). Evidence:
+`evals/runs/native-selection-cursor-1`. Both exact owned TextEdit processes quit
+cooperatively, scratch files were removed, and the private daemon/socket exited.
+The authorized broad SDK suite passed 339/339 tests in 10.20 s; these existing
+unit/contract checks are separate from the three real saved-file cases.
+SDK build passed. No agent evaluation was dispatched and the spending limit
+remains $50: the user's status question did not approve an increase.
+
+SET-054 CI follow-up: ac1352062 passed Linux unit (34236425365), Windows unit
+(34236425453), full contract/native SDK (34236425419), scripts, docs, formatting
+and release metadata jobs. Nix 34236425382 was still running at this update.
+The draft PR remains unready pending the canonical desktop matrix and other
+explicit native acceptance gaps.

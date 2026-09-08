@@ -154,7 +154,7 @@ export const nativeTest = test.extend<{ document: NativeDocument }>({
 });
 
 export function nativeEditorIndex(state: string): number {
-  const matches = [...state.matchAll(/^\s*\[(\d+)\] AXTextArea\b/gm)];
+  const matches = [...state.matchAll(/^\s*(?:-\s*)?\[(\d+)\] AXTextArea\b/gm)];
   if (matches.length !== 1) throw new Error(`Expected one TextEdit AXTextArea, found ${matches.length}`);
   return Number(matches[0]![1]);
 }
