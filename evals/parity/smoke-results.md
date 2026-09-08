@@ -158,3 +158,15 @@ TypeScript checks pass; the 40 source assets pass SHA-256 verification. These
 are setup and evaluator results, not agent completion scores. The full paired
 campaign is still pending. No model evaluation ran during these setup checks;
 the cumulative conservative API-equivalent estimate remains $9.2695744.
+
+## First frozen 20-task attempt — stopped (2026-09-07)
+
+`campaign-full-1` at SDK/evaluator `8342e36` passed both heading arms: native
+6 calls/45.49s, OpenSky 6 calls/99.69s. OpenSky lowercase was interrupted after
+7 admitted calls/75.02s by the evaluator rejecting reassignment of its existing
+authorized app binding. That arm is invalid and the campaign stopped; 19 pairs
+remain unscored. All three apps stayed alive until normal cleanup and all scratch
+profiles were removed. The rebind guard is corrected in SET-040, with 21 focused
+checks and TypeScript validation passing. Interrupted usage is audited and
+settled; cumulative conservative estimate $9.7611836. A fresh full campaign is
+required. Earlier valid and invalid artifacts remain intact.

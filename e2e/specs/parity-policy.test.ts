@@ -79,9 +79,19 @@ test("OpenSky can recover with a second binding of the authorized app", ({ opens
   expect(opensky.accepts('let unrelated = await cua.getApp("Terminal");')).toBe(false);
 });
 
+test("OpenSky can rebind its existing app after an ordinary runtime error", ({ opensky }) => {
+  expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script");')).toBe(true);
+  opensky.executionFailed();
+  expect(opensky.accepts('app = await cua.getApp("org.libreoffice.script"); await app.getAXStateAndScreenshot({disableDiffing:true});')).toBe(true);
+  expect(opensky.accepts('let recovered = app; app = recovered; await app.getAXState();')).toBe(true);
+  expect(opensky.accepts('app = await cua.getApp("Terminal");')).toBe(false);
+  expect(opensky.accepts('app = app.facade;')).toBe(false);
+});
+
 test("an older data binding cannot acquire app authority through a failed assignment", ({ opensky }) => {
   expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script"); let data = app.facade;')).toBe(true);
   expect(opensky.accepts('var data = await cua.getApp("org.libreoffice.script");')).toBe(false);
+  expect(opensky.accepts('data = await cua.getApp("org.libreoffice.script");')).toBe(false);
   expect(opensky.accepts('data.getApp("Terminal");')).toBe(false);
 });
 

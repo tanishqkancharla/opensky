@@ -1125,3 +1125,27 @@ not decode the retained recording; its temporary compiler cache was removed.
 The subsequent unchanged-SDK run 34182947879 passed, as did its accompanying
 parity-harness and computer-use checks. This is unresolved intermittent setup
 failure evidence, not a demonstrated fix or a macOS parity result.
+
+**SET-040 — rebind an existing app variable during recovery (2026-09-07):**
+The first frozen 20-task campaign passed both heading arms, then stopped on
+OpenSky lowercase: 7 admitted calls, 75.02s, invalid evaluator interruption.
+The agent refreshed its authorized LibreOffice app with `app = await
+cua.getApp(...)`. The earlier alias fix allowed a new binding but the assignment
+branch still prohibited all app reassignments. It now permits an existing app
+binding to receive only an authorized getApp result or another scoped app alias.
+Old data bindings still cannot acquire app authority, and unrelated apps/internal
+objects remain refused. All 21 focused policy/admission checks and TypeScript
+validation pass. Static replay admits all 20 cells from the three attempts,
+including the previously rejected one; it does not rerun the desktop.
+
+All three owned LibreOffice processes stayed alive until normal cleanup, quit
+normally and had scratch files removed. The interrupted usage was audited and
+settled against terminal events; the cumulative estimate is $9.7611836, with no
+outstanding reservation. The original invalid arm remains invalid. The full
+campaign will restart at a new revision and in a new directory; no partial
+campaign is presented as a complete frozen score.
+
+The invalid lowercase arm also retains two real driver refusals of a freshly
+observed Format menu index: the addressed element could not be proven to belong
+to the document window. A fresh observation did not repair that action. This is
+pending SDK/driver diagnosis, separate from the evaluator rebinding fix.

@@ -32,6 +32,9 @@ export class DesktopProgramPolicy {
       const imported = (node: any, source: string) => node?.type === "AwaitExpression" && node.argument?.type === "ImportExpression" && !node.argument.options && node.argument.source?.value === source;
       const importedSky = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "sky" && imported(node.object, "@oai/sky");
       const importedMember = (node: any, source: string, method: string) => node?.type === "MemberExpression" && !node.computed && node.property?.name === method && imported(node.object, source);
+      const scopedApp = (node: any) => this.scope.backend === "opensky" &&
+        ((node?.type === "AwaitExpression" && member(node.argument?.callee, "cua", "getApp")) ||
+         (node?.type === "Identifier" && apps.has(node.name)));
       const screenshotURL = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "url" && node.object?.type === "MemberExpression" && !node.object.computed && node.object.property?.name === "screenshot" && states.has(node.object.object?.name);
       const importCall = (node: any, namespace: "fs" | "url", method: "readFile" | "fileURLToPath") =>
         (node?.type === "Identifier" && imports.get(node.name) === method) ||
@@ -94,9 +97,7 @@ export class DesktopProgramPolicy {
             if (declaration.id?.type !== "Identifier" || !name || forbidden.has(name)) return false;
             if (imports.has(name)) return false;
             if (!value(declaration.init)) return false;
-            const appInit = this.scope.backend === "opensky" &&
-              (member(declaration.init?.argument?.callee, "cua", "getApp") ||
-               (declaration.init?.type === "Identifier" && apps.has(declaration.init.name)));
+            const appInit = scopedApp(declaration.init);
             if ((name === "app" || apps.has(name)) && !appInit) return false;
             // Only a new binding or an already-scoped app may receive app
             // authority. Failed assignments must not promote older data.
@@ -114,7 +115,15 @@ export class DesktopProgramPolicy {
           if (this.scope.backend === "native" && expression.type === "AssignmentExpression" && expression.operator === "=" && member(expression.left, "globalThis", "sky") && importedSky(expression.right)) continue;
           if (expression.type === "AssignmentExpression" && expression.operator === "=" && expression.left.type === "Identifier") {
             const name = expression.left.name;
-            if (!bindings.has(name) || forbidden.has(name) || apps.has(name) || name === "app" || imports.has(name) || !value(expression.right)) return false;
+            if (!bindings.has(name) || forbidden.has(name) || imports.has(name) || !value(expression.right)) return false;
+            // Rebinding an existing app to the same authorized capability is
+            // normal recovery. A failed assignment leaves only that older,
+            // already-scoped app behind. Never promote an older data binding.
+            if (apps.has(name)) {
+              if (!scopedApp(expression.right)) return false;
+              continue;
+            }
+            if (name === "app" || scopedApp(expression.right)) return false;
             const isPath = screenshotPath(expression.right);
             paths.delete(name);
             if (isPath) paths.add(name);
