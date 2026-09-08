@@ -20,25 +20,37 @@ const artifacts = resolve(process.argv[4]!);
 const task = manifest.tasks.find((task: { id: string }) => task.id === taskId);
 if (!task || !["native", "opensky", "setup"].includes(backend!)) throw new Error("Use smoke.ts TASK_ID native|opensky|setup ARTIFACTS");
 const python = process.env.OPENSKY_EVAL_PYTHON;
-const appPath = process.env.OPENSKY_EVAL_LIBREOFFICE;
+const libreOfficePath = process.env.OPENSKY_EVAL_LIBREOFFICE;
+const vscodePath = process.env.OPENSKY_EVAL_VSCODE;
+const isCode = task.category === "vs_code";
+const appPath = isCode ? vscodePath : libreOfficePath;
 const driver = process.env.OPENSKY_DRIVER_BINARY;
-if (!python || !appPath || !driver) throw new Error("Set OPENSKY_EVAL_PYTHON, OPENSKY_EVAL_LIBREOFFICE and OPENSKY_DRIVER_BINARY");
+if (!python || !appPath || !libreOfficePath || !driver) throw new Error("Set OPENSKY_EVAL_PYTHON, OPENSKY_EVAL_LIBREOFFICE, OPENSKY_DRIVER_BINARY and (for editor tasks) OPENSKY_EVAL_VSCODE");
 for (const asset of task.assets) {
   const bytes = await readFile(join(root, task.id, asset.file));
   if (createHash("sha256").update(bytes).digest("hex") !== asset.sha256) throw new Error(`Task asset changed: ${asset.file}`);
 }
 await mkdir(artifacts, { recursive: true });
-await recordEnvironment({ repo, appPath, driver, python, artifacts, nativeConfig: backend === "native" ? process.env.OPENSKY_NATIVE_REPL_CONFIG : undefined });
+await recordEnvironment({ repo, appPath: libreOfficePath, vscodePath, driver, python, artifacts, nativeConfig: backend === "native" ? process.env.OPENSKY_NATIVE_REPL_CONFIG : undefined });
+const environment = JSON.parse(await readFile(join(artifacts, "environment.json"), "utf8"));
 const temporary = await mkdtemp(join(tmpdir(), "opensky-osworld-"));
 const document = join(temporary, task.inputFile);
 await copyFile(join(root, task.id, task.inputFile), document);
 const profile = join(temporary, "profile");
-const bundleId = "org.libreoffice.script";
-const scope = { backend: backend === "native" ? "native" : "opensky", appSelectors: [bundleId, "LibreOffice"] } as const;
+const bundleId = isCode ? "com.microsoft.VSCode" : "org.libreoffice.script";
+const appName = isCode ? "Visual Studio Code" : "LibreOffice";
+const launchArguments = isCode
+  ? ["--user-data-dir", profile, "--extensions-dir", join(temporary, "extensions"), "--disable-extensions", "--skip-welcome", "--skip-release-notes", "--new-window", document]
+  : [`-env:UserInstallation=${pathToFileURL(profile).href}`, "--norestore", "--nologo", task.category === "libreoffice_calc" ? "--calc" : task.category === "libreoffice_impress" ? "--impress" : "--writer", document];
+if (isCode) {
+  await mkdir(join(profile, "User"), { recursive: true });
+  await writeFile(join(profile, "User/settings.json"), JSON.stringify({ "update.mode": "none", "telemetry.telemetryLevel": "off", "workbench.startupEditor": "none" }));
+}
+const scope = { backend: backend === "native" ? "native" : "opensky", appSelectors: [bundleId, appName] } as const;
 let cleaned = false;
 let runError: unknown;
 try {
-  await withOwnedMacApp({ bundleId, appPath, artifacts, disposableProfile: true, launchEnvironment: { PYTHONDONTWRITEBYTECODE: "1" }, launchArguments: [`-env:UserInstallation=${pathToFileURL(profile).href}`, "--norestore", "--nologo", "--writer", document] }, async owned => {
+  await withOwnedMacApp({ bundleId, appPath, artifacts, disposableProfile: true, launchEnvironment: { PYTHONDONTWRITEBYTECODE: "1" }, launchArguments }, async owned => {
       const deadline = Date.now() + 30_000;
       let state;
       let activation;
@@ -64,16 +76,19 @@ try {
         enabled_tools: backend === "native" ? ["js"] : ["cua_repl"],
       };
       const guide = backend === "native"
-        ? await readFile(join(root, "../native-guide.md"), "utf8")
-        : 'Use desktop.cua_repl. Bind let app = await cua.getApp("org.libreoffice.script"); then use the public app methods and fresh observations. Creation and observations emit automatically.';
-      const result = await runCodex({ model: "gpt-5.6-terra", artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: 240_000, maxToolCalls: 20, mcp, authorizedApps: { [bundleId]: "LibreOffice" }, desktopProgramScope: { ...scope, appSelectors: [...scope.appSelectors] },
-        prompt: `Task: ${task.instruction}\nThe document ${task.inputFile} is already open in LibreOffice. Save your changes to this same document in its existing DOCX format. Preserve unrelated content. Use only this owned LibreOffice instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nUse straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker.`,
+        ? (await readFile(join(root, "../native-guide.md"), "utf8")).replaceAll("org.libreoffice.script", bundleId)
+        : `Use desktop.cua_repl. Bind let app = await cua.getApp(${JSON.stringify(bundleId)}); then use the public app methods and fresh observations. Creation and observations emit automatically.`;
+      const result = await runCodex({ model: "gpt-5.6-terra", artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: 240_000, maxToolCalls: 20, mcp, authorizedApps: { [bundleId]: appName }, desktopProgramScope: { ...scope, appSelectors: [...scope.appSelectors] },
+        prompt: `Task: ${task.instruction}\nYou are using macOS ${environment.osVersion}. The document ${task.inputFile} is already open in ${appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nUse straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker.`,
       });
       const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), task.id, document], { timeout: 15_000 })).stdout);
       // Never award success for edits completed after an interrupted deadline.
       // Preserve the actual file grader independently from the task allowance.
       const outcome = { ...savedFileOutcome, taskSuccess: savedFileOutcome.taskSuccess && !result.taskLimit };
-      await copyFile(document, join(artifacts, task.inputFile));
+      await copyFile(document, join(artifacts, task.inputFile)).catch(error => {
+        if (error.code !== "ENOENT") throw error;
+        // Deletion is a saved-file failure, not a missing infrastructure result.
+      });
       const report = { taskId, backend, suite: manifest.suite, upstreamCommit: manifest.upstreamCommit, adaptations: manifest.adaptations, outcome, savedFileOutcome, taskLimit: result.taskLimit, infrastructureError: result.infrastructureError, toolCalls: result.toolCalls, admittedCalls: result.admission?.admittedCalls ?? null, usage: result.usage, elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt) };
       await writeFile(join(artifacts, "score.json"), JSON.stringify(report, null, 2));
       console.log(JSON.stringify(report));

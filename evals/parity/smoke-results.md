@@ -109,3 +109,52 @@ both fail the complete-format guard despite upstream scores of 1. Native's final
 strikethrough arm was invalidated by another screenshot-import restriction
 (SET-036). Eight valid attempts remain measured evidence; the ninth is excluded.
 The final pair will be completed separately, with revision provenance retained.
+
+
+## Verified five-task readiness checkpoint
+
+`evals/runs/five-task-readiness-checkpoint` contains five valid pairs. It keeps
+all eight valid campaign-4 attempts, including every failure, and adds both
+separately completed strikethrough arms. SDK/driver/app/model versions and
+limits match; evaluator guards changed across `390d3e7`, `08f7e4e` and `d7fe97b`.
+The assembly audit checks source hashes, runtime fingerprints, sequential calls
+and the narrow guard-only differences. This is a readiness checkpoint across
+revisions, **not a single frozen campaign** and not a general parity percentage.
+
+| Task | Native | OpenSky |
+| --- | --- | --- |
+| Center heading | Pass | Fail |
+| Lowercase all text | Fail: deadline | Pass |
+| Times New Roman throughout | Fail | Fail: call limit |
+| H2O subscript | Fail: incomplete formatting | Fail: incomplete formatting |
+| Strike through final paragraph | Pass | Fail |
+
+Native succeeded on 2/5 and OpenSky on 1/5. There were two native-only successes,
+one OpenSky-only success and two neither-pass pairs. No pair had both succeed
+in this checkpoint. This small Writer-only set is a ramp validation, not broad
+capability coverage. It clears the five-task readiness stage; the 20-task
+campaign remains pending until the expanded fixtures are validated and frozen.
+
+The final native arm used 9 calls/106.43s; OpenSky used 4 calls/103.22s. Both
+quit normally and removed scratch files. The preceding invalid OpenSky attempt
+exposed a 60-second paragraph-selection timeout and a poisoned REPL (SET-037);
+its later guard rejection does not erase that SDK failure evidence. Across the
+checkpoint sources, the app was alive before teardown in every case. No
+unexpected LibreOffice exit was observed. Cumulative conservative estimated
+spend is $9.2695744, with no outstanding reservations at this checkpoint.
+
+## Expanded setup validation (2026-09-07)
+
+All 15 added task files passed real app setup: eight Calc, five Impress and two
+VS Code. Each owned process stayed alive until normal teardown, quit normally,
+and had its temporary profile removed. No unexpected LibreOffice exit was
+observed. `evals/runs/expanded-setup-validation.json` retains source paths and
+hashes. The first Calc probe failed before app launch because the VS Code
+fingerprint assumed the executable name Electron; the bundle metadata now
+supplies the actual name Code, and the retained second probe passed.
+
+The manifest now freezes 20 task IDs. All 72 harness/file-grader tests and
+TypeScript checks pass; the 40 source assets pass SHA-256 verification. These
+are setup and evaluator results, not agent completion scores. The full paired
+campaign is still pending. No model evaluation ran during these setup checks;
+the cumulative conservative API-equivalent estimate remains $9.2695744.

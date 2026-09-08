@@ -13,3 +13,9 @@ evals/runs/
 .opensky/
 __pycache__/
 *.pyc
+
+# Expanded OSWorld assets are fetched and verified from manifest URLs.
+evals/parity/osworld/*/*.xlsx
+evals/parity/osworld/*/*.pptx
+evals/parity/osworld/*/vscode_replace_text*.txt
+evals/parity/osworld/*/test*.py

@@ -1080,3 +1080,48 @@ The bridge trace labels the unfinished operation completed with duration zero;
 that trace must not be treated as successful action evidence. These selection,
 timeout recovery and trace-reporting issues are pending production work. All
 owned processes exited and scratch removal passed; no app crash was observed.
+
+**SET-038 — validate the broader task set before freezing it (2026-09-07):**
+The verified five-task readiness checkpoint retains every valid outcome from
+its source attempts, including failures: native 2/5, OpenSky 1/5. Source paths,
+hashes and compatibility checks disclose three evaluator revisions. This clears
+the readiness ramp but is not a frozen performance baseline. The cumulative
+API-equivalent estimate is $9.2695744, with no unsettled reservations.
+
+The full manifest now freezes five Writer, eight Calc, five Impress and two
+VS Code tasks from the pinned OSWorld revision. Original task JSON and grader
+source provenance are retained. The original scorers run on the agent's saved
+file, with separate content guards and a clustered/stacked chart guard. All 72
+spending, policy, admission and real-file grader checks pass under Python 3.12;
+TypeScript validation passes. These checks validate the evaluator, not desktop
+agent success. Slide content checks do not certify every unrelated visual detail.
+The decimal-display candidate needed an unported display export and was replaced;
+the transpose candidate explicitly needed clipboard use, excluded by this local
+profile, and was replaced with split fields. Both decisions preceded expanded
+agent outcomes; the deferred candidates remain in scratch provenance.
+
+All 40 task assets pass their SHA-256 pins. The downloader restored one deliberately
+missing asset from its original URL, verified it, and removed its temporary file;
+large new assets are fetched in CI instead of committed. Linux CI now uses the
+combined Python 3.12 grader dependencies. The earlier Python 3.14 pandas crash
+is not evidence of an SDK failure.
+
+All 15 new task files passed actual isolated app setup and teardown. Every owned
+process was alive immediately before normal quit, and every scratch profile was
+removed. Results and hashes are in `evals/runs/expanded-setup-validation.json`.
+VS Code uses a separately downloaded, SHA-verified and signature-verified stable
+app, preserving the user's Insiders installation. Its initial fingerprint probe
+incorrectly assumed an executable named Electron and failed before app launch;
+reading CFBundleExecutable fixed it. The later Calc, Impress and VS Code setups
+passed. No driver binary or permission identity changed. A paired 20-task agent
+campaign remains pending on one frozen revision.
+
+**SET-039 — retain the intermittent Linux browser-open failure (2026-09-07):**
+SDK CI run 34181998282 failed TEXT-B01 while opening Google Chrome, before the
+Unicode assertion. The wrapper reported no inner driver error, and the retained
+trace contained no opened target. Driver X/DBus disconnect messages occur after
+the test failure and do not establish the cause. Local video extraction could
+not decode the retained recording; its temporary compiler cache was removed.
+The subsequent unchanged-SDK run 34182947879 passed, as did its accompanying
+parity-harness and computer-use checks. This is unresolved intermittent setup
+failure evidence, not a demonstrated fix or a macOS parity result.

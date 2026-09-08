@@ -1,18 +1,22 @@
 # Paired parity evaluations
 
-Status: the two-task smoke campaign completed with two valid pairs. Both
-interfaces passed heading alignment and failed lowercasing. This is a small
-paired baseline, not a general parity score. The first five-task campaign
-stopped at a false screenshot-program rejection in its third task; that guard
-is corrected and the campaign must be rerun.
-The [initial smoke results](smoke-results.md) record both attempts per task,
-their separate upstream/content scores, cleanup, timing and estimated spend.
-Three additional Writer tasks are now pinned for the five-task stage: whole-text
-font, H2O subscript, and last-paragraph strike-through. Their original inputs,
-gold outputs and unmodified upstream metric functions are included. Separate
-guards cover all text/table fonts and per-character formatting, including
-partial subscript changes that the upstream metric accepts. All 31 real-file
-grader, policy, admission and spending checks pass. The full 20-task set is not frozen yet.
+Status: the two-task smoke campaign completed, followed by a verified five-task
+readiness checkpoint. Native succeeded on 2/5 tasks and OpenSky on 1/5. The
+checkpoint preserves eight valid attempts from `campaign-five-4` and the two
+separately completed strikethrough arms, with all three evaluator revisions
+recorded. It is **not one frozen campaign**. Guard-rejected attempts remain
+invalid; the [results](smoke-results.md) retain their evidence and the observed
+OpenSky paragraph-selection timeout.
+
+The frozen full set has 20 OSWorld tasks: five Writer, eight Calc, five
+Impress and two VS Code tasks. The original upstream scorers are preserved;
+separate content/format checks reject partial edits, changed chart data and
+wrong chart grouping. All 72 spending, policy, admission and saved-file checks
+pass locally. All 15 added task files opened successfully in isolated app
+instances, which stayed alive until normal cleanup; all scratch profiles were
+removed. `fullTaskIds` now freezes the selected 20 IDs. No frozen 20-task score
+exists yet. Setup evidence is retained in
+`evals/runs/expanded-setup-validation.json`.
 
 ## Run a gated campaign
 
@@ -23,13 +27,19 @@ Unlock/dismiss the screensaver before starting a new campaign. These checks are
 best effort and do not continuously monitor the desktop or prevent sleep.
 
 Set `OPENSKY_EVAL_PYTHON`, `OPENSKY_EVAL_LIBREOFFICE`,
-`OPENSKY_DRIVER_BINARY` and `OPENSKY_NATIVE_REPL_CONFIG` to the installed local
+`OPENSKY_DRIVER_BINARY`, `OPENSKY_EVAL_VSCODE` (for the expanded set), and
+`OPENSKY_NATIVE_REPL_CONFIG` to the installed local
 dependencies. The native config stays outside the repository and results.
-From the SDK checkout:
+Use Python 3.12 for the combined grader environment. A date-cell probe crashed
+under Python 3.14 with pandas 2.2.3; the same pinned dependencies passed under
+3.12. From the SDK checkout:
 
 ```sh
+python -m pip install -r evals/parity/osworld/requirements.txt
+python evals/parity/osworld/fetch-assets.py
 node --import tsx evals/parity/campaign.ts 2 evals/runs/campaign-smoke
 node --import tsx evals/parity/campaign.ts 5 evals/runs/campaign-five evals/runs/campaign-smoke
+node --import tsx evals/parity/campaign.ts 20 evals/runs/campaign-full evals/runs/campaign-five
 ```
 
 Each destination must be new. Stages 5 and 20 require complete paired evidence
@@ -41,6 +51,11 @@ for the current bounded attempt and its cleanup, then prevents the next launch.
 both/native-only/OpenSky-only/neither outcomes, unscored pairs and raw arm data.
 Any change in code/assets/desktop fingerprints during a campaign halts it.
 Stage 20 refuses to run until `fullTaskIds` contains a frozen 20-task set.
+
+A readiness checkpoint assembled across evaluator revisions must retain source
+paths, evidence hashes, compatibility audits and all valid failures. It cannot
+be relabeled a frozen baseline. The subsequent 20-task campaign still enforces
+a single code/assets/desktop fingerprint.
 
 The operator reports progress after every native/OpenSky attempt, including
 interruptions: task/backend, outcome, admitted calls and elapsed time, cleanup,
@@ -61,7 +76,7 @@ The user approved a ramp of 1–2 smoke tasks, then five, then a frozen set of
 work. A genuine OpenSky task failure is useful evidence; a broken evaluator is
 not a task failure. Freeze task IDs and versions before the scored campaign.
 
-Use the same Codex model, reasoning effort, prompt, starting state, action/time
+Use the same Codex model, reasoning effort, prompt, starting state, REPL-call/time
 budget and evaluator for both interfaces. The initial configuration is
 `gpt-5.6-terra`, medium effort. Report model changes rather than silently falling
 back. Native reference, SDK and driver versions belong in every result.
@@ -104,6 +119,19 @@ Agents receive only their assigned desktop interface. Setup files, evaluators,
 expected answers and direct filesystem/HTTP shortcuts are not agent tools.
 Scoring checks externally visible outcomes, not the agent's final claim. Keep
 original screenshots, tool results, errors, usage and cleanup observations.
+
+Expanded assets are fetched from the original URLs and checked against the
+manifest SHA-256 pins; large workbooks/presentations are not embedded in Git.
+The original task JSON and metric-source provenance are retained. Setup uses
+real LibreOffice Writer/Calc/Impress and a separate stable VS Code installation.
+VS Code uses an empty user-data directory, no installed extensions, and disabled
+updates/telemetry in that disposable profile. See the [official CLI isolation
+options](https://code.visualstudio.com/docs/configure/command-line#_isolating-vs-code-instances).
+The agent sees the actual macOS version and saves its own file in the original
+format. Original upstream global setup, process killing and save post-actions
+are not executed. This local profile excludes clipboard workflows; the proposed
+transpose task is deferred to a future isolated-desktop profile, and was
+replaced before expanded agent results by the split-field task.
 
 ## Programmatic Codex startup
 

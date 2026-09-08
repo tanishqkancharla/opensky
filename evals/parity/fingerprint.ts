@@ -15,7 +15,7 @@ async function sha256(path: string): Promise<string> {
 
 /** Fingerprint actual code/assets, including uncommitted work. Never serialize
  * auth configuration or environment values into portable result artifacts. */
-export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; python: string; nativeConfig?: string; artifacts: string }) {
+export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; python: string; vscodePath?: string; nativeConfig?: string; artifacts: string }) {
   const files: Record<string, string> = {};
   async function walk(directory: string) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -61,7 +61,7 @@ export async function recordEnvironment(options: { repo: string; appPath: string
     };
   }
   await writeFile(join(options.artifacts, "environment.json"), JSON.stringify({
-    capturedAt: new Date().toISOString(), platform: platform(), release: release(), architecture: arch(), node: process.version,
+    capturedAt: new Date().toISOString(), osVersion: await command("/usr/bin/sw_vers", ["-productVersion"]), platform: platform(), release: release(), architecture: arch(), node: process.version,
     sdkCommit: await command("git", ["rev-parse", "HEAD"]),
     worktreeDirty: !!(await command("git", ["status", "--porcelain"])),
     codeAndAssetsSha256: createHash("sha256").update(JSON.stringify(sorted)).digest("hex"), files: sorted,
@@ -76,6 +76,12 @@ export async function recordEnvironment(options: { repo: string; appPath: string
       executableSha256: await sha256(join(options.appPath, "Contents/MacOS/soffice")),
       infoPlistSha256: await sha256(join(options.appPath, "Contents/Info.plist")),
     },
+    vsCode: options.vscodePath ? {
+      version: await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleShortVersionString", join(options.vscodePath, "Contents/Info.plist")]),
+      executableSha256: await sha256(join(options.vscodePath, "Contents/MacOS", await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleExecutable", join(options.vscodePath, "Contents/Info.plist")]))),
+      infoPlistSha256: await sha256(join(options.vscodePath, "Contents/Info.plist")),
+      mainSha256: await sha256(join(options.vscodePath, "Contents/Resources/app/out/main.js")),
+    } : null,
     nativeReference,
   }, null, 2));
 }

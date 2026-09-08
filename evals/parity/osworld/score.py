@@ -24,6 +24,9 @@ def character_format(document, attribute):
 
 def score(task_id, output):
     task = next(t for t in json.loads((ROOT / "manifest.json").read_text())["tasks"] if t["id"] == task_id)
+    if task.get("category") in ["libreoffice_calc", "libreoffice_impress", "vs_code"]:
+        from score_extended import score_extended
+        return score_extended(task, output)
     if task["evaluator"] not in ["is_first_line_centered", "compare_docx_files", "compare_font_names", ["compare_docx_files", "compare_subscript_contains"], "evaluate_strike_through_last_paragraph"]:
         raise ValueError("Unsupported evaluator; do not dispatch or score this task")
     source = ROOT / task_id / task["inputFile"]
