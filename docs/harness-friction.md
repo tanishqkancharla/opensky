@@ -2089,3 +2089,24 @@ and SET-072 evaluator recovery are now integrated for the next matched font
 pair. This changes the SDK/driver candidate from the original two-task baseline;
 compare both new font arms on the same new revision. Agent outcome improvement
 and actual policy-error recovery are still unverified.
+
+**DRV-L02 — Alt accelerator becomes plain text (2026-09-08):**
+Matched font pair on SDK ed4fe66 / driver c9d9a66be completed with native success
+(34284872524: 49.585 s, 10 calls) and OpenSky failure (34284070786: 371.080 s,
+21 calls). Runtime fingerprints match. OpenSky saved every text run as
+"Times New Romano": public ALT+O becomes option+o, but the Linux hotkey parser
+did not recognize option and discarded it as an extra non-modifier. The
+corrected driver canonicalizes public modifier aliases before both X11 and
+Wayland hotkey delivery, for desktop and window scopes. Real KEY-L01 uses
+public menu input followed by save and asserts that no plain o appeared in the
+document. Its current-driver regression and corrected-driver build are pending.
+No change has been applied to the five-task agent baseline candidate.
+
+The same font trace records fresh save-dialog tokens refused as stale, and
+coordinate attempts that did not activate the intended controls. Those remain
+separate unresolved gaps; modifier correction alone does not establish parity.
+
+Subscript native run 34285169072 passed upstream but failed the full formatting
+check. Independent DOCX XML inspection confirms only the title's 2 is subscript;
+the gold document marks eight occurrences. The additional check is detecting
+incomplete work, not run splitting or a serialization-only difference.
