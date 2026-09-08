@@ -29,8 +29,14 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
         sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
           driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
         const app = await createCua(sdk).getApp("LibreOffice");
-        await expect.poll(() => app.getAXState(), { timeout: 20_000 }).toContain("Dublin Zoo");
         try {
+          await expect.poll(async () => {
+            const image = join(artifacts, "ready.png");
+            await writeFile(image, await app.getScreenshot());
+            const text = (await exec("tesseract", [image, "stdout", "--psm", "11"], { timeout: 10_000 })).stdout;
+            await writeFile(join(artifacts, "ready.txt"), text);
+            return text;
+          }, { timeout: 20_000 }).toMatch(/File\s+Edit\s+View\s+Insert/);
           await use({ app, document: { async readText() {
             return (await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
               'import sys,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("word/document.xml")); n={"w":"http://schemas.openxmlformats.org/wordprocessingml/2006/main"}; print("\\n".join("".join(p.itertext()) for p in r.findall(".//w:body/w:p",n)),end="")', document])).stdout;

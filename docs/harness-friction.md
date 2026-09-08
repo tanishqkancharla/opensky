@@ -2032,3 +2032,10 @@ removal are recorded. The isolated CI workflow reuses the pinned tested driver,
 uses no model credentials, and retains screenshots/files. Local build and E2E
 typecheck pass; real Linux execution is pending. This branch is separate from
 the active unchanged SDK baseline candidate.
+
+SDK-L01 first CI run 34281622514 failed setup before typing: the readiness
+poll inspected default diff output, eventually receiving "No accessibility
+changes." The fixture now uses the established screenshot/OCR editor-control
+readiness check and records screenshots even on setup failure. The save-dialog
+poll explicitly requests full accessibility state. App cleanup passed. No
+agent spending or typing acceptance evidence came from this attempt.
