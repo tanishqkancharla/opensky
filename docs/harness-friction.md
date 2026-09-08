@@ -2110,3 +2110,12 @@ Subscript native run 34285169072 passed upstream but failed the full formatting
 check. Independent DOCX XML inspection confirms only the title's 2 is subscript;
 the gold document marks eight occurrences. The additional check is detecting
 incomplete work, not run splitting or a serialization-only difference.
+
+DRV-L02 baseline regression 34285323345 stopped before KEY-L01: TYPE-L01
+intermittently lost the accented e, saving "A caf near Dublin Zoo — 中文 😀."
+with the previously passing c9d9a66be binary. Cleanup passed. Unicode delivery
+is therefore not yet reliable; retain earlier passes as individual evidence,
+not proof of a resolved timing issue. The two independent checks now keep
+separate artifacts and run without bail so Unicode failure cannot hide the
+shortcut outcome. The suspected remapping/event-delivery timing needs a
+reproducible correction; no timing patch has been implemented yet.

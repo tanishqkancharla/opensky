@@ -55,6 +55,10 @@ if [[ -n "${OPENSKY_LINUX_AGENT_MODE:-}" ]]; then
 fi
 cd e2e
 scenario=specs/linux-office.test.ts
-if [[ "${OPENSKY_LINUX_TYPING_TEST:-}" == 1 ]]; then scenario=specs/linux-typing.test.ts; fi
-npm test -- "$scenario" --reporter=verbose --reporter=json \
+scenario_args=()
+if [[ "${OPENSKY_LINUX_TYPING_TEST:-}" == 1 ]]; then
+  scenario=specs/linux-typing.test.ts
+  scenario_args+=(--bail=0)
+fi
+npm test -- "$scenario" "${scenario_args[@]}" --reporter=verbose --reporter=json \
   --outputFile.json="$OPENSKY_LINUX_OFFICE_ARTIFACT/results.json"

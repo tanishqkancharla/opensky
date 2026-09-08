@@ -13,9 +13,9 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 
 type Fixture = { app: App; document: { readText(): Promise<string> }; keyboard: { unchanged(): Promise<boolean> } };
 export const test = base.extend<Fixture & { fixture: Fixture }>({
-  fixture: async ({}, use) => {
+  fixture: async ({ task }, use) => {
     if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true") throw new Error("Disposable Linux CI required");
-    const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "typing");
+    const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "typing", task.name.split(":")[0]);
     await mkdir(artifacts, { recursive: true });
     const originalKeyboard = (await exec("xmodmap", ["-pke"])).stdout;
     const temporary = await mkdtemp(join(tmpdir(), "opensky-typing-"));
