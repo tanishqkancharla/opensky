@@ -2197,3 +2197,13 @@ A task-owned container can run the same public SDK fixtures and save artifacts
 without registering a persistent runner or spending model budget. Container
 setup and first real execution are pending. Non-CI macOS/local desktops remain
 refused by the fixture guard.
+
+SDK-L03 combined acceptance: run 34287727041, SDK cab1da1 and driver
+00e3b936e, passed TYPE-L01, KEY-L01 and CLICK-L01 on all three fresh desktops
+(nine checks). Each saved file met its assertion; all nine app cleanups and
+keyboard-map restorations passed. The driver build and common token tests
+also passed. Subsequent SDK diff scopes unknown-completeness handling to Linux
+and admits explicit Docker fixtures; the existing GitHub path is unchanged.
+All 339 SDK checks pass after this scope correction. This is current-candidate
+regression evidence, not an improved agent score or a universal reliability
+claim. The agent workflow now pins this exact tested binary for the font retry.
