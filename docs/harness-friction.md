@@ -2302,3 +2302,10 @@ sha256:a50f77b673f34f483191fe3cc7acb273aa8f0e2d8d0672f31b40f52a83086186).
 Only package/version checks have run for Calc and Impress: real setup/reset and
 outcome controls, VS Code installation/fixture, and the frozen 20-task campaign
 remain unfinished. No persistent GitHub runner or local Mac GUI was started.
+
+DRV-L04/05 exact-source CI acceptance: SDK b5f2526 and driver 7f9e72fcf passed
+TYPE-L01, KEY-L01, CLICK-L01 and COORD-L01 on all three fresh GitHub desktops
+(run 34291452142). All twelve saved-text/field assertions, process cleanups and
+keyboard-map restorations passed. Artifacts: linux-dialog-selection-verified.
+The agent workflow now pins that exact built binary by artifact run and SHA256;
+no improved agent outcome is inferred until the matched font task is rerun.
