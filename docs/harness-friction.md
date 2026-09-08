@@ -1339,3 +1339,17 @@ The documentation job fails to link duplicate `CoreMediaBridge` Swift symbols
 from apple_cf and screencapturekit. These checks/fixtures and installer were
 unchanged by the current three-file app-path PR. They remain fork maintenance
 and release blockers; successful local focused checks do not override them.
+
+Driver repair commit `33283a34c` explicitly adapts the two fork identity fields,
+adds the missing tools and output-schema counts, and updates ScreenCaptureKit
+to the published 8.0.1 Swift module-namespace fix. Local build succeeded in
+20.84 seconds without duplicate Swift symbols. Four protocol checks passed in
+0.86 seconds using the signed 05624b9bc candidate for daemon fixtures; the
+installed candidate was not replaced. Exact metadata matched 58 tools / 34
+output schemas. Two unbundled startup attempts failed before a socket appeared;
+the canonical signed path worked. All test daemons exited, original driver
+preserved, no model spend. `evals/runs/driver-ci-repair-1` records evidence and
+these scope limits. Release/docs/contract CI is running on the new commit;
+generated bindings, installer release checks and real GUI acceptance remain
+pending. Do not treat the older signed candidate's protocol result as capture
+or recording acceptance for the upgraded dependency.
