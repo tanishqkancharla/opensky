@@ -18,8 +18,8 @@ export type CodexRunOptions = {
   prompt: string;
   cwd: string;
   artifacts: string;
-  timeoutMs: number;
-  maxToolCalls: number;
+  timeoutMs: number | null;
+  maxToolCalls: number | null;
   mcp: { command: string; args: string[]; env?: Record<string, string>; enabled_tools?: string[] };
   /** Exact app IDs and display names already authorized by the user for this run. */
   authorizedApps: Record<string, string>;
@@ -39,6 +39,10 @@ export function evaluationEnvironment(): NodeJS.ProcessEnv {
 }
 
 export async function runCodex(options: CodexRunOptions) {
+  if ((options.timeoutMs !== null && (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs <= 0)) ||
+      (options.maxToolCalls !== null && (!Number.isSafeInteger(options.maxToolCalls) || options.maxToolCalls <= 0))) {
+    throw new Error("Task limits must be positive or explicitly null");
+  }
   const env = evaluationEnvironment();
   if (options.model !== "gpt-5.6-terra") throw new Error("Only the user-selected Terra model has a configured evaluation rate card");
   const budget = new EvaluationBudget(options.budgetPath ?? fileURLToPath(new URL("../runs/parity-budget.json", import.meta.url)));
@@ -61,7 +65,7 @@ export async function runCodex(options: CodexRunOptions) {
   const mcp = { ...options.mcp, env: { ...options.mcp.env, ...(guarded ? {
     PARITY_DISPATCH_POLICY: dispatchPolicy, PARITY_DISPATCH_RECEIPT: dispatchReceipt,
   } : {}) } };
-  if (guarded) await writeFile(dispatchPolicy, JSON.stringify({ maxCalls: options.maxToolCalls, deadline: null }), { flag: "wx", mode: 0o600 });
+  if (guarded) await writeFile(dispatchPolicy, JSON.stringify({ armed: false, maxCalls: options.maxToolCalls, deadline: null }), { flag: "wx", mode: 0o600 });
   const configuration: Record<string, unknown> = {
     model_reasoning_effort: "medium", service_tier: "default", web_search: "disabled",
     "features.plugins": false, "features.apps": false,
@@ -194,7 +198,7 @@ export async function runCodex(options: CodexRunOptions) {
         if (item.server !== "desktop") stop("unexpected_tool_server");
         // Scored arms enforce admission inside the transport. Wait for its
         // denial receipt so cancellation cannot race an extra desktop action.
-        if (!guarded && toolCalls > options.maxToolCalls) stop("tool_call_budget_exceeded");
+        if (!guarded && options.maxToolCalls !== null && toolCalls > options.maxToolCalls) stop("tool_call_budget_exceeded");
       } else if (["commandExecution", "fileChange", "webSearch", "collabToolCall", "dynamicToolCall"].includes(item?.type)) stop(`unexpected_tool:${item.type}`);
     }
     if (message.method === "item/completed") {
@@ -213,22 +217,25 @@ export async function runCodex(options: CodexRunOptions) {
     const started = await request("thread/start", {
       model: options.model, cwd: options.cwd, ephemeral: true, approvalPolicy: "on-request", sandbox: "read-only",
       config: { ...configuration, ...Object.fromEntries(servers.map(({name}) => [`mcp_servers.${name}.enabled`, false])), "mcp_servers.desktop": { ...mcp, enabled: true, required: true } },
-      developerInstructions: `Operate only through the desktop MCP server. You have at most ${options.maxToolCalls} desktop tool calls and ${options.timeoutMs / 1000} seconds to complete and save the task. Do not use shell, document filesystem access, web search, other connectors, or other computer control tools. The native backend's documented screenshot recipe may read only a screenshot URL returned by get_app_state. Stop if the assigned interface cannot complete the task. Never inspect evaluation code or expected answers.`,
+      developerInstructions: `Operate only through the desktop MCP server. ${options.maxToolCalls === null ? "There is no desktop tool-call cap." : `You have at most ${options.maxToolCalls} desktop tool calls.`} ${options.timeoutMs === null ? "There is no whole-task deadline. Continue until the task is complete and saved, or report a concrete blocker. Context compaction is managed by Codex." : `A watchdog stops this run after ${options.timeoutMs / 1000} seconds; complete and save the task before then.`} Do not use shell, document filesystem access, web search, other connectors, or other computer control tools. The native backend's documented screenshot recipe may read only a screenshot URL returned by get_app_state. Stop if the assigned interface cannot complete the task. Never inspect evaluation code or expected answers.`,
     });
     threadId = started.thread.id;
     reservation = await budget.reserve(options.artifacts, 5);
     clearTimeout(timer); clearTimeout(hardTimer);
     taskStartedAt = new Date().toISOString();
-    if (guarded) await writeFile(dispatchPolicy, JSON.stringify({ maxCalls: options.maxToolCalls, deadline: Date.now() + options.timeoutMs }));
-    timer = setTimeout(() => stop("run_timeout"), options.timeoutMs);
-    hardTimer = setTimeout(() => { try { process.kill(-child.pid!, "SIGKILL"); } catch {} }, options.timeoutMs + 10_000);
+    if (guarded) await writeFile(dispatchPolicy, JSON.stringify({ armed: true, maxCalls: options.maxToolCalls, deadline: options.timeoutMs === null ? null : Date.now() + options.timeoutMs }));
+    if (options.timeoutMs !== null) {
+      timer = setTimeout(() => stop("run_timeout"), options.timeoutMs);
+      hardTimer = setTimeout(() => { try { process.kill(-child.pid!, "SIGKILL"); } catch {} }, options.timeoutMs + 10_000);
+    }
     await request("turn/start", { threadId, input: [{ type: "text", text: options.prompt }], effort: "medium" });
     const turn = await finished;
     const admission = guarded ? await readFile(dispatchReceipt, "utf8").then(JSON.parse).catch(() => null) : null;
     interruption ??= admission?.deniedReason ?? undefined;
     const classification = classifyRun(interruption, turn.status, admission, options.maxToolCalls);
     if (guarded && !admission) classification.infrastructureError = "missing_dispatch_receipt";
-    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, items, finalText, decisions, authentication: "chatgpt-subscription", workspaceBillUsd: null };
+    const contextCompactions = items.filter(item => item.type === "contextCompaction").length;
+    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, contextCompactions, items, finalText, decisions, authentication: "chatgpt-subscription", workspaceBillUsd: null };
     await writeFile(join(options.artifacts, "result.json"), JSON.stringify(result, null, 2));
     const finalInterruptedUsage = classification.taskLimit && turn.status === "interrupted" && activeCalls.size === 0 && lastUsageEvent > lastItemEvent;
     if (((turn.status === "completed" && !interruption) || finalInterruptedUsage) && usage) {

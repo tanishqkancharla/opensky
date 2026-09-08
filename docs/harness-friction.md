@@ -1180,3 +1180,88 @@ task, saved-file requirement or prior failure is removed. Only a complete new
 campaign at one revision can become the frozen 20-task baseline. The repeated
 menu-target refusals, slow/timeout-prone text selection and app-query errors
 remain production follow-ups; this policy change does not fix them.
+
+**SET-042 — continue frozen work after pre-model accounting stops (2026-09-08):**
+The e73a1a8 full campaign stopped when a timed-out OpenSky call lacked a final
+completion receipt. Operator continuations retained prior scored arms by hashed
+reference, preserved the blocked pre-model attempt, and checked identical
+code/assets/driver/app/native/model runtime fingerprints before every new arm.
+The unchanged campaign reached 20 scored LibreOffice arms (10 pairs, neither
+interface passed), then hit separate VS Code setup/policy problems. This remains
+an incomplete baseline, not 20-task parity. All owned apps were alive before
+cleanup, exited, and had scratch removed; no unexpected LibreOffice quit was
+observed. Unsaved work sometimes required the exact disposable-PID SIGTERM
+fallback. Original campaign summaries and all failed outcomes remain intact.
+
+Four interrupted runs whose final accounting could not be certified were
+reconciled by counting their entire $5 reservation, with observed tokens retained
+and explicitly marked uncertified. No token counts were invented. The current
+conservative checkpoint total is $42.8433996, not a subscription bill; no held
+reservation remains. Per-run `usage-audit.json` records the evidence. The operator
+continuations live under `evals/runs/campaign-full-3-continuation-{1,2,3}`.
+
+**SET-043 — validate reference discovery, not only app launch (2026-09-08):**
+Native VS Code discovery rejected the bundle identifier because six installed
+copies shared it. The runner classified that first attempt as a valid task
+failure, but audit identifies a fixture limitation: the prompt only supplied the
+ambiguous selector. Do not include it in scored parity pairs. A no-agent call
+through the original native REPL successfully observed the owned installation
+using its absolute app path. Both agents now receive that exact selector and the
+scope/consent maps authorize only the known owned installation and its aliases.
+OpenSky's corresponding live path probe failed because driver app inventory
+omitted the running bundle path and `launch_app` rejected `launch_path`. This is
+a production driver/SDK gap, not proof the harness path change is sufficient.
+Evidence: `evals/runs/vscode-path-readiness-1`; both processes exited normally and
+scratch was removed. Fixed-driver public-SDK acceptance remains pending.
+
+The OpenSky editor arm also stopped on an invented
+`app.getElementByIndex(8).press()` chain. The scope parser now admits straight-line
+call chains rooted in the bound public app so they reach real runtime errors.
+Arbitrary property traversal, other apps, code generation and callbacks remain
+refused. All 19 focused policy checks and TypeScript validation passed; actual
+REPL error/recovery acceptance is pending the driver path fix. The original
+interrupted arm remains invalid. No new agent campaign has started after these
+changes.
+
+**SET-044 — retain slow-call and unconfirmed-write experience (2026-09-08):**
+The live name-splitting OpenSky arm timed out a batch of setValue calls at the
+60-second cell limit. Subsequent observations returned a poisoned-evaluator
+error while the appended message still claimed bindings were usable. Driver
+set_value can return an unverified receipt that the SDK currently discards.
+Fresh menu actions repeatedly failed exact-window ancestry checks, and some
+XLSX saves did not dismiss format confirmation. These are pending production
+follow-ups, separate from the scope parser. The matching native arms also had
+input/selection failures and sometimes incorrect shortcut choices. Failure of
+both interfaces is low task success, not proof of useful parity.
+
+**SET-045 — arbitrary task cutoffs obscured feasibility (2026-09-08):**
+The current full campaign's 20 valid attempts include 9 call-cap cutoffs,
+5 four-minute timeouts, and 6 failures that ended before those limits. Native
+was 6/1/3 and OpenSky 3/4/3 respectively. Earlier smoke passed 1/2 for each;
+five-task readiness passed native 2/5 and OpenSky 1/5 across revisions. The
+partial full campaign is not evidence that either interface fails every task,
+nor that their useful task performance is equal.
+
+At the user's request, new evaluations default to `native-compaction-v1`:
+no whole-task deadline, no tool-call cap, and the real Codex app-server's native
+context compaction. The harness leaves compaction configuration unchanged and
+records completed `contextCompaction` events. It does not summarize context or
+restart the agent. Profiles are written into run/campaign artifacts; old
+`fixed-v1` results and cutoffs are preserved, not rescored as unlimited runs.
+Startup/teardown timeouts and backend-local tool behavior are distinct from
+whole-task duration. The existing dollar reservations, estimate safety threshold
+and $50 review checkpoints still apply. Explicit dispatch arming now distinguishes
+an uncapped active run from startup awaiting its spending reservation.
+Focused admission/policy/budget checks and TypeScript validation pass; a live
+uncapped completion and actual compaction event remain to be observed.
+
+Stable candidate signing also progressed: the existing Developer ID key returned
+`errSecInternalComponent`, but the existing driver-specific local certificate
+signed the staged candidate successfully. Verification against the real macOS
+trust store passes and its designated requirement uses the certificate leaf
+rather than the executable hash. Sandboxed verification misleadingly reported
+an untrusted certificate. No key, certificate, trust setting or TCC grant was
+created or changed. The installed ad-hoc driver remains untouched. Default-socket
+permission queries still describe that older daemon; they do not prove the new
+candidate's permissions or live behavior. Candidate validation must use an
+isolated socket and confirm the returned executable identity.

@@ -2,11 +2,13 @@ import { spawn } from "node:child_process";
 import { open, readFile, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runProfile } from "./run-profile.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const stage = Number(process.argv[2]);
 const destination = process.argv[3] && resolve(process.argv[3]);
 const previous = process.argv[4] && resolve(process.argv[4]);
+const profile = runProfile(process.argv[5]);
 const manifest = JSON.parse(await readFile(join(root, "osworld/manifest.json"), "utf8"));
 if (![2, 5, 20].includes(stage) || !destination) throw new Error("Use campaign.ts 2|5|20 NEW_DIRECTORY [PREVIOUS_CAMPAIGN]");
 const taskIds: string[] = stage === 2 ? manifest.smokeTaskIds : stage === 5 ? manifest.rampTaskIds : manifest.fullTaskIds;
@@ -30,7 +32,7 @@ if (stage > 2) {
   if (seen.size !== expectedStage * 2) throw new Error("Previous stage does not contain distinct matched arms");
 }
 await mkdir(destination); // New campaigns never overwrite or restart old work.
-await writeFile(join(destination, "plan.json"), JSON.stringify({ stage, taskIds, manifest, model: "gpt-5.6-terra", reasoning: "medium", timeoutMs: 240_000, maxReplCalls: 20, previous, startedAt: new Date().toISOString() }, null, 2));
+await writeFile(join(destination, "plan.json"), JSON.stringify({ stage, taskIds, manifest, model: "gpt-5.6-terra", reasoning: "medium", profile: profile.name, timeoutMs: profile.timeoutMs, maxReplCalls: profile.maxToolCalls, previous, startedAt: new Date().toISOString() }, null, 2));
 let stopping = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => {
   stopping = true;
@@ -69,7 +71,7 @@ for (const [index, taskId] of taskIds.entries()) {
     let exitCode: number;
     try {
       exitCode = await new Promise<number>((accept, reject) => {
-        const child = spawn(process.execPath, ["--import", "tsx", join(root, "osworld/smoke.ts"), taskId, backend, artifacts], { cwd: resolve(root, "../.."), detached: true, stdio: ["ignore", log.fd, log.fd] });
+        const child = spawn(process.execPath, ["--import", "tsx", join(root, "osworld/smoke.ts"), taskId, backend, artifacts, profile.name], { cwd: resolve(root, "../.."), detached: true, stdio: ["ignore", log.fd, log.fd] });
         child.once("error", reject);
         child.once("exit", code => accept(code ?? 1));
       });

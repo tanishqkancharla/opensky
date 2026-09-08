@@ -118,6 +118,17 @@ test("invented bound-app methods reach the SDK's ordinary error handling", ({ op
   expect(opensky.accepts('app.facade.opensky.invoke("launch_app", {app:"Terminal"});')).toBe(false);
 });
 
+test("invented target call chains preserve the bound app scope", ({ opensky }) => {
+  expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script");')).toBe(true);
+  expect(opensky.accepts('await app.getElementByIndex(8).press();')).toBe(true);
+  expect(opensky.accepts('await app.locator("text=Edit").first().click();')).toBe(true);
+  expect(opensky.accepts('app.getElementByIndex(8).constructor("return process")();')).toBe(false);
+  expect(opensky.accepts('app.toJSON().__proto__.constructor();')).toBe(false);
+  expect(opensky.accepts('app.facade.getApp("Terminal").click(1);')).toBe(false);
+  expect(opensky.accepts('cua.getApp("Terminal").click(1);')).toBe(false);
+  expect(opensky.accepts('app.getAXState().then(() => cua.getApp("Terminal"));')).toBe(false);
+});
+
 test("OpenSky agent cannot leave the fixture scope through another app or prototype", ({ opensky }) => {
   expect(opensky.accepts('let app = await cua.getApp("Terminal");')).toBe(false);
   expect(opensky.accepts('cua.constructor.constructor("return process")();')).toBe(false);

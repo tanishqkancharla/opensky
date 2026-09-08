@@ -11,12 +11,15 @@ export class DesktopAdmission {
 
   admit(): TaskLimit | null {
     const config = JSON.parse(readFileSync(this.configPath, "utf8"));
-    if (!Number.isSafeInteger(config.maxCalls) || config.maxCalls < 1 ||
-        !Number.isSafeInteger(config.deadline) || config.deadline < 1) throw new Error("Evaluation dispatch allowance is not armed");
+    if (config.armed !== true ||
+        (config.maxCalls !== null && (!Number.isSafeInteger(config.maxCalls) || config.maxCalls < 1)) ||
+        (config.deadline !== null && (!Number.isSafeInteger(config.deadline) || config.deadline < 1))) {
+      throw new Error("Evaluation dispatch allowance is not armed");
+    }
     this.receipt.attemptedCalls++;
     const reason = this.receipt.deniedReason ??
-      (Date.now() >= config.deadline ? "run_timeout" :
-        this.receipt.admittedCalls >= config.maxCalls ? "tool_call_budget_exceeded" : null);
+      (config.deadline !== null && Date.now() >= config.deadline ? "run_timeout" :
+        config.maxCalls !== null && this.receipt.admittedCalls >= config.maxCalls ? "tool_call_budget_exceeded" : null);
     if (reason) this.receipt.deniedReason = reason;
     else this.receipt.admittedCalls++;
     this.persist();
@@ -44,10 +47,11 @@ export function limitResponse(reason: TaskLimit) {
 
 /** A declared task allowance ending is a scored failure, provided the actual
  * transport proves admission was bounded. Other interruptions remain invalid. */
-export function classifyRun(interruption: string | undefined, turnStatus: string, receipt: Receipt | null, maxCalls: number) {
-  const bounded = receipt && Number.isSafeInteger(receipt.admittedCalls) && receipt.admittedCalls >= 0 && receipt.admittedCalls <= maxCalls;
+export function classifyRun(interruption: string | undefined, turnStatus: string, receipt: Receipt | null, maxCalls: number | null) {
+  const bounded = receipt && Number.isSafeInteger(receipt.admittedCalls) && receipt.admittedCalls >= 0 &&
+    (maxCalls === null || receipt.admittedCalls <= maxCalls);
   const taskLimit = interruption === "run_timeout" || interruption === "tool_call_budget_exceeded" ? interruption : null;
-  if (taskLimit && bounded && (taskLimit === "run_timeout" || receipt.deniedReason === taskLimit)) {
+  if (taskLimit && bounded && (taskLimit === "run_timeout" || (maxCalls !== null && receipt.deniedReason === taskLimit))) {
     return { taskLimit, infrastructureError: null };
   }
   return { taskLimit: null, infrastructureError: interruption ?? (turnStatus !== "completed" ? turnStatus : null) };

@@ -76,9 +76,16 @@ export class DesktopProgramPolicy {
           // The bound app enforces its own target and API. Invented method
           // names should receive the SDK's normal error so the agent can
           // recover, rather than become infrastructure interruptions.
-          return node.callee?.type === "MemberExpression" && !node.callee.computed &&
-            node.callee.object?.type === "Identifier" && apps.has(node.callee.object.name) &&
-            /^[a-z][A-Za-z0-9]*$/.test(node.callee.property.name) && !forbidden.has(node.callee.property.name);
+          // The public REPL exposes only bound target methods and data
+          // results. A chain rooted in one of those calls retains that same
+          // scope, including invented locator chains that throw TypeError.
+          // Do not admit calls reached through arbitrary property traversal
+          // (app.facade...) or prototype/code-generation methods.
+          const appCall = (call: any): boolean => call?.type === "CallExpression" && !call.optional &&
+            call.arguments.every(value) && call.callee?.type === "MemberExpression" && !call.callee.computed &&
+            ((call.callee.object?.type === "Identifier" && apps.has(call.callee.object.name)) || appCall(call.callee.object)) &&
+            /^[a-z][A-Za-z0-9]*$/.test(call.callee.property.name) && !forbidden.has(call.callee.property.name);
+          return appCall(node);
         }
         if (!member(node.callee, "sky") || !nativeMethods.has(node.callee.property.name)) return false;
         const argument = node.arguments[0];

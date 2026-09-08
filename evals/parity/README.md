@@ -62,11 +62,22 @@ interruptions: task/backend, outcome, admitted calls and elapsed time, cleanup,
 and cumulative conservative spending. Stop before each $50 checkpoint for the
 user's review.
 
-Both transports enforce the call/deadline allowance before forwarding to the
-actual desktop. An exhausted allowance is a scored task failure when the
-dispatch receipt proves the bound; it cannot earn credit from a late saved file.
-Missing receipts and unrelated interruptions remain infrastructure failures.
-Startup has a separate 60-second limit; the task timer begins at agent dispatch.
+The default `native-compaction-v1` profile has **no whole-task deadline and no
+tool-call cap**, as requested by the user. Both arms run through the real Codex
+app-server with its normal native context compaction; the harness does not
+summarize context, restart the agent, or override compaction thresholds. Calls
+and elapsed time are observations, not completion gates. Spending reservations,
+the existing per-run estimate safety threshold, and each $50 review checkpoint
+still apply. Startup and process teardown retain separate transport timeouts;
+these do not limit the working agent's task duration.
+
+Historical `fixed-v1` results used 20 calls / 240 seconds and must remain
+separate from uncapped results. Pass `fixed-v1` as the final optional argument
+only for an explicit historical replay. Run profiles are recorded with every
+new attempt and campaign. Both transports require explicit arming after the
+spending reservation, even when deadline and max calls are null. A historical
+exhausted allowance is a scored failure only with its dispatch receipt; missing
+receipts and unrelated interruptions remain infrastructure failures.
 Interrupted spending is reconciled only when the terminal turn has no active
 calls and its final usage follows the last completed item; otherwise its
 reservation remains held for audit.
@@ -76,8 +87,8 @@ The user approved a ramp of 1–2 smoke tasks, then five, then a frozen set of
 work. A genuine OpenSky task failure is useful evidence; a broken evaluator is
 not a task failure. Freeze task IDs and versions before the scored campaign.
 
-Use the same Codex model, reasoning effort, prompt, starting state, REPL-call/time
-budget and evaluator for both interfaces. The initial configuration is
+Use the same Codex model, reasoning effort, prompt, starting state, run profile
+and evaluator for both interfaces. The initial configuration is
 `gpt-5.6-terra`, medium effort. Report model changes rather than silently falling
 back. Native reference, SDK and driver versions belong in every result.
 
@@ -208,3 +219,10 @@ Compare time, tool calls and tokens on tasks both arms completed. Keep SDK
 behavior coverage separate from agent task success. Wrong-target edits,
 clipboard corruption and cleanup failures must remain visible regardless of
 aggregate success. A small smoke set is not an overall parity percentage.
+
+VS Code reference discovery uses the exact workspace-owned installation path:
+its bundle ID may be shared by unrelated extension-test copies. Both backends
+receive the same path selector. App-launch readiness alone does not prove that
+either agent's public discovery interface can bind that installation. The first
+real path probe passed natively and exposed a driver inventory/launch-path gap
+in OpenSky; keep that gap visible until a real SDK probe passes.
