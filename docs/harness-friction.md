@@ -2158,3 +2158,12 @@ injecting its first key, allowing clients to process MappingNotify. This is
 still an unverified timing hypothesis, and costs 50 ms only for remapped keys.
 The same three-desktop matrix now also exercises CLICK-L01; a save-token
 failure must remain distinct from text or shortcut outcomes.
+
+SDK-L03 reproduced in run 34286718903: CLICK-L01 failed with the identical
+stale-token error; cleanup passed. The SDK now projects only when reported
+total elements exceed returned elements, keeping conservative completeness
+metadata separate from evidence of an actually truncated walk. This preserves
+the current snapshot instead of discarding it for an unnecessary shallow walk.
+Build and E2E typecheck pass. Three fresh remote desktops test the exact public
+button action alongside Unicode and shortcut behavior with driver e04e1e08e.
+Real acceptance is pending; explicit truncated-tree projection is retained.

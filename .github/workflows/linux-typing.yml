@@ -16,52 +16,11 @@ env:
   CARGO_PROFILE_DEV_DEBUG: '0'
 
 jobs:
-  driver:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          repository: tanishqkancharla/cua
-          ref: ${{ env.OPENSKY_DRIVER_REF }}
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
-        with:
-          workspaces: 'libs/cua-driver/rust -> target'
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            clang pkg-config libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev \
-            libei-dev libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev
-      - name: Build pinned OpenSky Driver
-        env:
-          CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
-        run: |
-          cargo build --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_keysyms_cover_latin1_unicode_and_control_keys
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml hotkey_alias_tests
-          mkdir -p driver-artifact
-          cp libs/cua-driver/rust/target/debug/cua-driver driver-artifact/opensky-driver
-          driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
-          python3 - <<'PY'
-          import json, os
-          identity = json.load(open('driver-artifact/identity.json'))
-          assert identity['product'] == 'opensky-driver' and identity['protocolVersion'] == 1
-          assert identity['source'] == os.environ['OPENSKY_DRIVER_REF']
-          PY
-      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
-        with:
-          name: sdk-test-driver
-          path: driver-artifact
-          retention-days: 14
-
   evaluate:
     strategy:
       fail-fast: false
       matrix:
         attempt: [1, 2, 3]
-    needs: driver
     runs-on: ubuntu-24.04
     env:
       OPENSKY_LINUX_OFFICE_BACKEND: opensky
@@ -86,10 +45,12 @@ jobs:
           npm ci --ignore-scripts --prefix e2e
           npm run typecheck --prefix e2e
           python -m pip install -r evals/parity/osworld/requirements.txt
-      - name: Use the newly built driver candidate
+      - name: Reuse the built keymap-refresh candidate
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: sdk-test-driver
+          run-id: 34286955716
+          github-token: ${{ github.token }}
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
@@ -99,6 +60,7 @@ jobs:
           assert identity["source"] == os.environ["OPENSKY_DRIVER_REF"]
           assert identity["product"] == "opensky-driver"
           PY
+          printf '%s\n' 'bec84f71fe0372334d54b64b32b5c58f9560239de0c5b476b808b7082254a315  .driver/opensky-driver' | sha256sum --check -
           sha256sum .driver/opensky-driver > .driver/sha256.txt
           chmod +x .driver/opensky-driver
       - name: Verify public SDK typing and saved text

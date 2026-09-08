@@ -2089,7 +2089,14 @@ export class OpenSky implements OpenSkyApi {
       }
       snapshot.documentChanged = documentChanged;
     }
-    if (snapshot.truncated && !snapshot.degraded && !resolved.browser) {
+    // Unproven completeness is not evidence that the walk was truncated.
+    // In particular Linux reports elements_complete=false even for a small
+    // dialog. An unused projection would still replace its driver snapshot,
+    // making the full observation's element tokens stale before input.
+    const hasOmittedElements = snapshot.totalElementCount !== undefined &&
+      snapshot.returnedElementCount !== undefined &&
+      snapshot.totalElementCount > snapshot.returnedElementCount;
+    if (snapshot.truncated && hasOmittedElements && !snapshot.degraded && !resolved.browser) {
       const full = snapshot;
       const projectionDepth = resolved.contentScope === "web" ? 5 : 3;
       const projected = await this.snapshotWindow(resolved, {
