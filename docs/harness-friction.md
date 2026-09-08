@@ -1411,3 +1411,31 @@ meaningful lifecycle or privacy checks simply because a wrapper changed.
 Evidence: `evals/runs/driver-ci-repair-1/uniffi-artifact-review.json` and
 `missing-daemon-probe.json`. These are build/protocol checks, not task parity
 or native window-closing acceptance.
+
+**SET-051 — Windows source uninstall discarded encrypted history (2026-09-08):**
+The Windows source uninstaller deleted its whole runtime directory, including
+Computer History, while the retained upstream purge contract was tested against
+the new delegating wrapper. The implementation now preserves history by default
+and forwards explicit -Purge to the exact installed native helper before runtime
+removal. Missing/failed helpers abort; shell cleanup never recursively removes
+the history subtree. Windows CI will check parsing, ordering/refusal behavior
+and public ValidateOnly preserve/purge modes. Full lifecycle acceptance remains
+pending; no uninstaller was run on the user's Mac.
+
+Seven legacy download-specific checks were explicitly retargeted to the retained
+upstream downloader; their substantive assertions remain. Both affected Python
+modules passed 55 tests in 0.16 s. These are historical wiring checks, not source
+installation acceptance. Public Unix installer help passed without installation.
+A broader local run initially stopped at collection because isolated test Python
+lacked jsonschema; this is an environment error, not a product failure.
+
+A prompt:false permission recheck at the exact signed candidate path returned
+Accessibility=false and Screen Recording=false. Candidate PID 96454 exited after
+explicit-socket stop, its socket was removed, and no GUI test app opened. No
+permissions were requested and no model spend was added. Evidence is retained in
+`evals/runs/candidate-permission-recheck-1`. The candidate GUI gate is still closed.
+
+After installing the CI-declared jsonschema/toml dependencies in the isolated
+driver test environment, the full script suite passed 248 tests and 21 subtests
+in 3.96 s. Workflow YAML parsed. Windows PowerShell execution remains assigned
+to CI; these local results do not prove Windows uninstall behavior.
