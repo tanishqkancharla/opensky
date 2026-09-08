@@ -2079,3 +2079,13 @@ The next fixture adds CJK, emoji and an independent xmodmap before/after check
 for keyboard restoration. It reuses this exact successful binary to avoid
 another build. This is supporting SDK evidence, not canonical driver desktop
 certification or an agent task score. The full platform matrix remains pending.
+
+SDK-L01 expanded verification: run 34283447522 passed TYPE-L01 against SDK
+d2d1a176197c3e594d5a975f705118182d0b9257 and driver c9d9a66be. The saved
+DOCX contains exactly "A café near Dublin Zoo — 中文 😀."; independent xmodmap
+before/after files match and owned-app exit is verified. Evidence is retained
+in `evals/runs/linux-typing-4/artifacts/linux-office`. The input corrections
+and SET-072 evaluator recovery are now integrated for the next matched font
+pair. This changes the SDK/driver candidate from the original two-task baseline;
+compare both new font arms on the same new revision. Agent outcome improvement
+and actual policy-error recovery are still unverified.
