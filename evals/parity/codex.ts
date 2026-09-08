@@ -1,13 +1,14 @@
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createInterface } from "node:readline";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createWriteStream } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { EvaluationBudget, estimatedUsd, type Usage } from "./budget.js";
 import { DesktopProgramPolicy, nativeMethods, type DesktopProgramScope } from "./desktop-program.js";
+import { classifyRun } from "./admission.js";
 
 const exec = promisify(execFile);
 type Json = Record<string, any>;
@@ -54,6 +55,13 @@ export async function runCodex(options: CodexRunOptions) {
   const servers = JSON.parse(inventory.stdout) as { name: string }[];
   await mkdir(options.artifacts, { recursive: true });
   await mkdir(options.cwd, { recursive: true });
+  const dispatchPolicy = join(options.artifacts, "dispatch-policy.json");
+  const dispatchReceipt = join(options.artifacts, "dispatch-receipt.json");
+  const guarded = !!options.desktopProgramScope;
+  const mcp = { ...options.mcp, env: { ...options.mcp.env, ...(guarded ? {
+    PARITY_DISPATCH_POLICY: dispatchPolicy, PARITY_DISPATCH_RECEIPT: dispatchReceipt,
+  } : {}) } };
+  if (guarded) await writeFile(dispatchPolicy, JSON.stringify({ maxCalls: options.maxToolCalls, deadline: null }), { flag: "wx", mode: 0o600 });
   const configuration: Record<string, unknown> = {
     model_reasoning_effort: "medium", service_tier: "default", web_search: "disabled",
     "features.plugins": false, "features.apps": false,
@@ -71,7 +79,7 @@ export async function runCodex(options: CodexRunOptions) {
   }
   // Replace the entire server table: some desktop-injected entries have no
   // standalone transport, even when enabled=false. No user config is mutated.
-  args.push("-c", `mcp_servers=${toml({ desktop: { ...options.mcp, enabled: true, required: true } })}`);
+  args.push("-c", `mcp_servers=${toml({ desktop: { ...mcp, enabled: true, required: true } })}`);
   const version = (await exec(codex, ["--version"], { env })).stdout.trim();
   await writeFile(join(options.artifacts, "invocation.json"), JSON.stringify({ ...options, mcp: { ...options.mcp, env: undefined, envKeys: Object.keys(options.mcp.env ?? {}) }, configuration, codexVersion: version, authentication: "chatgpt-subscription", apiBillingEnabled: false }, null, 2));
   const events = createWriteStream(join(options.artifacts, "events.jsonl"));
@@ -85,12 +93,16 @@ export async function runCodex(options: CodexRunOptions) {
   let turnId: string | undefined;
   let toolCalls = 0;
   let usage: unknown = null;
+  let eventOrdinal = 0;
+  let lastUsageEvent = -1;
+  let lastItemEvent = -1;
   let finalText = "";
   let interruption: string | undefined;
   const activeCalls = new Map<string, Json>();
   const items: Json[] = [];
   const decisions: Json[] = [];
   const startedAt = new Date().toISOString();
+  let taskStartedAt: string | undefined;
   const send = (message: unknown) => child.stdin.write(`${JSON.stringify(message)}\n`);
   const request = (method: string, params: unknown) => new Promise<any>((resolve, reject) => {
     const id = ++sequence; pending.set(id, { resolve, reject }); send({ id, method, params });
@@ -106,8 +118,9 @@ export async function runCodex(options: CodexRunOptions) {
     if (threadId && turnId) void request("turn/interrupt", { threadId, turnId }).catch(() => {});
     else fail(new Error(reason));
   };
-  const timer = setTimeout(() => stop("run_timeout"), options.timeoutMs);
-  const hardTimer = setTimeout(() => { try { process.kill(-child.pid!, "SIGKILL"); } catch {} }, options.timeoutMs + 10_000);
+  // Startup is bounded separately and does not consume the agent's task time.
+  let timer = setTimeout(() => stop("startup_timeout"), 60_000);
+  let hardTimer = setTimeout(() => { try { process.kill(-child.pid!, "SIGKILL"); } catch {} }, 70_000);
   child.on("error", fail);
   child.on("exit", (code, signal) => {
     const error = new Error(`Codex exited (${code ?? signal}) before the pending operation completed`);
@@ -115,6 +128,7 @@ export async function runCodex(options: CodexRunOptions) {
     pending.clear(); fail(error);
   });
   createInterface({ input: child.stdout }).on("line", line => {
+    eventOrdinal++;
     events.write(`${line}\n`);
     let message: Json;
     try { message = JSON.parse(line); } catch { stop("invalid_event_json"); return; }
@@ -163,6 +177,7 @@ export async function runCodex(options: CodexRunOptions) {
     if (message.method === "turn/started") turnId = params.turn.id;
     if (message.method === "thread/tokenUsage/updated") {
       usage = params.tokenUsage;
+      lastUsageEvent = eventOrdinal;
       try { if (estimatedUsd(params.tokenUsage.total) >= 2.5) stop("per_run_estimate_limit"); }
       catch { stop("unusable_token_usage"); }
     }
@@ -177,12 +192,17 @@ export async function runCodex(options: CodexRunOptions) {
           else admittedPrograms.add(code);
         }
         if (item.server !== "desktop") stop("unexpected_tool_server");
-        if (toolCalls > options.maxToolCalls) stop("tool_call_budget_exceeded");
+        // Scored arms enforce admission inside the transport. Wait for its
+        // denial receipt so cancellation cannot race an extra desktop action.
+        if (!guarded && toolCalls > options.maxToolCalls) stop("tool_call_budget_exceeded");
       } else if (["commandExecution", "fileChange", "webSearch", "collabToolCall", "dynamicToolCall"].includes(item?.type)) stop(`unexpected_tool:${item.type}`);
     }
     if (message.method === "item/completed") {
+      lastItemEvent = eventOrdinal;
       items.push(params.item); activeCalls.delete(params.item.id);
       if (params.item.type === "agentMessage") finalText = params.item.text;
+      const limit = params.item.result?.structuredContent?.parityTaskLimit;
+      if (params.item.type === "mcpToolCall" && ["tool_call_budget_exceeded", "run_timeout"].includes(limit)) stop(limit);
     }
     if (message.method === "turn/completed") finish(params.turn);
   });
@@ -191,17 +211,29 @@ export async function runCodex(options: CodexRunOptions) {
     send({ method: "initialized", params: {} });
     const started = await request("thread/start", {
       model: options.model, cwd: options.cwd, ephemeral: true, approvalPolicy: "on-request", sandbox: "read-only",
-      config: { ...configuration, ...Object.fromEntries(servers.map(({name}) => [`mcp_servers.${name}.enabled`, false])), "mcp_servers.desktop": { ...options.mcp, enabled: true, required: true } },
-      developerInstructions: "Operate only through the desktop MCP server. Do not use shell, document filesystem access, web search, other connectors, or other computer control tools. The native backend's documented screenshot recipe may read only a screenshot URL returned by get_app_state. Stop if the assigned interface cannot complete the task. Never inspect evaluation code or expected answers.",
+      config: { ...configuration, ...Object.fromEntries(servers.map(({name}) => [`mcp_servers.${name}.enabled`, false])), "mcp_servers.desktop": { ...mcp, enabled: true, required: true } },
+      developerInstructions: `Operate only through the desktop MCP server. You have at most ${options.maxToolCalls} desktop tool calls and ${options.timeoutMs / 1000} seconds to complete and save the task. Do not use shell, document filesystem access, web search, other connectors, or other computer control tools. The native backend's documented screenshot recipe may read only a screenshot URL returned by get_app_state. Stop if the assigned interface cannot complete the task. Never inspect evaluation code or expected answers.`,
     });
     threadId = started.thread.id;
     reservation = await budget.reserve(options.artifacts, 5);
+    clearTimeout(timer); clearTimeout(hardTimer);
+    taskStartedAt = new Date().toISOString();
+    if (guarded) await writeFile(dispatchPolicy, JSON.stringify({ maxCalls: options.maxToolCalls, deadline: Date.now() + options.timeoutMs }));
+    timer = setTimeout(() => stop("run_timeout"), options.timeoutMs);
+    hardTimer = setTimeout(() => { try { process.kill(-child.pid!, "SIGKILL"); } catch {} }, options.timeoutMs + 10_000);
     await request("turn/start", { threadId, input: [{ type: "text", text: options.prompt }], effort: "medium" });
     const turn = await finished;
-    const result = { startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, usage, toolCalls, items, finalText, decisions, authentication: "chatgpt-subscription", workspaceBillUsd: null };
+    const admission = guarded ? await readFile(dispatchReceipt, "utf8").then(JSON.parse).catch(() => null) : null;
+    interruption ??= admission?.deniedReason ?? undefined;
+    const classification = classifyRun(interruption, turn.status, admission, options.maxToolCalls);
+    if (guarded && !admission) classification.infrastructureError = "missing_dispatch_receipt";
+    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, items, finalText, decisions, authentication: "chatgpt-subscription", workspaceBillUsd: null };
     await writeFile(join(options.artifacts, "result.json"), JSON.stringify(result, null, 2));
-    if (turn.status === "completed" && !interruption && usage) {
-      await budget.settle(reservation, (usage as { total: Usage }).total, "Conservative long-context standard API-equivalent estimate; workspace bill unavailable");
+    const finalInterruptedUsage = classification.taskLimit && turn.status === "interrupted" && activeCalls.size === 0 && lastUsageEvent > lastItemEvent;
+    if (((turn.status === "completed" && !interruption) || finalInterruptedUsage) && usage) {
+      await budget.settle(reservation, (usage as { total: Usage }).total, finalInterruptedUsage
+        ? "Interrupted task limit: terminal turn, no active tool calls, usage received after final completed item. Conservative API-equivalent estimate; workspace bill unavailable"
+        : "Conservative long-context standard API-equivalent estimate; workspace bill unavailable");
     }
     return result;
   } catch (error) {

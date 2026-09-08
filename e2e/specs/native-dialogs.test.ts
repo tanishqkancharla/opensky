@@ -19,3 +19,8 @@ test("DIALOG-N03: app dialog observation preserves an earlier exact document han
   expect((await sdk.get_app_state({ app: savedDocument.originalHandle, includeScreenshot: false, disableDiff: true })).text).toContain('AXWindow "save-dialog.docx"');
   expect((await savePrompt.getAXState({ emit: false, disableDiffing: true }))).toContain("Use Word 2010–365 Document Format");
 });
+
+test("DIALOG-N04: clicking the observed Save toolbar control exposes format confirmation", async ({ saveToolbar }) => {
+  await saveToolbar.app.click(saveToolbar.index);
+  await expect.poll(() => saveToolbar.app.getAXState({ emit: false, disableDiffing: true })).toContain("Use Word 2010–365 Document Format");
+});

@@ -41,9 +41,11 @@ try {
   await withOwnedMacApp({ bundleId, appPath, artifacts, disposableProfile: true, launchEnvironment: { PYTHONDONTWRITEBYTECODE: "1" }, launchArguments: [`-env:UserInstallation=${pathToFileURL(profile).href}`, "--norestore", "--nologo", "--writer", document] }, async owned => {
       const deadline = Date.now() + 30_000;
       let state;
+      let activation;
       do {
         state = await owned.inspect();
         if (state.finishedLaunching && state.windows.some(window => window.onScreen && window.title.includes(task.inputFile))) break;
+        if (activation === undefined && state.windows.some(window => window.title.includes(task.inputFile))) activation = await owned.activate();
         await delay(250);
       } while (Date.now() < deadline);
       if (!state) throw new Error("No fixture app state available");
@@ -67,9 +69,12 @@ try {
       const result = await runCodex({ model: "gpt-5.6-terra", artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: 240_000, maxToolCalls: 20, mcp, authorizedApps: { [bundleId]: "LibreOffice" }, desktopProgramScope: { ...scope, appSelectors: [...scope.appSelectors] },
         prompt: `Task: ${task.instruction}\nThe document ${task.inputFile} is already open in LibreOffice. Save your changes to this same document in its existing DOCX format. Preserve unrelated content. Use only this owned LibreOffice instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nUse straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker.`,
       });
-      const outcome = JSON.parse((await exec(python, [join(root, "score.py"), task.id, document], { timeout: 15_000 })).stdout);
+      const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), task.id, document], { timeout: 15_000 })).stdout);
+      // Never award success for edits completed after an interrupted deadline.
+      // Preserve the actual file grader independently from the task allowance.
+      const outcome = { ...savedFileOutcome, taskSuccess: savedFileOutcome.taskSuccess && !result.taskLimit };
       await copyFile(document, join(artifacts, task.inputFile));
-      const report = { taskId, backend, suite: manifest.suite, upstreamCommit: manifest.upstreamCommit, adaptations: manifest.adaptations, outcome, infrastructureError: result.interruption ?? (result.turn.status !== "completed" ? result.turn.status : null), toolCalls: result.toolCalls, usage: result.usage, elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt) };
+      const report = { taskId, backend, suite: manifest.suite, upstreamCommit: manifest.upstreamCommit, adaptations: manifest.adaptations, outcome, savedFileOutcome, taskLimit: result.taskLimit, infrastructureError: result.infrastructureError, toolCalls: result.toolCalls, admittedCalls: result.admission?.admittedCalls ?? null, usage: result.usage, elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt) };
       await writeFile(join(artifacts, "score.json"), JSON.stringify(report, null, 2));
       console.log(JSON.stringify(report));
   });

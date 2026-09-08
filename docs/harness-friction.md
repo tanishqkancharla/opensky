@@ -935,3 +935,46 @@ and transport-level call admission need review before a new frozen campaign.
 The original artifacts are retained unchanged; only one complete matched pair
 exists and no overall parity percentage or five-task completion is claimed.
 The interrupted attempt retains its $5 reservation pending usage audit.
+
+**SET-030 — enforce and score task allowances at desktop dispatch (2026-09-07):**
+Both native and OpenSky MCP transports now record admission and refuse a call
+beyond the declared count or deadline before forwarding it. The controller
+waits for the denial instead of racing cancellation against an extra action.
+A proven task-limit stop becomes a scored failure; the actual saved-file grade
+is retained separately and cannot override an exhausted allowance. Missing
+receipts, unknown permissions and other infrastructure failures still stop the
+campaign. Startup is separately bounded, and both agents see the same stated
+call/time allowance. Five admission/classification checks and all 24 existing
+grader/policy/spending checks pass, as do TypeScript checks. Real paired runs
+with this admission path remain to be completed.
+
+The prior interrupted lowercase usage was independently audited against its
+terminal turn, final tool completion and later token event, with no active calls
+and verified cleanup. `usage-audit.json` records the evidence hash. Its original
+task classification is unchanged. The budget now totals $2.7702724 with no
+unsettled reservations. Equivalent fully drained task-limit interruptions can
+settle automatically; incomplete usage still retains its reservation.
+
+**SET-031 — document visibility and unexpected app exit are fixture outcomes (2026-09-07):**
+The new public-SDK toolbar Save case DIALOG-N04 initially failed before test
+dispatch (`libreoffice-dialog-vHTLF3`, 36.64s). Retained readiness evidence in
+the next attempt (`libreoffice-dialog-WFM5qw`, 35.35s) showed a fully launched
+LibreOffice process with `save-dialog.docx` off-screen while Aside was foreground.
+Both processes quit normally and their disposable profiles were removed. The
+fixture now retains readiness state and may request activation once for its
+exact owned PID/bundle/launch receipt, without changing desktop preferences.
+
+DIALOG-N04 passed in `libreoffice-dialog-cQdhv1` (24.02s): the observed Save
+toolbar action exposed format confirmation. This attempt was already visible,
+so it does not verify the activation fallback. Cleanup verified process exit
+through the disposable-profile fallback and removed scratch files. This result
+narrows the agent's Save failure to a nonpersistent issue; timing/visibility is
+a hypothesis, not a confirmed cause or additional production fix.
+
+The user also reported LibreOffice sometimes quitting. Fixtures now record
+owned-process liveness before teardown so an unexpected exit is not confused
+with the deliberate normal quit/fallback. An unexpected replacement instance
+prevents claiming cleanup and preserves scratch files for recovery. Desktop
+readiness is recorded after unsuccessful task callbacks too. These new liveness
+paths still need real-run validation; no crash is claimed from the off-screen
+observations above.

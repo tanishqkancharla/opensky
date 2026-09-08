@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const exec = promisify(execFile);
 type Identity = { pid: number; bundleId: string; launchedAt: number };
-type OwnedApp = Identity & { inspect(options?: { accessibility?: boolean }): Promise<Identity & { finishedLaunching: boolean; activationPolicy: number; focusedWindowAX?: string[]; windows: { title: string; windowId: number; onScreen: boolean }[] }> };
+type OwnedApp = Identity & { activate(): Promise<{ accepted: boolean }>; inspect(options?: { accessibility?: boolean }): Promise<Identity & { finishedLaunching: boolean; activationPolicy: number; focusedWindowAX?: string[]; windows: { title: string; windowId: number; onScreen: boolean }[] }> };
 type AppFixtureOptions = { bundleId: string; appPath: string; artifacts: string; launchArguments?: string[]; launchEnvironment?: Record<string, string>; disposableProfile?: boolean };
 
 /** Own an exact Launch Services process, independent of either evaluated SDK.
@@ -45,9 +45,19 @@ async function withCompiledMacApp<T>(options: AppFixtureOptions, temporary: stri
   let actionError: unknown;
   try {
     await writeFile(join(options.artifacts, "app-ownership.json"), JSON.stringify({ ...owned, appPath: options.appPath, restoreState: false }, null, 2));
-    result = await use({ ...owned, inspect: async (inspectOptions) => JSON.parse((await exec(helper, [inspectOptions?.accessibility ? "inspect-ax" : "inspect", String(owned.pid)], { timeout: 10_000 })).stdout) });
-    await checkDesktop("after");
+    result = await use({ ...owned,
+      activate: async () => JSON.parse((await exec(helper, ["activate", String(owned.pid), owned.bundleId, String(owned.launchedAt)], { timeout: 10_000 })).stdout),
+      inspect: async (inspectOptions) => JSON.parse((await exec(helper, [inspectOptions?.accessibility ? "inspect-ax" : "inspect", String(owned.pid)], { timeout: 10_000 })).stdout),
+    });
   } catch (error) { actionError = error; }
+  try {
+    const running = await list();
+    const stillRunning = running.some(app => app.pid === owned.pid && app.launchedAt === owned.launchedAt);
+    await writeFile(join(options.artifacts, "app-before-cleanup.json"), JSON.stringify({ pid: owned.pid, stillRunning, checkedAt: new Date().toISOString() }, null, 2));
+    if (!stillRunning) throw new Error("Owned app exited during the task, before fixture cleanup; evaluation is invalid");
+  } catch (error) { actionError = actionError ? new AggregateError([actionError, error], "Evaluation failed and app liveness could not be verified") : error; }
+  try { await checkDesktop("after"); }
+  catch (error) { actionError = actionError ? new AggregateError([actionError, error], "Evaluation failed and desktop became unavailable") : error; }
   let cleanupError: unknown;
   try {
     let cooperative = true;
@@ -64,7 +74,9 @@ async function withCompiledMacApp<T>(options: AppFixtureOptions, temporary: stri
         cooperative = false;
       }
     }
-    if ((await list()).some(app => app.pid === owned.pid)) throw new Error("Owned app remained running after quit");
+    const after = await list();
+    if (after.some(app => app.pid === owned.pid)) throw new Error("Owned app remained running after quit");
+    if (after.length) throw new Error("An unexpected app instance appeared during the fixture; preserve scratch files for recovery");
     await writeFile(join(options.artifacts, "cleanup.json"), JSON.stringify({ status: "passed", pid: owned.pid, verifiedExited: true, cooperative, fallback: cooperative ? null : "SIGTERM to verified disposable profile process" }, null, 2));
   } catch (error) {
     cleanupError = error;

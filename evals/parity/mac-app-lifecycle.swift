@@ -78,10 +78,14 @@ if args.count == 2 && args[1] == "desktop-state" {
         exit(0)
     }
     RunLoop.current.run()
-} else if args.count == 5 && ["quit", "stop-disposable"].contains(args[1]), let pid = pid_t(args[2]), let launched = Double(args[4]) {
+} else if args.count == 5 && ["activate", "quit", "stop-disposable"].contains(args[1]), let pid = pid_t(args[2]), let launched = Double(args[4]) {
     guard let app = NSRunningApplication(processIdentifier: pid) else { emit(["exited": true]); exit(0) }
     guard app.bundleIdentifier == args[3], app.launchDate?.timeIntervalSince1970 == launched else {
         emit(["exited": false, "error": "process_identity_changed"]); exit(1)
+    }
+    if args[1] == "activate" {
+        emit(["accepted": app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])])
+        exit(0)
     }
     let accepted = args[1] == "quit" ? app.terminate() : (kill(pid, SIGTERM) == 0)
     let deadline = Date().addingTimeInterval(5)

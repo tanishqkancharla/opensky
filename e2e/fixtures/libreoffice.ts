@@ -34,7 +34,7 @@ export function nativeActionIndex(state: string, role: string, name: string): nu
 
 /** Real LibreOffice/public SDK fixture. The lifecycle observer is unavailable
  * to tests and agents; it checks readiness, retains diagnostics, and cleans up. */
-export const test = base.extend<{ app: CuaApp; sdk: OpenSky; savedDocument: SavedDocument; savePrompt: CuaApp }>({
+export const test = base.extend<{ app: CuaApp; sdk: OpenSky; savedDocument: SavedDocument; savePrompt: CuaApp; saveToolbar: { app: CuaApp; index: number } }>({
   sdk: async ({ app }, use) => { await use(contexts.get(app)!.sdk); },
   savedDocument: async ({ app }, use) => {
     const context = contexts.get(app)!;
@@ -47,6 +47,11 @@ export const test = base.extend<{ app: CuaApp; sdk: OpenSky; savedDocument: Save
     await app.pressKey("super+s");
     await expect.poll(() => app.getAXState({ emit: false, disableDiffing: true })).toContain("Use Word 2010–365 Document Format");
     await use(app);
+  },
+  saveToolbar: async ({ app }, use) => {
+    await app.typeText(marker);
+    const state = await app.getAXState({ emit: false, disableDiffing: true });
+    await use({ app, index: nativeActionIndex(state, "AXMenuButton", "Save") });
   },
   app: async ({}, use) => {
     if (process.env.OPENSKY_REAL_DRIVER !== "1" || process.platform !== "darwin") {
@@ -69,11 +74,15 @@ export const test = base.extend<{ app: CuaApp; sdk: OpenSky; savedDocument: Save
       }, async owned => {
         const deadline = Date.now() + 30_000;
         let ready = false;
+        let lastState;
+        let activation;
         do {
-          const state = await owned.inspect();
+          const state = lastState = await owned.inspect();
           ready = state.finishedLaunching && state.windows.some(window => window.onScreen && window.title.includes("save-dialog.docx"));
+          if (!ready && activation === undefined && state.windows.some(window => window.title.includes("save-dialog.docx"))) activation = await owned.activate();
           if (!ready) await delay(250);
         } while (!ready && Date.now() < deadline);
+        await writeFile(join(artifacts, "fixture-readiness.json"), JSON.stringify({ ready, state: lastState, activation }, null, 2));
         if (!ready) throw new Error("LibreOffice fixture failed readiness; test not started");
         const sdk = createOpenSky({ homeDir: join(artifacts, "sdk"), driverOptions: { binaryPath, autoInstall: false, autoStart: false } });
         try {

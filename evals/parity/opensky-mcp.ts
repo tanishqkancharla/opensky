@@ -5,6 +5,7 @@ import { createCuaReplToolRuntime } from "../cua-repl-tool.js";
 import { OpenSkyDriverClient } from "../../src/driver.js";
 import { detectTarget } from "../../src/platform.js";
 import { DesktopProgramPolicy } from "./desktop-program.js";
+import { configuredAdmission, limitResponse } from "./admission.js";
 
 // A transport adapter around the existing public cua REPL. No test actions,
 // fabricated observations, or agent-side filesystem access are added here.
@@ -15,6 +16,7 @@ await mkdir(homeDir, { recursive: true });
 const driver = new OpenSkyDriverClient({ binaryPath, autoInstall: false, autoStart: false });
 const runtime = createCuaReplToolRuntime(driver, detectTarget(), { homeDir });
 const policy = process.env.PARITY_DESKTOP_SCOPE && new DesktopProgramPolicy(JSON.parse(process.env.PARITY_DESKTOP_SCOPE));
+const admission = configuredAdmission();
 const input = createInterface({ input: process.stdin });
 let queue = Promise.resolve();
 const send = (value: unknown) => process.stdout.write(`${JSON.stringify(value)}\n`);
@@ -36,6 +38,8 @@ input.on("line", line => {
           }
           const tool = runtime.tools.find(tool => tool.name === request.params?.name);
           if (!tool) throw new Error("Unknown public tool");
+          const limit = admission?.admit();
+          if (limit) { result = limitResponse(limit); break; }
           // This runtime's implementation takes only id and params. Pi's
           // generic declaration widens it with unused host-context arguments.
           const execute = tool.execute as unknown as (id: string, params: { code: string; title?: string }) => Promise<{ content: unknown; isError?: boolean; details?: unknown }>;

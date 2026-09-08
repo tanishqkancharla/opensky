@@ -8,8 +8,8 @@ Three additional Writer tasks are now pinned for the five-task stage: whole-text
 font, H2O subscript, and last-paragraph strike-through. Their original inputs,
 gold outputs and unmodified upstream metric functions are included. Separate
 guards cover all text/table fonts and per-character formatting, including
-partial subscript changes that the upstream metric accepts. All 24 real-file
-grader, policy and spending checks pass. The full 20-task set is not frozen yet.
+partial subscript changes that the upstream metric accepts. All 29 real-file
+grader, policy, admission and spending checks pass. The full 20-task set is not frozen yet.
 
 ## Run a gated campaign
 
@@ -38,6 +38,20 @@ for the current bounded attempt and its cleanup, then prevents the next launch.
 both/native-only/OpenSky-only/neither outcomes, unscored pairs and raw arm data.
 Any change in code/assets/desktop fingerprints during a campaign halts it.
 Stage 20 refuses to run until `fullTaskIds` contains a frozen 20-task set.
+
+The operator reports progress after every native/OpenSky attempt, including
+interruptions: task/backend, outcome, admitted calls and elapsed time, cleanup,
+and cumulative conservative spending. Stop before each $50 checkpoint for the
+user's review.
+
+Both transports enforce the call/deadline allowance before forwarding to the
+actual desktop. An exhausted allowance is a scored task failure when the
+dispatch receipt proves the bound; it cannot earn credit from a late saved file.
+Missing receipts and unrelated interruptions remain infrastructure failures.
+Startup has a separate 60-second limit; the task timer begins at agent dispatch.
+Interrupted spending is reconciled only when the terminal turn has no active
+calls and its final usage follows the last completed item; otherwise its
+reservation remains held for audit.
 
 The user approved a ramp of 1–2 smoke tasks, then five, then a frozen set of
 20. Advance when setup, reset, tool isolation and independent outcome scoring

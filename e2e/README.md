@@ -1,7 +1,7 @@
 # OpenSky SDK E2E drafts
 
 **Status: all ten browser SDK cases pass on hosted Linux, including real paste and background scrolling with foreground-focus isolation. The native exact-document opening/close case also passes on macOS; selection and paste acceptance remain in progress.**
-There are 18 implemented SDK experience test bodies (17 intended successful workflows and one rejection)
+There are 19 implemented SDK experience test bodies (18 intended successful workflows and one rejection)
 and 14 explicitly pending scenarios. A passing typecheck or test listing is not
 driver acceptance. Missing capabilities produce failing E2E results, not passing
 rejection assertions.
@@ -18,6 +18,9 @@ fixture refuses existing LibreOffice instances, owns a disposable profile and
 document, and verifies process exit before removing them, including after a
 failed test. This case is not in the hosted browser matrix. Separate parity
 budget/policy/document-grader tests validate the harness, not SDK GUI behavior.
+`DIALOG-N04` also passes for the observed toolbar Save control once its document
+is visible. Two preceding attempts failed fixture readiness with the app window
+off-screen; those remain setup failures, not passing SDK evidence (SET-031).
 
 Yes, OpenSky has an SDK: the `opensky-cua` package exports `createOpenSky`,
 `createCua`, `OpenSky`, bound app/tab interfaces and configuration types through
