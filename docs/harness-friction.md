@@ -2017,3 +2017,18 @@ fix. Keep the SDK/driver candidate unchanged for the remaining baseline arms.
 
 SET-071 validation: all 24 focused policy checks and E2E TypeScript checks pass.
 The corrected evaluator still needs a completed real paired font run.
+
+**SDK-L01 — Public typing cannot recover from Linux background refusal (2026-09-08):**
+The font agent encountered the typed `background_unavailable` refusal in
+`typeText`, while the driver suggested a delivery option absent from the
+public facade. The SDK now retries only that explicit pre-input refusal with
+foreground delivery to the same resolved window, preserving the background
+path when supported. Other typing errors are never automatically replayed.
+This matches existing public click/key behavior without agent-only settings.
+A real Linux Vitest fixture exposes the public App and saved DOCX as external
+state. TYPE-L01 selects all text, types Unicode, saves through Writer's format
+prompt and asserts the saved text exactly once. Owned app exit and temporary
+removal are recorded. The isolated CI workflow reuses the pinned tested driver,
+uses no model credentials, and retains screenshots/files. Local build and E2E
+typecheck pass; real Linux execution is pending. This branch is separate from
+the active unchanged SDK baseline candidate.

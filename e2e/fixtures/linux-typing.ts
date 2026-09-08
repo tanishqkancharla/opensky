@@ -1,0 +1,51 @@
+import { test as base, expect } from "vitest";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { createOpenSky, createCua } from "../../src/index.js";
+import type { App } from "../../src/cua.js";
+import { withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
+const exec = promisify(execFile);
+const root = fileURLToPath(new URL("../../", import.meta.url));
+
+type Fixture = { app: App; document: { readText(): Promise<string> } };
+export const test = base.extend<Fixture & { fixture: Fixture }>({
+  fixture: async ({}, use) => {
+    if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true") throw new Error("Disposable Linux CI required");
+    const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "typing");
+    await mkdir(artifacts, { recursive: true });
+    const temporary = await mkdtemp(join(tmpdir(), "opensky-typing-"));
+    const document = join(temporary, "typing.docx");
+    await copyFile(join(root, "evals/parity/osworld/0e763496-b6bb-4508-a427-fad0b6c3e195/Dublin_Zoo_Intro.docx"), document);
+    let sdk: ReturnType<typeof createOpenSky> | undefined;
+    try {
+      await withOwnedLinuxApp({ executable: "/usr/bin/libreoffice", documentTitle: "typing.docx", artifacts,
+        args: [`-env:UserInstallation=${pathToFileURL(join(temporary, "profile")).href}`, "--norestore", "--nologo", "--nofirststartwizard", "--writer", document],
+        env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
+      }, async () => {
+        sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
+          driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
+        const app = await createCua(sdk).getApp("LibreOffice");
+        await expect.poll(() => app.getAXState(), { timeout: 20_000 }).toContain("Dublin Zoo");
+        try {
+          await use({ app, document: { async readText() {
+            return (await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
+              'import sys,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("word/document.xml")); n={"w":"http://schemas.openxmlformats.org/wordprocessingml/2006/main"}; print("\\n".join("".join(p.itertext()) for p in r.findall(".//w:body/w:p",n)),end="")', document])).stdout;
+          } } });
+        } finally {
+          await writeFile(join(artifacts, "final.png"), await app.getScreenshot()).catch(() => undefined);
+          await copyFile(document, join(artifacts, "typing.docx"));
+        }
+      });
+    } finally {
+      await sdk?.close();
+      const cleanup = await readFile(join(artifacts, "cleanup.json"), "utf8").then(JSON.parse).catch(() => null);
+      if (cleanup?.verifiedExited) await rm(temporary, { recursive: true, force: true });
+    }
+  },
+  app: async ({ fixture }, use) => use(fixture.app),
+  document: async ({ fixture }, use) => use(fixture.document),
+});

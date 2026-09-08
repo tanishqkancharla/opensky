@@ -1571,7 +1571,15 @@ export class OpenSky implements OpenSkyApi {
       payload.x = args.x;
       payload.y = args.y;
     }
-    await this.driver.call("type_text", payload);
+    try {
+      await this.driver.call("type_text", payload);
+    } catch (error) {
+      // This typed refusal means background delivery has no input actuator.
+      // Retry against the same proven window, as click/key input already does.
+      // Do not retry arbitrary typing errors: input may already have occurred.
+      if (!(error instanceof OpenSkyError) || error.code !== "background_unavailable" || !resolved.windowId) throw error;
+      await this.driver.call("type_text", { ...payload, delivery_mode: "foreground" });
+    }
     this.markAction(resolved);
   }
 
