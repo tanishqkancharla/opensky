@@ -1289,3 +1289,20 @@ confirmed that the signed candidate itself has neither TCC grant. The convenienc
 older default daemon; that diagnostic bug remains pending. Both temporary daemon
 launches were stopped and their exact process exits verified. No permission
 change was requested. The original permissioned driver remains running.
+
+**SET-046 — native dialog receipts need observable verification (2026-09-08):**
+The non-agent `evals/runs/native-validation-dialog-probe-1` diagnostic drove a
+real disposable Calc workbook through the native public API in 20 REPL cells.
+Fresh Error Alert tab clicks returned success without switching tabs; a
+screenshot-grounded coordinate click returned `AXError.notImplemented`.
+Independent fixture inspection confirmed LibreOffice was foreground. An Allow
+popup click also made no visible change, but keyboard Down then `l` selected
+List. `set_value` on the Entries field returned success while a subsequent
+screenshot showed it blank. `type_text` inserted the three entries visibly.
+Clicking OK, pressing Command-S and choosing Excel format saved the workbook.
+Independent openpyxl inspection verified A1 list validation with formula
+`"Pass,Fail,Held"`; `saved-outcome.json` and `saved-diagnostic.xlsx` retain proof.
+This is a successful native interaction primitive, not completion of the
+OSWorld task requiring the D-column range. No model ran or spend was added.
+LibreOffice quit cooperatively, its exact process exit was verified, and the
+temporary document/profile were removed. No native service fix is claimed.
