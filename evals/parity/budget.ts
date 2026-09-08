@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 
 export type Usage = { inputTokens: number; cachedInputTokens: number; outputTokens: number; cacheWriteInputTokens?: number };
-type Entry = { id: string; label: string; reservationUsd: number; status: "reserved" | "settled"; chargedEstimateUsd?: number; usage?: Usage; note?: string };
+type Entry = { id: string; label: string; reservationUsd: number; status: "reserved" | "settled"; chargedEstimateUsd?: number; usage?: Usage; note?: string; claimedBy?: string };
 type Ledger = { version: 1; approvedThroughUsd: number; entries: Entry[]; haltedReason?: string };
 
 /** Conservative standard Terra long-context API-equivalent cost, not a bill. */
@@ -51,6 +51,20 @@ export class EvaluationBudget {
       if (!entry || entry.status !== "reserved") throw new Error("Unknown or already settled reservation");
       if (cost > entry.reservationUsd) ledger.haltedReason = "Usage exceeded reservation; reconcile before another run";
       Object.assign(entry, { status: "settled", chargedEstimateUsd: cost, usage, note });
+    });
+  }
+
+  /** A remote worker consumes the controller's existing reservation once.
+   * The remote dispatcher must also prevent replay of the reservation envelope. */
+  async claim(id: string, owner: string) {
+    if (!owner) throw new Error("Reservation owner is required");
+    await this.mutate(async ledger => {
+      if (ledger.haltedReason) throw new Error(ledger.haltedReason);
+      const entry = ledger.entries.find(entry => entry.id === id);
+      if (!entry || entry.status !== "reserved" || entry.claimedBy) throw new Error("Reservation is missing, settled or already claimed");
+      const used = ledger.entries.reduce((sum, item) => sum + (item.status === "reserved" ? item.reservationUsd : item.chargedEstimateUsd!), 0);
+      if (!Number.isFinite(used) || used >= ledger.approvedThroughUsd || entry.reservationUsd !== 5) throw new Error("Reservation violates the approved spending checkpoint");
+      entry.claimedBy = owner;
     });
   }
 

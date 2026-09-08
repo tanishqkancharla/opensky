@@ -1892,3 +1892,22 @@ The configured trusted service follows the installed package's actual Sky
 proxy, which requires `nodeRepl.rpc`. This is separate from direct module
 capture and cannot be reported as an agent task. TypeScript validation passes;
 real Linux transport acceptance is pending. Model spending is unchanged.
+
+**SET-067 — Agent transport needs the virtual display's existing authentication (2026-09-08):**
+Run 34273607129 passed both browser smokes and the native direct-capture probe.
+Both office jobs stopped before launching a document because the actual native
+Node REPL's screenshot call could not connect to X11. Its returned error
+identified `DISPLAY=:100` and `XAUTHORITY not set`. REPL initialization, tool
+discovery and Sky import succeeded, but the environment allowlist omitted the
+Xvfb cookie-file path. The explicit native configuration now forwards XAUTHORITY
+alongside DISPLAY and the session bus. No new user permission or alternate
+backend is involved. Evidence: `evals/runs/linux-office-smoke-4`. Real transport
+and readiness acceptance still require the next run; these are not task failures.
+
+Remote API dispatch preparation now requires an existing controller reservation
+and a disposable CI run, while retaining subscription authentication by default.
+A worker can claim a reservation once without increasing available spending.
+Seven real budget-ledger checks pass, including unknown/settled/reused claim
+rejection; E2E/harness TypeScript checks pass. No API worker has been dispatched.
+The remote envelope replay guard, controller reconciliation and agent task
+runner must be completed before using this authentication mode.

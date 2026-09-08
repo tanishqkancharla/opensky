@@ -27,6 +27,9 @@ export type CodexRunOptions = {
   authorizedReplCodes?: string[];
   desktopProgramScope?: DesktopProgramScope;
   budgetPath?: string;
+  authentication?: "chatgpt-subscription" | "api-key";
+  /** Existing cumulative controller reservation; mandatory for remote API use. */
+  preReservedId?: string;
 };
 
 /** Avoid inheriting the parent desktop task's tool pipe or API credentials. */
@@ -44,6 +47,10 @@ export async function runCodex(options: CodexRunOptions) {
     throw new Error("Task limits must be positive or explicitly null");
   }
   const env = evaluationEnvironment();
+  const authentication = options.authentication ?? "chatgpt-subscription";
+  if (authentication === "api-key" && (process.env.GITHUB_ACTIONS !== "true" || !process.env.GITHUB_RUN_ID || !options.preReservedId || !options.budgetPath)) {
+    throw new Error("API evaluations require a disposable CI run and an existing controller budget reservation");
+  }
   if (options.model !== "gpt-5.6-terra") throw new Error("Only the user-selected Terra model has a configured evaluation rate card");
   const budget = new EvaluationBudget(options.budgetPath ?? fileURLToPath(new URL("../runs/parity-budget.json", import.meta.url)));
   await budget.initialize();
@@ -52,8 +59,9 @@ export async function runCodex(options: CodexRunOptions) {
   const admittedPrograms = new Set<string>();
   const codex = options.codex ?? join(homedir(), ".local/bin/codex");
   const login = await exec(codex, ["login", "status"], { env, timeout: 10_000 });
-  if (!`${login.stdout}\n${login.stderr}`.includes("Logged in using ChatGPT")) {
-    throw new Error("This startup runner requires saved ChatGPT authentication. Metered API dispatch needs a cost reservation first.");
+  const loginStatus = `${login.stdout}\n${login.stderr}`;
+  if (!(authentication === "api-key" ? /Logged in using.*API key/i.test(loginStatus) : loginStatus.includes("Logged in using ChatGPT"))) {
+    throw new Error(`Codex login does not match the selected ${authentication} authentication mode`);
   }
   const inventory = await exec(codex, ["mcp", "list", "--json", "-c", "features.plugins=false"], { env, timeout: 15_000, maxBuffer: 2_000_000 });
   const servers = JSON.parse(inventory.stdout) as { name: string }[];
@@ -85,7 +93,7 @@ export async function runCodex(options: CodexRunOptions) {
   // standalone transport, even when enabled=false. No user config is mutated.
   args.push("-c", `mcp_servers=${toml({ desktop: { ...mcp, enabled: true, required: true } })}`);
   const version = (await exec(codex, ["--version"], { env })).stdout.trim();
-  await writeFile(join(options.artifacts, "invocation.json"), JSON.stringify({ ...options, mcp: { ...options.mcp, env: undefined, envKeys: Object.keys(options.mcp.env ?? {}) }, configuration, codexVersion: version, authentication: "chatgpt-subscription", apiBillingEnabled: false }, null, 2));
+  await writeFile(join(options.artifacts, "invocation.json"), JSON.stringify({ ...options, mcp: { ...options.mcp, env: undefined, envKeys: Object.keys(options.mcp.env ?? {}) }, configuration, codexVersion: version, authentication, apiBillingEnabled: authentication === "api-key" }, null, 2));
   const events = createWriteStream(join(options.artifacts, "events.jsonl"));
   const errors = createWriteStream(join(options.artifacts, "stderr.log"));
   const child = spawn(codex, args, { cwd: options.cwd, env, detached: true, stdio: ["pipe", "pipe", "pipe"] });
@@ -220,7 +228,10 @@ export async function runCodex(options: CodexRunOptions) {
       developerInstructions: `Operate only through the desktop MCP server. ${options.maxToolCalls === null ? "There is no desktop tool-call cap." : `You have at most ${options.maxToolCalls} desktop tool calls.`} ${options.timeoutMs === null ? "There is no whole-task deadline. Continue until the task is complete and saved, or report a concrete blocker. Context compaction is managed by Codex." : `A watchdog stops this run after ${options.timeoutMs / 1000} seconds; complete and save the task before then.`} Do not use shell, document filesystem access, web search, other connectors, or other computer control tools. The native backend's documented screenshot recipe may read only a screenshot URL returned by get_app_state. Stop if the assigned interface cannot complete the task. Never inspect evaluation code or expected answers.`,
     });
     threadId = started.thread.id;
-    reservation = await budget.reserve(options.artifacts, 5);
+    if (options.preReservedId) {
+      await budget.claim(options.preReservedId, process.env.GITHUB_RUN_ID ?? options.artifacts);
+      reservation = options.preReservedId;
+    } else reservation = await budget.reserve(options.artifacts, 5);
     clearTimeout(timer); clearTimeout(hardTimer);
     taskStartedAt = new Date().toISOString();
     if (guarded) await writeFile(dispatchPolicy, JSON.stringify({ armed: true, maxCalls: options.maxToolCalls, deadline: options.timeoutMs === null ? null : Date.now() + options.timeoutMs }));
@@ -235,7 +246,7 @@ export async function runCodex(options: CodexRunOptions) {
     const classification = classifyRun(interruption, turn.status, admission, options.maxToolCalls);
     if (guarded && !admission) classification.infrastructureError = "missing_dispatch_receipt";
     const contextCompactions = items.filter(item => item.type === "contextCompaction").length;
-    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, contextCompactions, items, finalText, decisions, authentication: "chatgpt-subscription", workspaceBillUsd: null };
+    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, contextCompactions, items, finalText, decisions, authentication, workspaceBillUsd: null };
     await writeFile(join(options.artifacts, "result.json"), JSON.stringify(result, null, 2));
     const finalInterruptedUsage = classification.taskLimit && turn.status === "interrupted" && activeCalls.size === 0 && lastUsageEvent > lastItemEvent;
     if (((turn.status === "completed" && !interruption) || finalInterruptedUsage) && usage) {

@@ -30,3 +30,17 @@ test("a reservation overrun halts future dispatch and records its full estimate"
   await expect(secondClient.snapshot()).resolves.toMatchObject({ chargedEstimateUsd: 4, reservedUsd: 0 });
   await expect(secondClient.reserve("next run", 5)).rejects.toThrow("Usage exceeded reservation");
 });
+
+test("a remote worker claims the existing reservation without granting another allowance", async ({ budget, secondClient }) => {
+  const reservation = await budget.reserve("remote smoke", 5);
+  await secondClient.claim(reservation, "ci-run-123");
+  await expect(budget.snapshot()).resolves.toMatchObject({ reservedUsd: 5, availableUsd: 45 });
+  await expect(budget.claim(reservation, "ci-run-456")).rejects.toThrow("already claimed");
+});
+
+test("a remote worker cannot invent a reservation or reuse settled spending", async ({ budget }) => {
+  await expect(budget.claim("unknown", "ci-run")).rejects.toThrow("missing");
+  const reservation = await budget.reserve("finished remote smoke", 5);
+  await budget.settle(reservation, { inputTokens: 100_000, cachedInputTokens: 0, outputTokens: 0 });
+  await expect(budget.claim(reservation, "ci-retry")).rejects.toThrow("settled");
+});
