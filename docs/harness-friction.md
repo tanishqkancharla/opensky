@@ -1036,3 +1036,25 @@ Native's interrupted usage was audited and settled against the terminal turn,
 completed tools and subsequent token event. Cumulative API-equivalent estimate
 is $5.8728044 with no unsettled reservations. The failed campaign and its invalid
 native arm remain intact and excluded from a complete five-task comparison.
+
+**SET-036 — native screenshot namespace imports and stale authority (2026-09-07):**
+`campaign-five-4` completed four valid pairs, then the native strikethrough arm
+was interrupted at a legitimate `url.fileURLToPath` screenshot recipe. The
+policy now tracks supported import namespaces and aliases by provenance rather
+than fixed variable names, including saved screenshot paths. Reads still require
+an actual native screenshot source; overwriting a path revokes that authority.
+A failed REPL assignment can leave an older value behind, so execution errors
+clear observation/path authority. The native proxy serializes analysis and
+forwarding after the preceding cell's result; it still executes admitted code
+in the installed native REPL. All 18 policy/admission checks and TypeScript
+validation pass. An audit admits all 101 recorded cells from the eight valid
+attempts, including normal API errors and the refused over-budget call. This is
+static compatibility evidence, not another GUI execution.
+
+All nine owned LibreOffice instances were alive before cleanup, and all exited
+with temporary files removed. No unexpected app exit was observed. Native's
+interrupted strikethrough usage was audited and settled; the cumulative estimate
+is $8.7971288. The original interrupted attempt remains invalid. The remaining
+pair will be run separately; any five-task readiness checkpoint assembled from
+these records must disclose both evaluator revisions and cannot be labeled a
+single frozen campaign. The full 20-task baseline must still use one revision.

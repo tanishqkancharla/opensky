@@ -102,3 +102,10 @@ Campaign 3 recorded heading passes for native (4 calls, 29.27s) and OpenSky
 lowercase attempt remains invalid. Every owned process was alive before normal
 teardown and scratch removal passed. These partial campaigns do not replace the
 completed two-task baseline. Audited cumulative estimate: $5.8728044.
+
+Campaign 4 completed four valid pairs on `390d3e7`: heading native pass/OpenSky
+fail; lowercase OpenSky pass/native deadline failure; font both fail; subscript
+both fail the complete-format guard despite upstream scores of 1. Native's final
+strikethrough arm was invalidated by another screenshot-import restriction
+(SET-036). Eight valid attempts remain measured evidence; the ninth is excluded.
+The final pair will be completed separately, with revision provenance retained.

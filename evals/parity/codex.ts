@@ -200,6 +200,7 @@ export async function runCodex(options: CodexRunOptions) {
     if (message.method === "item/completed") {
       lastItemEvent = eventOrdinal;
       items.push(params.item); activeCalls.delete(params.item.id);
+      if (params.item.type === "mcpToolCall" && (params.item.status === "failed" || params.item.result?.isError || params.item.error)) programPolicy?.executionFailed();
       if (params.item.type === "agentMessage") finalText = params.item.text;
       const limit = params.item.result?.structuredContent?.parityTaskLimit;
       if (params.item.type === "mcpToolCall" && ["tool_call_budget_exceeded", "run_timeout"].includes(limit)) stop(limit);

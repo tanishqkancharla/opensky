@@ -10,19 +10,34 @@ const forbidden = new Set(["constructor", "prototype", "__proto__", "process", "
 export class DesktopProgramPolicy {
   private bindings = new Set<string>();
   private stateBindings = new Set<string>();
-  private screenshotImports = new Set<string>();
+  private screenshotImports = new Map<string, "fs" | "url" | "fileURLToPath" | "readFile">();
+  private screenshotPaths = new Set<string>();
   constructor(readonly scope: DesktopProgramScope) {}
+  executionFailed(): void {
+    // A failed assignment may leave an older value in the real REPL. Require
+    // a fresh successful observation before admitting another screenshot read.
+    this.stateBindings.clear();
+    this.screenshotPaths.clear();
+  }
   accepts(code: string): boolean {
     try {
       const ast = parse(code, { ecmaVersion: "latest", sourceType: "module", allowAwaitOutsideFunction: true }) as any;
       const bindings = new Set(this.bindings);
       const states = new Set(this.stateBindings);
-      const imports = new Set(this.screenshotImports);
+      const imports = new Map(this.screenshotImports);
+      const paths = new Set(this.screenshotPaths);
       const member = (node: any, object: string, method?: string) => node?.type === "MemberExpression" && !node.computed && node.object?.type === "Identifier" && node.object.name === object && (method === undefined || node.property?.name === method);
       const imported = (node: any, source: string) => node?.type === "AwaitExpression" && node.argument?.type === "ImportExpression" && !node.argument.options && node.argument.source?.value === source;
       const importedSky = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "sky" && imported(node.object, "@oai/sky");
       const importedMember = (node: any, source: string, method: string) => node?.type === "MemberExpression" && !node.computed && node.property?.name === method && imported(node.object, source);
       const screenshotURL = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "url" && node.object?.type === "MemberExpression" && !node.object.computed && node.object.property?.name === "screenshot" && states.has(node.object.object?.name);
+      const importCall = (node: any, namespace: "fs" | "url", method: "readFile" | "fileURLToPath") =>
+        (node?.type === "Identifier" && imports.get(node.name) === method) ||
+        (node?.type === "MemberExpression" && !node.computed && node.property?.name === method && imports.get(node.object?.name) === namespace) ||
+        importedMember(node, namespace === "fs" ? "node:fs/promises" : "node:url", method);
+      const screenshotPath = (node: any): boolean => node?.type === "AwaitExpression" ? screenshotPath(node.argument) :
+        (node?.type === "Identifier" && paths.has(node.name)) ||
+        (node?.type === "CallExpression" && importCall(node.callee, "url", "fileURLToPath") && node.arguments.length === 1 && screenshotURL(node.arguments[0]));
       const value = (node: any): boolean => {
         if (!node) return false;
         if (node.type === "Literal") return !node.regex;
@@ -34,11 +49,10 @@ export class DesktopProgramPolicy {
         if (node.type === "MemberExpression") return !node.computed && !forbidden.has(node.property?.name) && value(node.object);
         if (node.type !== "CallExpression" || node.optional) return false;
         if (member(node.callee, "Object", "keys") && node.arguments.length === 1 && node.arguments[0].type === "Identifier" && ["sky", "app"].includes(node.arguments[0].name)) return true;
-        if (this.scope.backend === "native" && ((member(node.callee, "fs", "readFile") && imports.has("fs")) || importedMember(node.callee, "node:fs/promises", "readFile"))) {
-          const path = node.arguments[0];
-          const converter = (path?.callee?.name === "fileURLToPath" && imports.has("fileURLToPath")) || importedMember(path?.callee, "node:url", "fileURLToPath");
-          return node.arguments.length === 1 && path?.type === "CallExpression" && converter && path.arguments.length === 1 && screenshotURL(path.arguments[0]);
+        if (this.scope.backend === "native" && importCall(node.callee, "fs", "readFile")) {
+          return node.arguments.length === 1 && screenshotPath(node.arguments[0]);
         }
+        if (this.scope.backend === "native" && importCall(node.callee, "url", "fileURLToPath")) return screenshotPath(node);
         if (!node.arguments.every(value)) return false;
         if (member(node.callee, "JSON", "stringify")) return node.arguments.length === 1;
         if (member(node.callee, "nodeRepl") && ["write", "emitImage"].includes(node.callee.property.name)) return node.arguments.length === 1;
@@ -60,16 +74,31 @@ export class DesktopProgramPolicy {
         if (statement.type === "VariableDeclaration") {
           for (const declaration of statement.declarations) {
             const name = declaration.id?.name;
-            if (this.scope.backend === "native" && name === "fs" && imported(declaration.init, "node:fs/promises")) { imports.add("fs"); bindings.add("fs"); continue; }
-            if (this.scope.backend === "native" && declaration.id?.type === "ObjectPattern" && declaration.id.properties.length === 1 && declaration.id.properties[0].key?.name === "fileURLToPath" && declaration.id.properties[0].value?.name === "fileURLToPath" && imported(declaration.init, "node:url")) { imports.add("fileURLToPath"); bindings.add("fileURLToPath"); continue; }
+            if (this.scope.backend === "native") {
+              const kind = imported(declaration.init, "node:fs/promises") ? "fs" : imported(declaration.init, "node:url") ? "url" : null;
+              if (kind) {
+                if (declaration.id.type === "Identifier" && name && !forbidden.has(name) && name !== "app") {
+                  imports.set(name, kind); bindings.add(name); states.delete(name); paths.delete(name); continue;
+                }
+                if (declaration.id.type !== "ObjectPattern" || declaration.id.properties.length !== 1) return false;
+                const property = declaration.id.properties[0];
+                const exported = kind === "fs" ? "readFile" : "fileURLToPath";
+                const alias = property.value?.name;
+                if (property.type !== "Property" || property.computed || property.key?.name !== exported || property.value?.type !== "Identifier" || !alias || forbidden.has(alias) || alias === "app") return false;
+                imports.set(alias, exported); bindings.add(alias); states.delete(alias); paths.delete(alias); continue;
+              }
+            }
             if (declaration.id?.type !== "Identifier" || !name || forbidden.has(name)) return false;
-            if (["fs", "fileURLToPath"].includes(name)) return false;
+            if (imports.has(name)) return false;
             if (!value(declaration.init)) return false;
             if (name === "app") {
               const init = declaration.init?.type === "AwaitExpression" ? declaration.init.argument : null;
               if (!member(init?.callee, "cua", "getApp")) return false;
             }
+            const isPath = screenshotPath(declaration.init);
             bindings.add(name);
+            paths.delete(name);
+            if (isPath) paths.add(name);
             states.delete(name);
             if (member(declaration.init?.argument?.callee, "sky", "get_app_state")) states.add(name);
           }
@@ -78,7 +107,10 @@ export class DesktopProgramPolicy {
           if (this.scope.backend === "native" && expression.type === "AssignmentExpression" && expression.operator === "=" && member(expression.left, "globalThis", "sky") && importedSky(expression.right)) continue;
           if (expression.type === "AssignmentExpression" && expression.operator === "=" && expression.left.type === "Identifier") {
             const name = expression.left.name;
-            if (!bindings.has(name) || forbidden.has(name) || ["app", "fs", "fileURLToPath"].includes(name) || !value(expression.right)) return false;
+            if (!bindings.has(name) || forbidden.has(name) || (name === "app" || imports.has(name)) || !value(expression.right)) return false;
+            const isPath = screenshotPath(expression.right);
+            paths.delete(name);
+            if (isPath) paths.add(name);
             states.delete(name);
             if (member(expression.right?.argument?.callee, "sky", "get_app_state")) states.add(name);
             continue;
@@ -89,6 +121,7 @@ export class DesktopProgramPolicy {
       this.bindings = bindings;
       this.stateBindings = states;
       this.screenshotImports = imports;
+      this.screenshotPaths = paths;
       return ast.body.length > 0;
     } catch { return false; }
   }

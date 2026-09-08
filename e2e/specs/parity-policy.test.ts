@@ -44,6 +44,29 @@ test("equivalent inline native screenshot imports retain the same URL restrictio
   expect(native.accepts('let fake = {screenshot:{url:"file:///etc/passwd"}}; await (await import("node:fs/promises")).readFile((await import("node:url")).fileURLToPath(fake.screenshot.url));')).toBe(false);
 });
 
+test("native screenshot namespaces and aliases support the observed recipe", ({ native }) => {
+  expect(native.accepts('var shot = await sky.get_app_state({app:"org.libreoffice.script"}); var fs = await import("node:fs/promises"); var url = await import("node:url"); await nodeRepl.emitImage({bytes:await fs.readFile(url.fileURLToPath(shot.screenshot.url)),mimeType:"image/jpeg"});')).toBe(true);
+  expect(native.accepts('var {readFile: readScreenshot} = await import("node:fs/promises"); var {fileURLToPath: pathFromURL} = await import("node:url"); var imagePath = pathFromURL(shot.screenshot.url);')).toBe(true);
+  expect(native.accepts('await nodeRepl.emitImage({bytes:await readScreenshot(imagePath),mimeType:"image/jpeg"});')).toBe(true);
+  expect(native.accepts('await fs.writeFile(imagePath,"changed");')).toBe(false);
+});
+
+test("saved screenshot paths lose read authority when overwritten", ({ native }) => {
+  expect(native.accepts('var shot = await sky.get_app_state({app:"org.libreoffice.script"}); var fs = await import("node:fs/promises"); var url = await import("node:url"); var imagePath = url.fileURLToPath(shot.screenshot.url);')).toBe(true);
+  expect(native.accepts('imagePath = "/etc/passwd";')).toBe(true);
+  expect(native.accepts('await fs.readFile(imagePath);')).toBe(false);
+  expect(native.accepts('url = fs;')).toBe(false);
+});
+
+test("a failed observation cannot authorize reading stale fabricated state", ({ native }) => {
+  expect(native.accepts('var shot = {screenshot:{url:"file:///etc/passwd"}}; var fs = await import("node:fs/promises"); var url = await import("node:url");')).toBe(true);
+  expect(native.accepts('shot = await sky.get_app_state({app:"org.libreoffice.script"});')).toBe(true);
+  native.executionFailed();
+  expect(native.accepts('await fs.readFile(url.fileURLToPath(shot.screenshot.url));')).toBe(false);
+  expect(native.accepts('shot = await sky.get_app_state({app:"org.libreoffice.script"});')).toBe(true);
+  expect(native.accepts('await fs.readFile(url.fileURLToPath(shot.screenshot.url));')).toBe(true);
+});
+
 test("OpenSky agent can retain its public app binding across turns", ({ opensky }) => {
   expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script");')).toBe(true);
   expect(opensky.accepts('await app.pressKey("super+s"); await app.getAXState();')).toBe(true);
