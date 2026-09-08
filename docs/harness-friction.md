@@ -2287,3 +2287,18 @@ real observations and foreground retries can exceed the default minute;
 whole-agent deadlines and tool-call caps remain absent. Build, E2E typecheck and
 339 existing SDK checks passed for the SDK click change. New driver and real
 combined acceptance remain pending.
+
+DRV-L04/05 combined one-off acceptance: COORD-L01 passed on driver 7f9e72fcf
+with the SDK click fallback (51.641 s of test time). The actual Family field
+became exactly "Liberation Serif" after a screenshot click and CTRL+A/typeText;
+the dialog remained open. Screenshot, AX assertion, exact keyboard restoration
+and app cleanup receipts are retained in linux-exe-coordinate-pass. The
+three-desktop exact-source matrix is 34291452142 (SDK b5f2526); additional
+Unicode repetitions run in fresh exe.dev containers. Both remain pending.
+
+SET-073 full-set preparation: a separate task-owned Docker image now installs
+Writer, Calc and Impress at 24.2.7-0ubuntu0.24.04.6 (image
+sha256:a50f77b673f34f483191fe3cc7acb273aa8f0e2d8d0672f31b40f52a83086186).
+Only package/version checks have run for Calc and Impress: real setup/reset and
+outcome controls, VS Code installation/fixture, and the frozen 20-task campaign
+remain unfinished. No persistent GitHub runner or local Mac GUI was started.
