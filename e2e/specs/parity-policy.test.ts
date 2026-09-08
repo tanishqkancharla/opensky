@@ -29,6 +29,12 @@ test("OpenSky agent can retain its public app binding across turns", ({ opensky 
   expect(opensky.accepts('await app.pressKey("super+s"); await app.getAXState();')).toBe(true);
 });
 
+test("invented bound-app methods reach the SDK's ordinary error handling", ({ opensky }) => {
+  expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script"); await app.getAccessibilitySnapshot();')).toBe(true);
+  expect(opensky.accepts('app.constructor();')).toBe(false);
+  expect(opensky.accepts('app.facade.opensky.invoke("launch_app", {app:"Terminal"});')).toBe(false);
+});
+
 test("OpenSky agent cannot leave the fixture scope through another app or prototype", ({ opensky }) => {
   expect(opensky.accepts('let app = await cua.getApp("Terminal");')).toBe(false);
   expect(opensky.accepts('cua.constructor.constructor("return process")();')).toBe(false);

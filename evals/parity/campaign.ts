@@ -80,7 +80,7 @@ for (const [index, taskId] of taskIds.entries()) {
     let campaignError: string | null = null;
     if (!environment) campaignError = "Missing environment fingerprint";
     else {
-      const current = JSON.stringify([environment.codeAndAssetsSha256, environment.driver.sha256, environment.libreOffice, environment.node, environment.release]);
+      const current = JSON.stringify([environment.codeAndAssetsSha256, environment.driver.sha256, environment.libreOffice, environment.node, environment.release, environment.codex, environment.python]);
       if (fingerprint && fingerprint !== current) campaignError = "Code/assets/desktop environment changed during campaign";
       fingerprint ??= current;
       if (backend === "native") {

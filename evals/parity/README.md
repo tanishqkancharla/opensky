@@ -11,7 +11,7 @@ Three additional Writer tasks are now pinned for the five-task stage: whole-text
 font, H2O subscript, and last-paragraph strike-through. Their original inputs,
 gold outputs and unmodified upstream metric functions are included. Separate
 guards cover all text/table fonts and per-character formatting, including
-partial subscript changes that the upstream metric accepts. All 30 real-file
+partial subscript changes that the upstream metric accepts. All 31 real-file
 grader, policy, admission and spending checks pass. The full 20-task set is not frozen yet.
 
 ## Run a gated campaign

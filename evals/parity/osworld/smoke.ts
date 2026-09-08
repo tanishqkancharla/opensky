@@ -28,7 +28,7 @@ for (const asset of task.assets) {
   if (createHash("sha256").update(bytes).digest("hex") !== asset.sha256) throw new Error(`Task asset changed: ${asset.file}`);
 }
 await mkdir(artifacts, { recursive: true });
-await recordEnvironment({ repo, appPath, driver, artifacts, nativeConfig: backend === "native" ? process.env.OPENSKY_NATIVE_REPL_CONFIG : undefined });
+await recordEnvironment({ repo, appPath, driver, python, artifacts, nativeConfig: backend === "native" ? process.env.OPENSKY_NATIVE_REPL_CONFIG : undefined });
 const temporary = await mkdtemp(join(tmpdir(), "opensky-osworld-"));
 const document = join(temporary, task.inputFile);
 await copyFile(join(root, task.id, task.inputFile), document);

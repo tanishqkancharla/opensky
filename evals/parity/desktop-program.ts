@@ -2,7 +2,6 @@ import { parse } from "acorn";
 
 export type DesktopProgramScope = { backend: "native" | "opensky"; appSelectors: string[] };
 export const nativeMethods = new Set(["get_app_state", "click", "drag", "press_key", "type_text", "select_text", "paste", "scroll", "set_value", "perform_secondary_action"]);
-const appMethods = new Set(["getAXState", "getScreenshot", "getAXStateAndScreenshot", "click", "drag", "pressKey", "typeText", "selectText", "paste", "scroll", "setValue", "performSecondaryAction"]);
 const forbidden = new Set(["constructor", "prototype", "__proto__", "process", "require", "globalThis", "cua", "sky", "nodeRepl", "eval", "Function"]);
 
 /** Admit straight-line public desktop API calls scoped to the fixture app.
@@ -45,7 +44,11 @@ export class DesktopProgramPolicy {
         if (member(node.callee, "nodeRepl") && ["write", "emitImage"].includes(node.callee.property.name)) return node.arguments.length === 1;
         if (this.scope.backend === "opensky") {
           if (member(node.callee, "cua", "getApp")) return node.arguments.length === 1 && node.arguments[0].type === "Literal" && this.scope.appSelectors.includes(node.arguments[0].value);
-          return member(node.callee, "app") && bindings.has("app") && appMethods.has(node.callee.property.name);
+          // The bound app enforces its own target and API. Invented method
+          // names should receive the SDK's normal error so the agent can
+          // recover, rather than become infrastructure interruptions.
+          return member(node.callee, "app") && bindings.has("app") &&
+            /^[a-z][A-Za-z0-9]*$/.test(node.callee.property.name) && !forbidden.has(node.callee.property.name);
         }
         if (!member(node.callee, "sky") || !nativeMethods.has(node.callee.property.name)) return false;
         const argument = node.arguments[0];

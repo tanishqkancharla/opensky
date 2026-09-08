@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, delimiter } from "node:path";
-import { platform, release, arch } from "node:os";
+import { platform, release, arch, homedir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -15,7 +15,7 @@ async function sha256(path: string): Promise<string> {
 
 /** Fingerprint actual code/assets, including uncommitted work. Never serialize
  * auth configuration or environment values into portable result artifacts. */
-export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; nativeConfig?: string; artifacts: string }) {
+export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; python: string; nativeConfig?: string; artifacts: string }) {
   const files: Record<string, string> = {};
   async function walk(directory: string) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -28,6 +28,11 @@ export async function recordEnvironment(options: { repo: string; appPath: string
   await walk(join(options.repo, "src"));
   await walk(join(options.repo, "dist"));
   await walk(join(options.repo, "evals/parity"));
+  // The real OpenSky REPL imports top-level evaluation adapters as well as
+  // src/. Changes there must not escape the campaign drift check.
+  for (const entry of await readdir(join(options.repo, "evals"), { withFileTypes: true })) {
+    if (entry.isFile() && /\.(ts|js|mjs|json)$/.test(entry.name)) files[`evals/${entry.name}`] = await sha256(join(options.repo, "evals", entry.name));
+  }
   const sorted = Object.fromEntries(Object.entries(files).sort(([a], [b]) => a.localeCompare(b)));
   const command = async (name: string, args: string[]) => (await exec(name, args, { cwd: options.repo, timeout: 10_000 })).stdout.trim();
   const nativeConfig = options.nativeConfig ? JSON.parse(await readFile(options.nativeConfig, "utf8")) : undefined;
@@ -61,6 +66,11 @@ export async function recordEnvironment(options: { repo: string; appPath: string
     worktreeDirty: !!(await command("git", ["status", "--porcelain"])),
     codeAndAssetsSha256: createHash("sha256").update(JSON.stringify(sorted)).digest("hex"), files: sorted,
     driver: { sha256: await sha256(options.driver), identity: JSON.parse(await command(options.driver, ["--opensky-driver-identity"])) },
+    codex: { sha256: await sha256(join(homedir(), ".local/bin/codex")), version: await command(join(homedir(), ".local/bin/codex"), ["--version"]) },
+    python: {
+      executableSha256: await sha256(options.python), version: await command(options.python, ["--version"]),
+      packages: JSON.parse(await command(options.python, ["-c", "import importlib.metadata,json; print(json.dumps(sorted((d.metadata['Name'],d.version) for d in importlib.metadata.distributions())))"])),
+    },
     libreOffice: {
       version: await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleShortVersionString", join(options.appPath, "Contents/Info.plist")]),
       executableSha256: await sha256(join(options.appPath, "Contents/MacOS/soffice")),

@@ -990,3 +990,30 @@ retained. Its owned LibreOffice PID 29879 quit normally and scratch removal
 passed. All 11 policy/admission checks pass. The terminal-turn usage audit
 settled the interrupted reservation; the cumulative estimate is $5.1207228
 with no outstanding reservations. A new frozen campaign remains to be completed.
+
+**SET-033 — invented app methods should receive normal SDK errors (2026-09-07):**
+The second five-task campaign completed its heading pair (both pass), then
+interrupted before dispatching OpenSky's initial lowercase cell because it
+called nonexistent `app.getAccessibilitySnapshot()`. The guard now permits
+ordinary method names on the already-bound app object; the real SDK handles
+unsupported methods and the agent may recover. Prototype access and calls
+through internal facade members remain refused. This changes no SDK API and
+does not add an alias for the invented method. The failed campaign is retained;
+owned PID 56609 quit normally and scratch removal passed. All 12 policy and
+admission checks pass. Its terminal usage was audited and settled; cumulative
+estimate is $5.3738212 with no unsettled reservations. A new campaign is pending.
+
+**SET-034 — fingerprint grader/runtime dependencies, not only SDK files (2026-09-07):**
+The code fingerprint now includes the top-level evaluation adapters imported
+by the real OpenSky REPL. Each run also records the actual Codex binary/version,
+Python executable/version and installed distribution versions; the controller
+checks these for drift. This closes gaps in the earlier src/dist/parity-only
+fingerprint. No previous result is relabeled with the broader fingerprint.
+
+Scratch preparation for the proposed broader task set exposed a native pandas
+crash while reading date cells under Python 3.14. The same pinned dependencies
+completed the original/reference scorer probe under Python 3.12. This does not
+change the running Writer grader environment. The 15 candidate tasks and 33
+downloaded input/reference files remain scratch preparation, not a frozen or
+validated 20-task suite; decimal display export and an image-position positive
+case still need validation.
