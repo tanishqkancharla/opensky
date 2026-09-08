@@ -17,6 +17,7 @@ from pathlib import Path
 
 from desktop_env.evaluators.metrics.slides import compare_pptx_files
 from score_extended import score_extended
+from impress_reference import DUPLICATE_SLIDES_TASK, duplicate_slide_reference
 
 ROOT = Path(__file__).resolve().parent
 
@@ -77,7 +78,9 @@ def export_copy(office, source, destination):
     return output
 
 
-def audit(task_id, office, destination, actual=None):
+def audit(task_id, office, destination, actual=None, *, reference_policy="upstream-export-v1"):
+    if reference_policy not in ["upstream-export-v1", "task-preserving-export-v1"]:
+        raise ValueError("Unsupported reference policy")
     manifest = json.loads((ROOT / "manifest.json").read_text())
     task = next(task for task in manifest["tasks"] if task["id"] == task_id)
     if task["category"] != "libreoffice_impress":
@@ -90,12 +93,27 @@ def audit(task_id, office, destination, actual=None):
     upstream = json.loads((ROOT / task_id / "upstream-task.json").read_text())["evaluator"]
     references = upstream["expected"] if isinstance(upstream["expected"], list) else [upstream["expected"]]
     reference_root = destination / "exported-references"
-    for name in dict.fromkeys(reference["dest"] for reference in references):
-        export_copy(office, ROOT / task_id / name, reference_root / task_id)
     source = ROOT / task_id / task["inputFile"]
+    adapted = reference_policy == "task-preserving-export-v1" and task_id == DUPLICATE_SLIDES_TASK
+    derived = destination / "task-derived-reference"
+    if adapted:
+        derived.mkdir()
+        duplicate_slide_reference(source, derived / "requested-duplicate-slides.pptx")
+    for name in dict.fromkeys(reference["dest"] for reference in references):
+        reference = ROOT / task_id / name
+        if adapted:
+            reference = derived / name
+            shutil.copyfile(derived / "requested-duplicate-slides.pptx", reference)
+        export_copy(office, reference, reference_root / task_id)
     unchanged = export_copy(office, source, destination / "unchanged-input")
     result = {
         "taskId": task_id, "diagnosticOnly": True, "modelSpend": 0,
+        "referencePolicy": reference_policy,
+        "referenceAdaptation": ({"reason": "Upstream gold alters unrelated slides 5, 7 and 21",
+                                 "requirement": "Preserve all input slides, then append copies of the last two in A,B order",
+                                 "inputSha256": digest(source),
+                                 "derivedSha256": digest(derived / "requested-duplicate-slides.pptx")}
+                                if adapted else None),
         "office": {"executable": str(office), "sha256": digest(office),
                    "version": subprocess.check_output([str(office), "--version"], text=True, timeout=10).strip()},
         "neutralSourceSelfComparison": compare_pptx_files(str(source), str(source), enable_debug=False),
@@ -121,6 +139,9 @@ if __name__ == "__main__":
     parser.add_argument("--libreoffice", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--actual", type=Path)
+    parser.add_argument("--reference-policy", default="upstream-export-v1",
+                        choices=["upstream-export-v1", "task-preserving-export-v1"])
     args = parser.parse_args()
     print(json.dumps(audit(args.task, args.libreoffice.resolve(), args.output.resolve(),
-                           args.actual.resolve() if args.actual else None), indent=2))
+                           args.actual.resolve() if args.actual else None,
+                           reference_policy=args.reference_policy), indent=2))

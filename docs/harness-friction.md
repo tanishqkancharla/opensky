@@ -1620,3 +1620,45 @@ and expanded saved-file regressions in 22.96 s. These fixture-artifact checks ar
 separate from the real LibreOffice export diagnostics. Driver Nix 34236425382
 completed successfully on ac1352062; all ordinary PR CI gates now pass. This
 does not replace the canonical native desktop matrix or close the grading port.
+
+**SET-058 — Exported references alone reject a task-preserving slide duplication (2026-09-08):**
+Added real saved-file grader acceptance controls for all five Impress tasks:
+completed examples independently built from the pinned inputs, unchanged inputs,
+incorrect edits, unrelated text damage and unrelated background-color damage.
+Every specimen is exported by production LibreOffice using a disposable profile.
+These are grader tests, not GUI or agent acceptance evidence.
+
+The first run passed table-heading and font-size controls. Two fixtures assumed
+slide 1 contained text and failed during setup; they now locate existing text
+across the deck. Their corrected green-background and image-placement controls
+passed. Duplicate-slide completion reached grading but failed because the gold
+deck introduces extra empty text shapes on slides 5 and 7 and removes a newline
+on slide 21. The independently constructed completion preserves the input there.
+Thus normalizing both references and outputs through the same exporter does not
+make this gold reference consistent with the requested task.
+
+The explicit diagnostic policy `task-preserving-export-v1` derives only this
+task's reference from the original pinned input plus copies of its final two
+slides, in A,B order. It retains all upstream comparison options. Its reference
+builder uses presentation parts; the independent completion fixture copies ZIP
+package parts and relationships. The remaining four tasks use exported upstream
+references. Audit receipts name the policy and record input, derived reference,
+exported file and exporter hashes. Default audit policy and campaign scoring
+continue to use upstream references; historical results are not rewritten.
+
+Evidence: `evals/runs/impress-export-controls-1` (initial failures),
+`impress-export-controls-2` (corrected two fixtures),
+`impress-export-controls-3` (duplicate reference adaptation), and
+`impress-export-controls-4` (combined controls and existing grader regression run).
+See `docs/impress-grading-validation.md` for invocation and scope. Admission still
+requires a frozen reference set and explicit campaign profile integration. The
+upstream exact-green requirement and incomplete visual-preservation coverage
+remain limitations; no benchmark success or model spending is claimed here.
+
+SET-058 validation: the combined run passed 52/52 tests in 83.09 seconds: five
+real-export acceptance cases and all 47 existing saved-file regressions. Each
+Impress case accepted its independently constructed completion and rejected all
+four negative controls (unchanged, incorrect, text damage, formatting damage).
+All 32 exporter receipts verify process-group exit and temporary-profile removal.
+E2E TypeScript checks and diff whitespace checks passed. No GUI windows or agent
+model calls were used. Campaign profile integration remains pending.
