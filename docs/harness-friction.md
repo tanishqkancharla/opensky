@@ -2207,3 +2207,32 @@ and admits explicit Docker fixtures; the existing GitHub path is unchanged.
 All 339 SDK checks pass after this scope correction. This is current-candidate
 regression evidence, not an improved agent score or a universal reliability
 claim. The agent workflow now pins this exact tested binary for the font retry.
+
+SET-073 acceptance: the first exe.dev container failed before actions because
+its C locale could not represent the Writer window title. With LANG/LC_ALL
+set to C.UTF-8, the same container image passed TYPE-L01, KEY-L01 and CLICK-L01
+in 80.54 seconds. All owned apps exited, keyboard mappings were restored, and
+the --rm container disappeared. Artifacts: linux-exe-input-02 (SDK 0ee7c90,
+driver 00e3b936e). This is deterministic public-SDK evidence, not an agent score.
+
+**DRV-L04 — Dialog pixel clicks hit sibling windows (2026-09-08):**
+The matched font retry on SDK 16e62c1 and driver 00e3b936e still failed with
+OpenSky (427.893 s, 24 calls, run 34288468049) while native passed (87.823 s,
+18 calls, run 34289296019). All runtime fingerprints matched, both turns
+completed and cleanup passed. The agent's final explanation about missing
+Times New Roman is insufficient: native saved that font in the same environment.
+OpenSky's trace shows a dialog-coordinate click affecting the document behind
+it. Linux's AT-SPI pixel shortcut searched all process windows using each
+window's local coordinates, ignoring the explicit window ID. The candidate
+passes the ID into that lookup and accepts only nodes under its proven
+accessible top-level. The Wayland screen-point path now applies the same
+window scope before hit-testing. Unresolved scope falls through without
+actuating a sibling. X11 and Wayland acceptance remain pending.
+
+COORD-L01 drives the real Character dialog, clicks its screenshot's Family
+field, types an installed font and verifies the resulting field text. The
+one-off remote reproduction on driver 00e3b936e failed: final screenshot
+still showed Georgia, and the observation included both document/dialog nodes.
+Keep possible focus-routing and accessibility-window association defects
+separate from the confirmed unscoped hit-test. Evidence:
+linux-exe-coordinate-before; this test is separate from saved-document scores.
