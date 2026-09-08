@@ -54,6 +54,18 @@ export class EvaluationBudget {
     });
   }
 
+  /** Controller has verified the worker is terminal, but its final usage is
+   * incomplete. Charge the entire reservation without inventing token usage. */
+  async settleConservatively(id: string, terminalEvidence: string) {
+    if (!terminalEvidence.trim()) throw new Error("Terminal worker evidence is required");
+    await this.mutate(async ledger => {
+      const entry = ledger.entries.find(entry => entry.id === id);
+      if (!entry || entry.status !== "reserved") throw new Error("Unknown or already settled reservation");
+      Object.assign(entry, { status: "settled", chargedEstimateUsd: entry.reservationUsd,
+        note: `Full reservation charged; final usage incomplete. ${terminalEvidence}` });
+    });
+  }
+
   /** A remote worker consumes the controller's existing reservation once.
    * The remote dispatcher must also prevent replay of the reservation envelope. */
   async claim(id: string, owner: string) {

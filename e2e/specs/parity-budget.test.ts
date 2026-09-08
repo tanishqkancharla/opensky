@@ -44,3 +44,11 @@ test("a remote worker cannot invent a reservation or reuse settled spending", as
   await budget.settle(reservation, { inputTokens: 100_000, cachedInputTokens: 0, outputTokens: 0 });
   await expect(budget.claim(reservation, "ci-retry")).rejects.toThrow("settled");
 });
+
+test("terminal runs with incomplete usage consume the full allowance before another dispatch", async ({ budget, secondClient }) => {
+  const reservation = await budget.reserve("interrupted remote run", 5);
+  await budget.settleConservatively(reservation, "CI run completed; interrupted receipt retained");
+  await expect(secondClient.snapshot()).resolves.toMatchObject({ chargedEstimateUsd: 5, reservedUsd: 0, availableUsd: 45 });
+  await expect(secondClient.claim(reservation, "retry")).rejects.toThrow("settled");
+  await expect(secondClient.reserve("next task", 5)).resolves.toBeTypeOf("string");
+});

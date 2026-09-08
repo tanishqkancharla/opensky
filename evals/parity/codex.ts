@@ -166,12 +166,15 @@ export async function runCodex(options: CodexRunOptions) {
           metadata.codex_approval_kind === "mcp_tool_call" && metadata.connector_id === "computer-use" &&
           (metadata.tool_name === "get_app_state" || scopedNativeAction) && metadata.riskLevel === "low" && nativeAppName &&
           params.message === `Allow Computer Use to use "${nativeAppName}"?` && Object.keys(metadata.tool_params).length === 1;
-        const openskyForm = [...activeCalls.values()].some(call => call.server === "desktop" && call.tool === "cua_repl" && call.arguments?.code === metadata.tool_params?.code) &&
+        // The CLI asks for the outer MCP tool separately from any native
+        // app-level prompt. Both REPL transports use this same request shape.
+        const replTool = options.desktopProgramScope?.backend === "native" ? "js" : "cua_repl";
+        const desktopToolForm = [...activeCalls.values()].some(call => call.server === "desktop" && call.tool === replTool && call.arguments?.code === metadata.tool_params?.code) &&
           metadata.codex_approval_kind === "mcp_tool_call" &&
-          params.message === 'Allow the desktop MCP server to run tool "cua_repl"?' &&
+          params.message === `Allow the desktop MCP server to run tool "${replTool}"?` &&
           (options.authorizedReplCodes?.includes(metadata.tool_params?.code) || admittedPrograms.has(metadata.tool_params?.code));
         const allowed = !interruption && params.serverName === "desktop" && params.threadId === threadId &&
-          params.mode === "form" && (directForm || replForm || openskyForm) &&
+          params.mode === "form" && (directForm || replForm || desktopToolForm) &&
           schema?.type === "object" && Object.keys(schema.properties ?? {}).length === 0 &&
           !(schema.required?.length);
         // Use the documented one-request accept response. Do not request the

@@ -1931,3 +1931,18 @@ package digest and the exact driver artifact from the passing gate are pinned.
 Local TypeScript and shell checks pass; the new worker's setup/cleanup must
 pass remotely before model dispatch. Linux editor support and the later full
 suite remain unfinished; no scope has been removed from the goal.
+
+**SET-069 — Native agent stopped at the CLI's outer tool approval (2026-09-08):**
+The first paid Linux arm, run 34276032479 at c5f3182, completed its worker and
+cleanup but could not execute its first screenshot. The CLI requested
+`Allow the desktop MCP server to run tool "js"?` with the exact active,
+policy-admitted screenshot program. The handler recognized the equivalent
+OpenSky `cua_repl` prompt and native app-level prompts, but omitted this outer
+native tool prompt. It now applies the same active-call/code/scope checks to
+both selected REPL tools. One-request approval is retained; unrelated programs
+are not admitted. This is an evaluator failure, excluded from task scores.
+Evidence: `evals/runs/campaign-linux-smoke-1/01-heading-native/linux-office`.
+No final post-interruption usage update arrived, so the terminal run consumes
+its full $5 reservation conservatively. The budget API records that explicitly
+without fabricating token usage. Validation: all eight focused ledger tests and E2E typecheck
+pass; a new real native run is next. No paired agent score exists yet.
