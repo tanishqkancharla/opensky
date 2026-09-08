@@ -1,7 +1,8 @@
 import { parse } from "acorn";
 
-export type DesktopProgramScope = { backend: "native" | "opensky"; appSelectors: string[] };
+export type DesktopProgramScope = { backend: "native" | "opensky"; appSelectors: string[]; isolatedDesktop?: "linux" };
 export const nativeMethods = new Set(["get_app_state", "click", "drag", "press_key", "type_text", "select_text", "paste", "scroll", "set_value", "perform_secondary_action"]);
+const nativeLinuxMethods = new Set(["get_screenshot", "click", "move", "drag", "press_key", "type_text", "scroll"]);
 const forbidden = new Set(["constructor", "prototype", "__proto__", "process", "require", "globalThis", "cua", "sky", "nodeRepl", "eval", "Function"]);
 
 /** Admit straight-line public desktop API calls scoped to the fixture app.
@@ -53,7 +54,13 @@ export class DesktopProgramPolicy {
         if (node.type === "UnaryExpression") return ["-", "+", "!"].includes(node.operator) && value(node.argument);
         if (node.type === "ArrayExpression") return node.elements.every(value);
         if (node.type === "ObjectExpression") return node.properties.every((p: any) => p.type === "Property" && p.kind === "init" && !p.computed && !p.method && !forbidden.has(p.key.name ?? p.key.value) && value(p.value));
-        if (node.type === "MemberExpression") return !node.computed && !forbidden.has(node.property?.name) && value(node.object);
+        if (node.type === "MemberExpression") {
+          // Linux screenshots are returned as an array of image values. This
+          // admits image[0].bytes, not computed methods or arbitrary globals.
+          if (node.computed) return this.scope.isolatedDesktop === "linux" &&
+            node.property?.type === "Literal" && Number.isSafeInteger(node.property.value) && node.property.value >= 0 && value(node.object);
+          return !forbidden.has(node.property?.name) && value(node.object);
+        }
         if (node.type === "NewExpression") return this.scope.backend === "native" && screenshotPath(node);
         if (node.type !== "CallExpression" || node.optional) return false;
         if (member(node.callee, "Object", "keys") && node.arguments.length === 1 && node.arguments[0].type === "Identifier" && ["sky", "app"].includes(node.arguments[0].name)) return true;
@@ -87,7 +94,15 @@ export class DesktopProgramPolicy {
             /^[a-z][A-Za-z0-9]*$/.test(call.callee.property.name) && !forbidden.has(call.callee.property.name);
           return appCall(node);
         }
-        if (!member(node.callee, "sky") || !nativeMethods.has(node.callee.property.name)) return false;
+        if (!member(node.callee, "sky")) return false;
+        if (this.scope.isolatedDesktop === "linux") {
+          // Linux's genuine native API targets the desktop, not app handles.
+          // The runner must establish a disposable desktop before this scope.
+          if (!nativeLinuxMethods.has(node.callee.property.name)) return false;
+          return node.callee.property.name === "get_screenshot" ? node.arguments.length === 0 :
+            node.arguments.length === 1 && node.arguments[0]?.type === "ObjectExpression";
+        }
+        if (!nativeMethods.has(node.callee.property.name)) return false;
         const argument = node.arguments[0];
         const app = argument?.type === "ObjectExpression" && argument.properties.find((p: any) => (p.key.name ?? p.key.value) === "app")?.value;
         return node.arguments.length === 1 && app?.type === "Literal" && this.scope.appSelectors.includes(app.value);

@@ -162,7 +162,7 @@ jobs:
       - name: Install real office desktop and scorer
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core xdotool libreoffice-writer libreoffice-gtk3 fonts-liberation libpipewire-0.3-0 libei1 libxtst6
+          sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core xdotool x11-utils libreoffice-writer libreoffice-gtk3 fonts-liberation libpipewire-0.3-0 libei1 libxtst6
           npm ci --ignore-scripts
           npm run build
           npm ci --ignore-scripts --prefix e2e

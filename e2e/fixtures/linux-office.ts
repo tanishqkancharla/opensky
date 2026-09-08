@@ -64,6 +64,15 @@ export const test = base.extend<{ desktop: Desktop; document: Document; fixture:
       if (!window) throw new Error("Owned LibreOffice document did not become visible");
       await exec("xdotool", ["windowactivate", "--sync", window]);
       await writeFile(join(artifacts, "setup.json"), JSON.stringify({ backend, group, window, taskId, sourceSha256: task.assets[0].sha256 }));
+      // Preserve the actual desktop identity before app binding can fail. These
+      // diagnostics never select an app, change an outcome or repair a result.
+      const windowPid = (await exec("xdotool", ["getwindowpid", window])).stdout.trim();
+      await writeFile(join(artifacts, "window-identity.json"), JSON.stringify({
+        pid: Number(windowPid),
+        properties: (await exec("xprop", ["-id", window, "WM_CLASS", "_NET_WM_PID", "_GTK_APPLICATION_ID"])).stdout,
+        command: (await readFile(`/proc/${windowPid}/cmdline`, "utf8")).replaceAll("\0", " "),
+        desktopEntries: (await exec("sh", ["-c", "cat /usr/share/applications/libreoffice*.desktop"])).stdout,
+      }));
       let pressKey: Desktop["pressKey"];
       let screenshot: () => Promise<Uint8Array>;
       if (backend === "native") {
@@ -76,6 +85,7 @@ export const test = base.extend<{ desktop: Desktop; document: Document; fixture:
       } else {
         sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
           driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
+        await writeFile(join(artifacts, "apps.json"), JSON.stringify(await sdk.list_apps(), null, 2));
         const app = await createCua(sdk).getApp("LibreOffice");
         pressKey = key => app.pressKey(key);
         screenshot = () => app.getScreenshot({ emit: false });

@@ -1801,3 +1801,30 @@ saved output and cleanup receipts. Local typecheck and shell syntax validation
 pass; real document acceptance is pending remote execution. Linux-first scope
 is recorded in `docs/linux-parity-plan.md`; macOS GUI work is deferred by user
 direction. Model spending remains unchanged.
+
+**SET-064 — Native Linux document input passes; OpenSky discovery blocks the same task (2026-09-08):**
+Run 34270522761 completed the native heading/save check in 4.29 seconds. The
+saved DOCX passed the independent existing scorer. OpenSky failed before editing
+with `Application "LibreOffice" is not running`, although setup had verified a
+visible document window owned by its fresh process group. Both fixtures verified
+process exit and removed their temporary files. Evidence:
+`evals/runs/linux-office-smoke-1`. This is deterministic input/scoring evidence,
+not an agent parity score. FRESH-B01 passed; TEXT-B01 remained in CI dependency
+installation when this entry was written.
+
+Linux driver discovery currently joins desktop launchers and running processes
+by executable basename; SDK resolution prefers an exact installed app name even
+if that entry is not running. The actual LibreOffice inventory is needed to
+distinguish these layers. The fixture now retains public `list_apps()` output,
+owned-window identity, process command and installed launcher metadata before
+binding. It makes no fallback selection or output repair. Remote diagnostic
+execution is pending; local E2E TypeScript and shell syntax checks passed.
+
+The real native Linux API uses full-desktop screenshots and coordinate/key
+input, unlike its macOS app-scoped interface. Added an explicitly isolated Linux
+policy and API guide for the pending agent runner. The existing 19 policy checks
+and three Linux policy checks pass. Ordinary app scopes retain their previous
+restrictions. The new scope is not yet wired to an agent dispatch: disposable
+desktop verification, runtime fingerprinting, remote spending reservations and
+matched Terra runs remain required. The official-package probe now records its
+Codex/Node REPL executable paths to support that work without guessing paths.
