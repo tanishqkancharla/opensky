@@ -44,12 +44,21 @@ completed run and keep the status canvas current. Exclude Codex's in-app browser
 - OpenSky took 92.365 s / 7 calls versus native 14.705 s / 4 calls for heading;
   240.536 s / 18 calls versus 40.834 s / 10 calls for lowercase. Investigate
   observation latency and a stale save-dialog element token after the baseline.
-- The five-task ramp adds font, subscript and strikethrough. Native's font run
-  34279810215 completed normally but changed only one word; it is a real saved
-  outcome failure. The matched OpenSky run 34280504883 was interrupted by an evaluator
-  rejection of extra getApp options and is excluded. SET-071 records the fix
-  and separate unresolved public-SDK typing failure. Retry both font arms
-  with the same corrected evaluator before continuing the five-task ramp.
+- The five-task ramp is complete: native 4/5, OpenSky 3/5. Font is the one
+  native-success/OpenSky-failure gap; both agents changed only the title for
+  subscript, while the reference expects eight occurrences. Both passed strike.
+  The selected native/OpenSky font, subscript and strike pairs used ed4fe66 and
+  matching runtime fingerprints; strike has the same Ubuntu label difference
+  as lowercase. First two pairs used c26ec3a. Preserve this version distinction.
+- `five-task-baseline-summary.json` preserves the selected run history before
+  fixes. Cumulative accounting is $72.1508874, with no active reservation.
+  Paid retries are paused while real input regressions are verified.
+- The public Alt shortcut defect has real acceptance evidence on driver
+  183cc3f1c. Unicode delivery remains intermittent; delivery-barrier candidate
+  0524101f8 failed three fresh desktops. A client-map refresh delay candidate
+  e04e1e08e is under test. The SDK fresh-token correction has reproduced
+  stale-save-button evidence and is under three-desktop verification. Do not
+  promote these pending checks into improved agent scores.
 - Full twenty-task support remains unfinished: install and validate Linux Calc
   and Impress, implement the real VS Code task fixture, verify reset/cleanup
   and scoring for each category, then freeze that environment for paired runs.
