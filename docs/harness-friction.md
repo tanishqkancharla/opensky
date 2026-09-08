@@ -2167,3 +2167,19 @@ the current snapshot instead of discarding it for an unnecessary shallow walk.
 Build and E2E typecheck pass. Three fresh remote desktops test the exact public
 button action alongside Unicode and shortcut behavior with driver e04e1e08e.
 Real acceptance is pending; explicit truncated-tree projection is retained.
+
+SDK-L03 follow-up evidence: run 34287213096 with the SDK projection correction
+removed the stale-token failure, exposing the driver's separate range bug:
+"element_index 1195 out of range (snapshot had 3 elements)". The Linux walker
+keeps application-wide indices when emitting one window. The token registry
+now accepts an explicit set of observed indices; dense-platform registration
+still uses 0..count. Sparse holes and index zero in an empty snapshot are
+refused, and refreshing a window still invalidates its older tokens. Linux
+registers its actual emitted indices. Common token tests and CLICK-L01 on three
+fresh desktops are pending for this candidate.
+
+The 50 ms map-notification candidate passed TYPE-L01 on the three old-SDK
+desktops in 34286955716, but a faster-SDK run again dropped é. Unicode remains
+intermittent; neither the delay nor a small set of passing attempts proves
+that gap resolved. Keep the immutable five-task baseline and its spending
+ledger separate from these free deterministic experiments.
