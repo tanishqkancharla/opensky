@@ -8,7 +8,7 @@ import { createOpenSky } from "../src/opensky.js";
 
 const fixtureDriver = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "cua-driver.mjs");
 
-export async function makeHarness() {
+export async function makeHarness(options: { degradedRetryMs?: number } = {}) {
   const dir = await mkdtemp(join(tmpdir(), "opensky-"));
   const statePath = join(dir, "state.json");
   const logPath = join(dir, "calls.json");
@@ -39,7 +39,7 @@ export async function makeHarness() {
     target: "mac",
     pasteModifier: "cmd",
     settleDelayMs: 0,
-    degradedRetryMs: 50,
+    degradedRetryMs: options.degradedRetryMs ?? 50,
   });
   return { dir, opensky, driver, driverPath, env, statePath, logPath };
 }

@@ -1010,7 +1010,9 @@ describe("OpenSky against cua-driver", () => {
   });
 
   it("retries helper-reported degraded AX snapshots", async () => {
-    const { opensky, statePath } = await makeHarness();
+    // A spawned fixture process can exceed the harness's 50 ms shortcut under
+    // CI load. Use the production retry budget for the recovery assertion.
+    const { opensky, statePath } = await makeHarness({ degradedRetryMs: 4_000 });
     await opensky.list_apps();
     const state = JSON.parse(await readFile(statePath, "utf8"));
     state.degradedSnapshots = 1;

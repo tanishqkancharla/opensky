@@ -909,3 +909,29 @@ best-effort guard, not proof of continuous desktop availability. A lock/unlock
 entirely between the two checks, display sleep, or an unrecognized screensaver
 can still escape it. Background code and remote CI do not require this guard;
 local execution still needs the host to stay awake.
+
+**SET-028 — unit retry budget was shorter than CI process startup (2026-09-07):**
+CI run 34176450992 failed the existing transient-AX recovery unit check: its
+50 ms harness retry budget expired before a spawned fixture could provide its
+second snapshot. The check now uses the production 4 s budget; the short budget
+remains for persistent-degradation checks. No production timing or real GUI
+acceptance claim changes. Both transient-recovery and persistent-degradation
+checks pass with the adjusted fixture configuration.
+
+**SET-029 — first frozen smoke campaign stopped on the call limit (2026-09-07):**
+`campaign-smoke-1` recorded a clean native heading pass and an OpenSky heading
+failure with preserved original text. OpenSky selected the heading and enabled
+Center, then clicked the observed toolbar Save control and received no AX
+changes. The saved file remained unchanged. The keyboard-save regressions from
+SET-025 still stand; toolbar dispatch/readiness needs separate real-SDK
+reproduction before its cause can be assigned to the driver or facade.
+
+The OpenSky lowercase arm attempted a 21st REPL call and was interrupted before
+the campaign reached the native lowercase arm. Its saved file failed grading;
+owned-app exit and scratch removal passed. The controller correctly stopped
+under its current policy, but treating an ordinary evaluation budget limit as
+infrastructure failure would bias a completed-task comparison. Classification
+and transport-level call admission need review before a new frozen campaign.
+The original artifacts are retained unchanged; only one complete matched pair
+exists and no overall parity percentage or five-task completion is claimed.
+The interrupted attempt retains its $5 reservation pending usage audit.
