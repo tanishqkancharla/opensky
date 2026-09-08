@@ -1729,3 +1729,33 @@ The spending ledger remains at $45.3877028 conservative accounting, zero reserve
 and $50 approved. No new agent run can reserve its required $5. Resuming matched
 Terra smoke runs requires the next spending approval and GUI permissions for
 the stable-signed candidate. These are user gates, not failed benchmark tasks.
+
+**SET-061 — Fresh macOS results and remote Linux priority (2026-09-08):**
+The user approved the next cumulative spending checkpoint at $100 and granted
+the exact signed ac1352062 candidate both GUI permissions. Frozen smoke profile
+916e5d6b completed two valid pairs: native 2/2 and OpenSky 1/2. The heading failure
+left a Word-format confirmation visible; the saved DOCX lacked the requested
+alignment despite the agent claiming completion. This is an actual saved-file
+failure, not a repaired or inferred pass. Modal observation/input correlation
+requires investigation. Evidence: `evals/runs/campaign-frozen-smoke-1`.
+
+The five-task stage completed three valid pairs (native 2/3; OpenSky 1/3): both
+passed lowercase, native alone passed heading alignment, and both failed the
+third formatting task. Task four stopped before model dispatch because the
+private driver was no longer running. Its missing environment fingerprint is
+an infrastructure exclusion, not task failure. All six owned app fixtures and
+documents were cleaned up. The private daemon had exited but left a stale socket;
+a recovery check verified connection refusal and removed only that socket.
+Evidence: `evals/runs/campaign-frozen-five-1` and its `-owner` cleanup receipts.
+
+The user now prioritizes Linux on remote machines. GitHub SDK experience tests
+pin the current driver ac1352062 and default to two existing real workflows:
+Unicode observation and clicking through to a late page result. Explicit five
+and full experience stages remain available; these are SDK behavior checks,
+not the 20-task agent campaign. No model key is exposed to these jobs. A separate
+job inspects the official Linux desktop distribution for the genuine native
+runtime and attempts public screenshot capture if present. Its output is an
+availability check, never a parity score. Native runtime availability, Linux
+OSWorld setup/reset/scoring, and matched Terra runs remain unverified. The
+download is hashed for provenance; matched campaigns must pin the artifact
+before use. No Linux acceptance is claimed until CI evidence is reviewed.

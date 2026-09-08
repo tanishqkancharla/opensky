@@ -5,6 +5,12 @@ on:
     branches: [codex/computer-observed-parity]
     paths: ['src/**', 'e2e/**', '.github/workflows/sdk-e2e.yml']
   workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Linux experience ramp; start with smoke'
+        type: choice
+        default: smoke
+        options: [smoke, five, full]
 
 permissions:
   contents: read
@@ -14,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OPENSKY_DRIVER_REF: aa31c70eef01d60e9f1571a218bdce021b392940
+  OPENSKY_DRIVER_REF: ac13520622d2cb346a0f03c53b73a87980fe6661
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -66,7 +72,7 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        scenario: [PASTE-B01, PASTE-B02, PASTE-B03, SCROLL-B01, STALE-B01, CONTEXT-B-list, CONTEXT-B-article, CONTEXT-B-table, TEXT-B01, FRESH-B01]
+        scenario: ${{ fromJSON(inputs.stage == 'full' && '["PASTE-B01","PASTE-B02","PASTE-B03","SCROLL-B01","STALE-B01","CONTEXT-B-list","CONTEXT-B-article","CONTEXT-B-table","TEXT-B01","FRESH-B01"]' || inputs.stage == 'five' && '["TEXT-B01","FRESH-B01","CONTEXT-B-list","CONTEXT-B-article","SCROLL-B01"]' || '["TEXT-B01","FRESH-B01"]') }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@v4
@@ -111,4 +117,27 @@ jobs:
           name: sdk-${{ matrix.scenario }}
           path: artifacts/sdk-e2e
           if-no-files-found: warn
+          retention-days: 14
+
+  native-linux-probe:
+    name: Native Linux runtime availability (not a parity score)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core xdotool libgtk-3-0t64 libgbm1 libnss3 libasound2t64
+      - name: Probe the official Linux distribution
+        run: bash e2e/ci/native-linux-probe.sh
+      - name: Retain availability evidence
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: native-linux-availability
+          path: artifacts/native-linux
           retention-days: 14
