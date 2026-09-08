@@ -1265,3 +1265,27 @@ created or changed. The installed ad-hoc driver remains untouched. Default-socke
 permission queries still describe that older daemon; they do not prove the new
 candidate's permissions or live behavior. Candidate validation must use an
 isolated socket and confirm the returned executable identity.
+
+The first live `native-compaction-v1` attempt is
+`evals/runs/uncapped-validation-native-1`: native Calc validation continued for
+50 admitted calls and 500.906 seconds, proving it crossed both historical task
+cutoffs. The saved-file grader did not pass. The existing $2.50 per-run estimate
+guard interrupted it, so it is excluded from completed task scores. No context
+compaction occurred; the reported context remained below the model's window.
+Its final usage follows all completed items with no active items and a matching
+terminal turn. `usage-audit.json` records that evidence and the $2.5443032
+estimate; the ledger was settled to $45.3877028 with no reservation remaining.
+The owned LibreOffice process exited and scratch was removed. Calls 36/37/49
+show native `AXError.notImplemented`, an invalid element ID after a failed
+action, and unsupported `PageUp` respectively. More task time alone did not
+establish reliable dialog interaction. Direct non-agent diagnosis is next.
+
+The staged candidate's temporary `OpenSkyDriverCandidate.app` name failed the
+driver's literal bundle-path recognition and triggered an unnecessary
+responsibility re-exec. Moving it to a separate directory as `OpenSkyDriver.app`
+restored daemon attribution. An explicit-socket `check_permissions` call then
+confirmed that the signed candidate itself has neither TCC grant. The convenience
+`permissions status` command ignores its socket argument and kept reporting the
+older default daemon; that diagnostic bug remains pending. Both temporary daemon
+launches were stopped and their exact process exits verified. No permission
+change was requested. The original permissioned driver remains running.
