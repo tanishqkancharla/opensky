@@ -1,0 +1,35 @@
+name: Parity harness validation
+
+on:
+  push:
+    branches: [codex/computer-observed-parity]
+    paths: ['evals/parity/**', 'e2e/**', '.github/workflows/parity-harness.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install SDK and real document scorer dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          npm ci --ignore-scripts --prefix e2e
+          python -m pip install -r evals/parity/osworld/requirements.txt
+      - name: Validate spending, tool boundaries and saved-document grading
+        run: |
+          npm run typecheck --prefix e2e
+          npx tsc --noEmit --target ES2022 --module Node16 --moduleResolution Node16 --strict --skipLibCheck --esModuleInterop evals/parity/*.ts evals/parity/osworld/*.ts
+          npm test --prefix e2e -- specs/parity-budget.test.ts specs/parity-policy.test.ts specs/osworld-score.test.ts
+      # This job deliberately reports harness checks, not agent or GUI success.

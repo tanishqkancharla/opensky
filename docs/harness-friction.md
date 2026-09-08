@@ -743,3 +743,110 @@ further routine binary replacement. No signing certificate or Keychain item
 was created in this work. See [Apple TN3127](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
 The repeated grants were for the same Accessibility/Screen Recording rights,
 not an expansion of requested access.
+
+**SET-019 — programmatic native evaluation startup and isolation (2026-09-07):**
+`codex exec` could initialize the published native Computer Use MCP service,
+but its noninteractive client declined the service's app-access form. The
+new `evals/parity/codex.ts` uses installed Codex 0.147.0's `app-server` protocol
+and answers only recognized, currently active, already-authorized forms without
+requesting persistent permissions. Both actual native `@oai/sky` Node REPL and
+OpenSky's public `cua` REPL returned real Calculator accessibility state using
+`gpt-5.6-terra`, medium effort. These are capability preflights, not scored tasks
+or evidence of general parity. Unsupported requests stop the run.
+
+Unrelated user MCP servers still initialized with only CLI overrides; supplying
+the same disable configuration at `thread/start` removed those startups in
+`evals/runs/opensky-repl-preflight-2`. Dotted override keys must be unquoted for
+this CLI parser. Agent shell, filesystem tools, web search and other backends
+are disabled. Tool availability/approval changes remain sensitive to CLI
+versions. A persistent estimate ledger reserves $5 per run, interrupts at
+$2.50 of reported conservative Terra usage, and blocks unreconciled runs and
+the user's $50 checkpoint. Five real-file ledger tests pass. API-equivalent
+estimates are not the subscription bill or a provider-enforced spending cap.
+
+**SET-020 — local app processes survived test teardown (2026-09-07):**
+Ending the OpenSky REPL/SDK session left Calculator PID 69925 running. Earlier
+native fixtures closed exact documents but did not necessarily quit their
+TextEdit processes. Fresh AXDocument checks identified only owned scratch
+documents in PIDs 8841 and 20606; PID 58643 had no windows. All four processes
+were normally quit and independent process inventory confirmed their exits.
+No force termination, discard confirmation or additional TCC grants were used.
+
+The Calculator preflight now uses an independent fixture with the exact
+NSRunningApplication returned by Launch Services, records PID/bundle/launch
+time, and verifies exit after cooperative termination on success or failure.
+It refuses setup if Calculator is already in use. A process-only launch
+argument suppresses restoration; user preferences are unchanged. Launching
+Calculator's executable directly exited before desktop registration, so that
+attempt failed setup and its process exit was verified. Normal Launch Services
+teardown passed in `evals/runs/cleanup-normal-2`; an intentionally failing
+callback preserved its error and verified cleanup in `cleanup-action-failure`.
+The real Terra run `opensky-repl-cleanup-preflight` was interrupted before tool
+dispatch because a literal allowlist omitted the semicolon-free equivalent;
+its independent cleanup also passed. Both approved spellings are now listed.
+`opensky-repl-cleanup-preflight-2` then passed with actual Calculator AX state
+through Terra/OpenSky; fixture-owned PID 20983 exited and `cleanup.json` passed.
+This is still transport/lifecycle validation, not an OSWorld task score.
+Cleanup errors prevent preflight success/ramp-up. Native
+SDK document fixtures still need equivalent process teardown before another
+local run; exact-window close alone is not sufficient cleanup. The Codex
+runner now gives MCP processes time to shut down before fallback signals.
+
+**SET-021 — native API instructions and scoped REPL programs (2026-09-07):**
+Standalone MCP setup does not load the native plugin skill. The first heading
+attempt invented `target: {index: 5}` instead of `element_index`; another hit an
+overly narrow program guard on `Object.keys(sky)`. Both interrupted attempts
+remain infrastructure failures, with audited usage and verified cleanup.
+The runner now supplies the installed native API guide and allows API inspection
+and the documented screenshot-file recipe, restricted to returned screenshot
+URLs. The original native service still executes all admitted calls. Five
+program-policy tests pass; these are harness checks, not native task success.
+
+**SET-022 — LibreOffice fixture startup and discovery (2026-09-07):**
+Workspace LibreOffice 26.8.0.3 initially stalled writing embedded Python cache
+files. A per-process `PYTHONDONTWRITEBYTECODE=1` setting allowed normal startup;
+no persistent application preferences were changed. A fresh disposable profile
+and document are created for each arm. Setup readiness now comes from independent
+Launch Services/WindowServer observations, rather than the SDK being evaluated.
+`osworld-setup-heading-3` verified a visible document and normal app exit.
+
+In `libreoffice-startup-diagnostic`, OpenSky Driver `list_apps` omitted the real
+running LibreOffice PID 85798 while `list_windows` and an independent native
+observer found its visible `heading.docx` window. The SDK with auto-launch
+disabled therefore said the app was not running. Its default launch recovery
+allowed subsequent task runs. Stale NSWorkspace enumeration in the long-lived
+driver is a hypothesis; no driver fix or cause confirmation is claimed.
+
+**SET-023 — save confirmation invisible to OpenSky observation (2026-09-07):**
+In `osworld-smoke-heading-opensky-1`, the agent selected the heading, observed
+Center enabled, clicked Save and received `No accessibility changes.` It then
+claimed completion, but the saved DOCX remained unchanged (upstream score 0).
+`libreoffice-save-dialog-diagnostic` independently reproduced the gap: the
+public SDK reported no changes while fresh native AXFocusedWindow state exposed
+the `Non-standard file format` dialog and `Use Word 2010–365 Document Format`
+button. Native observation in the paired run also exposed that dialog.
+
+The SDK retains the original exact window while it exists; the driver scopes
+each AX walk to that requested CGWindowID. A separate top-level dialog is
+therefore omitted. Correlating and exposing auxiliary windows is pending;
+blindly adopting another same-process window could break exact-target isolation.
+No corrected driver or SDK GUI acceptance is claimed. This is a reproducible
+observation failure in addition to the scored agent attempt.
+The three-line public-SDK Vitest case `DIALOG-N01` reproduced it in 26.75s:
+`libreoffice-dialog-eKkHnu/external-final.json` contains the actual format dialog
+while `sdk-final.txt` contains the document window instead. Its owned PID 93612
+exited via the disposable-profile fallback and scratch files were removed.
+
+**SET-024 — unsaved task edits blocked cooperative cleanup (2026-09-07):**
+The first OpenSky heading run failed normal teardown because the unsaved
+document opened a Save prompt. Its original cleanup failure remains recorded;
+manual recovery and independently verified process exit are separate evidence.
+Fixtures now permit SIGTERM only for an explicitly disposable profile after
+normal quit fails, rechecking the exact PID, bundle ID and launch time. Saved
+files are scored before teardown, so cleanup cannot complete the agent's task.
+`libreoffice-unsaved-cleanup` and `libreoffice-save-dialog-diagnostic` verified
+this path, app exit, and removal of their scratch documents/profiles. Existing
+user instances are refused at setup and are not eligible for termination.
+`run-status.json` now records cleanup, scratch removal, infrastructure errors
+and evaluation validity separately from the saved-file task score. The prior
+failed cleanup is not retroactively changed into a valid paired baseline.

@@ -11,3 +11,5 @@ coverage/
 .codex/
 evals/runs/
 .opensky/
+__pycache__/
+*.pyc

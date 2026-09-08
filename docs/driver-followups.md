@@ -16,6 +16,23 @@ real-fixture prerequisites and pending cases stated separately.
 
 ## Driver/backend requirements
 
+New real LibreOffice observations (2026-09-07; runtime `aa31c70ee`):
+
+- **Save dialog visibility (SET-023):** the SDK's original document window
+  remains bound when LibreOffice opens a separate format-confirmation window.
+  OpenSky reports no AX changes although independent native AX sees the dialog.
+  Supply verified auxiliary-window/modal relationships and corresponding
+  observation/input authority. Acceptance: save an edited DOCX through the
+  public SDK, observe and confirm its format dialog, verify saved content, and
+  preserve unrelated sibling documents. Do not infer ownership from same PID
+  or a new window alone. No fix is implemented yet.
+- **Fresh running-app discovery (SET-022):** driver `list_apps` omitted a
+  visible running workspace LibreOffice instance that `list_windows` found.
+  Verify freshness of the long-lived NSWorkspace enumeration; the precise
+  cause remains unconfirmed. Acceptance: launch after daemon startup, discover
+  without auto-launch recovery, quit, and verify disappearance. Include an
+  app outside the standard Applications directories.
+
 | Gap | Required capability | Acceptance before claiming parity |
 | --- | --- | --- |
 | Native paste, including formatted and multiline text (LIB-009) | One exact-target compound paste operation that saves all clipboard formats, writes the requested text/HTML, dispatches paste, and conditionally restores only if the clipboard still belongs to that operation. Report ambiguous delivery without replay. | Actual editable app: text, Markdown and HTML; preserved unrelated clipboard formats; concurrent user clipboard write; wrong-focus/window tests; no duplicate paste after a failed receipt. |

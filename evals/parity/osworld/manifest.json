@@ -1,0 +1,48 @@
+{
+  "suite": "osworld-verified-macos-port",
+  "upstreamCommit": "fc31a9049664292fcb35d6e501ee1dc839f2cf6d",
+  "upstreamMetricsSha256": "3e414ebae04231c6c83f5d264198e058f7c5b120f81f34a3bf30134f60ee8c3c",
+  "extractedMetricsSha256": "6e4ca1b2df3d41991c5834ab6f5fd61700babe13d18c05d197689e27380b1ded",
+  "smokeTaskIds": [
+    "3ef2b351-8a84-4ff2-8724-d86eae9b842e",
+    "d53ff5ee-3b1a-431e-b2be-30ed2673079b"
+  ],
+  "tasks": [
+    {
+      "id": "3ef2b351-8a84-4ff2-8724-d86eae9b842e",
+      "instruction": "Help me center align the heading in LibreOffice.",
+      "inputFile": "Constitution_Template_With_Guidelines.docx",
+      "evaluator": "is_first_line_centered",
+      "assets": [
+        {
+          "file": "Constitution_Template_With_Guidelines.docx",
+          "sha256": "29c478b49fbc9f460ad4a9c4d1b23b71513167c118f0ed5fec3de98c28ba5251"
+        }
+      ]
+    },
+    {
+      "id": "d53ff5ee-3b1a-431e-b2be-30ed2673079b",
+      "instruction": "I am currently engaged in text processing and require assistance in converting all uppercase text to lowercase within my document. This precision is critical for maintaining a uniform and polished presentation. Could you help me on this?",
+      "inputFile": "presentation_instruction_2023_Feb.docx",
+      "evaluator": "compare_docx_files",
+      "assets": [
+        {
+          "file": "presentation_instruction_2023_Feb_Gold.docx",
+          "sha256": "4bf3cec92ae61e1263f4bd54131c03ec90f6dbc8f70159a3a1fdc6be10cfc19a"
+        },
+        {
+          "file": "presentation_instruction_2023_Feb.docx",
+          "sha256": "26932140b262b8886b42d82e3a8acd1e48a4c9c97abe803791e9cf1ab10d3ce8"
+        }
+      ]
+    }
+  ],
+  "adaptations": [
+    "macOS 15.7.9 / LibreOffice 26.8.0 instead of upstream Linux snapshot",
+    "Workspace-owned document path instead of /home/user/Desktop",
+    "Fresh disposable LibreOffice profile per arm",
+    "Per-process PYTHONDONTWRITEBYTECODE=1 avoids an observed embedded-Python startup hang; no persistent preferences changed",
+    "Agent explicitly saves the document; evaluator does not send save keystrokes",
+    "Original upstream evaluator score plus separate content-preservation guard; both are reported"
+  ]
+}
