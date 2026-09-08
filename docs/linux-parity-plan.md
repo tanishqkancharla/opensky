@@ -25,26 +25,38 @@ alongside successful outcomes. Repair observed gaps and rerun the same tasks.
 Preserve native compaction with no whole-task deadline or tool-call budget.
 Keep the existing independently enforced spending controls: cumulative limit
 currently approved through $100, with user review before every further $50.
-Current settled conservative accounting is $48.0770916. Initial Linux CI checks
-do not dispatch models. Report each completed run and keep the status canvas
-current. Exclude Codex's in-app browser.
+Use `evals/runs/parity-budget.json` as the authoritative cumulative ledger;
+conservative full-reservation charges are estimates, not invoices. Report each
+completed run and keep the status canvas current. Exclude Codex's in-app browser.
 
 ## Current evidence and next gate
 
-- GitHub run 34269423873 passed both Linux SDK smoke cases: Unicode observation
-  and observing the result after a real page click.
-- That run captured a real 1280×900 desktop image through the official package's
-  native Linux `@oai/sky` 0.6.26 runtime. Input and complete task parity are not
-  yet established by this capture.
-- Native input passed the deterministic heading/save check twice. OpenSky
-  initially failed to discover LibreOffice; driver c2705becf fixes the observed
-  launcher/process mismatch and passed the same saved-file task in run
-  34272626520. That run's native arm exposed a UI-readiness race, so both arms
-  must rerun with screenshot-based readiness assertions before advancing.
-- Linux daemon identity, accessibility/display preflight and environment hashes
-  passed on both arms. The next remote run also verifies the actual native
-  Node REPL screenshot transport without dispatching a model.
-- Matched Linux agent campaigns remain pending. Linux grading and runtime
-  fingerprints must be admitted independently of the historical macOS results.
-- Preserve the macOS save-dialog failure and other driver follow-ups for later;
-  do not relabel historical campaigns as Linux evidence.
+- The deterministic Linux desktop gate passed for both backends in run
+  34274308972, including the real native Node REPL screenshot transport,
+  heading/save outcomes, verified process exit and temporary removal.
+- Candidate c26ec3aa680486c60147aa53d79b9e068750aa0d has two completed
+  successful agent pairs: heading and lowercase. Evidence lives in
+  `evals/runs/campaign-linux-smoke-1`, including saved files, scores, tool
+  traces, complete usage and environment fingerprints.
+- Heading runtime fingerprints match. Lowercase differs in Ubuntu point-release
+  labels (24.04.4 / 24.04.5); kernel, apps and evaluation runtime fingerprints
+  match. Retain this difference when interpreting the comparison.
+- OpenSky took 92.365 s / 7 calls versus native 14.705 s / 4 calls for heading;
+  240.536 s / 18 calls versus 40.834 s / 10 calls for lowercase. Investigate
+  observation latency and a stale save-dialog element token after the baseline.
+- The five-task ramp adds font, subscript and strikethrough. Native's font run
+  34279810215 completed normally but changed only one word; it is a real saved
+  outcome failure. The matched OpenSky run 34280504883 was interrupted by an evaluator
+  rejection of extra getApp options and is excluded. SET-071 records the fix
+  and separate unresolved public-SDK typing failure. Retry both font arms
+  with the same corrected evaluator before continuing the five-task ramp.
+- Full twenty-task support remains unfinished: install and validate Linux Calc
+  and Impress, implement the real VS Code task fixture, verify reset/cleanup
+  and scoring for each category, then freeze that environment for paired runs.
+  The current worker rejects VS Code explicitly; do not silently omit those tasks.
+- User-provided exe.dev host is reachable with the correct account. Official
+  runner files and dependencies are installed. Persistent runner registration
+  and service startup await explicit approval after automatic review rejected
+  that expansion of future job access. Hosted evaluations continue meanwhile.
+- Preserve macOS driver follow-ups for later; historical macOS results do not
+  count as Linux evidence.

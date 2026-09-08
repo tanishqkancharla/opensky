@@ -1959,3 +1959,61 @@ minute. Callback code execution and shadowing timer/Promise globals remain
 rejected. This is a per-wait syntax allowance, not a whole-task deadline or
 call budget. All 23 policy checks and E2E typecheck pass. Real native retry validation
 is next; the interrupted attempt is conservatively charged its full $5 reservation.
+
+**EVAL-L01 — First valid paired Linux task and measured latency gap (2026-09-08):**
+At c26ec3aa680486c60147aa53d79b9e068750aa0d, the heading task passed for
+native (run 34277243178, 14.705 s, 4 tool calls) and OpenSky (34277549530,
+92.365 s, 7 calls). Both saved files passed the upstream outcome plus preserved
+text/format checks; both app groups exited and temporary files were removed.
+The SDK/assets, driver, native reference, Codex, LibreOffice, OS and architecture
+fingerprints match. Evidence: `evals/runs/campaign-linux-smoke-1/heading-pair.json`
+and the corresponding `03-heading-native` / `04-heading-opensky` directories.
+The lowercase pair also passed: native (34278070435, 40.834 s, 10 calls) and
+OpenSky (34278688124, 240.536 s, 18 calls). That pair differs in Ubuntu
+point-release labels (24.04.4 / 24.04.5), with matching kernel, application and
+evaluation runtime fingerprints; see `lowercase-pair.json`. This proves two
+paired tasks, not general parity. The five-task ramp is underway.
+
+OpenSky spent 69.750 s inside its seven MCP calls versus native's 1.361 s in
+four calls. Most long calls include app-state and screenshot retrieval; one
+save-dialog element click returned a stale-token error and the agent recovered.
+The SDK's screenshot-only facade currently takes the same state observation
+route. These are diagnostic leads, not yet attributed driver fixes. Retain the
+baseline while completing the five-task campaign, then benchmark the
+observation path and reproduce token invalidation before changing behavior.
+
+**EVAL-L02 — Native font task completed but changed only one word (2026-09-08):**
+Native run 34279810215 completed normally at c26ec3a (43.853 s, 9 calls,
+$0.3193536 estimated usage); cleanup and preserved text passed. The saved
+DOCX fails both upstream font checking and the all-text guard. Inspection of
+its XML confirms only "popularity" has an explicit Times New Roman font;
+other text inherits different fonts. Screenshots show the agent dismissed
+the document selection before applying the character dialog to that word.
+This is an observed task failure, not an interrupted harness attempt. The
+dialog also reports Times New Roman is not installed on the hosted image,
+so font rendering is substituted; both paired arms use that same environment.
+Evidence: `evals/runs/campaign-linux-smoke-1/07-font-native/linux-office`.
+OpenSky run 34280504883 was interrupted by the evaluator (SET-071). No scorer
+or task prompt was changed in response to this result.
+
+**SET-071 — Extra getApp options interrupted recovery (2026-09-08):**
+OpenSky font run 34280504883 stopped after 104.670 s / 11 calls because
+`app = await cua.getApp("LibreOffice", {delivery_mode:"foreground"})` was
+rejected by the evaluator's one-argument-only getApp rule. Rebinding itself
+was already supported. Allow one ordinary object argument after the exact
+authorized literal selector; the real SDK decides how to handle it. Executable
+options, prototype keys and other app selectors remain rejected. This changes
+only evaluator admission, not SDK delivery behavior or scoring. The run is
+excluded and its full $5 reservation is charged conservatively because the
+interrupted turn has no complete usage receipt. Cleanup passed. Evidence:
+`evals/runs/campaign-linux-smoke-1/08-font-opensky/linux-office`.
+
+The trace separately exposes a product gap: OpenSky's public `typeText` on the
+font field reaches the driver's background-only default, which rejects XTest
+input and suggests `delivery_mode:"foreground"`. The facade exposes no such
+option, so following that suggestion cannot recover. This needs a public-SDK
+input fix and real Linux verification; do not count the policy change as that
+fix. Keep the SDK/driver candidate unchanged for the remaining baseline arms.
+
+SET-071 validation: all 24 focused policy checks and E2E TypeScript checks pass.
+The corrected evaluator still needs a completed real paired font run.

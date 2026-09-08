@@ -88,7 +88,12 @@ export class DesktopProgramPolicy {
         if (member(node.callee, "JSON", "stringify")) return node.arguments.length === 1;
         if (member(node.callee, "nodeRepl") && ["write", "emitImage"].includes(node.callee.property.name)) return node.arguments.length === 1;
         if (this.scope.backend === "opensky") {
-          if (member(node.callee, "cua", "getApp")) return node.arguments.length === 1 && node.arguments[0].type === "Literal" && this.scope.appSelectors.includes(node.arguments[0].value);
+          // Ordinary extra options must reach the public SDK's own behavior.
+          // They cannot change the literal authorized app selector; `value`
+          // above has already rejected executable/property-mutating options.
+          if (member(node.callee, "cua", "getApp")) return [1, 2].includes(node.arguments.length) &&
+            node.arguments[0].type === "Literal" && this.scope.appSelectors.includes(node.arguments[0].value) &&
+            (node.arguments.length === 1 || node.arguments[1].type === "ObjectExpression");
           // The bound app enforces its own target and API. Invented method
           // names should receive the SDK's normal error so the agent can
           // recover, rather than become infrastructure interruptions.

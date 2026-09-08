@@ -105,6 +105,15 @@ test("OpenSky can rebind its existing app after an ordinary runtime error", ({ o
   expect(opensky.accepts('app = app.facade;')).toBe(false);
 });
 
+test("extra app options reach the SDK without expanding the authorized target", ({ opensky }) => {
+  expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script");')).toBe(true);
+  expect(opensky.accepts('app = await cua.getApp("org.libreoffice.script", {delivery_mode:"foreground"}); await app.typeText("Times New Roman");')).toBe(true);
+  expect(opensky.accepts('app = await cua.getApp("Terminal", {delivery_mode:"foreground"});')).toBe(false);
+  expect(opensky.accepts('app = await cua.getApp("org.libreoffice.script", {get delivery_mode() { return process.env; }});')).toBe(false);
+  expect(opensky.accepts('app = await cua.getApp("org.libreoffice.script", {delivery_mode: () => cua.getApp("Terminal")});')).toBe(false);
+  expect(opensky.accepts('app = await cua.getApp("org.libreoffice.script", {__proto__: app});')).toBe(false);
+});
+
 test("an older data binding cannot acquire app authority through a failed assignment", ({ opensky }) => {
   expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script"); let data = app.facade;')).toBe(true);
   expect(opensky.accepts('var data = await cua.getApp("org.libreoffice.script");')).toBe(false);
