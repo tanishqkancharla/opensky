@@ -1149,3 +1149,34 @@ The invalid lowercase arm also retains two real driver refusals of a freshly
 observed Format menu index: the addressed element could not be proven to belong
 to the document window. A fresh observation did not repair that action. This is
 pending SDK/driver diagnosis, separate from the evaluator rebinding fix.
+
+**SET-041 — let screenshot URL mistakes reach native runtime errors (2026-09-07):**
+`campaign-full-2` completed seven paired tasks (both interfaces passed heading
+alignment and failed the other six), plus OpenSky freeze-headers (failure).
+Native freeze-headers was interrupted after 4 admitted calls/44.74s because it
+passed the real returned screenshot URL directly to `fs.readFile`. The policy
+required fileURLToPath; it should have allowed the native filesystem's ordinary
+URL-string error and subsequent agent recovery. It now tracks direct returned
+URLs, converted paths, URL objects and their aliases as the same screenshot
+source. An optional encoding is supported, while write-capable file flags,
+arbitrary paths, fabricated state and stale authority after errors remain refused.
+All 23 policy/admission checks and TypeScript validation pass. Static replay
+admits all 176 recorded cells from the 16 attempts, including the rejected read;
+this is compatibility evidence, not a fresh GUI run. Earlier native screenshot
+reads with namespace/named aliases executed successfully in the Calc formulas
+arm, preserving actual reference-backend evidence beyond policy-only checks.
+
+All 16 LibreOffice processes were alive before teardown. Every process exited
+and every temporary profile was removed; some unsaved attempts required the
+verified disposable-process SIGTERM fallback. No unexpected app exit occurred.
+Native's interrupted usage was audited and settled; the cumulative estimate is
+$14.469488, with no reservations outstanding. The failed campaign remains intact
+and incomplete. Its original native freeze-headers arm stays invalid.
+
+The next campaign retains all 20 frozen task IDs and rotates their order by
+eight places to exercise previously unreached Calc, Impress and VS Code tasks
+first. The even rotation preserves which backend runs first for each task. No
+task, saved-file requirement or prior failure is removed. Only a complete new
+campaign at one revision can become the frozen 20-task baseline. The repeated
+menu-target refusals, slow/timeout-prone text selection and app-query errors
+remain production follow-ups; this policy change does not fix them.

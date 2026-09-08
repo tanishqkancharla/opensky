@@ -41,8 +41,10 @@ export class DesktopProgramPolicy {
         (node?.type === "MemberExpression" && !node.computed && node.property?.name === method && imports.get(node.object?.name) === namespace) ||
         importedMember(node, namespace === "fs" ? "node:fs/promises" : "node:url", method);
       const screenshotPath = (node: any): boolean => node?.type === "AwaitExpression" ? screenshotPath(node.argument) :
+        screenshotURL(node) ||
         (node?.type === "Identifier" && paths.has(node.name)) ||
-        (node?.type === "CallExpression" && importCall(node.callee, "url", "fileURLToPath") && node.arguments.length === 1 && screenshotURL(node.arguments[0]));
+        (node?.type === "NewExpression" && node.callee?.type === "Identifier" && node.callee.name === "URL" && node.arguments.length === 1 && screenshotPath(node.arguments[0])) ||
+        (node?.type === "CallExpression" && importCall(node.callee, "url", "fileURLToPath") && node.arguments.length === 1 && screenshotPath(node.arguments[0]));
       const value = (node: any): boolean => {
         if (!node) return false;
         if (node.type === "Literal") return !node.regex;
@@ -52,10 +54,18 @@ export class DesktopProgramPolicy {
         if (node.type === "ArrayExpression") return node.elements.every(value);
         if (node.type === "ObjectExpression") return node.properties.every((p: any) => p.type === "Property" && p.kind === "init" && !p.computed && !p.method && !forbidden.has(p.key.name ?? p.key.value) && value(p.value));
         if (node.type === "MemberExpression") return !node.computed && !forbidden.has(node.property?.name) && value(node.object);
+        if (node.type === "NewExpression") return this.scope.backend === "native" && screenshotPath(node);
         if (node.type !== "CallExpression" || node.optional) return false;
         if (member(node.callee, "Object", "keys") && node.arguments.length === 1 && node.arguments[0].type === "Identifier" && ["sky", "app"].includes(node.arguments[0].name)) return true;
         if (this.scope.backend === "native" && importCall(node.callee, "fs", "readFile")) {
-          return node.arguments.length === 1 && screenshotPath(node.arguments[0]);
+          // Node accepts a URL object, or the agent may mistakenly pass the
+          // returned URL string and need its ordinary filesystem error. Both
+          // remain restricted to the real observation's screenshot source.
+          const options = node.arguments[1];
+          const readOnlyOptions = options?.type === "Literal" && (typeof options.value === "string" || options.value === null) ||
+            options?.type === "ObjectExpression" && options.properties.every((p: any) => p.type === "Property" && p.kind === "init" && !p.computed && !p.method && (p.key.name ?? p.key.value) === "encoding" && value(p.value));
+          return [1, 2].includes(node.arguments.length) && screenshotPath(node.arguments[0]) &&
+            (node.arguments.length === 1 || readOnlyOptions);
         }
         if (this.scope.backend === "native" && importCall(node.callee, "url", "fileURLToPath")) return screenshotPath(node);
         if (!node.arguments.every(value)) return false;

@@ -170,3 +170,19 @@ profiles were removed. The rebind guard is corrected in SET-040, with 21 focused
 checks and TypeScript validation passing. Interrupted usage is audited and
 settled; cumulative conservative estimate $9.7611836. A fresh full campaign is
 required. Earlier valid and invalid artifacts remain intact.
+
+## Second frozen 20-task attempt — stopped (2026-09-07)
+
+`campaign-full-2` at `82f67fd` completed seven pairs: both interfaces passed
+heading alignment and failed lowercase, font, subscript, strikethrough, gross
+profit and sheet management. OpenSky also failed freeze-headers. Native's
+freeze-headers arm is invalid after a guard-rejected direct screenshot-URL read.
+The campaign stopped with 13 unscored pairs; it is not a complete baseline.
+All 16 owned apps were alive before teardown; all exited and scratch removal
+passed. The cumulative estimate is $14.469488 after auditing the interruption.
+
+SET-041 corrects screenshot-source handling. All 23 focused checks and
+TypeScript validation pass; all 176 recorded cells are compatible with the
+revised policy. The next full campaign keeps the same 20 tasks and rotates the
+order by eight places, preserving each task's backend order while reaching the
+previously unrun applications first. Earlier outcomes are retained separately.

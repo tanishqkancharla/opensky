@@ -11,7 +11,7 @@ OpenSky paragraph-selection timeout.
 The frozen full set has 20 OSWorld tasks: five Writer, eight Calc, five
 Impress and two VS Code tasks. The original upstream scorers are preserved;
 separate content/format checks reject partial edits, changed chart data and
-wrong chart grouping. All 72 spending, policy, admission and saved-file checks
+wrong chart grouping. All 75 spending, policy, admission and saved-file checks
 pass locally. All 15 added task files opened successfully in isolated app
 instances, which stayed alive until normal cleanup; all scratch profiles were
 removed. `fullTaskIds` now freezes the selected 20 IDs. No frozen 20-task score

@@ -51,6 +51,23 @@ test("native screenshot namespaces and aliases support the observed recipe", ({ 
   expect(native.accepts('await fs.writeFile(imagePath,"changed");')).toBe(false);
 });
 
+test("native screenshot reads admit the returned URL and standard Node URL objects", ({ native }) => {
+  expect(native.accepts('const shot = await sky.get_app_state({app:"org.libreoffice.script"}); const fs = await import("node:fs/promises"); const imageBytes = await fs.readFile(shot.screenshot.url); await nodeRepl.emitImage({bytes:imageBytes,mimeType:"image/jpeg"});')).toBe(true);
+  native.executionFailed();
+  expect(native.accepts('await fs.readFile(shot.screenshot.url);')).toBe(false);
+  expect(native.accepts('var fresh = await sky.get_app_state({app:"org.libreoffice.script"}); var imageURL = fresh.screenshot.url; await fs.readFile(imageURL);')).toBe(true);
+  expect(native.accepts('var imageFile = new URL(fresh.screenshot.url); await fs.readFile(imageFile, {encoding:"base64"});')).toBe(true);
+  expect(native.accepts('var url = await import("node:url"); var converted = url.fileURLToPath(imageURL); await fs.readFile(converted);')).toBe(true);
+  expect(native.accepts('await fs.readFile(imageFile, {flag:"w"});')).toBe(false);
+});
+
+test("URL constructors and read options do not grant access to unrelated files", ({ native }) => {
+  expect(native.accepts('var fs = await import("node:fs/promises");')).toBe(true);
+  expect(native.accepts('await fs.readFile(new URL("file:///etc/passwd"));')).toBe(false);
+  expect(native.accepts('await fs.readFile("/etc/passwd", {encoding:"base64"});')).toBe(false);
+  expect(native.accepts('var fake = {screenshot:{url:"file:///etc/passwd"}}; await fs.readFile(new URL(fake.screenshot.url));')).toBe(false);
+});
+
 test("saved screenshot paths lose read authority when overwritten", ({ native }) => {
   expect(native.accepts('var shot = await sky.get_app_state({app:"org.libreoffice.script"}); var fs = await import("node:fs/promises"); var url = await import("node:url"); var imagePath = url.fileURLToPath(shot.screenshot.url);')).toBe(true);
   expect(native.accepts('imagePath = "/etc/passwd";')).toBe(true);
