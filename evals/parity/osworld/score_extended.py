@@ -62,7 +62,7 @@ def format_matches(task, actual, expected):
     return True
 
 
-def score_extended(task, output):
+def score_extended(task, output, *, reference_root=None):
     upstream = json.loads((ROOT / task["id"] / "upstream-task.json").read_text())["evaluator"]
     functions = upstream["func"] if isinstance(upstream["func"], list) else [upstream["func"]]
     references = upstream["expected"] if isinstance(upstream["expected"], list) else [upstream["expected"]]
@@ -72,7 +72,9 @@ def score_extended(task, output):
         raise ValueError("Unsupported evaluator configuration; do not dispatch or score")
     if upstream.get("conj", "and") not in ["and", "or"]:
         raise ValueError("Unsupported evaluator conjunction")
-    expected_paths = [ROOT / task["id"] / ref["dest"] for ref in references]
+    # Alternate roots are used by the explicit export-compatibility audit only.
+    # Campaign scoring keeps the original pinned references by default.
+    expected_paths = [(Path(reference_root) if reference_root else ROOT) / task["id"] / ref["dest"] for ref in references]
     # Reference/configuration faults are infrastructure errors, not task failures.
     for expected in expected_paths:
         if not expected.is_file():

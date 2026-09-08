@@ -237,3 +237,31 @@ before app setup or spending. Do not update an executable in place while its
 daemon is running: path verification does not identify already-loaded bytes.
 The current runtime attribution check is macOS-specific, like this local
 OSWorld harness; other platforms need their own authoritative runtime identity.
+
+
+## Impress reference compatibility audit
+
+Historical image movement failed the raw upstream grader despite satisfying the
+position rule. A no-edit export by the provisioned LibreOffice also fails the
+neutral raw-reference comparison. Treat the macOS Impress grading port as
+incomplete until these export differences are validated. Raw historical scores
+remain preserved; no new paired success rate is inferred from the diagnostics.
+
+Run the read-only artifact audit with the provisioned Python environment:
+
+```sh
+python evals/parity/osworld/audit_impress_export.py \
+  --task 2b94c692-6abb-48ae-ab0b-b3e8a19cb340 \
+  --libreoffice /path/to/LibreOffice.app/Contents/MacOS/soffice \
+  --output /path/to/new-audit-directory \
+  --actual /path/to/agent-saved-presentation.pptx
+```
+
+This exports reference/input copies through the real headless application, with
+private profiles and verified process cleanup. It never exports or repairs the
+agent's file. Results retain original grader options and separate raw scores
+from exported-reference diagnostics. The campaign scorer's default is unchanged.
+Validated so far: the moved-image artifact passes only the adapted diagnostic;
+unchanged-image and incorrect-slide-order artifacts still fail. Full adaptation
+requires task-by-task positive, negative, preservation and export compatibility
+checks, frozen reference hashes and matching application identity for both arms.

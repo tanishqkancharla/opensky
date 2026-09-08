@@ -1571,3 +1571,52 @@ SET-054 CI follow-up: ac1352062 passed Linux unit (34236425365), Windows unit
 and release metadata jobs. Nix 34236425382 was still running at this update.
 The draft PR remains unready pending the canonical desktop matrix and other
 explicit native acceptance gaps.
+
+
+**SET-057 — Impress raw-reference grading rejects neutral LibreOffice exports (2026-09-08):**
+A closer audit of the six historical attempts without a recorded task-level
+cutoff found four agent-reported blockers and two claimed completions. Thus
+SET-056's "six completed-but-incorrect" wording was too broad. One of those four
+stopped at exactly 20 calls citing the limit, although no denied call was logged;
+another OpenSky evaluator became unusable after a per-cell timeout. The raw
+summary records are unchanged. Reports alone are not proof of tool root causes.
+
+Both claimed Impress completions first failed upstream slides.py line 294,
+where a raw background representation difference returns zero. The saved image
+was moved from x=628560 to x=6028560, above the task's x=4320000 threshold, and
+slide text was unchanged. The duplicated-slide artifact independently had the
+wrong text on slide 25, so it remains a task failure regardless of background.
+Read-only evidence: `evals/runs/historical-failure-audit-1`.
+
+A production LibreOffice 26.8.0.3 headless no-edit export scored zero under the
+neutral comparison while the source compared with itself scored one. No task
+input or GUI action was used. This establishes export sensitivity, not proof
+that every detected representation change is visually irrelevant. The raw image
+attempt also differed in inherited alignment representation; simply disabling
+background checks still failed and was not adopted.
+
+Added `audit_impress_export.py` to reproduce this before future campaigns.
+It verifies pinned sources, exports only reference/input copies with disposable
+profiles, records the exporter identity and file hashes, and applies the same
+original grader options to both raw and exported references. The agent artifact
+is read-only and hash-checked. `score_extended` accepts an explicit alternate
+reference root for this diagnostic; normal campaign scoring still uses original
+references. Neither historical scores nor the primary campaign metric changed.
+
+The image audit rejects an unchanged image under both reference forms. The
+saved moved image passes against the exported reference with all task checks
+retained, while its raw upstream score remains zero. The slide-order audit still
+rejects the incorrectly duplicated presentation and the unchanged input. Every
+headless exporter exited, and temporary profiles were removed. Evidence:
+`impress-reference-port-image-1` and `impress-reference-port-slides-1`.
+These diagnostics are not a fresh agent campaign or full reference-port
+certification. Before adopting exported references, validate every affected task
+and preservation guard, pin the generated reference set plus exporter identity
+in the campaign plan/fingerprint, and report raw and adapted outcomes separately.
+No GUI apps were opened and no model spend occurred.
+
+SET-057 validation: the unchanged primary scorer passed all 47 existing Writer
+and expanded saved-file regressions in 22.96 s. These fixture-artifact checks are
+separate from the real LibreOffice export diagnostics. Driver Nix 34236425382
+completed successfully on ac1352062; all ordinary PR CI gates now pass. This
+does not replace the canonical native desktop matrix or close the grading port.
