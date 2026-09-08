@@ -21,3 +21,13 @@ test("KEY-L01: a menu accelerator does not insert its letter into the document",
   await app.pressKey("ENTER");
   await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe("Keep this text.");
 });
+
+test("CLICK-L01: a freshly observed save button saves the document", async ({ app, document }) => {
+  await app.pressKey("CTRL+A");
+  await app.typeText("Save this document.");
+  await app.pressKey("CTRL+S");
+  const state = await app.getAXState({ disableDiffing: true });
+  expect(state).toMatch(/\[(\d+)\] push button "Use Word 2007 Format"/);
+  await app.click(Number(state.match(/\[(\d+)\] push button "Use Word 2007 Format"/)![1]));
+  await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe("Save this document.");
+});

@@ -2129,3 +2129,23 @@ resolved. The same ordering precaution is documented in xdotool's
 The candidate is tested across three fresh Linux desktops; each independently
 runs Unicode saved-text and menu-accelerator checks, keeps its own screenshots,
 DOCX, keyboard mappings and cleanup receipt, and does not consume model budget.
+
+DRV-L02 real acceptance: run 34286117530, SDK af6d86d and driver 183cc3f1c,
+passed KEY-L01. The saved file contains exactly "Keep this text." after public
+ALT+O, Escape and save; no o was inserted. TYPE-L01 also passed on this attempt.
+Both independent fixtures recorded unchanged keyboard maps and verified owned
+app exit. Earlier accented-text failures remain reproducible evidence of
+intermittence, so this pass does not resolve the separate Unicode timing gap.
+The three-desktop timing candidate is run 34286325216 (SDK 7d20c7a, driver
+0524101f8); its result is still pending.
+
+**SDK-L03 — Fresh save-dialog button tokens are stale (2026-09-08):**
+Font OpenSky run 34284070786 refused the freshly observed Use Word 2007 Format
+button twice, including a full observation immediately followed by its indexed
+click in the same cell. The agent eventually saved through keyboard traversal.
+CLICK-L01 now observes the real save prompt and clicks its observed index, then
+checks the actual saved text. It uses the latest built driver; no token or
+projection fix is bundled with this reproduction. Investigation has found that
+the SDK performs an additional shallow snapshot whenever the Linux driver says
+completeness is unproven; that snapshot can invalidate the full observation.
+This is a hypothesis pending the isolated regression, not a confirmed repair.
