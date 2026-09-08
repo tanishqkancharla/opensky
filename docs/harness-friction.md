@@ -2236,3 +2236,15 @@ still showed Georgia, and the observation included both document/dialog nodes.
 Keep possible focus-routing and accessibility-window association defects
 separate from the confirmed unscoped hit-test. Evidence:
 linux-exe-coordinate-before; this test is separate from saved-document scores.
+
+DRV-L04 first-candidate result: cf83a6692 built and passed the focused Rust
+checks. One-off remote COORD-L01 still failed: the first click closed the
+Character dialog, before typing. The final screenshot confirms the document
+window, and cleanup passed (linux-exe-coordinate-scoped). A text entry's
+AT-SPI activation submits the dialog; it is not equivalent to placing a caret.
+The next candidate returns a typed pre-input background-unavailable response
+for an editable pixel target. The SDK's existing foreground fallback then
+performs the actual pointer click in the exact window. It does not replay an
+already-dispatched action. Both X11 and Wayland pixel paths share that result;
+real candidate acceptance remains pending. These fixes have not changed the
+measured agent score.
