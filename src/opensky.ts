@@ -1014,7 +1014,8 @@ export class OpenSky implements OpenSkyApi {
     try {
       await this.driver.call("click", payload);
     } catch (error) {
-      if (!isFocusRoutingError(error) || !resolved.windowId) throw error;
+      const refusedBeforeInput = error instanceof OpenSkyError && error.code === "background_unavailable";
+      if ((!refusedBeforeInput && !isFocusRoutingError(error)) || !resolved.windowId) throw error;
       await this.driver.call("click", { ...payload, delivery_mode: "foreground" });
     }
     this.markAction(resolved);

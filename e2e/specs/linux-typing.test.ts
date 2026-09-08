@@ -32,13 +32,13 @@ test("CLICK-L01: a freshly observed save button saves the document", async ({ ap
   await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe("Save this document.");
 });
 
-test("COORD-L01: a screenshot click edits the font dialog rather than the document behind it", async ({ app }) => {
+test("COORD-L01: a screenshot click edits the font dialog rather than the document behind it", { timeout: 120_000 }, async ({ app }) => {
   const documentState = await app.getAXState({ disableDiffing: true });
   expect(documentState).toMatch(/\[(\d+)\] menu item "Character\.\.\."/);
   await app.click(Number(documentState.match(/\[(\d+)\] menu item "Character\.\.\."/)![1]));
   const dialog = await app.getAXStateAndScreenshot({ disableDiffing: true });
   expect(dialog.state).toContain('dialog = "Character"');
-  // Family field in the observed 665 x 551 Character dialog screenshot.
+  // Family field in the observed Character dialog screenshot.
   await app.click([350, 75]);
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('dialog = "Character"');
   await app.pressKey("CTRL+A");

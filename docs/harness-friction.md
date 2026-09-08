@@ -2248,3 +2248,42 @@ performs the actual pointer click in the exact window. It does not replay an
 already-dispatched action. Both X11 and Wayland pixel paths share that result;
 real candidate acceptance remains pending. These fixes have not changed the
 measured agent score.
+
+DRV-L04 follow-up on 8d9fcd05a: the driver now returns the intended typed
+pre-input refusal, but the SDK's click fallback matched only older message
+patterns. The existing typed-code fallback was in type_text, not click; the
+previous statement that clicking already handled it was incorrect. The SDK
+now accepts background_unavailable for the same click payload/window only.
+Other errors retain their previous handling. One-off remote COORD-L01 is
+running with this SDK change; the unchanged test is not weakened.
+
+The completed cf83a6692 matrix (34289751231) passed all three KEY-L01 and
+CLICK-L01 cases, failed all three dialog cases, and failed two Unicode cases:
+one saved "A caf near Dublin Zoo — 中文 😀.", another saved
+"A caf— near Dublin Zoo — 中文 😀.". All twelve cleanups passed. The substitution
+is consistent with the shared spare keycode being rebound before the client
+translated the earlier key event. The next candidate retains each remapping
+for 200 ms after server delivery, before restoring/reusing it. This is a bounded
+client-processing allowance, not an acknowledgement or proof of reliability;
+it adds 200 ms per otherwise unmapped character. Repeat real saved-text checks
+must establish whether it resolves the observed loss and substitution.
+
+**DRV-L05 — Typing appends instead of replacing selected text (2026-09-08):**
+With the SDK click fallback, COORD-L01 now focuses the Family field and retains
+the dialog, but after CTRL+A and typeText("Liberation Serif") the final field
+is "GeorgiaLiberation Serif". Screenshot and AX evidence agree; cleanup passed
+(linux-exe-coordinate-sdk-fallback, driver 8d9fcd05a). The AT-SPI insertion path
+used the caret offset without checking the selection. The candidate inspects
+Text.GetNSelections before mutation. A selected range (or unreadable selection
+state) requests native keys, preserving the application's replacement and undo
+semantics instead of deleting and retrying a partial write. Background requests
+receive a typed pre-input refusal; existing SDK typing escalation handles it.
+The exact addressed window/element is retained. Native Wayland uses its real
+keyboard path; private nested-compositor input keeps its existing targeted path.
+
+The unchanged field-content assertion remains the acceptance gate. This longer
+dialog workflow receives a 120-second deterministic test timeout because its
+real observations and foreground retries can exceed the default minute;
+whole-agent deadlines and tool-call caps remain absent. Build, E2E typecheck and
+339 existing SDK checks passed for the SDK click change. New driver and real
+combined acceptance remain pending.
