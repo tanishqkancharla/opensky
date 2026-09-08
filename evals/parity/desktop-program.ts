@@ -3,7 +3,7 @@ import { parse } from "acorn";
 export type DesktopProgramScope = { backend: "native" | "opensky"; appSelectors: string[]; isolatedDesktop?: "linux" };
 export const nativeMethods = new Set(["get_app_state", "click", "drag", "press_key", "type_text", "select_text", "paste", "scroll", "set_value", "perform_secondary_action"]);
 const nativeLinuxMethods = new Set(["get_screenshot", "click", "move", "drag", "press_key", "type_text", "scroll"]);
-const forbidden = new Set(["constructor", "prototype", "__proto__", "process", "require", "globalThis", "cua", "sky", "nodeRepl", "eval", "Function"]);
+const forbidden = new Set(["constructor", "prototype", "__proto__", "process", "require", "globalThis", "cua", "sky", "nodeRepl", "eval", "Function", "Promise", "setTimeout"]);
 
 /** Admit straight-line public desktop API calls scoped to the fixture app.
  * This is an evaluation boundary, not an alternative SDK or action planner.
@@ -46,6 +46,15 @@ export class DesktopProgramPolicy {
         (node?.type === "Identifier" && paths.has(node.name)) ||
         (node?.type === "NewExpression" && node.callee?.type === "Identifier" && node.callee.name === "URL" && node.arguments.length === 1 && screenshotPath(node.arguments[0])) ||
         (node?.type === "CallExpression" && importCall(node.callee, "url", "fileURLToPath") && node.arguments.length === 1 && screenshotPath(node.arguments[0]));
+      const pause = (node: any): boolean => {
+        if (node?.type !== "NewExpression" || node.callee?.type !== "Identifier" || node.callee.name !== "Promise" || node.arguments.length !== 1) return false;
+        const callback = node.arguments[0];
+        if (callback.type !== "ArrowFunctionExpression" || callback.async || callback.params.length !== 1 || callback.params[0].type !== "Identifier" || forbidden.has(callback.params[0].name)) return false;
+        const timer = callback.body;
+        return timer.type === "CallExpression" && !timer.optional && timer.callee?.type === "Identifier" && timer.callee.name === "setTimeout" &&
+          timer.arguments.length === 2 && timer.arguments[0]?.type === "Identifier" && timer.arguments[0].name === callback.params[0].name &&
+          timer.arguments[1]?.type === "Literal" && Number.isSafeInteger(timer.arguments[1].value) && timer.arguments[1].value >= 0 && timer.arguments[1].value <= 60_000;
+      };
       const value = (node: any): boolean => {
         if (!node) return false;
         if (node.type === "Literal") return !node.regex;
@@ -61,7 +70,7 @@ export class DesktopProgramPolicy {
             node.property?.type === "Literal" && Number.isSafeInteger(node.property.value) && node.property.value >= 0 && value(node.object);
           return !forbidden.has(node.property?.name) && value(node.object);
         }
-        if (node.type === "NewExpression") return this.scope.backend === "native" && screenshotPath(node);
+        if (node.type === "NewExpression") return pause(node) || this.scope.backend === "native" && screenshotPath(node);
         if (node.type !== "CallExpression" || node.optional) return false;
         if (member(node.callee, "Object", "keys") && node.arguments.length === 1 && node.arguments[0].type === "Identifier" && ["sky", "app"].includes(node.arguments[0].name)) return true;
         if (this.scope.backend === "native" && importCall(node.callee, "fs", "readFile")) {

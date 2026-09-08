@@ -19,6 +19,13 @@ linux("Linux desktop access does not grant filesystem, process or computed-call 
   expect(policy.accepts('await sky.start_audio_recording();')).toBe(false);
 });
 
+linux("agents can wait for rendering without gaining arbitrary callback execution", ({ policy }) => {
+  expect(policy.accepts('await sky.click({x:791,y:557,mouse_button:"left"}); await new Promise(resolve => setTimeout(resolve, 700)); var images = await sky.get_screenshot(); await nodeRepl.emitImage(images[0].data_url);')).toBe(true);
+  expect(policy.accepts('await new Promise(resolve => setTimeout(() => sky.press_key({key:"CTRL+q"}), 700));')).toBe(false);
+  expect(policy.accepts('var setTimeout = images[0];')).toBe(false);
+  expect(policy.accepts('await new Promise(setTimeout => setTimeout(setTimeout, 700));')).toBe(false);
+});
+
 test("ordinary native app scope does not silently become full-desktop Linux scope", () => {
   const policy = new DesktopProgramPolicy({ backend: "native", appSelectors: ["LibreOffice"] });
   expect(policy.accepts('await sky.get_screenshot();')).toBe(false);

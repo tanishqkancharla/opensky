@@ -1946,3 +1946,16 @@ No final post-interruption usage update arrived, so the terminal run consumes
 its full $5 reservation conservatively. The budget API records that explicitly
 without fabricating token usage. Validation: all eight focused ledger tests and E2E typecheck
 pass; a new real native run is next. No paired agent score exists yet.
+
+**SET-070 — Rendering waits were incorrectly rejected after a correct save (2026-09-08):**
+Native retry 34276690212 centered and saved the heading; the read-only scorer
+passed heading alignment, preserved text and file format. The next agent cell
+included `await new Promise(resolve => setTimeout(resolve, 700))`. The policy
+rejected all Promise construction and interrupted the turn, so this attempt
+remains not scored. Cleanup passed. Evidence:
+`evals/runs/campaign-linux-smoke-1/02-heading-native/linux-office`.
+Both backends now admit an inert timer callback with a literal delay up to one
+minute. Callback code execution and shadowing timer/Promise globals remain
+rejected. This is a per-wait syntax allowance, not a whole-task deadline or
+call budget. All 23 policy checks and E2E typecheck pass. Real native retry validation
+is next; the interrupted attempt is conservatively charged its full $5 reservation.
