@@ -76,6 +76,13 @@ export class DesktopProgramPolicy {
         } else if (statement.type === "ExpressionStatement") {
           const expression = statement.expression;
           if (this.scope.backend === "native" && expression.type === "AssignmentExpression" && expression.operator === "=" && member(expression.left, "globalThis", "sky") && importedSky(expression.right)) continue;
+          if (expression.type === "AssignmentExpression" && expression.operator === "=" && expression.left.type === "Identifier") {
+            const name = expression.left.name;
+            if (!bindings.has(name) || forbidden.has(name) || ["app", "fs", "fileURLToPath"].includes(name) || !value(expression.right)) return false;
+            states.delete(name);
+            if (member(expression.right?.argument?.callee, "sky", "get_app_state")) states.add(name);
+            continue;
+          }
           if (!value(expression)) return false;
         } else return false;
       }

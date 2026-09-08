@@ -92,3 +92,13 @@ lowercase pair (OpenSky pass/native fail). Native's font attempt was interrupted
 by a guard that rejected an equivalent inline screenshot import. That third
 pair remains unscored and the campaign incomplete. SET-032 records the fix and
 the audited cumulative estimate of $5.1207228. Original artifacts remain intact.
+
+Five-task campaigns 2 and 3 also halted on evaluator restrictions, before a
+complete five-task comparison. Campaign 2 rejected an invented OpenSky method
+before dispatch instead of letting the SDK return its normal error (SET-033).
+Campaign 3 rejected reassignment of a native observation variable (SET-035).
+Campaign 3 recorded heading passes for native (4 calls, 29.27s) and OpenSky
+(5 calls, 42.84s), and an OpenSky lowercase pass (11 calls, 97.36s). The native
+lowercase attempt remains invalid. Every owned process was alive before normal
+teardown and scratch removal passed. These partial campaigns do not replace the
+completed two-task baseline. Audited cumulative estimate: $5.8728044.

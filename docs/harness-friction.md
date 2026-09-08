@@ -1017,3 +1017,22 @@ change the running Writer grader environment. The 15 candidate tasks and 33
 downloaded input/reference files remain scratch preparation, not a frozen or
 validated 20-task suite; decimal display export and an image-position positive
 case still need validation.
+
+**SET-035 — reusing an observation variable was falsely rejected (2026-09-07):**
+The third five-task campaign passed both heading arms and OpenSky lowercase,
+then interrupted native lowercase before its second cell. The legitimate cell
+clicked the observed Find & Replace control and reassigned `state` to a fresh
+`get_app_state` result. The policy admitted declarations but no reassignment.
+It now accepts simple reassignment of existing data bindings on both backends,
+retaining app/import bindings and rejecting object-property mutation. Screenshot
+read authority is renewed only for a fresh native observation and removed when
+that variable receives other data. All 15 policy/admission checks pass, including
+fabricated screenshot and app-binding replacement cases. This is harness
+validation; a new frozen GUI campaign is still required.
+
+LibreOffice was alive before teardown in all four attempts; all quit normally
+and scratch removal passed. No unexpected application exit was observed.
+Native's interrupted usage was audited and settled against the terminal turn,
+completed tools and subsequent token event. Cumulative API-equivalent estimate
+is $5.8728044 with no unsettled reservations. The failed campaign and its invalid
+native arm remain intact and excluded from a complete five-task comparison.
