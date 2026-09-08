@@ -2017,3 +2017,19 @@ fix. Keep the SDK/driver candidate unchanged for the remaining baseline arms.
 
 SET-071 validation: all 24 focused policy checks and E2E TypeScript checks pass.
 The corrected evaluator still needs a completed real paired font run.
+
+**SET-072 — Policy rejection must not terminate the agent (2026-09-08):**
+OpenSky font retry 34281141351 ran 199.600 s / 15 calls, then the controller
+interrupted an ordinary finite key loop rejected by the straight-line policy.
+The turn has incomplete usage and is excluded, with the full $5 allowance
+conservatively charged; cleanup passed. Existing native and OpenSky MCP guards
+already reject such code before execution and return an ordinary scope error.
+The controller now lets those guards return that error so the agent can recover
+and finish normally. This is permitted only for the exact repository guard
+entrypoint, Node/tsx invocation and matching serialized fixture scope. Other
+transports retain fail-closed interruption; unrelated server/app permissions
+remain rejected. The policy still refuses filesystem/network access and loops.
+No new code execution capability was added. Local typecheck passes; real agent
+recovery remains unverified. Further paid font retries are paused until the
+separate SDK typing regression passes. Conservative cumulative accounting is
+$69.6348276 with no active reservation at this point.
