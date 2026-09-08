@@ -2149,3 +2149,12 @@ projection fix is bundled with this reproduction. Investigation has found that
 the SDK performs an additional shallow snapshot whenever the Linux driver says
 completeness is unproven; that snapshot can invalidate the full observation.
 This is a hypothesis pending the isolated regression, not a confirmed repair.
+
+The delivery-barrier experiment 34286325216 did not solve Unicode input:
+TYPE-L01 dropped only é on all three fresh desktops; KEY-L01 passed on all
+three, with verified cleanup. Key maps were restored exactly. The next
+candidate additionally leaves a temporary mapping installed for 50 ms before
+injecting its first key, allowing clients to process MappingNotify. This is
+still an unverified timing hypothesis, and costs 50 ms only for remapped keys.
+The same three-desktop matrix now also exercises CLICK-L01; a save-token
+failure must remain distinct from text or shortcut outcomes.
