@@ -56,12 +56,12 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: sdk-test-driver
-          run-id: 34274308972
+          run-id: 34282740613
           github-token: ${{ github.token }}
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
-          printf '%s\n' '62d44f8f85487ff18d0de9b1ab88e480d242144e0037172e3d892fa9500a0a6b  .driver/opensky-driver' | sha256sum --check -
+          printf '%s\n' '9db8474b7a100a15ea6ac62855bcc6f663fa63f72d49939f63cca19485f99fb4  .driver/opensky-driver' | sha256sum --check -
           chmod +x .driver/opensky-driver
       - name: Admit the existing cumulative reservation once
         if: inputs.mode == 'agent'

@@ -6,6 +6,7 @@ import { createWriteStream } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { EvaluationBudget, estimatedUsd, type Usage } from "./budget.js";
 import { DesktopProgramPolicy, nativeMethods, type DesktopProgramScope } from "./desktop-program.js";
 import { classifyRun } from "./admission.js";
@@ -57,6 +58,16 @@ export async function runCodex(options: CodexRunOptions) {
   let reservation: string | undefined;
   const programPolicy = options.desktopProgramScope && new DesktopProgramPolicy(options.desktopProgramScope);
   const admittedPrograms = new Set<string>();
+  // Only our repository transport guard may receive an outer approval for a
+  // rejected program. It returns an ordinary MCP error before executing code,
+  // allowing the real agent to recover without interrupting its whole turn.
+  const guardedProgramTransport = !!options.desktopProgramScope &&
+    options.mcp.command === process.execPath && options.mcp.args.length === 3 &&
+    options.mcp.args[0] === "--import" &&
+    options.mcp.args[1] === fileURLToPath(new URL("../../node_modules/tsx/dist/loader.mjs", import.meta.url)) &&
+    options.mcp.args[2] === fileURLToPath(new URL(`./${options.desktopProgramScope.backend}-mcp.ts`, import.meta.url)) &&
+    isDeepStrictEqual(JSON.parse(options.mcp.env?.PARITY_DESKTOP_SCOPE ?? "null"), options.desktopProgramScope);
+  const rejectedPrograms = new Set<string>();
   const codex = options.codex ?? join(homedir(), ".local/bin/codex");
   const login = await exec(codex, ["login", "status"], { env, timeout: 10_000 });
   const loginStatus = `${login.stdout}\n${login.stderr}`;
@@ -172,7 +183,8 @@ export async function runCodex(options: CodexRunOptions) {
         const desktopToolForm = [...activeCalls.values()].some(call => call.server === "desktop" && call.tool === replTool && call.arguments?.code === metadata.tool_params?.code) &&
           metadata.codex_approval_kind === "mcp_tool_call" &&
           params.message === `Allow the desktop MCP server to run tool "${replTool}"?` &&
-          (options.authorizedReplCodes?.includes(metadata.tool_params?.code) || admittedPrograms.has(metadata.tool_params?.code));
+          (options.authorizedReplCodes?.includes(metadata.tool_params?.code) || admittedPrograms.has(metadata.tool_params?.code) ||
+            guardedProgramTransport && rejectedPrograms.has(metadata.tool_params?.code));
         const allowed = !interruption && params.serverName === "desktop" && params.threadId === threadId &&
           params.mode === "form" && (directForm || replForm || desktopToolForm) &&
           schema?.type === "object" && Object.keys(schema.properties ?? {}).length === 0 &&
@@ -203,7 +215,10 @@ export async function runCodex(options: CodexRunOptions) {
         activeCalls.set(item.id, item); toolCalls++;
         if (programPolicy && ["js", "cua_repl"].includes(item.tool)) {
           const code = item.arguments?.code;
-          if (typeof code !== "string" || !programPolicy.accepts(code)) stop("desktop_program_outside_fixture_scope");
+          if (typeof code !== "string" || !programPolicy.accepts(code)) {
+            if (guardedProgramTransport && typeof code === "string") rejectedPrograms.add(code);
+            else stop("desktop_program_outside_fixture_scope");
+          }
           else admittedPrograms.add(code);
         }
         if (item.server !== "desktop") stop("unexpected_tool_server");
@@ -249,7 +264,7 @@ export async function runCodex(options: CodexRunOptions) {
     const classification = classifyRun(interruption, turn.status, admission, options.maxToolCalls);
     if (guarded && !admission) classification.infrastructureError = "missing_dispatch_receipt";
     const contextCompactions = items.filter(item => item.type === "contextCompaction").length;
-    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, contextCompactions, items, finalText, decisions, authentication, workspaceBillUsd: null };
+    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, contextCompactions, items, finalText, decisions, programRejections: [...rejectedPrograms], authentication, workspaceBillUsd: null };
     await writeFile(join(options.artifacts, "result.json"), JSON.stringify(result, null, 2));
     const finalInterruptedUsage = classification.taskLimit && turn.status === "interrupted" && activeCalls.size === 0 && lastUsageEvent > lastItemEvent;
     if (((turn.status === "completed" && !interruption) || finalInterruptedUsage) && usage) {
