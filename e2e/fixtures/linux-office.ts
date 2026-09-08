@@ -6,12 +6,12 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import { test as base } from "vitest";
+import { expect, test as base } from "vitest";
 import { createOpenSky, createCua } from "opensky-cua";
 
 const exec = promisify(execFile);
 const taskId = "3ef2b351-8a84-4ff2-8724-d86eae9b842e";
-type Desktop = { pressKey(key: string): Promise<void>; observe(): Promise<void> };
+type Desktop = { pressKey(key: string): Promise<void>; observe(): Promise<string> };
 type Document = { grade(): Promise<{ taskSuccess: boolean; completeDocumentTextMatches: boolean }> };
 
 // A thin test-driver adapter exposes the same keyboard/observation events on
@@ -92,9 +92,17 @@ export const test = base.extend<{ desktop: Desktop; document: Document; fixture:
       }
       const desktop: Desktop = {
         async pressKey(key) { actions.push(key); await pressKey(key); },
-        async observe() { await writeFile(join(artifacts, `observation-${++sequence}.${backend === "native" ? "jpg" : "png"}`), await screenshot()); },
+        async observe() {
+          const path = join(artifacts, `observation-${++sequence}.${backend === "native" ? "jpg" : "png"}`);
+          await writeFile(path, await screenshot());
+          // Assertions read the same pixels a human or screenshot agent sees.
+          // OCR does not inspect the document file or issue any desktop input.
+          const text = (await exec("tesseract", [path, "stdout", "--psm", "11"], { timeout: 10_000 })).stdout;
+          await writeFile(`${path}.txt`, text);
+          return text;
+        },
       };
-      await desktop.observe();
+      await expect.poll(() => desktop.observe(), { timeout: 20_000, interval: 250 }).toMatch(/File\s+Edit\s+View\s+Insert/);
       await use({ desktop, document: { async grade() {
         return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", [join(root, "score.py"), taskId, document], { timeout: 30_000 })).stdout);
       } } });

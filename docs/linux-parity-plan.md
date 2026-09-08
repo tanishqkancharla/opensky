@@ -36,9 +36,14 @@ current. Exclude Codex's in-app browser.
 - That run captured a real 1280×900 desktop image through the official package's
   native Linux `@oai/sky` 0.6.26 runtime. Input and complete task parity are not
   yet established by this capture.
-- The next deterministic task centers and saves the same OSWorld heading in
-  LibreOffice through each public interface, then grades the saved DOCX. The
-  fixture uses an owned app process group and disposable profile on CI only.
+- Native input passed the deterministic heading/save check twice. OpenSky
+  initially failed to discover LibreOffice; driver c2705becf fixes the observed
+  launcher/process mismatch and passed the same saved-file task in run
+  34272626520. That run's native arm exposed a UI-readiness race, so both arms
+  must rerun with screenshot-based readiness assertions before advancing.
+- Linux daemon identity, accessibility/display preflight and environment hashes
+  passed on both arms. The next remote run also verifies the actual native
+  Node REPL screenshot transport without dispatching a model.
 - Matched Linux agent campaigns remain pending. Linux grading and runtime
   fingerprints must be admitted independently of the historical macOS results.
 - Preserve the macOS save-dialog failure and other driver follow-ups for later;

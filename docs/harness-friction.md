@@ -1858,3 +1858,37 @@ and requires X11 plus a working accessibility bus. The office CI fixture now run
 these actual preflights before input. Local E2E/harness TypeScript and shell
 checks pass; remote acceptance is pending. Linux editor fingerprints explicitly
 remain unsupported. No agent dispatch or new model spend occurred.
+
+**SET-066 — Linux discovery repair passes saved-file task; native smoke raced UI readiness (2026-09-08):**
+Run 34272626520 compiled driver c2705becf and passed its two focused window
+association checks plus the desktop parser check. Both browser SDK smokes passed.
+OpenSky now lists LibreOffice and Writer as running and completed the unchanged
+heading/save test in 31.86 seconds. The independently scored saved document
+passed and cleanup verified process exit and temporary removal. Exact Linux
+daemon identity/permissions and environment recording also passed for both arms:
+Ubuntu 24.04.4, LibreOffice 24.2.7.2, packaged Codex CLI 0.153.4. Evidence:
+`evals/runs/linux-office-smoke-3`. This verifies the discovery fix on X11;
+Wayland and full canonical desktop certification remain pending.
+
+Native input failed this run after passing the same deterministic task twice.
+The first screenshot lacked the editor menu/toolbar; the screenshot after the
+save shortcut was identical, and after Return the format dialog was still only
+partly painted. The saved result failed. The fixture's visible-window check did
+not establish editor readiness, and the test pressed Return without checking
+that the format confirmation was usable. Both fixture groups were cleaned.
+No agent scores are inferred from these deterministic attempts.
+
+The fixture now waits for editor menu text in screenshots from the assigned
+public interface. After save, the test explicitly waits for the visible
+`Use Word 2007 Format` control before Return. Tesseract supplies only assertions
+over those same pixels; it does not inspect or modify the document or issue
+actions. Local OCR of retained screenshots accepts the ready OpenSky editor and
+dialog and rejects the native partial frames; this is assertion validation,
+not a fresh desktop pass. Both real arms must rerun with this readiness change.
+
+Added a no-model native MCP transport probe: initialize the official Node REPL,
+import its trusted Sky service, and verify a screenshot reaches the tool result.
+The configured trusted service follows the installed package's actual Sky
+proxy, which requires `nodeRepl.rpc`. This is separate from direct module
+capture and cannot be reported as an agent task. TypeScript validation passes;
+real Linux transport acceptance is pending. Model spending is unchanged.
