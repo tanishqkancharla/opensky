@@ -107,6 +107,7 @@ export function createCuaReplToolRuntime(
                 result: encodeBridgeValue(result.value),
                 logs: result.logs,
                 runtimeError: undefined as string | undefined,
+                evaluatorUsable: true as boolean,
               },
             };
           } catch (error) {

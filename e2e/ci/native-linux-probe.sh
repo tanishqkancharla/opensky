@@ -17,7 +17,7 @@ python3 - "$scratch/app" "$artifact" <<'PY'
 import json,pathlib,sys
 root=pathlib.Path(sys.argv[1]);out=pathlib.Path(sys.argv[2])
 packages=[p for p in root.rglob('package.json') if p.parent.name=='sky' and p.parent.parent.name=='@oai']
-binaries=list(root.rglob('sky_linux_x64'))
+binaries=[p.parent/'bin/linux/sky_linux_x64' for p in packages if (p.parent/'bin/linux/sky_linux_x64').is_file()]
 report={'packages':[str(p.relative_to(root)) for p in packages], 'binaries':[str(p.relative_to(root)) for p in binaries], 'nativeComparisonReady':False}
 (out/'availability.json').write_text(json.dumps(report,indent=2)+'\n')
 if len(packages)!=1 or len(binaries)!=1:

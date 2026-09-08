@@ -3143,9 +3143,13 @@ function isChromiumApp(query: string, match?: Record<string, unknown>): boolean 
 
 function isTypedBrowserUnavailable(error: unknown): boolean {
   const code = error instanceof OpenSkyError ? error.code : undefined;
-  if (code && ["browser_route_unavailable", "browser_unsupported_engine", "method_not_found"].includes(code)) return true;
+  // A supported route can fail while starting or connecting to the browser.
+  // Preserve that failure: a second native launch hides the cause and can
+  // create an unrelated browser outside the requested isolated session.
+  if (code === "browser_route_unavailable") return false;
+  if (code && ["browser_unsupported_engine", "method_not_found"].includes(code)) return true;
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-  return message.includes("unknown tool") || message.includes("tool not found") || message.includes("browser_route_unavailable");
+  return message.includes("unknown tool") || message.includes("tool not found");
 }
 
 function targetResourceKind(targets: string[]): TargetRequestIdentity["resourceKind"] {

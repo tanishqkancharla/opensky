@@ -1759,3 +1759,27 @@ availability check, never a parity score. Native runtime availability, Linux
 OSWorld setup/reset/scoring, and matched Terra runs remain unverified. The
 download is hashed for provenance; matched campaigns must pin the artifact
 before use. No Linux acceptance is claimed until CI evidence is reviewed.
+
+**SET-062 — First remote Linux smoke isolates startup and probe issues (2026-09-08):**
+GitHub run 34268803939 built the stamped ac1352062 Linux driver. FRESH-B01
+passed in 11.91 seconds, with a real Chrome click and first post-completion
+observation. TEXT-B01 failed during browser creation in 21.95 seconds, before
+the Unicode assertion; it is not evidence of corrupt text. The typed browser
+route failure was being swallowed and followed by an unrelated native launch,
+ending in `Failed to open target`. Preserve `browser_route_unavailable` errors
+after exact-session cleanup instead of attempting that fallback. The underlying
+startup cause still needs a real rerun. Evidence: `evals/runs/linux-sdk-smoke-1`.
+
+The official Linux package (26.901.51231, SHA-256
+62580188d87c3d3a9369dab7c73b42a8a32518d4df8a2d5bae6466ddeac5c05e)
+does ship `@oai/sky` and its Linux binary. The availability probe incorrectly
+counted CLI aliases and the adjacent CUA package as independent candidates;
+select the binary owned by the discovered `@oai/sky` package. Public screenshot
+capture remains pending. Evidence: `evals/runs/linux-native-availability-1`.
+
+Companion harness CI exposed inconsistent inferred success/error metadata in
+the REPL adapter: successful results omitted `evaluatorUsable`, narrowing the
+generic result type. Success now explicitly reports that the evaluator remains
+usable. Local E2E and harness TypeScript checks and six existing REPL tests
+passed. These corrections do not award any new GUI or agent success. No model
+spend occurred; the experience ramp remains at two cases.
