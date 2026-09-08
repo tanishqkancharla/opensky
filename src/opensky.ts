@@ -2096,7 +2096,8 @@ export class OpenSky implements OpenSkyApi {
     const hasOmittedElements = snapshot.totalElementCount !== undefined &&
       snapshot.returnedElementCount !== undefined &&
       snapshot.totalElementCount > snapshot.returnedElementCount;
-    if (snapshot.truncated && hasOmittedElements && !snapshot.degraded && !resolved.browser) {
+    const needsProjection = this.target !== "linux" || hasOmittedElements;
+    if (snapshot.truncated && needsProjection && !snapshot.degraded && !resolved.browser) {
       const full = snapshot;
       const projectionDepth = resolved.contentScope === "web" ? 5 : 3;
       const projected = await this.snapshotWindow(resolved, {

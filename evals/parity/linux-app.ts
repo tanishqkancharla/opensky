@@ -1,10 +1,17 @@
 import { spawn, execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 const exec = promisify(execFile);
+export function assertDisposableLinuxDesktop(): void {
+  const disposableContainer = process.env.OPENSKY_DISPOSABLE_DESKTOP === "1" && existsSync("/.dockerenv");
+  if (process.platform !== "linux" || !(process.env.GITHUB_ACTIONS === "true" || disposableContainer)) {
+    throw new Error("Disposable Linux CI or explicit Docker desktop required; no app was launched");
+  }
+}
 type Identity = { group: number; pid: number; window: string; startTicks: string };
 async function processIdentity(pid: number) {
   const stat = await readFile(`/proc/${pid}/stat`, "utf8");
@@ -18,7 +25,7 @@ export async function withOwnedLinuxApp<T>(options: {
   executable: string; args: string[]; documentTitle: string; artifacts: string;
   env?: NodeJS.ProcessEnv;
 }, use: (owned: Identity & { inspect(): Promise<boolean> }) => Promise<T>): Promise<T> {
-  if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true") throw new Error("Disposable Linux CI desktop required; no app was launched");
+  assertDisposableLinuxDesktop();
   const child = spawn(options.executable, options.args, { detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...options.env } });
   let log = "";
   let launchError: Error | undefined;

@@ -2183,3 +2183,17 @@ desktops in 34286955716, but a faster-SDK run again dropped é. Unicode remains
 intermittent; neither the delay nor a small set of passing attempts proves
 that gap resolved. Keep the immutable five-task baseline and its spending
 ledger separate from these free deterministic experiments.
+
+SDK-L03 metadata handling is scoped to Linux, whose driver explicitly always
+reports unproven completeness. The historical macOS projection reconstruction
+otherwise stopped consuming its documented shallow observation. Its behavior
+is retained during this Linux-only work; no macOS acceptance is inferred.
+
+**SET-073 — One-off remote debug desktop (2026-09-08):**
+The user-provided exe.dev VM has Docker but no Node runtime. The public Linux
+fixture now also admits an explicitly opted-in Docker desktop, verified by
+Linux platform plus /.dockerenv, without pretending it is GitHub Actions.
+A task-owned container can run the same public SDK fixtures and save artifacts
+without registering a persistent runner or spending model budget. Container
+setup and first real execution are pending. Non-CI macOS/local desktops remain
+refused by the fixture guard.

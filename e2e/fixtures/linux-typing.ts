@@ -7,14 +7,14 @@ import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createOpenSky, createCua } from "../../src/index.js";
 import type { App } from "../../src/cua.js";
-import { withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
+import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
 type Fixture = { app: App; document: { readText(): Promise<string> }; keyboard: { unchanged(): Promise<boolean> } };
 export const test = base.extend<Fixture & { fixture: Fixture }>({
   fixture: async ({ task }, use) => {
-    if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true") throw new Error("Disposable Linux CI required");
+    assertDisposableLinuxDesktop();
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "typing", task.name.split(":")[0]);
     await mkdir(artifacts, { recursive: true });
     const originalKeyboard = (await exec("xmodmap", ["-pke"])).stdout;
