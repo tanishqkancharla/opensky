@@ -2054,3 +2054,12 @@ Latin-1 and Unicode keysyms follow X11 appendix A. The existing restoration
 guard lives through delivery. The Linux typing workflow now builds that exact
 driver, checks its Unicode mapping unit test and identity, then runs the same
 public-SDK saved-document regression. Build and native behavior are pending.
+
+SDK-L01/Unicode verification: run 34282740613 built c9d9a66be and passed the
+unchanged real saved-text assertion in 26.441 s. Its DOCX contains exactly
+"A café near Dublin Zoo — typed through OpenSky." and the owned app exited.
+Driver SHA-256: 9db8474b7a100a15ea6ac62855bcc6f663fa63f72d49939f63cca19485f99fb4.
+The next fixture adds CJK, emoji and an independent xmodmap before/after check
+for keyboard restoration. It reuses this exact successful binary to avoid
+another build. This is supporting SDK evidence, not canonical driver desktop
+certification or an agent task score. The full platform matrix remains pending.

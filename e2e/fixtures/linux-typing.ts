@@ -11,12 +11,13 @@ import { withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
-type Fixture = { app: App; document: { readText(): Promise<string> } };
+type Fixture = { app: App; document: { readText(): Promise<string> }; keyboard: { unchanged(): Promise<boolean> } };
 export const test = base.extend<Fixture & { fixture: Fixture }>({
   fixture: async ({}, use) => {
     if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true") throw new Error("Disposable Linux CI required");
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "typing");
     await mkdir(artifacts, { recursive: true });
+    const originalKeyboard = (await exec("xmodmap", ["-pke"])).stdout;
     const temporary = await mkdtemp(join(tmpdir(), "opensky-typing-"));
     const document = join(temporary, "typing.docx");
     await copyFile(join(root, "evals/parity/osworld/0e763496-b6bb-4508-a427-fad0b6c3e195/Dublin_Zoo_Intro.docx"), document);
@@ -40,6 +41,11 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
           await use({ app, document: { async readText() {
             return (await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
               'import sys,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("word/document.xml")); n={"w":"http://schemas.openxmlformats.org/wordprocessingml/2006/main"}; print("\\n".join("".join(p.itertext()) for p in r.findall(".//w:body/w:p",n)),end="")', document])).stdout;
+          } }, keyboard: { async unchanged() {
+            const current = (await exec("xmodmap", ["-pke"])).stdout;
+            await writeFile(join(artifacts, "keyboard-before.txt"), originalKeyboard);
+            await writeFile(join(artifacts, "keyboard-after.txt"), current);
+            return current === originalKeyboard;
           } } });
         } finally {
           await writeFile(join(artifacts, "final.png"), await app.getScreenshot()).catch(() => undefined);
@@ -54,4 +60,5 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
   },
   app: async ({ fixture }, use) => use(fixture.app),
   document: async ({ fixture }, use) => use(fixture.document),
+  keyboard: async ({ fixture }, use) => use(fixture.keyboard),
 });
