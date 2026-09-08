@@ -50,15 +50,18 @@ completed run and keep the status canvas current. Exclude Codex's in-app browser
   The selected native/OpenSky font, subscript and strike pairs used ed4fe66 and
   matching runtime fingerprints; strike has the same Ubuntu label difference
   as lowercase. First two pairs used c26ec3a. Preserve this version distinction.
-- `five-task-baseline-summary.json` preserves the selected run history before
-  fixes. Cumulative accounting is $72.1508874, with no active reservation.
-  Paid retries are paused while real input regressions are verified.
-- The public Alt shortcut defect has real acceptance evidence on driver
-  183cc3f1c. Unicode delivery remains intermittent; delivery-barrier candidate
-  0524101f8 failed three fresh desktops. A client-map refresh delay candidate
-  e04e1e08e is under test. The SDK fresh-token correction has reproduced
-  stale-save-button evidence and is under three-desktop verification. Do not
-  promote these pending checks into improved agent scores.
+- `five-task-baseline-summary.json` preserves the original selected run history.
+  The matched font retry on SDK 16e62c1 and driver 00e3b936e still failed with
+  OpenSky (427.893 s / 24 calls) and passed with native (87.823 s / 18 calls).
+  All fingerprints matched. Evidence: font-fixed-pair.json, runs 34288468049
+  and 34289296019. The five-task rates remain native 4/5 and OpenSky 3/5.
+  Accounting after those turns: $74.5640524, no active reservation.
+- The combined modifier, Unicode timing and sparse-index candidate passed
+  nine real checks across three GitHub desktops, and three more checks on
+  exe.dev. Earlier Unicode intermittence remains documented. A new real
+  dialog-coordinate regression failed on the same driver; candidate cf83a6692
+  restricts AT-SPI hit-testing to the requested window. Three-desktop run
+  34289751231 is pending. These deterministic checks are not agent scores.
 - Full twenty-task support remains unfinished: install and validate Linux Calc
   and Impress, implement the real VS Code task fixture, verify reset/cleanup
   and scoring for each category, then freeze that environment for paired runs.
@@ -66,6 +69,7 @@ completed run and keep the status canvas current. Exclude Codex's in-app browser
 - User-provided exe.dev host is reachable with the correct account. Official
   runner files and dependencies are installed. Persistent runner registration
   and service startup await explicit approval after automatic review rejected
-  that expansion of future job access. Hosted evaluations continue meanwhile.
+  that expansion of future job access. Hosted evaluations and authorized
+  one-off Docker tests work without it; registration is optional, not a blocker.
 - Preserve macOS driver follow-ups for later; historical macOS results do not
   count as Linux evidence.
