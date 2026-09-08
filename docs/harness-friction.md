@@ -1696,3 +1696,36 @@ No model dispatch or GUI launch occurred, and test scratch directories were
 removed. This closes the grading configuration gap, not native GUI acceptance
 or the new smoke baseline. Pending candidate driver acceptance and the next
 spending authorization remain separate requirements.
+
+**SET-060 — Exact candidate staged; macOS permission and spending gates remain (2026-09-08):**
+With frozen scoring profile 916e5d6b, the first smoke task's real LibreOffice
+setup passed. The expected document became visible, before/after desktop checks
+passed, the owned app quit cooperatively and all fixture scratch files were
+removed. `validEvaluation:false` is intentional for the setup-only backend; no
+model was dispatched or task score produced. Evidence:
+`evals/runs/frozen-scoring-setup-1`.
+
+The previously staged candidate and cached debug binary reported `source:null`.
+Built the clean driver commit ac13520622d2cb346a0f03c53b73a87980fe6661 with its
+source SHA embedded, then staged it at the existing `outputs/OpenSkyDriver.app`
+workspace path. The first build was refused by the filesystem sandbox at Swift's
+normal compiler cache; the authorized retry completed in 17.54 seconds. No source
+change was required. Stable certificate leaf DA664D710A80BF1B995AA4575B7163C9A73C23CB
+and the entire designated requirement match the previous staged bundle exactly.
+Strict signature verification passed. Binary SHA-256 is
+`00e9b7d11b2701c1f6c73af92b3abc95cce5fdab3853dabed49ba80de2963ba4`.
+Staging copies were removed and the original permissioned driver was unchanged.
+Evidence: `evals/runs/driver-candidate-ac135-staged-1`.
+
+Both public SDK launch/quit discovery tests passed against this exact stamped
+candidate in 16.18 seconds. Owned TextEdit fixtures, private daemon and socket
+were cleaned up. This verifies inventory freshness, not Accessibility input or
+screen capture. A no-prompt permission query attributed to the candidate daemon
+still returned Accessibility false and Screen Recording false. No permission
+prompt or TCC modification was performed. Evidence:
+`evals/runs/native-app-discovery-e2e-2`.
+
+The spending ledger remains at $45.3877028 conservative accounting, zero reserved,
+and $50 approved. No new agent run can reserve its required $5. Resuming matched
+Terra smoke runs requires the next spending approval and GUI permissions for
+the stable-signed candidate. These are user gates, not failed benchmark tasks.

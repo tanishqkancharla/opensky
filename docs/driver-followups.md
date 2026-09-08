@@ -31,10 +31,12 @@ New real LibreOffice observations (2026-09-07; runtime `aa31c70ee`):
   modal correlation, especially cross-process panels, still needs this work.
 - **Fresh running-app discovery (SET-022):** driver `list_apps` omitted a
   visible running workspace LibreOffice instance that `list_windows` found.
-  Verify freshness of the long-lived NSWorkspace enumeration; the precise
-  cause remains unconfirmed. Acceptance: launch after daemon startup, discover
-  without auto-launch recovery, quit, and verify disappearance. Include an
-  app outside the standard Applications directories.
+  The no-overlay daemon did not run AppKit's main event loop, leaving
+  NSWorkspace inventory stale. Commit `ac1352062` runs that loop without an
+  overlay. Real public-SDK launch/quit discovery tests passed again against the
+  exact source-stamped candidate (SET-060). Broader nonstandard-installation GUI
+  targeting remains pending candidate permissions; inventory success does not
+  certify Accessibility input or screenshots.
 
 | Gap | Required capability | Acceptance before claiming parity |
 | --- | --- | --- |
