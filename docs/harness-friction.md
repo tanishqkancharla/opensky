@@ -1439,3 +1439,23 @@ After installing the CI-declared jsonschema/toml dependencies in the isolated
 driver test environment, the full script suite passed 248 tests and 21 subtests
 in 3.96 s. Workflow YAML parsed. Windows PowerShell execution remains assigned
 to CI; these local results do not prove Windows uninstall behavior.
+
+**SET-052 — fake Python daemons rejected the real SDK contract (2026-09-08):**
+CI cc1140127 passed generated binding freshness, Rust SDK/contract tests,
+packaging helpers and external C ABI validation. The Python loader ran four
+tests in 0.440 s with two errors: fake daemons advertised contract 0.7.0, which
+the actual SDK correctly rejected against 0.7.0-opensky.1. Their unfinished
+fixture thread/child prevented process exit until the 15-minute job limit
+canceled the run; the runner reaped an orphan Python process. It is not an
+accepted SDK run, and increasing time alone would not repair those failures.
+
+Replaced the two fabricated socket/process backends with the real built driver.
+Fixture-owned EmbeddedCuaDriverHost startup/cleanup now supports actual metadata,
+tool discovery, typed session start/state/end and host/client shutdown scenarios.
+The existing in-process runtime scenario also registers cleanup before assertions.
+No captured internal request assertions or fabricated action results remain in
+this loader file. Python exports now include all three close-window contract
+types. CI explicitly builds the real executable and allows 30 minutes for the
+combined native build/test job; this is independent of uncapped agent runs.
+Python syntax and workflow YAML passed. Real loader execution on this candidate
+is pending CI, as are TypeScript native SDK tests and Windows uninstall execution.
