@@ -21,6 +21,7 @@ cleanup() {
   done
   for pid in "${owned[@]}"; do kill -KILL "$pid" 2>/dev/null || true; done
   for pid in "${owned[@]}"; do wait "$pid" 2>/dev/null || true; done
+  if [[ -f "${OPENSKY_REMOTE_BUDGET:-}" ]]; then cp "$OPENSKY_REMOTE_BUDGET" "$OPENSKY_LINUX_OFFICE_ARTIFACT/budget.json"; fi
   rm -rf "$runtime"
   exit "$result"
 }
@@ -40,6 +41,18 @@ done
 libreoffice --version > "$OPENSKY_LINUX_OFFICE_ARTIFACT/libreoffice-version.txt"
 printf '%s\n' "$GITHUB_SHA" > "$OPENSKY_LINUX_OFFICE_ARTIFACT/sdk-source-sha.txt"
 node --import tsx e2e/ci/linux-environment.ts
+if [[ -n "${OPENSKY_LINUX_AGENT_MODE:-}" ]]; then
+  if [[ "$OPENSKY_LINUX_AGENT_MODE" == agent ]]; then
+    export CODEX_HOME="$runtime/codex"
+    mkdir -p "$CODEX_HOME"
+    printf '%s\n' "$OPENAI_API_KEY" | "$OPENSKY_NATIVE_PROBE_PACKAGE/../../../../../codex" login --with-api-key
+    unset OPENAI_API_KEY
+  else
+    export OPENSKY_AGENT_BACKEND=setup
+  fi
+  node --import tsx evals/parity/osworld/linux-smoke.ts "$OPENSKY_AGENT_TASK" "$OPENSKY_AGENT_BACKEND" "$OPENSKY_LINUX_OFFICE_ARTIFACT"
+  exit
+fi
 cd e2e
 npm test -- specs/linux-office.test.ts --reporter=verbose --reporter=json \
   --outputFile.json="$OPENSKY_LINUX_OFFICE_ARTIFACT/results.json"

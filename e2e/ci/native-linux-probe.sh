@@ -11,6 +11,9 @@ url=https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd
 printf '%s\n' "$url" > "$artifact/source-url.txt"
 curl --fail --location --retry 2 "$url" --output "$scratch/chatgpt.deb"
 sha256sum "$scratch/chatgpt.deb" > "$artifact/package-sha256.txt"
+if [[ -n "${OPENSKY_NATIVE_PACKAGE_SHA256:-}" ]]; then
+  printf '%s  %s\n' "$OPENSKY_NATIVE_PACKAGE_SHA256" "$scratch/chatgpt.deb" | sha256sum --check -
+fi
 dpkg-deb --field "$scratch/chatgpt.deb" Package Version Architecture > "$artifact/package.txt"
 dpkg-deb --extract "$scratch/chatgpt.deb" "$scratch/app"
 python3 - "$scratch/app" "$artifact" <<'PY'
@@ -32,7 +35,7 @@ export OPENSKY_NATIVE_PROBE_ARTIFACT="$artifact"
 chmod +x "$OAI_SKY_LINUX_BIN"
 xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
   node e2e/ci/native-linux-probe.mjs
-if [[ -n "${OPENSKY_LINUX_OFFICE_BACKEND:-}" ]]; then
+if [[ -n "${OPENSKY_LINUX_OFFICE_BACKEND:-}${OPENSKY_LINUX_AGENT_MODE:-}" ]]; then
   xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
     bash e2e/ci/linux-office.sh
 fi

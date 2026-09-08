@@ -1,0 +1,84 @@
+name: Linux paired agent evaluation
+run-name: ${{ inputs.mode == 'agent' && format('Linux agent / {0}', inputs.reservation_id) || 'Linux agent setup' }}
+
+on:
+  push:
+    branches: [codex/computer-observed-parity]
+    paths: ['.github/workflows/linux-agent.yml']
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [setup, agent]
+        default: setup
+      reservation_id:
+        type: string
+        default: ''
+      envelope:
+        description: 'Cumulative controller reservation, bound to this source SHA'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: linux-agent-${{ inputs.mode == 'agent' && inputs.reservation_id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    env:
+      OPENSKY_LINUX_AGENT_MODE: ${{ inputs.mode || 'setup' }}
+      OPENSKY_AGENT_TASK: 3ef2b351-8a84-4ff2-8724-d86eae9b842e
+      OPENSKY_NATIVE_PACKAGE_SHA256: 62580188d87c3d3a9369dab7c73b42a8a32518d4df8a2d5bae6466ddeac5c05e
+      OPENSKY_LINUX_OFFICE_ARTIFACT: ${{ github.workspace }}/artifacts/linux-office
+      OPENSKY_REMOTE_RESERVATION: ${{ inputs.reservation_id }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install desktop and scorer
+        run: |
+          printf 'OPENSKY_REMOTE_BUDGET=%s\n' "$RUNNER_TEMP/opensky-agent-budget/ledger.json" >> "$GITHUB_ENV"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core xdotool x11-utils libreoffice-writer libreoffice-gtk3 fonts-liberation tesseract-ocr libpipewire-0.3-0 libei1 libxtst6
+          npm ci --ignore-scripts
+          npm run build
+          python -m pip install -r evals/parity/osworld/requirements.txt
+      - name: Use the driver from the passing desktop gate
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: sdk-test-driver
+          run-id: 34274308972
+          github-token: ${{ github.token }}
+          path: .driver
+      - name: Verify the exact tested driver binary
+        run: |
+          printf '%s\n' '62d44f8f85487ff18d0de9b1ab88e480d242144e0037172e3d892fa9500a0a6b  .driver/opensky-driver' | sha256sum --check -
+          chmod +x .driver/opensky-driver
+      - name: Admit the existing cumulative reservation once
+        if: inputs.mode == 'agent'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPENSKY_RESERVATION_ENVELOPE: ${{ inputs.envelope }}
+        run: node --import tsx evals/parity/remote-admission.ts
+      - name: Run the isolated desktop task
+        env:
+          OPENAI_API_KEY: ${{ inputs.mode == 'agent' && secrets.OPENAI_API_KEY || '' }}
+        run: bash e2e/ci/native-linux-probe.sh
+      - name: Retain task result and spending receipt
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: linux-agent-result
+          path: |
+            artifacts/linux-office
+            artifacts/native-linux
+          retention-days: 30

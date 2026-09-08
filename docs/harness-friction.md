@@ -1911,3 +1911,23 @@ Seven real budget-ledger checks pass, including unknown/settled/reused claim
 rejection; E2E/harness TypeScript checks pass. No API worker has been dispatched.
 The remote envelope replay guard, controller reconciliation and agent task
 runner must be completed before using this authentication mode.
+
+**SET-068 — Linux document and native agent transport gates pass; remote agent worker added (2026-09-08):**
+Run 34274308972 passed both heading/save checks with screenshot readiness:
+native 11.46 seconds, OpenSky 36.03 seconds. Both retained passing saved-file
+results and verified app exit and temporary removal. The actual native Node
+REPL returned a JPEG through its Sky service on both jobs; both browser smokes
+also passed. Evidence: `evals/runs/linux-office-smoke-5`. This completes the
+initial deterministic gate, not the paired agent metric.
+
+Added a Linux office agent worker using matched Terra/medium Codex runs and
+the real native/OpenSky REPL transports. It launches an owned process group,
+checks visible editor controls, scores only the agent-saved file and records
+cleanup. The workflow defaults to a no-model setup check. Agent mode requires
+an existing cumulative reservation bound to its source SHA; concurrency and
+GitHub run history reject repeated dispatches, and rerun attempts are rejected.
+Authentication lives only in the disposable runtime directory. The native
+package digest and the exact driver artifact from the passing gate are pinned.
+Local TypeScript and shell checks pass; the new worker's setup/cleanup must
+pass remotely before model dispatch. Linux editor support and the later full
+suite remain unfinished; no scope has been removed from the goal.
