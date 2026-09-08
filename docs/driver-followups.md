@@ -49,6 +49,8 @@ New real LibreOffice observations (2026-09-07; runtime `aa31c70ee`):
 | Auxiliary windows and lifecycle (CLN-001/006) | Prove request-correlated sheets/panels/windows and expose exact cooperative close plus durable ownership receipts where missing. Cross-process TypeScript state transactions are a separate host concern. | Multiple windows, save sheets, interrupted close, crashes and concurrent runtimes; no broad close hotkeys or guessed sibling adoption. |
 | Windows/Linux parity (SET-007) | Equivalent per-platform identity, AX/input, screenshot and cleanup contracts. | Real provisioned Windows/Linux runs; macOS fixtures do not certify these platforms. |
 
+Fresh macOS evidence: `evals/runs/five-checkpoint-strike-opensky-1` selected a long LibreOffice paragraph through the public CUA SDK. The character-by-character fallback exceeded 60 seconds and poisoned the REPL. The later evaluator alias rejection leaves that whole attempt invalid, but does not erase this observed selection failure (SET-037). Atomic range selection and bounded cancellation/recovery remain pending.
+
 ## Host integration, not automatically a driver rewrite
 
 These also prevent complete Computer parity, but assigning them all to the native

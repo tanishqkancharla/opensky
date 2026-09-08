@@ -9,6 +9,7 @@ const forbidden = new Set(["constructor", "prototype", "__proto__", "process", "
  * Both agents keep their real REPL; no filesystem/import/network shortcuts. */
 export class DesktopProgramPolicy {
   private bindings = new Set<string>();
+  private appBindings = new Set<string>();
   private stateBindings = new Set<string>();
   private screenshotImports = new Map<string, "fs" | "url" | "fileURLToPath" | "readFile">();
   private screenshotPaths = new Set<string>();
@@ -23,6 +24,7 @@ export class DesktopProgramPolicy {
     try {
       const ast = parse(code, { ecmaVersion: "latest", sourceType: "module", allowAwaitOutsideFunction: true }) as any;
       const bindings = new Set(this.bindings);
+      const apps = new Set(this.appBindings);
       const states = new Set(this.stateBindings);
       const imports = new Map(this.screenshotImports);
       const paths = new Set(this.screenshotPaths);
@@ -61,7 +63,8 @@ export class DesktopProgramPolicy {
           // The bound app enforces its own target and API. Invented method
           // names should receive the SDK's normal error so the agent can
           // recover, rather than become infrastructure interruptions.
-          return member(node.callee, "app") && bindings.has("app") &&
+          return node.callee?.type === "MemberExpression" && !node.callee.computed &&
+            node.callee.object?.type === "Identifier" && apps.has(node.callee.object.name) &&
             /^[a-z][A-Za-z0-9]*$/.test(node.callee.property.name) && !forbidden.has(node.callee.property.name);
         }
         if (!member(node.callee, "sky") || !nativeMethods.has(node.callee.property.name)) return false;
@@ -91,10 +94,14 @@ export class DesktopProgramPolicy {
             if (declaration.id?.type !== "Identifier" || !name || forbidden.has(name)) return false;
             if (imports.has(name)) return false;
             if (!value(declaration.init)) return false;
-            if (name === "app") {
-              const init = declaration.init?.type === "AwaitExpression" ? declaration.init.argument : null;
-              if (!member(init?.callee, "cua", "getApp")) return false;
-            }
+            const appInit = this.scope.backend === "opensky" &&
+              (member(declaration.init?.argument?.callee, "cua", "getApp") ||
+               (declaration.init?.type === "Identifier" && apps.has(declaration.init.name)));
+            if ((name === "app" || apps.has(name)) && !appInit) return false;
+            // Only a new binding or an already-scoped app may receive app
+            // authority. Failed assignments must not promote older data.
+            if (appInit && bindings.has(name) && !apps.has(name)) return false;
+            if (appInit) apps.add(name);
             const isPath = screenshotPath(declaration.init);
             bindings.add(name);
             paths.delete(name);
@@ -107,7 +114,7 @@ export class DesktopProgramPolicy {
           if (this.scope.backend === "native" && expression.type === "AssignmentExpression" && expression.operator === "=" && member(expression.left, "globalThis", "sky") && importedSky(expression.right)) continue;
           if (expression.type === "AssignmentExpression" && expression.operator === "=" && expression.left.type === "Identifier") {
             const name = expression.left.name;
-            if (!bindings.has(name) || forbidden.has(name) || (name === "app" || imports.has(name)) || !value(expression.right)) return false;
+            if (!bindings.has(name) || forbidden.has(name) || apps.has(name) || name === "app" || imports.has(name) || !value(expression.right)) return false;
             const isPath = screenshotPath(expression.right);
             paths.delete(name);
             if (isPath) paths.add(name);
@@ -119,6 +126,7 @@ export class DesktopProgramPolicy {
         } else return false;
       }
       this.bindings = bindings;
+      this.appBindings = apps;
       this.stateBindings = states;
       this.screenshotImports = imports;
       this.screenshotPaths = paths;

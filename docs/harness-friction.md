@@ -1058,3 +1058,25 @@ is $8.7971288. The original interrupted attempt remains invalid. The remaining
 pair will be run separately; any five-task readiness checkpoint assembled from
 these records must disclose both evaluator revisions and cannot be labeled a
 single frozen campaign. The full 20-task baseline must still use one revision.
+
+**SET-037 — ordinary app-binding aliases must reach the real SDK (2026-09-07):**
+The separate native strikethrough arm passed (9 calls, 106.43s, normal cleanup).
+OpenSky's first arm instead timed out during a long `selectText` operation and
+then received a poisoned-REPL error. Its attempted recovery bound the same
+LibreOffice app as `app2`; the guard only recognized the literal name `app`,
+so it incorrectly interrupted the attempt. The policy now tracks fresh app
+bindings and aliases by provenance. Other applications remain refused, and old
+data cannot be promoted into app authority by a failed assignment. All 20
+policy/admission checks and TypeScript validation pass. The 101 earlier valid
+cells remain compatible. The invalid attempt is preserved; the completed
+native arm remains measured evidence. A verified checkpoint will disclose all
+participating evaluator revisions rather than claim one frozen five-task run.
+
+This also exposed fresh evidence for unresolved LIB-007/008: the TypeScript
+selection fallback sends one targeted key request per character. Selecting the
+long final paragraph exceeded the REPL's 60-second allowance. The subsequent
+REPL could not recover, despite error text suggesting bindings could be reused.
+The bridge trace labels the unfinished operation completed with duration zero;
+that trace must not be treated as successful action evidence. These selection,
+timeout recovery and trace-reporting issues are pending production work. All
+owned processes exited and scratch removal passed; no app crash was observed.

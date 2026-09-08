@@ -72,6 +72,19 @@ test("OpenSky agent can retain its public app binding across turns", ({ opensky 
   expect(opensky.accepts('await app.pressKey("super+s"); await app.getAXState();')).toBe(true);
 });
 
+test("OpenSky can recover with a second binding of the authorized app", ({ opensky }) => {
+  expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script");')).toBe(true);
+  expect(opensky.accepts('let app2 = await cua.getApp("org.libreoffice.script"); await app2.getAXStateAndScreenshot();')).toBe(true);
+  expect(opensky.accepts('const documentApp = app2; await documentApp.pressKey("CMD+S");')).toBe(true);
+  expect(opensky.accepts('let unrelated = await cua.getApp("Terminal");')).toBe(false);
+});
+
+test("an older data binding cannot acquire app authority through a failed assignment", ({ opensky }) => {
+  expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script"); let data = app.facade;')).toBe(true);
+  expect(opensky.accepts('var data = await cua.getApp("org.libreoffice.script");')).toBe(false);
+  expect(opensky.accepts('data.getApp("Terminal");')).toBe(false);
+});
+
 test("invented bound-app methods reach the SDK's ordinary error handling", ({ opensky }) => {
   expect(opensky.accepts('let app = await cua.getApp("org.libreoffice.script"); await app.getAccessibilitySnapshot();')).toBe(true);
   expect(opensky.accepts('app.constructor();')).toBe(false);
