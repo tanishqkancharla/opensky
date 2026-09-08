@@ -1,8 +1,8 @@
 # Impress grading validation
 
 This is saved-file grader acceptance, not desktop SDK acceptance or an agent
-campaign. The campaign still uses the original pinned references. Historical
-scores are unchanged.
+campaign. New campaigns require an explicitly frozen scoring profile. Historical
+scores and scoring without a profile are unchanged.
 
 ## Why an adaptation is needed
 
@@ -51,15 +51,50 @@ uses a private temporary profile and records process exit, profile removal,
 exporter identity and file hashes. Artifact directories must be fresh. Omit
 `OPENSKY_EVAL_CONTROL_ARTIFACTS` to use disposable output storage.
 
-## Limits and remaining integration
+## Freeze and use a campaign profile
+
+After the real-export controls pass, prepare a new profile from their retained
+artifacts. Preparation regrades all 25 control files with current sources,
+verifies export receipts, checks the original asset pins, and copies only the
+validated reference files. It does not run an agent or re-export any artifact.
+
+```sh
+python evals/parity/osworld/scoring_profile.py freeze \
+  --controls /path/to/control-artifacts \
+  --output /path/to/new-scoring-profile \
+  --libreoffice /path/to/LibreOffice.app/Contents/MacOS/soffice
+```
+
+Set `OPENSKY_EVAL_SCORING_PROFILE` to its `profile.json` when starting a new
+campaign. The controller retains its own reference copies in `scoring/`, records
+individual reference hashes and the profile identity in the plan, and verifies
+them again before each arm. The runner verifies the profile and actual exporter
+before app setup and spending admission. Scoring rechecks references and sources
+after the agent finishes, rejecting a changed profile as an infrastructure error.
+Stages 5 and 20 require the same scoring and task-limit profiles as their prior
+stage. A scoring-source or original-asset change requires a newly validated
+profile and a fresh smoke ramp.
+
+Each arm records `rawOutcome` and `adaptedOutcome` separately. The primary
+`outcome` uses adapted Impress scoring under this named policy; other task
+categories retain their original grading. Summaries also expose raw native and
+OpenSky success counts. Raw historical outcomes are never rewritten.
+
+The opt-in `scoring-profile.test.ts` suite exercises the real profile verifier,
+read-only scorer and controller refusal path. It uses
+`OPENSKY_EVAL_TEST_SCORING_PROFILE` for the prepared manifest,
+`OPENSKY_EVAL_CONTROL_ARTIFACTS` for completed specimens, and the same Python and
+LibreOffice executable variables as the exporter tests. It checks missing,
+changed and incomplete references, exporter/source mismatch, post-admission
+changes, retained campaign copies and separate raw/adapted results.
+
+## Limits
 
 These controls establish specific success/failure discrimination. They do not
 prove complete visual equivalence or cover every possible unintended edit.
 The upstream green task still requires its specific RGB value, 00A933, although
 its instruction just says green; this policy does not silently relax that rule.
 
-Before admitting new agent runs, freeze the adapted reference files, their
-hashes, generation policy and exporter identity in a campaign scoring profile.
-Reject profile/environment mismatches before dispatch. Report original and
-adapted scores separately, and restart the smoke ramp with the same profile for
-both backends. Do not reinterpret historical raw scores as new successes.
+Fresh paired smoke runs are still required to establish actual agent outcomes
+under this scoring profile. Do not reinterpret the constructed controls or
+historical raw scores as new agent successes.

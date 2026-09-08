@@ -11,6 +11,7 @@ import { runCodex } from "../codex.js";
 import { recordEnvironment } from "../fingerprint.js";
 import { runProfile } from "../run-profile.js";
 import { verifyDriverRuntime } from "../driver-runtime.js";
+import { verifyScoringProfile } from "../scoring-profile.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -30,14 +31,21 @@ const appPath = isCode ? vscodePath : libreOfficePath;
 const driver = process.env.OPENSKY_DRIVER_BINARY;
 const driverSocket = process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET;
 if (!python || !appPath || !libreOfficePath || !driver) throw new Error("Set OPENSKY_EVAL_PYTHON, OPENSKY_EVAL_LIBREOFFICE, OPENSKY_DRIVER_BINARY and (for editor tasks) OPENSKY_EVAL_VSCODE");
+const scoringProfilePath = process.env.OPENSKY_EVAL_SCORING_PROFILE;
+if (!scoringProfilePath && process.env.OPENSKY_EVAL_SCORING_PROFILE_SHA256) throw new Error("An admitted scoring profile is required");
+const scoringProfile = scoringProfilePath ? await verifyScoringProfile({
+  python, officeExecutable: join(libreOfficePath, "Contents/MacOS/soffice"), profilePath: scoringProfilePath,
+  expectedSha256: process.env.OPENSKY_EVAL_SCORING_PROFILE_SHA256,
+}) : { name: "upstream-pinned-v1", sha256: null };
 for (const asset of task.assets) {
   const bytes = await readFile(join(root, task.id, asset.file));
   if (createHash("sha256").update(bytes).digest("hex") !== asset.sha256) throw new Error(`Task asset changed: ${asset.file}`);
 }
 await mkdir(artifacts, { recursive: true });
 await writeFile(join(artifacts, "run-profile.json"), JSON.stringify(profileLimits, null, 2), { flag: "wx" });
+await writeFile(join(artifacts, "scoring-profile.json"), JSON.stringify(scoringProfile, null, 2), { flag: "wx" });
 if (backend === "opensky") await verifyDriverRuntime({ binaryPath: driver, socket: driverSocket, artifacts });
-await recordEnvironment({ repo, appPath: libreOfficePath, vscodePath, driver, python, artifacts, nativeConfig: backend === "native" ? process.env.OPENSKY_NATIVE_REPL_CONFIG : undefined });
+await recordEnvironment({ repo, appPath: libreOfficePath, vscodePath, driver, python, artifacts, scoringProfile, nativeConfig: backend === "native" ? process.env.OPENSKY_NATIVE_REPL_CONFIG : undefined });
 const environment = JSON.parse(await readFile(join(artifacts, "environment.json"), "utf8"));
 const temporary = await mkdtemp(join(tmpdir(), "opensky-osworld-"));
 const document = join(temporary, task.inputFile);
@@ -91,7 +99,9 @@ try {
       const result = await runCodex({ model: "gpt-5.6-terra", artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: profileLimits.timeoutMs, maxToolCalls: profileLimits.maxToolCalls, mcp, authorizedApps: { [bundleId]: appName, [appPath]: appName }, desktopProgramScope: { ...scope, appSelectors: [...scope.appSelectors] },
         prompt: `Task: ${task.instruction}\nYou are using macOS ${environment.osVersion}. The document ${task.inputFile} is already open in ${appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nUse straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker.`,
       });
-      const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), task.id, document], { timeout: 15_000 })).stdout);
+      const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), task.id, document,
+        ...(scoringProfilePath ? ["--profile", scoringProfilePath, "--expected-profile-sha256", scoringProfile.sha256!] : []),
+      ], { timeout: 30_000 })).stdout);
       // Never award success for edits completed after an interrupted deadline.
       // Preserve the actual file grader independently from the task allowance.
       const outcome = { ...savedFileOutcome, taskSuccess: savedFileOutcome.taskSuccess && !result.taskLimit };
@@ -99,7 +109,9 @@ try {
         if (error.code !== "ENOENT") throw error;
         // Deletion is a saved-file failure, not a missing infrastructure result.
       });
-      const report = { taskId, backend, profile: profileLimits, suite: manifest.suite, upstreamCommit: manifest.upstreamCommit, adaptations: manifest.adaptations, outcome, savedFileOutcome, taskLimit: result.taskLimit, infrastructureError: result.infrastructureError, toolCalls: result.toolCalls, admittedCalls: result.admission?.admittedCalls ?? null, contextCompactions: result.contextCompactions, usage: result.usage, elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt) };
+      const report = { taskId, backend, profile: profileLimits, scoringProfile,
+        rawOutcome: savedFileOutcome.rawOutcome ?? savedFileOutcome, adaptedOutcome: savedFileOutcome.adaptedOutcome ?? null,
+        suite: manifest.suite, upstreamCommit: manifest.upstreamCommit, adaptations: manifest.adaptations, outcome, savedFileOutcome, taskLimit: result.taskLimit, infrastructureError: result.infrastructureError, toolCalls: result.toolCalls, admittedCalls: result.admission?.admittedCalls ?? null, contextCompactions: result.contextCompactions, usage: result.usage, elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt) };
       await writeFile(join(artifacts, "score.json"), JSON.stringify(report, null, 2));
       console.log(JSON.stringify(report));
   });

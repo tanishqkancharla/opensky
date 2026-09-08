@@ -30,6 +30,11 @@ Set `OPENSKY_EVAL_PYTHON`, `OPENSKY_EVAL_LIBREOFFICE`,
 `OPENSKY_DRIVER_BINARY`, `OPENSKY_EVAL_VSCODE` (for the expanded set), and
 `OPENSKY_NATIVE_REPL_CONFIG` to the installed local
 dependencies. The native config stays outside the repository and results.
+New campaigns also require `OPENSKY_EVAL_SCORING_PROFILE`, pointing to a frozen
+`profile.json` prepared from passing real-export controls. See
+[`impress-grading-validation.md`](../../docs/impress-grading-validation.md) for
+preparation commands. The campaign LibreOffice variable selects the `.app`
+bundle; the exporter test and profile preparation commands select `soffice`.
 Use Python 3.12 for the combined grader environment. A date-cell probe crashed
 under Python 3.14 with pandas 2.2.3; the same pinned dependencies passed under
 3.12. From the SDK checkout:
@@ -46,9 +51,13 @@ Each destination must be new. Stages 5 and 20 require complete paired evidence
 from the preceding stage, verified cleanup and no infrastructure failures.
 Real task failures remain scored and do not block the ramp. Interface order is
 counterbalanced by task; all desktop use is sequential. A controller stop waits
-for the current bounded attempt and its cleanup, then prevents the next launch.
-`plan.json` freezes the task manifest; `summary.json` reports valid pairs,
+for the current attempt and its cleanup, then prevents the next launch.
+`plan.json` freezes the task manifest and scoring profile; `scoring/` retains
+the verified reference copies. Stages must use the same scoring and task-limit
+profiles. `summary.json` reports valid pairs,
 both/native-only/OpenSky-only/neither outcomes, unscored pairs and raw arm data.
+Arm results retain original and adapted grades separately; summaries include
+`rawNativeSuccesses` and `rawOpenskySuccesses` alongside primary success counts.
 Any change in code/assets/desktop fingerprints during a campaign halts it.
 Stage 20 refuses to run until `fullTaskIds` contains a frozen 20-task set.
 
@@ -243,8 +252,7 @@ OSWorld harness; other platforms need their own authoritative runtime identity.
 
 Historical image movement failed the raw upstream grader despite satisfying the
 position rule. A no-edit export by the provisioned LibreOffice also fails the
-neutral raw-reference comparison. Treat the macOS Impress grading port as
-incomplete until these export differences are validated. Raw historical scores
+neutral raw-reference comparison. Raw historical scores
 remain preserved; no new paired success rate is inferred from the diagnostics.
 
 Run the read-only artifact audit with the provisioned Python environment:
@@ -260,8 +268,11 @@ python evals/parity/osworld/audit_impress_export.py \
 This exports reference/input copies through the real headless application, with
 private profiles and verified process cleanup. It never exports or repairs the
 agent's file. Results retain original grader options and separate raw scores
-from exported-reference diagnostics. The campaign scorer's default is unchanged.
-Validated so far: the moved-image artifact passes only the adapted diagnostic;
-unchanged-image and incorrect-slide-order artifacts still fail. Full adaptation
-requires task-by-task positive, negative, preservation and export compatibility
-checks, frozen reference hashes and matching application identity for both arms.
+from exported-reference diagnostics. This audit defaults to exported upstream
+references; `--reference-policy task-preserving-export-v1` additionally derives
+the duplicate-slide reference from the preserved input because upstream gold
+changes unrelated earlier slides. All five independently constructed completions
+and twenty negative controls passed their expected grading checks. The frozen
+profile integration validates hashes and the exporter before dispatch, and
+retains original grades separately. Fresh matched agent smoke runs remain
+pending; these file controls do not establish desktop parity.

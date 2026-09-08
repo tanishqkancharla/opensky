@@ -63,4 +63,27 @@ def score(task_id, output):
         return {"upstreamScore": 0, "completeDocumentTextMatches": False, "taskSuccess": False, "error": str(error)}
 
 if __name__ == "__main__":
-    print(json.dumps(score(sys.argv[1], Path(sys.argv[2]))))
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("task")
+    parser.add_argument("output", type=Path)
+    parser.add_argument("--profile", type=Path)
+    parser.add_argument("--expected-profile-sha256")
+    args = parser.parse_args()
+    if args.profile:
+        from scoring_profile import verify
+        descriptor = verify(args.profile)
+        if args.expected_profile_sha256 and descriptor["sha256"] != args.expected_profile_sha256:
+            raise ValueError("Scoring profile changed after admission")
+        raw = score(args.task, args.output)
+        task = next(t for t in json.loads((ROOT / "manifest.json").read_text())["tasks"] if t["id"] == args.task)
+        adapted = None
+        if task.get("category") == "libreoffice_impress":
+            from score_extended import score_extended
+            adapted = score_extended(task, args.output, reference_root=args.profile.resolve().parent / "references")
+        print(json.dumps({**(adapted or raw), "scoringProfile": descriptor,
+                          "rawOutcome": raw, "adaptedOutcome": adapted}))
+    else:
+        if args.expected_profile_sha256:
+            raise ValueError("An admitted scoring profile is required")
+        print(json.dumps(score(args.task, args.output)))

@@ -15,7 +15,7 @@ async function sha256(path: string): Promise<string> {
 
 /** Fingerprint actual code/assets, including uncommitted work. Never serialize
  * auth configuration or environment values into portable result artifacts. */
-export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; python: string; vscodePath?: string; nativeConfig?: string; artifacts: string }) {
+export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; python: string; vscodePath?: string; nativeConfig?: string; artifacts: string; scoringProfile?: { name: string; sha256: string | null } }) {
   const files: Record<string, string> = {};
   async function walk(directory: string) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -65,6 +65,7 @@ export async function recordEnvironment(options: { repo: string; appPath: string
     sdkCommit: await command("git", ["rev-parse", "HEAD"]),
     worktreeDirty: !!(await command("git", ["status", "--porcelain"])),
     codeAndAssetsSha256: createHash("sha256").update(JSON.stringify(sorted)).digest("hex"), files: sorted,
+    scoringProfile: options.scoringProfile ?? null,
     driver: { sha256: await sha256(options.driver), identity: JSON.parse(await command(options.driver, ["--opensky-driver-identity"])) },
     codex: { sha256: await sha256(join(homedir(), ".local/bin/codex")), version: await command(join(homedir(), ".local/bin/codex"), ["--version"]) },
     python: {

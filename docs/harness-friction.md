@@ -1662,3 +1662,37 @@ four negative controls (unchanged, incorrect, text damage, formatting damage).
 All 32 exporter receipts verify process-group exit and temporary-profile removal.
 E2E TypeScript checks and diff whitespace checks passed. No GUI windows or agent
 model calls were used. Campaign profile integration remains pending.
+
+**SET-059 — Campaign admission did not bind validated grading references (2026-09-08):**
+The SET-058 controls demonstrated success/failure discrimination, but the
+controller still dispatched using raw references and had no explicit scoring
+identity across arms or ramp stages. Added profile preparation that regrades
+all 25 control files, checks their source/export hashes and cleanup receipts,
+verifies original asset pins, and freezes the seven Impress reference files,
+grader sources, task definitions and production LibreOffice identity.
+
+New campaigns require `OPENSKY_EVAL_SCORING_PROFILE`. They retain their own
+reference copies, write policy/profile/reference hashes into the plan and
+environment records, reverify before each arm, and pass the admitted digest to
+the runner. The runner checks before app setup or model dispatch; the read-only
+scorer checks again after completion. Reference/exporter/source changes refuse
+admission or invalidate scoring instead of becoming task failures. Prior ramp
+stages must use the same scoring and task-limit profiles. Original and adapted
+arm outcomes and aggregate raw counts are separately retained. Scoring without
+a profile and historical result files are unchanged.
+
+Validation: `scoring-profile-2/profile.json` froze all 25 controls with profile
+digest `916e5d6bf07648a43a6d5cb2f3db29c3ab284caeda79a3918a924c649d95663c`.
+Twelve real saved-file/profile/controller acceptance cases plus 47 existing
+grader and nine admission checks passed, 68/68 in 30.79 seconds. Refusal cases
+cover changed/missing/incomplete references, mismatched source pins/exporter,
+and post-admission profile changes. The controller refused before creating a
+campaign; retained campaign copies survived preparation-file changes. The
+read-only scorer reported raw image failure and adapted success without changing
+the specimen, and preserved Writer scoring. E2E and explicit controller/runner
+TypeScript checks passed. Evidence logs accompany the frozen profile directory.
+
+No model dispatch or GUI launch occurred, and test scratch directories were
+removed. This closes the grading configuration gap, not native GUI acceptance
+or the new smoke baseline. Pending candidate driver acceptance and the next
+spending authorization remain separate requirements.
