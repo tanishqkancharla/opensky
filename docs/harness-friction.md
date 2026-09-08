@@ -1306,3 +1306,36 @@ This is a successful native interaction primitive, not completion of the
 OSWorld task requiring the D-column range. No model ran or spend was added.
 LibreOffice quit cooperatively, its exact process exit was verified, and the
 temporary document/profile were removed. No native service fix is claimed.
+
+**SET-047 — configured binary was not proof of the connected daemon (2026-09-08):**
+The evaluator fingerprinted `OPENSKY_DRIVER_BINARY`, but did not forward an
+explicit socket into its agent MCP configuration. The driver's convenience
+`permissions status` also ignored its socket option. A newly configured CLI
+could therefore operate the old daemon while reports named the new binary.
+The macOS evaluator and app-installation SDK fixture now call read-only
+`check_permissions` through the selected socket before app setup, require the
+daemon's own executable path to match the configured binary, and require both
+TCC grants. The MCP adapter repeats the check at startup. Receipts are retained
+as `driver-runtime.json`; no automatic start, grant or fallback is allowed.
+The older capability-preflight entry point now also uses the uncapped profile.
+
+`evals/runs/driver-runtime-identity-probe-1` exercised real daemons: the matching
+permissioned old daemon passed, new CLI/default old daemon was rejected for
+identity mismatch, and exact isolated candidate was rejected for missing grants.
+Three cases completed in 348 ms with no model calls or GUI actions. Candidate
+PID 5521 exited after explicit-socket stop; original PID 94446 remained running.
+E2E and evaluator TypeScript checks passed. This proves selection gating, not
+the candidate's app-path fix. Verification compares paths and is macOS-specific;
+it cannot identify old bytes already loaded after an in-place binary update.
+
+**SET-048 — driver PR ordinary CI is not green (2026-09-08):**
+Read-only inspection of driver PR #2 at `05624b9bc` found failed contract,
+generated-binding, release-metadata and documentation jobs. Logs are retained
+locally under `work/driver-*-ci-failures.log`. Contract fixtures still expect
+the upstream `cua-driver` CLI/MCP name, and the exact MCP tool roster omits
+`browser_key` and `close_window`. Python UniFFI generated files are stale.
+Release validation cannot parse the fork's rewritten Windows installer.
+The documentation job fails to link duplicate `CoreMediaBridge` Swift symbols
+from apple_cf and screencapturekit. These checks/fixtures and installer were
+unchanged by the current three-file app-path PR. They remain fork maintenance
+and release blockers; successful local focused checks do not override them.

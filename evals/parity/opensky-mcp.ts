@@ -6,6 +6,7 @@ import { OpenSkyDriverClient } from "../../src/driver.js";
 import { detectTarget } from "../../src/platform.js";
 import { DesktopProgramPolicy } from "./desktop-program.js";
 import { configuredAdmission, limitResponse } from "./admission.js";
+import { verifyDriverRuntime } from "./driver-runtime.js";
 
 // A transport adapter around the existing public cua REPL. No test actions,
 // fabricated observations, or agent-side filesystem access are added here.
@@ -13,7 +14,9 @@ const homeDir = process.env.OPENSKY_HOME;
 const binaryPath = process.env.OPENSKY_DRIVER_BINARY;
 if (!homeDir || !binaryPath) throw new Error("Provide OPENSKY_HOME and OPENSKY_DRIVER_BINARY; automatic installation/start is disabled.");
 await mkdir(homeDir, { recursive: true });
-const driver = new OpenSkyDriverClient({ binaryPath, autoInstall: false, autoStart: false });
+const socket = process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET;
+await verifyDriverRuntime({ binaryPath, socket, artifacts: homeDir });
+const driver = new OpenSkyDriverClient({ binaryPath, socket, autoInstall: false, autoStart: false });
 const runtime = createCuaReplToolRuntime(driver, detectTarget(), { homeDir });
 const policy = process.env.PARITY_DESKTOP_SCOPE && new DesktopProgramPolicy(JSON.parse(process.env.PARITY_DESKTOP_SCOPE));
 const admission = configuredAdmission();

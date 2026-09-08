@@ -10,6 +10,7 @@ import { withOwnedMacApp } from "../mac-app.js";
 import { runCodex } from "../codex.js";
 import { recordEnvironment } from "../fingerprint.js";
 import { runProfile } from "../run-profile.js";
+import { verifyDriverRuntime } from "../driver-runtime.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -27,6 +28,7 @@ const vscodePath = process.env.OPENSKY_EVAL_VSCODE;
 const isCode = task.category === "vs_code";
 const appPath = isCode ? vscodePath : libreOfficePath;
 const driver = process.env.OPENSKY_DRIVER_BINARY;
+const driverSocket = process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET;
 if (!python || !appPath || !libreOfficePath || !driver) throw new Error("Set OPENSKY_EVAL_PYTHON, OPENSKY_EVAL_LIBREOFFICE, OPENSKY_DRIVER_BINARY and (for editor tasks) OPENSKY_EVAL_VSCODE");
 for (const asset of task.assets) {
   const bytes = await readFile(join(root, task.id, asset.file));
@@ -34,6 +36,7 @@ for (const asset of task.assets) {
 }
 await mkdir(artifacts, { recursive: true });
 await writeFile(join(artifacts, "run-profile.json"), JSON.stringify(profileLimits, null, 2), { flag: "wx" });
+if (backend === "opensky") await verifyDriverRuntime({ binaryPath: driver, socket: driverSocket, artifacts });
 await recordEnvironment({ repo, appPath: libreOfficePath, vscodePath, driver, python, artifacts, nativeConfig: backend === "native" ? process.env.OPENSKY_NATIVE_REPL_CONFIG : undefined });
 const environment = JSON.parse(await readFile(join(artifacts, "environment.json"), "utf8"));
 const temporary = await mkdtemp(join(tmpdir(), "opensky-osworld-"));
@@ -79,7 +82,7 @@ try {
       const mcp = {
         command: process.execPath,
         args: ["--import", join(repo, "node_modules/tsx/dist/loader.mjs"), join(root, `../${backend === "native" ? "native" : "opensky"}-mcp.ts`)],
-        env: { PARITY_DESKTOP_SCOPE: JSON.stringify(scope), OPENSKY_HOME: join(artifacts, "agent-sdk"), OPENSKY_DRIVER_BINARY: driver, ...(nativeConfig ? { OPENSKY_NATIVE_REPL_CONFIG: nativeConfig } : {}) },
+        env: { PARITY_DESKTOP_SCOPE: JSON.stringify(scope), OPENSKY_HOME: join(artifacts, "agent-sdk"), OPENSKY_DRIVER_BINARY: driver, ...(driverSocket ? { OPENSKY_DRIVER_SOCKET: driverSocket } : {}), ...(nativeConfig ? { OPENSKY_NATIVE_REPL_CONFIG: nativeConfig } : {}) },
         enabled_tools: backend === "native" ? ["js"] : ["cua_repl"],
       };
       const guide = backend === "native"

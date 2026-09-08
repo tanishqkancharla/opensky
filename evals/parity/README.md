@@ -226,3 +226,14 @@ receive the same path selector. App-launch readiness alone does not prove that
 either agent's public discovery interface can bind that installation. The first
 real path probe passed natively and exposed a driver inventory/launch-path gap
 in OpenSky; keep that gap visible until a real SDK probe passes.
+
+Before launching an OpenSky fixture, `driver-runtime.json` records a read-only
+`check_permissions` response from the socket that will receive actions. Its
+daemon-attributed executable must resolve to `OPENSKY_DRIVER_BINARY` and have
+both macOS permissions. Set `OPENSKY_DRIVER_SOCKET` when selecting an isolated
+candidate; that socket is forwarded to the agent transport, which repeats the
+identity check at startup. A mismatch or unavailable identity blocks dispatch
+before app setup or spending. Do not update an executable in place while its
+daemon is running: path verification does not identify already-loaded bytes.
+The current runtime attribution check is macOS-specific, like this local
+OSWorld harness; other platforms need their own authoritative runtime identity.
