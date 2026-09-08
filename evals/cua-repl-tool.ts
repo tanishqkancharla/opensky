@@ -15,8 +15,8 @@ export const CUA_REPL_TOOL_NAMES = ["cua_repl"] as const;
 type BridgeCallTrace = {
   op: string;
   args: unknown[];
-  durationMs: number;
-  status: "completed" | "failed";
+  durationMs: number | null;
+  status: "pending" | "completed" | "failed";
   error?: string;
 };
 
@@ -41,10 +41,11 @@ export function createCuaReplToolRuntime(
       const args = Array.isArray(parsed.args) ? parsed.args : [];
       const op = parsed.op ?? "";
       const begun = performance.now();
-      const trace: BridgeCallTrace = { op, args, durationMs: 0, status: "completed" };
+      const trace: BridgeCallTrace = { op, args, durationMs: null, status: "pending" };
       activeBridgeCalls?.push(trace);
       try {
         const value = encodeBridgeValue(await dispatch(op, args, cua, targets, browsers));
+        trace.status = "completed";
         return JSON.stringify(value === undefined ? { __cuaUndefined: true } : value);
       } catch (error) {
         trace.status = "failed";
@@ -102,7 +103,7 @@ export function createCuaReplToolRuntime(
                 title: params.title,
                 code: params.code,
                 emissions: activeEmissions.length,
-                cuaCalls: activeBridgeCalls,
+                cuaCalls: activeBridgeCalls.map(call => ({ ...call })),
                 result: encodeBridgeValue(result.value),
                 logs: result.logs,
                 runtimeError: undefined as string | undefined,
@@ -111,20 +112,25 @@ export function createCuaReplToolRuntime(
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             const logs = error instanceof AsyncReplError ? error.logs : [];
+            const evaluatorUsable = !(error instanceof AsyncReplError) || error.evaluatorUsable;
+            const recovery = evaluatorUsable
+              ? "Existing bindings remain available; use the emitted state before retrying."
+              : "This evaluator cannot accept more cells after a timeout. The host must create a new evaluator; do not retry actions in this session.";
             return {
               isError: true,
               content: [
                 ...[...activeEmissions, ...logs].flatMap(renderValue),
-                { type: "text" as const, text: `Error: ${message}\nEarlier actions in this cell may have completed. Existing bindings remain available; use the emitted state before retrying.` },
+                { type: "text" as const, text: `Error: ${message}\nEarlier actions in this cell may have completed. ${recovery}` },
               ],
               details: {
                 title: params.title,
                 code: params.code,
                 emissions: activeEmissions.length,
-                cuaCalls: activeBridgeCalls,
+                cuaCalls: activeBridgeCalls.map(call => ({ ...call })),
                 result: undefined,
                 logs,
                 runtimeError: message,
+                evaluatorUsable,
               },
             };
           } finally {

@@ -12,13 +12,15 @@ export interface EvalResult {
 }
 
 export class AsyncReplError extends Error {
+  readonly evaluatorUsable: boolean;
   constructor(
     message: string,
     public readonly logs: string[],
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; evaluatorUsable?: boolean },
   ) {
     super(message, options);
     this.name = "Error";
+    this.evaluatorUsable = options?.evaluatorUsable ?? true;
   }
 }
 
@@ -119,7 +121,7 @@ export class AsyncRepl {
   async evaluate(code: string, filename = "opensky"): Promise<EvalResult> {
     const run = async (): Promise<EvalResult> => {
       if (this.strictSandbox && this.poisonedReason) {
-        throw new AsyncReplError(`strictSandbox evaluator is poisoned after ${this.poisonedReason}; create a new evaluator`, []);
+        throw new AsyncReplError(`strictSandbox evaluator is poisoned after ${this.poisonedReason}; create a new evaluator`, [], { evaluatorUsable: false });
       }
       const logs: string[] = [];
       const generation = ++this.evaluationSequence;
@@ -151,7 +153,7 @@ export class AsyncRepl {
         }
         const message = error instanceof Error ? error.message : String(error);
         if (this.strictSandbox && /timed out/i.test(message)) this.poisonedReason = message;
-        throw new AsyncReplError(message, logs, { cause: error });
+        throw new AsyncReplError(message, logs, { cause: error, evaluatorUsable: !this.poisonedReason });
       } finally {
         if (this.strictSandbox) this.activeEvaluations.delete(generation);
         if (!this.strictSandbox) this.sandbox.console = previousConsole;

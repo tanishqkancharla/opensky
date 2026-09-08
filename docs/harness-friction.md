@@ -1367,3 +1367,22 @@ commit provenance while still failing on any generated-file drift. Artifact
 review/application and remaining legacy installer-wiring tests are pending.
 No model or GUI evaluation ran; no task-success score is inferred from these
 protocol/build checks. The signed candidate and original driver are unchanged.
+
+**SET-049 — timeout recovery advice contradicted the evaluator state (2026-09-08):**
+A strict REPL timeout permanently prevents further cells in that evaluator, but
+the tool response said earlier bindings remained available and encouraged retries.
+AsyncReplError now exposes evaluatorUsable; the tool reports that a timed-out
+session cannot accept more cells. This does not reset, recover, or cancel the
+underlying driver operation. In-flight bridge traces now remain pending with no
+invented duration until dispatch finishes, and returned traces are snapshots.
+Native Codex context compaction and uncapped task duration/call count are unchanged.
+
+Two real evaluator Vitest scenarios passed: ordinary errors preserve bindings;
+timeouts reject subsequent cells. SDK build and E2E type checking passed.
+The default 60-second public tool-wrapper diagnostic in
+`evals/runs/repl-timeout-experience-1` passed its timeout-message and next-cell
+assertions after 60,004 ms, with no model, GUI apps, or driver actions. Its teardown
+failed trying to close an owned session against an unavailable desktop helper;
+the process exited and the parent removed the temporary directory. This is a
+partial diagnostic success with a recorded teardown failure, not a clean GUI run.
+Delayed real-driver trace acceptance and long-action recovery remain pending.
