@@ -1,16 +1,19 @@
 # OpenSky SDK E2E drafts
 
 **Status: all ten browser SDK cases pass on hosted Linux, including real paste and background scrolling with foreground-focus isolation. The native exact-document opening/close case also passes on macOS; selection and paste acceptance remain in progress.**
-There are 16 implemented SDK experience test bodies (15 intended successful workflows and one rejection)
+There are 18 implemented SDK experience test bodies (17 intended successful workflows and one rejection)
 and 14 explicitly pending scenarios. A passing typecheck or test listing is not
 driver acceptance. Missing capabilities produce failing E2E results, not passing
 rejection assertions.
 
-`DIALOG-N01` adds a real LibreOffice save-dialog regression. It currently fails
-on macOS driver runtime `aa31c70ee`: the public SDK keeps showing the document
-while independent native AX shows its format-confirmation dialog. Run only on
+`DIALOG-N01` reproduced a real LibreOffice save-dialog regression: the SDK kept
+showing the document while native AX showed its format-confirmation dialog.
+The TypeScript app-observation fix passes this case, plus `DIALOG-N02` (confirm
+format, verify the actual saved text and return to the document) and `DIALOG-N03`
+(retain an earlier exact document handle while the app observes its dialog),
+using the existing macOS driver runtime `aa31c70ee`. Run only on
 an authorized desktop with `OPENSKY_REAL_DRIVER=1`, `OPENSKY_DRIVER_BINARY`, and
-`OPENSKY_EVAL_LIBREOFFICE` set, selecting `specs/native-dialogs.test.ts`. Its
+`OPENSKY_EVAL_LIBREOFFICE` and `OPENSKY_EVAL_PYTHON` set, selecting `specs/native-dialogs.test.ts`. Its
 fixture refuses existing LibreOffice instances, owns a disposable profile and
 document, and verifies process exit before removing them, including after a
 failed test. This case is not in the hosted browser matrix. Separate parity

@@ -192,7 +192,7 @@ export class CuaFacade {
 
   async getApp(app: string): Promise<App> {
     if (!app?.trim()) throw new OpenSkyError("Invalid params: app is required", "invalid_params");
-    const state = await this.opensky.get_app_state({ app, disableDiff: true, includeScreenshot: false });
+    const state = await this.opensky.get_app_state({ app, scope: "app", disableDiff: true, includeScreenshot: false });
     this.options.emit?.(state.text);
     return new BoundApp(this, state.targetHandle);
   }
@@ -322,7 +322,7 @@ export class CuaFacade {
     this.navigationVersions.set(handle, version);
   }
 
-  async state(handle: TargetHandle, options: StateOptions, screenshot: boolean): Promise<AppState> {
+  async state(handle: TargetHandle, options: StateOptions, screenshot: boolean, appScope = false): Promise<AppState> {
     this.assertOpen(handle);
     if ((options.context !== undefined || options.continuation !== undefined) &&
         (screenshot || options.query !== undefined || (options.context !== undefined && options.continuation !== undefined))) {
@@ -335,6 +335,7 @@ export class CuaFacade {
     const storedContext = options.context !== undefined || options.continuation !== undefined;
     const state = await this.opensky.get_app_state({
       app: handle,
+      ...(appScope ? { scope: "app" as const } : {}),
       disableDiff: navigation !== undefined && !storedContext ? true : options.disableDiffing,
       includeScreenshot: screenshot,
       ...(options.query === undefined ? {} : { query: options.query }),
@@ -410,18 +411,26 @@ export class CuaFacade {
 }
 
 abstract class BoundTarget implements Target {
-  protected constructor(protected readonly facade: CuaFacade, readonly targetHandle: TargetHandle) {}
+  protected constructor(protected readonly facade: CuaFacade, private observedHandle: TargetHandle) {}
+
+  get targetHandle(): TargetHandle { return this.observedHandle; }
+
+  private async observe(options: StateOptions, screenshot: boolean): Promise<AppState> {
+    const state = await this.facade.state(this.targetHandle, options, screenshot, this instanceof BoundApp);
+    this.observedHandle = state.targetHandle;
+    return state;
+  }
 
   toJSON() { return { targetHandle: this.targetHandle, kind: this instanceof BoundTab ? "tab" : "app" }; }
 
   async getAXState(options: StateOptions = {}): Promise<string> {
-    const state = await this.facade.state(this.targetHandle, options, false);
+    const state = await this.observe(options, false);
     this.facade.emit(state.text, options);
     return state.text;
   }
 
   async getScreenshot(options: ObservationOptions = {}): Promise<Uint8Array> {
-    const state = await this.facade.state(this.targetHandle, {}, true);
+    const state = await this.observe({}, true);
     if (!state.screenshot) throw new CuaUnsupportedError("getScreenshot", "the exact target returned no screenshot");
     const screenshot = new Uint8Array(await readFile(fileURLToPath(state.screenshot.url)));
     this.facade.emit(screenshot, options);
@@ -429,7 +438,7 @@ abstract class BoundTarget implements Target {
   }
 
   async getAXStateAndScreenshot(options: StateOptions = {}): Promise<StateAndScreenshot> {
-    const state = await this.facade.state(this.targetHandle, options, true);
+    const state = await this.observe(options, true);
     const result: StateAndScreenshot = { state: state.text };
     if (state.screenshot) result.screenshot = new Uint8Array(await readFile(fileURLToPath(state.screenshot.url)));
     this.facade.emit(result, options);

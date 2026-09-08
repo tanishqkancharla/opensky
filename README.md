@@ -17,6 +17,14 @@ console are summarized; observation methods attach the image directly.
 Harness development is tracked in the [friction and fixes ledger](docs/harness-friction.md)
 and the concise, cross-domain [harness principles](docs/harness-principles.md).
 
+Native `cua.getApp()` bindings observe the frontmost visible window within the
+bound app process, so later observations can show a newly opened dialog or
+return to its document. Actions use the exact window from the latest successful
+observation. Explicit SDK target handles remain fixed: app observation returns
+a new handle when the window changes and never inherits document-close ownership.
+The flat SDK can request the same behavior with `get_app_state({app, scope:"app"})`;
+its default scope is `"window"`. Missing or ambiguous stacking evidence is reported.
+
 ```js
 import { createOpenSky } from "opensky-cua";
 
@@ -201,7 +209,7 @@ The original snake_case, app-argument API remains available for backward compati
 | Method | Cua Driver tools used |
 | --- | --- |
 | `list_apps()` | `list_apps` |
-| `get_app_state({app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` collects matches and bounded evidence neighborhoods; `context_element_index` and emitted `continuation` tokens read same-snapshot context. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
+| `get_app_state({app, scope?, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` collects matches and bounded evidence neighborhoods; `context_element_index` and emitted `continuation` tokens read same-snapshot context. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
 | `open_target({app, targets, includeScreenshot?, query?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; `query` narrows that initial exact-browser observation. On macOS, native targets request a fresh app instance and bind only after proving a new pid with one uniquely revalidated ordinary window |
 | `navigate({app, url | action, includeScreenshot?, query?})` | Navigates an exact driver-owned typed tab to a URL or performs exact-tab back, forward, or reload, then returns settled state |
 | `close_target({app})` | Closes one exact driver-owned browser target or proven-owned macOS native window; refuses to close ordinary user-owned app/window/tab state |

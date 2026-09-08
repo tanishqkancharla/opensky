@@ -161,7 +161,7 @@ describe("native-style cua facade", () => {
     const app = await cua.getApp("Example");
     assert.deepEqual(fake.calls[0], {
       method: "get_app_state",
-      args: { app: "Example", disableDiff: true, includeScreenshot: false },
+      args: { app: "Example", scope: "app", disableDiff: true, includeScreenshot: false },
     });
     await app.click(7, { mouseButton: "right", clickCount: 1 });
     await app.scroll([10, 20], "down", 2);
@@ -369,10 +369,10 @@ describe("native-style cua facade", () => {
     assert.deepEqual([...bytes], [137, 80, 78, 71]);
     assert.deepEqual([...combined.screenshot!], [137, 80, 78, 71]);
     assert.deepEqual(fake.calls.filter((call) => call.method === "get_app_state").slice(1).map((call) => call.args), [
-      { app: "tgt_app", disableDiff: true, includeScreenshot: false },
-      { app: "tgt_app", disableDiff: undefined, includeScreenshot: false, query: "needle" },
-      { app: "tgt_app", disableDiff: undefined, includeScreenshot: true },
-      { app: "tgt_app", disableDiff: true, includeScreenshot: true },
+      { app: "tgt_app", scope: "app", disableDiff: true, includeScreenshot: false },
+      { app: "tgt_app", scope: "app", disableDiff: undefined, includeScreenshot: false, query: "needle" },
+      { app: "tgt_app", scope: "app", disableDiff: undefined, includeScreenshot: true },
+      { app: "tgt_app", scope: "app", disableDiff: true, includeScreenshot: true },
     ]);
   });
 

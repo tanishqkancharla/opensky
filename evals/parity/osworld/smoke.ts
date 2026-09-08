@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { withOwnedMacApp } from "../mac-app.js";
 import { runCodex } from "../codex.js";
+import { recordEnvironment } from "../fingerprint.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -27,6 +28,7 @@ for (const asset of task.assets) {
   if (createHash("sha256").update(bytes).digest("hex") !== asset.sha256) throw new Error(`Task asset changed: ${asset.file}`);
 }
 await mkdir(artifacts, { recursive: true });
+await recordEnvironment({ repo, appPath, driver, artifacts, nativeConfig: backend === "native" ? process.env.OPENSKY_NATIVE_REPL_CONFIG : undefined });
 const temporary = await mkdtemp(join(tmpdir(), "opensky-osworld-"));
 const document = join(temporary, task.inputFile);
 await copyFile(join(root, task.id, task.inputFile), document);

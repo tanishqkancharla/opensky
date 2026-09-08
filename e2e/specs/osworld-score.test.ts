@@ -19,3 +19,19 @@ test("the upstream gold document passes the lowercase task", async ({ scorer, ou
 test("lowercasing paragraphs alone leaves the full-document task incomplete", async ({ scorer, outputs }) => {
   await expect(scorer.score(outputs.partialCase)).resolves.toMatchObject({ taskSuccess: false, upstreamScore: 1, completeDocumentTextMatches: false });
 });
+
+for (const specimen of ["originalFont", "originalSubscript", "originalStrike"] as const) {
+  test(`${specimen} does not already satisfy its task`, async ({ scorer, outputs }) => {
+    await expect(scorer.score(outputs[specimen])).resolves.toMatchObject({ taskSuccess: false, upstreamScore: 0 });
+  });
+}
+for (const specimen of ["correctFont", "correctSubscript", "correctStrike"] as const) {
+  test(`${specimen} satisfies the saved-document task`, async ({ scorer, outputs }) => {
+    await expect(scorer.score(outputs[specimen])).resolves.toMatchObject({ taskSuccess: true, upstreamScore: 1 });
+  });
+}
+for (const specimen of ["partialFont", "partialSubscript"] as const) {
+  test(`${specimen} cannot pass with only a subset formatted`, async ({ scorer, outputs }) => {
+    await expect(scorer.score(outputs[specimen])).resolves.toMatchObject({ taskSuccess: false, upstreamScore: 1, formatMatches: false });
+  });
+}

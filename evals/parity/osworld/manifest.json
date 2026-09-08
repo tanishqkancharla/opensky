@@ -2,7 +2,7 @@
   "suite": "osworld-verified-macos-port",
   "upstreamCommit": "fc31a9049664292fcb35d6e501ee1dc839f2cf6d",
   "upstreamMetricsSha256": "3e414ebae04231c6c83f5d264198e058f7c5b120f81f34a3bf30134f60ee8c3c",
-  "extractedMetricsSha256": "6e4ca1b2df3d41991c5834ab6f5fd61700babe13d18c05d197689e27380b1ded",
+  "extractedMetricsSha256": "b0f81f0490835fa5e1e5c8c3f91dbe6eb77e9ad1343ed34f88778ee6532eda41",
   "smokeTaskIds": [
     "3ef2b351-8a84-4ff2-8724-d86eae9b842e",
     "d53ff5ee-3b1a-431e-b2be-30ed2673079b"
@@ -35,6 +35,53 @@
           "sha256": "26932140b262b8886b42d82e3a8acd1e48a4c9c97abe803791e9cf1ab10d3ce8"
         }
       ]
+    },
+    {
+      "id": "0e763496-b6bb-4508-a427-fad0b6c3e195",
+      "instruction": "Change the font to \"Times New Roman\" throughout the text.",
+      "inputFile": "Dublin_Zoo_Intro.docx",
+      "evaluator": "compare_font_names",
+      "assets": [
+        {
+          "file": "Dublin_Zoo_Intro.docx",
+          "sha256": "76d9039c2b6c86381cbcf1a87178c6c50bbcf9b1e3d651ddb6e9caa189988430"
+        }
+      ]
+    },
+    {
+      "id": "0b17a146-2934-46c7-8727-73ff6b6483e8",
+      "instruction": "Help me change the 2 in \"H2O\" to a subscript.",
+      "inputFile": "H2O_Factsheet_WA.docx",
+      "evaluator": [
+        "compare_docx_files",
+        "compare_subscript_contains"
+      ],
+      "assets": [
+        {
+          "file": "H2O_Factsheet_WA.docx",
+          "sha256": "d853fe6eb1d49cfe6c31108c587a23de239314608c7ca036e38291efc9461e11"
+        },
+        {
+          "file": "H2O_Factsheet_WA_Gold.docx",
+          "sha256": "489dcf67cd13dc13a8e37152b6db1f4931e49030ba67aca47c573345ce9fdc00"
+        }
+      ]
+    },
+    {
+      "id": "72b810ef-4156-4d09-8f08-a0cf57e7cefe",
+      "instruction": "I am peer-reviewing my friend's course outline. I think the last paragraph is redundant so I want to add strike-through on words in the last paragraph. Can you do this for me?",
+      "inputFile": "GEOG2169_Course_Outline_2022-23.docx",
+      "evaluator": "evaluate_strike_through_last_paragraph",
+      "assets": [
+        {
+          "file": "GEOG2169_Course_Outline_2022-23.docx",
+          "sha256": "6c960a6d9e4983b410eb3e27b610b1569649a20c5b470116e3db52ca9220dd50"
+        },
+        {
+          "file": "GEOG2169_Course_Outline_2022-23_Gold.docx",
+          "sha256": "b914fe1c978cdfbe7830b14f7aff45da37f3dc7f1c96cfe2e39ca7f08ef50a21"
+        }
+      ]
     }
   ],
   "adaptations": [
@@ -44,5 +91,12 @@
     "Per-process PYTHONDONTWRITEBYTECODE=1 avoids an observed embedded-Python startup hang; no persistent preferences changed",
     "Agent explicitly saves the document; evaluator does not send save keystrokes",
     "Original upstream evaluator score plus separate content-preservation guard; both are reported"
+  ],
+  "rampTaskIds": [
+    "3ef2b351-8a84-4ff2-8724-d86eae9b842e",
+    "d53ff5ee-3b1a-431e-b2be-30ed2673079b",
+    "0e763496-b6bb-4508-a427-fad0b6c3e195",
+    "0b17a146-2934-46c7-8727-73ff6b6483e8",
+    "72b810ef-4156-4d09-8f08-a0cf57e7cefe"
   ]
 }

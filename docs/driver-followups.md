@@ -25,7 +25,10 @@ New real LibreOffice observations (2026-09-07; runtime `aa31c70ee`):
   observation/input authority. Acceptance: save an edited DOCX through the
   public SDK, observe and confirm its format dialog, verify saved content, and
   preserve unrelated sibling documents. Do not infer ownership from same PID
-  or a new window alone. No fix is implemented yet.
+  or a new window alone. The native-style app facade now follows the verified
+  frontmost window within its bound PID on observation, fixing the observed
+  app-level save workflow in TypeScript (SET-025). Explicit document-handle
+  modal correlation, especially cross-process panels, still needs this work.
 - **Fresh running-app discovery (SET-022):** driver `list_apps` omitted a
   visible running workspace LibreOffice instance that `list_windows` found.
   Verify freshness of the long-lived NSWorkspace enumeration; the precise

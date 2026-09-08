@@ -33,6 +33,12 @@ On macOS they must enable **Accessibility** and **Screen Recording** in System S
 
 Prefer the bound native-style facade:
 
+`cua.getApp()` follows the frontmost visible window of that app on each
+observation, including dialogs. Observe after actions that open or close windows;
+subsequent actions address the exact latest observed window. An explicit legacy
+`targetHandle` keeps its original document/window identity. Use fresh indices
+after a window transition. App observations refuse ambiguous stacking evidence.
+
 ```js
 const app = await cua.getApp("Calculator");
 console.log(await app.getAXState());
@@ -40,7 +46,7 @@ await app.click(13);
 return app.getAXState();
 ```
 
-The facade exposes exact target objects and camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Exact browser tabs support clipboard paste in text, HTML, and literal Markdown formats. Native paste, hidden tabs, the in-app browser, optional browser capabilities, and host marks remain unsupported or unavailable.
+The facade exposes bound app and exact tab objects with camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Exact browser tabs support clipboard paste in text, HTML, and literal Markdown formats. Native paste, hidden tabs, the in-app browser, optional browser capabilities, and host marks remain unsupported or unavailable.
 
 Browser queries include bounded source-ordered evidence neighborhoods when the
 helper supports them, retaining unmatched labels beside matches. These are local
@@ -105,7 +111,7 @@ Prefer display names for actions when a bundle id looks ineffective. Always re-s
 opensky.target                    // "mac" | "win" | "linux"
 
 await opensky.list_apps()
-await opensky.get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation? })
+await opensky.get_app_state({ app, scope?, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation? })
 await opensky.open_target({ app, targets, includeScreenshot?, query? })
 await opensky.navigate({ app, url?, action?: "back" | "forward" | "reload", includeScreenshot?, query? }) // exactly one of url/action
 await opensky.close_target({ app })
@@ -131,7 +137,7 @@ Returns `{ id, displayName, lastUsedDate, useCount, isRunning }[]`.
 
 `id` is the bundle id when the helper provides one, otherwise the launch path. Kernel/system processes without app metadata are omitted. `lastUsedDate` is unix seconds. `useCount` is included when the helper reports it.
 
-### `get_app_state({ app, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation? })`
+### `get_app_state({ app, scope?, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation? })`
 
 Returns `{ app, targetHandle, text, screenshot, target? }`. `target` truthfully separates requested resources, native-window correlation, current AX document identity, and browser-tab verification. For an explicit resource, `target.handle` equals `targetHandle`. Treat `tab.status: "unverified"` literally; a new native window does not prove a new browser tab.
 

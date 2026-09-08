@@ -1,7 +1,8 @@
 # Extracted without body changes from OSWorld desktop_env/evaluators/metrics/docs.py
 # Commit fc31a9049664292fcb35d6e501ee1dc839f2cf6d. Apache-2.0; see LICENSE.
-# Only dependencies of these two functions are imported; unrelated OCR/model code is not loaded.
+# Only dependencies of these selected functions are imported; unrelated OCR/model code is not loaded.
 import logging
+from typing import Any, Dict, List
 import re
 from docx import Document
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -147,3 +148,66 @@ def is_first_line_centered(docx_file):
 
     # check if the first line is center justified
     return 1 if first_paragraph.paragraph_format.alignment == WD_PARAGRAPH_ALIGNMENT.CENTER else 0
+
+
+def compare_font_names(docx_file, rules: List[Dict[str, Any]]):
+    if not docx_file:
+        return 0
+
+    try:
+        doc = Document(docx_file)
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return 0
+
+    expected_font = rules["font_name"]
+
+    for paragraph in doc.paragraphs:
+        for run in paragraph.runs:
+            font_name = run.font.name
+            if font_name != expected_font:
+                return 0
+    return 1
+
+
+def compare_subscript_contains(docx_file1, docx_file2):
+    if not docx_file1 or not docx_file2:
+        return 0
+
+    try:
+        doc1 = Document(docx_file1)
+        doc2 = Document(docx_file2)
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return 0
+
+    for para1, para2 in zip(doc1.paragraphs, doc2.paragraphs):
+        for run1, run2 in zip(para1.runs, para2.runs):
+            # check if two paras both contain subscript
+            if run1.font.subscript and run2.font.subscript:
+                return 1
+    return 0
+
+
+def evaluate_strike_through_last_paragraph(file_path1, file_path2):
+    if not file_path1 or not file_path2:
+        return 0
+
+    if not compare_docx_files(file_path1, file_path2):
+        return 0
+
+    try:
+        document = Document(file_path1)
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return 0
+
+    # Get the last paragraph
+    last_paragraph = document.paragraphs[-1]
+
+    # Check if any run in the last paragraph has strike-through formatting
+    for run in last_paragraph.runs:
+        if not run.font.strike:
+            return 0  # At least one word does not have strike-through formatting
+
+    return 1

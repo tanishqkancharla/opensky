@@ -4,6 +4,40 @@ Status: two pinned OSWorld smoke tasks; initial attempts are characterization,
 not yet a validated paired baseline or a general parity score.
 The [initial smoke results](smoke-results.md) record both attempts per task,
 their separate upstream/content scores, cleanup, timing and estimated spend.
+Three additional Writer tasks are now pinned for the five-task stage: whole-text
+font, H2O subscript, and last-paragraph strike-through. Their original inputs,
+gold outputs and unmodified upstream metric functions are included. Separate
+guards cover all text/table fonts and per-character formatting, including
+partial subscript changes that the upstream metric accepts. All 24 real-file
+grader, policy and spending checks pass. The full 20-task set is not frozen yet.
+
+## Run a gated campaign
+
+Local macOS fixtures check desktop readiness before launch and after the task.
+A detected screensaver, locked/off-console session or unavailable session state
+stops the run as an infrastructure problem; it does not become a task failure.
+Unlock/dismiss the screensaver before starting a new campaign. These checks are
+best effort and do not continuously monitor the desktop or prevent sleep.
+
+Set `OPENSKY_EVAL_PYTHON`, `OPENSKY_EVAL_LIBREOFFICE`,
+`OPENSKY_DRIVER_BINARY` and `OPENSKY_NATIVE_REPL_CONFIG` to the installed local
+dependencies. The native config stays outside the repository and results.
+From the SDK checkout:
+
+```sh
+node --import tsx evals/parity/campaign.ts 2 evals/runs/campaign-smoke
+node --import tsx evals/parity/campaign.ts 5 evals/runs/campaign-five evals/runs/campaign-smoke
+```
+
+Each destination must be new. Stages 5 and 20 require complete paired evidence
+from the preceding stage, verified cleanup and no infrastructure failures.
+Real task failures remain scored and do not block the ramp. Interface order is
+counterbalanced by task; all desktop use is sequential. A controller stop waits
+for the current bounded attempt and its cleanup, then prevents the next launch.
+`plan.json` freezes the task manifest; `summary.json` reports valid pairs,
+both/native-only/OpenSky-only/neither outcomes, unscored pairs and raw arm data.
+Any change in code/assets/desktop fingerprints during a campaign halts it.
+Stage 20 refuses to run until `fullTaskIds` contains a frozen 20-task set.
 
 The user approved a ramp of 1–2 smoke tasks, then five, then a frozen set of
 20. Advance when setup, reset, tool isolation and independent outcome scoring

@@ -24,6 +24,18 @@ export async function withOwnedMacApp<T>(options: AppFixtureOptions, use: (app: 
 async function withCompiledMacApp<T>(options: AppFixtureOptions, temporary: string, use: (app: OwnedApp) => Promise<T>): Promise<T> {
   const helper = join(temporary, "mac-app-lifecycle");
   await exec("/usr/bin/swiftc", ["-module-cache-path", join(temporary, "swift-cache"), fileURLToPath(new URL("./mac-app-lifecycle.swift", import.meta.url)), "-o", helper], { timeout: 60_000 });
+  const checkDesktop = async (phase: "before" | "after") => {
+    const state = JSON.parse((await exec(helper, ["desktop-state"], { timeout: 10_000 })).stdout) as { ready: boolean; reasons: string[] };
+    await writeFile(join(options.artifacts, `desktop-${phase}.json`), JSON.stringify({ checkedAt: new Date().toISOString(), ...state }, null, 2));
+    if (!state.ready) throw new Error(`Local GUI evaluation paused: ${state.reasons.join(", ")}. Make the desktop visible and unlocked before rerunning.`);
+  };
+  try { await checkDesktop("before"); }
+  catch (error) {
+    // No launch has been attempted, so callers may remove their fresh scratch
+    // profile/document without waiting for a nonexistent ownership receipt.
+    await writeFile(join(options.artifacts, "cleanup.json"), JSON.stringify({ status: "passed", launched: false, verifiedExited: true, reason: "desktop preflight prevented app launch" }, null, 2));
+    throw error;
+  }
   const list = async (): Promise<Identity[]> => JSON.parse((await exec(helper, ["list", options.bundleId], { timeout: 10_000 })).stdout);
   if ((await list()).length) throw new Error(`${options.bundleId} is already running; no app was launched or altered`);
   // Launch Services returns the exact new NSRunningApplication, not a PID
@@ -34,6 +46,7 @@ async function withCompiledMacApp<T>(options: AppFixtureOptions, temporary: stri
   try {
     await writeFile(join(options.artifacts, "app-ownership.json"), JSON.stringify({ ...owned, appPath: options.appPath, restoreState: false }, null, 2));
     result = await use({ ...owned, inspect: async (inspectOptions) => JSON.parse((await exec(helper, [inspectOptions?.accessibility ? "inspect-ax" : "inspect", String(owned.pid)], { timeout: 10_000 })).stdout) });
+    await checkDesktop("after");
   } catch (error) { actionError = error; }
   let cleanupError: unknown;
   try {

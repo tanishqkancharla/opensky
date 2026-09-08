@@ -850,3 +850,62 @@ user instances are refused at setup and are not eligible for termination.
 `run-status.json` now records cleanup, scratch removal, infrastructure errors
 and evaluation validity separately from the saved-file task score. The prior
 failed cleanup is not retroactively changed into a valid paired baseline.
+
+**SET-025 — app observations were incorrectly pinned to one window (2026-09-07):**
+The native reference follows an app's active surface; `cua.getApp()` instead
+returned a permanent window binding. App-scoped observations now use fresh
+driver stacking order within the bound PID, including untitled dialogs, and
+return a new exact handle when the observed window changes. Actions remain
+bound to the latest successful observation. Existing document handles and
+close authority are not transferred to the dialog. Foreign PIDs, off-Space and
+tiny proxy windows are excluded; missing/ambiguous stacking evidence is refused.
+This TypeScript fix uses the existing permissioned driver and needs no new grant.
+
+Real DIALOG-N01 now passes (`libreoffice-dialog-vnbjdP`, repeated in `PbsZVb`).
+DIALOG-N02 verifies actual DOCX text, successful format confirmation and return
+to the document (`libreoffice-dialog-vDlf5p`, 20.93s); DIALOG-N03 verifies the
+original document handle alongside the app dialog (`libreoffice-dialog-Fzt90Q`,
+21.66s). All owned processes exited and scratch files were removed. N02's first
+attempt inspected before the dialog appeared; its setup now waits for the same
+public state as N01 instead of assuming immediate readiness. That setup failure
+is retained in `libreoffice-dialog-zxyMhV`. No driver binary was replaced.
+
+The Terra heading rerun (`osworld-smoke-heading-opensky-2`) passed both upstream
+alignment and exact content preservation, saved its DOCX, and quit normally:
+6 REPL calls, 106.57s. The lowercase rerun completed and saved, but still failed
+the task grader (11 calls, 148.03s); this remains a task failure, not an omitted
+dialog. Both `run-status.json` files verify cleanup and scratch removal.
+Raw per-run code/asset/driver fingerprints are now recorded; native runs also
+fingerprint their installed Node REPL, `@oai/sky` client and service executable.
+Builds, 336 existing unit tests and the focused window-choice checks pass.
+These results establish the specific save-flow fix, not overall native parity.
+
+**SET-026 — gated campaigns and additional document outcomes (2026-09-07):**
+The controller now freezes the two-task smoke plan, runs both interfaces in
+counterbalanced order, and permits the five-task stage only after all preceding
+arms have valid setup, scoring and cleanup. Actual task failures remain scored;
+missing evidence, cleanup failures and environment drift stop the campaign.
+The added OSWorld font, subscript and strikethrough tasks retain pinned original
+assets and upstream metrics. Additional saved-document guards reject partial
+changes that the upstream metric accepts. All 24 budget, policy and real-DOCX
+grading checks pass, alongside TypeScript validation. The new controller and
+three added tasks have not yet completed an agent campaign. The 20-task stage
+refuses to start until a full task set is frozen.
+
+**SET-027 — screensaver/locked desktop can invalidate local GUI runs (2026-09-07):**
+The independent macOS lifecycle helper now checks console/login state, the
+WindowServer lock indication, a running ScreenSaver Engine and a frontmost
+login window before launching a test app and after the task. A failed or
+unavailable preflight stops dispatch and records that no app was launched, so
+fresh scratch files can still be removed. A failed final check invalidates the
+attempt while preserving its saved-file score and performing owned-app cleanup.
+No permissioned driver was rebuilt and no permission prompt was requested.
+
+The helper compiled and observed the current unlocked console as ready. In the
+sandbox, unavailable session information was correctly refused. Locked and
+screensaver states have not been deliberately exercised on the user's desktop.
+The lock key is undocumented and may be absent while unlocked; this is a
+best-effort guard, not proof of continuous desktop availability. A lock/unlock
+entirely between the two checks, display sleep, or an unrecognized screensaver
+can still escape it. Background code and remote CI do not require this guard;
+local execution still needs the host to stay awake.

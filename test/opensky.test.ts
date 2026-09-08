@@ -16,6 +16,7 @@ import {
   normalizeDirection,
   normalizeMouseButton,
   pickOrdinaryWindowId,
+  pickAppWindowId,
   pickUsableWindowId,
   pickWindowId,
   pruneMenuSubtrees,
@@ -25,6 +26,29 @@ import type { SnapshotElement } from "../src/types.js";
 import { makeHarness } from "./harness.ts";
 
 describe("opensky helpers", () => {
+  it("app observation follows actual z-order, including an untitled dialog above a large document", () => {
+    assert.equal(pickAppWindowId([
+      { pid: 7, window_id: 1, title: "document.docx", is_main: true, z_index: 4, is_on_screen: true, frame: { width: 1000, height: 800 } },
+      { pid: 7, window_id: 2, title: "", z_index: 9, is_on_screen: true, frame: { width: 500, height: 200 } },
+    ], 7), 2);
+  });
+
+  it("app observation excludes another process, other Spaces and tiny proxy windows", () => {
+    assert.equal(pickAppWindowId([
+      { pid: 8, window_id: 1, z_index: 90, is_on_screen: true, frame: { width: 1000, height: 800 } },
+      { pid: 7, window_id: 2, z_index: 80, is_on_screen: true, on_current_space: false, frame: { width: 500, height: 200 } },
+      { pid: 7, window_id: 3, z_index: 70, is_on_screen: true, frame: { width: 50, height: 50 } },
+      { pid: 7, window_id: 4, z_index: 1, is_on_screen: true, frame: { width: 500, height: 200 } },
+    ], 7), 4);
+  });
+
+  it("app observation refuses ambiguous or missing stacking evidence", () => {
+    const visible = { pid: 7, is_on_screen: true, frame: { width: 500, height: 200 } };
+    assert.equal(pickAppWindowId([{ ...visible, window_id: 1, z_index: null }, { ...visible, window_id: 2, z_index: 1 }], 7), undefined);
+    assert.equal(pickAppWindowId([{ ...visible, window_id: 1, z_index: 1 }, { ...visible, window_id: 2, z_index: 1 }], 7), undefined);
+    assert.equal(pickAppWindowId([{ ...visible, window_id: 1, is_on_screen: undefined }], 7), undefined);
+  });
+
   it("maps list_apps records onto the opensky App shape", () => {
     const apps = mapApps({
       apps: [

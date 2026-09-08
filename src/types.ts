@@ -107,6 +107,9 @@ export interface OpenSky {
     disableDiff?: boolean;
     includeScreenshot?: boolean;
     includeAppChrome?: boolean;
+    /** App observations follow its frontmost visible native window and return
+     * a new exact handle when it changes. Existing document handles stay fixed. */
+    scope?: "window" | "app";
     /** Narrow an exact typed browser snapshot to matching semantic content. */
     query?: string;
     /** Read bounded context around a current browser index without collecting a new snapshot. */

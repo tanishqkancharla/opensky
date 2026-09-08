@@ -49,3 +49,23 @@ API-equivalent estimates**, with no unsettled reservations. Actual workspace
 credit billing is unavailable. The user's next review threshold remains $50.
 Sixteen budget/policy/real-DOCX grading checks and TypeScript validation pass;
 those are harness validation, separate from GUI acceptance.
+
+## Save-dialog fix and reruns
+
+App-scoped observations now follow the bound process's frontmost ordinary
+window using fresh stacking evidence. Existing exact document handles remain
+bound to their original window. Three real public-SDK regressions verify the
+format dialog, successful saving and simultaneous exact-document observation
+(SET-025). The existing permissioned driver was unchanged.
+
+| Task / interface | Upstream score | Full-text guard | REPL calls | Agent elapsed | Automatic cleanup |
+| --- | ---: | --- | ---: | ---: | --- |
+| Center heading / OpenSky rerun 2 | 1 | Pass | 6 | 106.57 s | Passed normally |
+| Lowercase / OpenSky rerun 2 | 0 | Fail | 11 | 148.03 s | Passed normally |
+
+Both reruns saved the DOCX and have valid cleanup/scratch-removal receipts.
+The lowercase failure remains a task failure. These targeted reruns are not a
+new matched native comparison. At this checkpoint the cumulative conservative
+estimate is **$2.0151012**, with no unsettled reservations and a $50 review
+threshold. The expanded harness passes 24 budget/policy/document-grading checks;
+the gated two- then five-task campaign remains to be run.

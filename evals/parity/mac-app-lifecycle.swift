@@ -13,7 +13,27 @@ func identity(_ app: NSRunningApplication) -> [String: Any]? {
     return ["pid": app.processIdentifier, "bundleId": bundle, "launchedAt": launched.timeIntervalSince1970]
 }
 let args = CommandLine.arguments
-if args.count == 3 && args[1] == "list" {
+if args.count == 2 && args[1] == "desktop-state" {
+    // This is a best-effort readiness guard, not an unlock mechanism. The
+    // WindowServer lock key is not a documented API; retain its availability
+    // separately instead of claiming that a missing key proves an unlock.
+    let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+    let onConsole = session?[kCGSessionOnConsoleKey as String] as? Bool
+    let loginDone = session?[kCGSessionLoginDoneKey as String] as? Bool
+    let locked = session?["CGSSessionScreenIsLocked"] as? Bool
+    let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    let saverRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.ScreenSaver.Engine").isEmpty
+    var reasons: [String] = []
+    if onConsole != true { reasons.append("session_not_on_console_or_unknown") }
+    if loginDone != true { reasons.append("login_incomplete_or_unknown") }
+    if locked == true { reasons.append("session_locked") }
+    if saverRunning { reasons.append("screensaver_running") }
+    if frontmost == "com.apple.loginwindow" { reasons.append("login_window_frontmost") }
+    emit(["ready": reasons.isEmpty, "reasons": reasons,
+          "onConsole": onConsole as Any? ?? NSNull(), "loginDone": loginDone as Any? ?? NSNull(),
+          "locked": locked as Any? ?? NSNull(), "screensaverRunning": saverRunning,
+          "frontmostBundleId": frontmost as Any? ?? NSNull()])
+} else if args.count == 3 && args[1] == "list" {
     emit(NSRunningApplication.runningApplications(withBundleIdentifier: args[2]).compactMap(identity))
 } else if args.count == 3 && ["inspect", "inspect-ax"].contains(args[1]), let pid = pid_t(args[2]), let app = NSRunningApplication(processIdentifier: pid) {
     var state = identity(app) ?? [:]

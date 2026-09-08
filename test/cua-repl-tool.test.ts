@@ -272,7 +272,7 @@ function screenshotDriver(screenshots: Buffer[]): DriverClient {
         return result({ apps: [{ name: "Example", bundle_id: "com.example", pid: 123, running: true }] });
       }
       if (tool === "list_windows") {
-        return result({ windows: [{ window_id: 7, title: "Example", frame: { x: 0, y: 0, width: 800, height: 600 } }] });
+        return result({ windows: [{ window_id: 7, pid: 123, is_on_screen: true, title: "Example", frame: { x: 0, y: 0, width: 800, height: 600 } }] });
       }
       if (tool === "get_window_state") {
         // Serialization fixture bytes only; this does not test image decoding or real-driver acceptance.

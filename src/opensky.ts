@@ -198,11 +198,16 @@ export class OpenSky implements OpenSkyApi {
     disableDiff?: boolean;
     includeScreenshot?: boolean;
     includeAppChrome?: boolean;
+    scope?: "window" | "app";
     query?: string;
     context_element_index?: number;
     continuation?: string;
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
+    if (args.scope !== undefined && args.scope !== "window" && args.scope !== "app") throw invalidParams("scope must be window or app");
+    if (args.scope === "app" && (args.query !== undefined || args.context_element_index !== undefined || args.continuation !== undefined)) {
+      throw invalidParams("App scope cannot be combined with browser query/context");
+    }
     if (args.context_element_index !== undefined || args.continuation !== undefined) {
       if ((args.context_element_index !== undefined && (!Number.isSafeInteger(args.context_element_index) || args.context_element_index < 0)) ||
           (args.continuation !== undefined && (!isContextToken(args.continuation) || args.context_element_index !== undefined)) ||
@@ -246,6 +251,10 @@ export class OpenSky implements OpenSkyApi {
     }
     const hadPendingAction = this.lastActionAt.has(windowKey(resolved));
     await this.settleAfterAction(resolved);
+    if (args.scope === "app") {
+      if (resolved.browser || resolved.contentScope === "web") throw invalidParams("App scope requires a native app, not a browser content binding");
+      resolved = await this.observeAppWindow(resolved);
+    }
     if (resolved.browser) {
       // A typed browser snapshot revalidates its exact target/tab binding. A
       // native window inventory here adds a full driver round trip without
@@ -2109,6 +2118,27 @@ export class OpenSky implements OpenSkyApi {
     this.lastActionAt.delete(key);
   }
 
+  private async observeAppWindow(source: ResolvedApp): Promise<ResolvedApp> {
+    const listed = await this.driver.call("list_windows", { pid: source.pid });
+    const next = pickAppWindowId(windowsFrom(listed.structured), source.pid);
+    if (next === undefined) {
+      throw new OpenSkyError("The app has no unambiguous frontmost visible window. No input was sent; reveal the intended window and observe again.");
+    }
+    this.lastActionAt.delete(windowKey(source));
+    if (next === source.windowId) return source;
+    // App scope permits observing another window of this process, but cannot
+    // retarget an existing document handle or inherit its close authority.
+    const resolved: ResolvedApp = {
+      handle: newTargetHandle(), openedAt: this.nextOpenedAt(),
+      query: source.query, name: source.name, bundleId: source.bundleId,
+      launchPath: source.launchPath, pid: source.pid, windowId: next,
+    };
+    this.registerTarget(resolved);
+    this.markResolved(resolved);
+    await this.persist();
+    return resolved;
+  }
+
   private async refreshBoundWindow(resolved: ResolvedApp): Promise<number | undefined> {
     const listed = await this.driver.call("list_windows", { pid: resolved.pid });
     const windows = windowsFrom(listed.structured);
@@ -2692,6 +2722,19 @@ export function pickUsableWindowId(windows: Record<string, unknown>[]): number |
 /** Ordinary app windows remain valid targets across transient Space/focus churn. */
 export function pickOrdinaryWindowId(windows: Record<string, unknown>[]): number | undefined {
   return pickWindowId(windows.filter(isOrdinaryWindow));
+}
+
+/** App-wide observations use actual stacking order, never title/area scoring.
+ * This deliberately differs from opening a specific document window. */
+export function pickAppWindowId(windows: Record<string, unknown>[], pid: number): number | undefined {
+  const visible = windows.filter(window => window.pid === pid && window.is_on_screen === true &&
+    window.on_current_space !== false && (window.layer === undefined || window.layer === 0) &&
+    Number.isSafeInteger(window.window_id) && Number(window.window_id) > 0 && isOrdinaryWindow(window));
+  if (visible.length === 1) return visible[0]!.window_id as number;
+  if (!visible.length || visible.some(window => typeof window.z_index !== "number" || !Number.isFinite(window.z_index))) return undefined;
+  const top = Math.max(...visible.map(window => window.z_index as number));
+  const front = visible.filter(window => window.z_index === top);
+  return front.length === 1 ? front[0]!.window_id as number : undefined;
 }
 
 function isOrdinaryWindow(window: Record<string, unknown>): boolean {
