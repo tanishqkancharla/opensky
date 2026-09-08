@@ -1783,3 +1783,21 @@ generic result type. Success now explicitly reports that the evaluator remains
 usable. Local E2E and harness TypeScript checks and six existing REPL tests
 passed. These corrections do not award any new GUI or agent success. No model
 spend occurred; the experience ramp remains at two cases.
+
+**SET-063 — Native Linux capture and two SDK workflows pass; document gate added (2026-09-08):**
+GitHub run 34269423873 passed native screenshot capture using the official
+package's `@oai/sky` 0.6.26 Linux runtime, both SDK smoke cases (TEXT-B01 and
+FRESH-B01), and its driver build. Companion harness CI 34269423896 passed.
+This verifies remote availability and two SDK experiences, not agent parity.
+The first browser-startup failure remains recorded; a passing rerun does not
+prove its underlying cause is repaired. Only error propagation was changed.
+
+Added a paired deterministic LibreOffice heading/save check using the existing
+OSWorld document and read-only saved-file grader. Both interfaces receive the
+same public keyboard actions and observations, with no mock or output repair.
+The fixture requires a disposable GitHub Linux desktop, verifies the visible
+window belongs to its newly created process group, and retains screenshots,
+saved output and cleanup receipts. Local typecheck and shell syntax validation
+pass; real document acceptance is pending remote execution. Linux-first scope
+is recorded in `docs/linux-parity-plan.md`; macOS GUI work is deferred by user
+direction. Model spending remains unchanged.

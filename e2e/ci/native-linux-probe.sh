@@ -31,3 +31,7 @@ export OPENSKY_NATIVE_PROBE_ARTIFACT="$artifact"
 chmod +x "$OAI_SKY_LINUX_BIN"
 xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
   node e2e/ci/native-linux-probe.mjs
+if [[ -n "${OPENSKY_LINUX_OFFICE_BACKEND:-}" ]]; then
+  xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
+    bash e2e/ci/linux-office.sh
+fi
