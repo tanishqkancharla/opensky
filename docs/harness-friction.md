@@ -1353,3 +1353,17 @@ these scope limits. Release/docs/contract CI is running on the new commit;
 generated bindings, installer release checks and real GUI acceptance remain
 pending. Do not treat the older signed candidate's protocol result as capture
 or recording acceptance for the upgraded dependency.
+
+The 33283a34c CI run completed with all Linux/macOS/Windows portable protocol
+jobs and pinned-client MCP discovery passing. The macOS release link passed in
+6m 10s, then reference documentation drift failed its job. Generated UniFFI
+bindings remained stale. Follow-up e288372f7 regenerates CLI/MCP reference docs,
+lets explicit prebuilt binaries avoid an unrelated docs rebuild, and explicitly
+selects source-build metadata validation while retaining historical baked-release
+checks as a separate mode. Fourteen version/stamping tests (including source
+package-drift rejection), five generator tests and the real-binary docs drift
+check passed locally. CI retains generated binding candidates and checkout
+commit provenance while still failing on any generated-file drift. Artifact
+review/application and remaining legacy installer-wiring tests are pending.
+No model or GUI evaluation ran; no task-success score is inferred from these
+protocol/build checks. The signed candidate and original driver are unchanged.
