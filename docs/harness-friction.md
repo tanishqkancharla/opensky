@@ -2039,3 +2039,18 @@ changes." The fixture now uses the established screenshot/OCR editor-control
 readiness check and records screenshots even on setup failure. The save-dialog
 poll explicitly requests full accessibility state. App cleanup passed. No
 agent spending or typing acceptance evidence came from this attempt.
+
+SDK-L01 second CI run 34282042224 reached typing, saved successfully, and
+verified app cleanup. The exact saved-text assertion failed because the Linux
+input route dropped "é" and "—": the file contained "A caf near Dublin Zoo  typed
+through OpenSky." This is a real driver Unicode defect exposed after the SDK
+routing fix. Preserve the Unicode assertion; do not weaken it to ASCII-only.
+Paid agent retries remain paused pending correction and real saved-file proof.
+
+The driver correction is c9d9a66be5fd46f0e80b9a30cc3bdbac05c2c306 on the
+existing driver PR branch. Linux XTest and XSendEvent typing now borrow an
+unused keycode for unmapped characters rather than silently skipping them;
+Latin-1 and Unicode keysyms follow X11 appendix A. The existing restoration
+guard lives through delivery. The Linux typing workflow now builds that exact
+driver, checks its Unicode mapping unit test and identity, then runs the same
+public-SDK saved-document regression. Build and native behavior are pending.
