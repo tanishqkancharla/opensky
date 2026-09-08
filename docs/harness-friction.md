@@ -1386,3 +1386,28 @@ failed trying to close an owned session against an unavailable desktop helper;
 the process exited and the parent removed the temporary directory. This is a
 partial diagnostic success with a recorded teardown failure, not a clean GUI run.
 Delayed real-driver trace acceptance and long-action recovery remain pending.
+
+**SET-050 — generated SDK close-window bindings lagged the driver (2026-09-08):**
+
+CI on e288372f7 passed generated documentation, source release metadata, all
+three portable protocol jobs, and pinned-client discovery. Generated bindings
+were still stale. Reviewed artifact 10046235837 from run 34201382166, verified
+archive SHA-256 b1914915ecb4ed08dd9c25f72bfc003e878506580a2fc6a58f19d5819c5a3bc5,
+and confirmed checkout 6fb5f2625505a9c8ec74ab5d9013f32eccd650be has the same
+source tree as e288372f7 (80f1188cc865395b9d496efc77101a998bb6e711). Applied only
+owned generated files: Python and TypeScript close_window bindings/checksums.
+Handwritten node-runtime.ts was not copied. Python syntax passed; regeneration,
+TypeScript/native SDK execution and freshness acceptance await the next CI run.
+
+Four installer guidance checks now assert OpenSky's actual identity, home, SDK
+link and doctor command; all four pass. The Linux missing-daemon test now expects
+the OpenSky name while retaining the failure requirement. A real compiled CLI
+probe against an absent private socket returned the required failure and exact
+message; its process exited and temporary directory was removed. No GUI apps
+opened and no model calls occurred. Remaining installer/channel/telemetry wiring
+failures and Windows history-uninstall validation are unresolved; do not remove
+meaningful lifecycle or privacy checks simply because a wrapper changed.
+
+Evidence: `evals/runs/driver-ci-repair-1/uniffi-artifact-review.json` and
+`missing-daemon-probe.json`. These are build/protocol checks, not task parity
+or native window-closing acceptance.
