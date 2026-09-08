@@ -18,6 +18,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "typing", task.name.split(":")[0]);
     await mkdir(artifacts, { recursive: true });
     const originalKeyboard = (await exec("xmodmap", ["-pke"])).stdout;
+    await writeFile(join(artifacts, "keyboard-before.txt"), originalKeyboard);
     const temporary = await mkdtemp(join(tmpdir(), "opensky-typing-"));
     const document = join(temporary, "typing.docx");
     await copyFile(join(root, "evals/parity/osworld/0e763496-b6bb-4508-a427-fad0b6c3e195/Dublin_Zoo_Intro.docx"), document);
@@ -48,6 +49,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
             return current === originalKeyboard;
           } } });
         } finally {
+          await writeFile(join(artifacts, "keyboard-after.txt"), (await exec("xmodmap", ["-pke"])).stdout);
           await writeFile(join(artifacts, "final.png"), await app.getScreenshot()).catch(() => undefined);
           await copyFile(document, join(artifacts, "typing.docx"));
         }
