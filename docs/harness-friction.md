@@ -2649,3 +2649,14 @@ existing real keyboard route. Native indexed and background paths remain intact.
 The focused build workflow pins this candidate; the agent campaign remains pinned
 to df79 until saved-file/selection/Unicode and keymap regressions pass. Full native
 desktop matrix and new agent timing remain unverified.
+# CALC-L03 / CALC-L04: reproduce agent coordinate failures
+
+Agent arm 22 (CI 34313264489, SDK 48c6ab55, df79 driver) outlived the old
+REPL deadline but stopped at the spending guard after 728.8s. It repeatedly
+failed to create Sheet2; a name-box click was followed by text in ordinary
+cells. New public-SDK tests replay screenshot-derived name-box and plus-button
+coordinates, guard the observed image dimensions, and assert saved E2 and saved
+sheet names. No model or mocked input is used. Typecheck passes; remote real
+desktop reproduction is pending. The first remote attempt lacked the workbook
+mount and failed before app launch, so it is setup evidence only; a corrected
+runner fingerprints and mounts the existing task asset explicitly.

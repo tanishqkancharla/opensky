@@ -50,3 +50,34 @@ calc("CALC-L02: edits a newly observed cell after scrolling the sheet", { timeou
   await app.pressKey("ENTER");
   await expect.poll(() => document.readCell("E50"), { timeout: 10_000 }).toEqual({ formula: null, value: "42" });
 });
+
+// Coordinates observed in campaign arm 22's 1280×881 screenshot and the remote
+// calc-coordinate-before-02 1280×883 screenshot. Both controls occupy these pixels.
+const screenshotCalc = desktopSetupTest({
+  taskId: "035f41ba-6653-43ab-aa63-c86d449d62e5", file: "IncomeStatement2.xlsx", mode: "--calc",
+  observedScreenshotSize: { width: 1280, heights: [881, 883] },
+});
+
+screenshotCalc("CALC-L03: uses the visible name box to edit and save a cell", { timeout: 180_000 }, async ({ app, document }) => {
+  await app.getScreenshot();
+  await app.click([79, 122]);
+  await app.pressKey("CTRL+A");
+  await app.typeText("E2");
+  await app.pressKey("ENTER");
+  await app.typeText("=B2-C2");
+  await app.pressKey("ENTER");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readCell("E2"), { timeout: 10_000 }).toEqual({ formula: "B2-C2", value: "75000" });
+});
+
+screenshotCalc("CALC-L04: adds and saves a sheet with the visible plus button", { timeout: 180_000 }, async ({ app, document }) => {
+  await app.getScreenshot();
+  await app.click([116, 844]);
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toContain('"Sheet2"');
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readSheetNames(), { timeout: 10_000 }).toEqual(["Sheet1", "Sheet2"]);
+});

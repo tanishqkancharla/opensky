@@ -1,4 +1,5 @@
 import { test as base, expect } from "vitest";
+import { PNG } from "pngjs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -13,9 +14,15 @@ import { prepareLinuxBenchmarkApp } from "../../evals/parity/linux-benchmark-app
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../../", import.meta.url));
-type SavedDocument = { readCell(address: string): Promise<{ formula: string | null; value: string | null }> };
+type SavedDocument = {
+  readCell(address: string): Promise<{ formula: string | null; value: string | null }>;
+  readSheetNames(): Promise<string[]>;
+};
 type Desktop = { app: App; document: SavedDocument };
-type Input = { taskId: string; file: string; mode: "--calc" | "--impress" | "--code" };
+type Input = {
+  taskId: string; file: string; mode: "--calc" | "--impress" | "--code";
+  observedScreenshotSize?: { width: number; heights: number[] };
+};
 
 export function desktopSetupTest(input: Input) {
   return base.extend<Desktop & { desktop: Desktop }>({
@@ -46,9 +53,17 @@ export function desktopSetupTest(input: Input) {
               await writeFile(join(artifacts, "ready.txt"), text);
               return text.match(/\b(?:File|Edit|Selection|View|Insert)\b/g) ?? [];
             }, { timeout: 20_000 }).toEqual(expect.arrayContaining(launch.menus));
+            if (input.observedScreenshotSize) {
+              const screenshot = PNG.sync.read(Buffer.from(await app.getScreenshot()));
+              expect(screenshot.width).toBe(input.observedScreenshotSize.width);
+              expect(input.observedScreenshotSize.heights).toContain(screenshot.height);
+            }
             await use({ app, document: { async readCell(address) {
               return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
                 'import sys,json,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("xl/worksheets/sheet1.xml")); ns={"s":"http://schemas.openxmlformats.org/spreadsheetml/2006/main"}; c=next((c for c in r.findall(".//s:c",ns) if c.get("r")==sys.argv[2]),None); print(json.dumps({"formula":c.findtext("s:f",None,ns) if c is not None else None,"value":c.findtext("s:v",None,ns) if c is not None else None}))', document, address])).stdout);
+            }, async readSheetNames() {
+              return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
+                'import sys,json,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("xl/workbook.xml")); ns={"s":"http://schemas.openxmlformats.org/spreadsheetml/2006/main"}; print(json.dumps([sheet.get("name") for sheet in r.findall("s:sheets/s:sheet",ns)]))', document])).stdout);
             } } });
           } finally {
             await writeFile(join(artifacts, "final-state.txt"), await app.getAXState({ disableDiffing: true })).catch(() => undefined);
