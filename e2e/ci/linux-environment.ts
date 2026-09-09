@@ -28,5 +28,6 @@ await writeFile(nativeConfig, JSON.stringify(configuration, null, 2));
 await verifyDriverRuntime({ binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET,
   ownedLinuxPid: Number(process.env.OPENSKY_OWNED_DRIVER_PID), artifacts });
 await recordEnvironment({ repo: process.cwd(), appPath: "/usr/lib/libreoffice", driver,
+  vscodePath: process.env.OPENSKY_EVAL_VSCODE,
   codex: join(resources, "codex"), python: process.env.OPENSKY_EVAL_PYTHON!, nativeConfig, artifacts });
 await verifyNativeLinuxRepl(configuration, artifacts);

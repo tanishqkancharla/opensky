@@ -2389,3 +2389,25 @@ bb6fac1c856d4eed03cbb8748deab78ebaf3dcc9 returns a typed pre-input background re
 including coordinate hits. The existing SDK retry retains the target and uses
 real foreground input. The saved E2 assertion is not weakened. Build and
 acceptance are pending; paid agent runs still use the earlier accepted driver.
+
+SET-073 shared launch setup: SDK checks and linux-smoke now use the same
+prepareLinuxBenchmarkApp helper for Writer/Calc/Impress/VS Code profiles,
+arguments, app names and menu readiness. shared-setup-01 passed Impress
+(21.444 s) and VS Code (15.553 s) with the accepted 7f9e72fcf driver; both
+process groups exited. The public saved-document fixture supports CALC-L01's
+formula/value assertion. The Linux runner and E2E TypeScript checks pass.
+
+Linux VS Code fingerprints now include actual package version/commit and
+SHA256 values for its executable, launcher, package/product metadata and
+main.js. The reader ran against the real remote 1.136.2 installation and
+produced editor-fingerprint.json. Editor agent admission requires that
+fingerprint and an explicit installation path. Hosted workflow installation,
+matched editor agent runs and full-set scoring validation remain pending;
+setup passes are not agent parity evidence.
+
+SET-073 grader validation: a separate remote image installs the exact pinned
+Python scorer requirements alongside the same LibreOffice exporter. The
+original benchmark assets are mounted read-only, verified against their pins,
+and original/correct/damaged file controls run without an agent. Real Impress
+export controls are included. grader-controls-01 is active; no scoring profile
+or agent result has been promoted from its pending outcome.

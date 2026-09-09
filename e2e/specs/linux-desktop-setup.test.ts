@@ -24,3 +24,15 @@ const code = desktopSetupTest({
 code("SETUP-L04: reads the benchmark text in VS Code", { timeout: 120_000 }, async ({ app }) => {
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain("In order to evaluate");
 });
+
+calc("CALC-L01: edits an observed cell and saves its calculated value", { timeout: 120_000 }, async ({ app, document }) => {
+  const sheet = await app.getAXState({ disableDiffing: true });
+  expect(sheet).toMatch(/\[(\d+)\] table cell "E2"/);
+  await app.click(Number(sheet.match(/\[(\d+)\] table cell "E2"/)![1]));
+  await app.typeText("=B2-C2");
+  await app.pressKey("ENTER");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readCell("E2"), { timeout: 10_000 }).toEqual({ formula: "B2-C2", value: "75000" });
+});

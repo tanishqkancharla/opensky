@@ -13,12 +13,24 @@ async function sha256(path: string): Promise<string> {
   return hash.digest("hex");
 }
 
+/** Read the actual Linux editor installation; no profile or auth files. */
+export async function fingerprintLinuxEditor(appPath: string) {
+  return {
+    version: JSON.parse(await readFile(join(appPath, "resources/app/package.json"), "utf8")).version,
+    commit: JSON.parse(await readFile(join(appPath, "resources/app/product.json"), "utf8")).commit,
+    executableSha256: await sha256(join(appPath, "code")),
+    launcherSha256: await sha256(join(appPath, "bin/code")),
+    packageJsonSha256: await sha256(join(appPath, "resources/app/package.json")),
+    productJsonSha256: await sha256(join(appPath, "resources/app/product.json")),
+    mainSha256: await sha256(join(appPath, "resources/app/out/main.js")),
+  };
+}
+
 /** Fingerprint actual code/assets, including uncommitted work. Never serialize
  * auth configuration or environment values into portable result artifacts. */
 export async function recordEnvironment(options: { repo: string; appPath: string; driver: string; python: string; codex?: string; vscodePath?: string; nativeConfig?: string; artifacts: string; scoringProfile?: { name: string; sha256: string | null } }) {
   const linux = platform() === "linux";
   if (!linux && platform() !== "darwin") throw new Error("No environment fingerprint implemented for this platform");
-  if (linux && options.vscodePath) throw new Error("Linux editor fingerprinting must be implemented before editor evaluations");
   const codex = options.codex ?? join(homedir(), ".local/bin/codex");
   const files: Record<string, string> = {};
   async function walk(directory: string) {
@@ -90,7 +102,7 @@ export async function recordEnvironment(options: { repo: string; appPath: string
       executableSha256: await sha256(join(options.appPath, "Contents/MacOS/soffice")),
       infoPlistSha256: await sha256(join(options.appPath, "Contents/Info.plist")),
     },
-    vsCode: options.vscodePath ? {
+    vsCode: options.vscodePath ? linux ? await fingerprintLinuxEditor(options.vscodePath) : {
       version: await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleShortVersionString", join(options.vscodePath, "Contents/Info.plist")]),
       executableSha256: await sha256(join(options.vscodePath, "Contents/MacOS", await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleExecutable", join(options.vscodePath, "Contents/Info.plist")]))),
       infoPlistSha256: await sha256(join(options.vscodePath, "Contents/Info.plist")),

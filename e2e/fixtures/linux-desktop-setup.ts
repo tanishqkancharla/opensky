@@ -4,18 +4,22 @@ import { promisify } from "node:util";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { createOpenSky, createCua } from "../../src/index.js";
 import type { App } from "../../src/cua.js";
 import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 
+import { prepareLinuxBenchmarkApp } from "../../evals/parity/linux-benchmark-app.js";
+
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../../", import.meta.url));
+type SavedDocument = { readCell(address: string): Promise<{ formula: string | null; value: string | null }> };
+type Desktop = { app: App; document: SavedDocument };
 type Input = { taskId: string; file: string; mode: "--calc" | "--impress" | "--code" };
 
 export function desktopSetupTest(input: Input) {
-  return base.extend<{ app: App }>({
-    app: async ({ task }, use) => {
+  return base.extend<Desktop & { desktop: Desktop }>({
+    desktop: async ({ task }, use) => {
       assertDisposableLinuxDesktop();
       const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "setup", task.name.split(":")[0]);
       await mkdir(artifacts, { recursive: true });
@@ -25,24 +29,15 @@ export function desktopSetupTest(input: Input) {
       let launchAttempted = false;
       try {
         await copyFile(join(root, "evals/parity/osworld", input.taskId, input.file), document);
-        const profile = join(temporary, "profile");
-        const isCode = input.mode === "--code";
-        if (isCode) {
-          await mkdir(join(profile, "User"), { recursive: true });
-          await writeFile(join(profile, "User/settings.json"), JSON.stringify({
-            "update.mode": "none", "telemetry.telemetryLevel": "off", "workbench.startupEditor": "none", "editor.accessibilitySupport": "on",
-          }));
-        }
+        const launch = await prepareLinuxBenchmarkApp({
+          category: input.mode === "--code" ? "vs_code" : input.mode === "--calc" ? "libreoffice_calc" : "libreoffice_impress",
+          document, temporary, artifacts, vscodePath: process.env.OPENSKY_EVAL_VSCODE ?? "/usr/share/code",
+        });
         launchAttempted = true;
-        await withOwnedLinuxApp({ executable: isCode ? "/usr/share/code/code" : "/usr/bin/libreoffice", documentTitle: input.file, artifacts,
-          args: isCode ? ["--user-data-dir", profile, "--extensions-dir", join(temporary, "extensions"), "--disable-extensions", "--skip-welcome", "--skip-release-notes", "--new-window", "--force-renderer-accessibility",
-            ...(process.getuid?.() === 0 ? ["--no-sandbox"] : []), document]
-            : [`-env:UserInstallation=${pathToFileURL(profile).href}`, "--norestore", "--nologo", "--nofirststartwizard", input.mode, document],
-          env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
-        }, async () => {
+        await withOwnedLinuxApp(launch.options, async () => {
           sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
             driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
-          const app = await createCua(sdk).getApp(isCode ? "Visual Studio Code" : "LibreOffice");
+          const app = await createCua(sdk).getApp(launch.appName);
           try {
             await expect.poll(async () => {
               const image = join(artifacts, "ready.png");
@@ -50,8 +45,11 @@ export function desktopSetupTest(input: Input) {
               const text = (await exec("tesseract", [image, "stdout", "--psm", "11"], { timeout: 10_000 })).stdout;
               await writeFile(join(artifacts, "ready.txt"), text);
               return text.match(/\b(?:File|Edit|Selection|View|Insert)\b/g) ?? [];
-            }, { timeout: 20_000 }).toEqual(expect.arrayContaining(isCode ? ["File", "Edit", "Selection", "View"] : ["File", "Edit", "View", "Insert"]));
-            await use(app);
+            }, { timeout: 20_000 }).toEqual(expect.arrayContaining(launch.menus));
+            await use({ app, document: { async readCell(address) {
+              return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
+                'import sys,json,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("xl/worksheets/sheet1.xml")); ns={"s":"http://schemas.openxmlformats.org/spreadsheetml/2006/main"}; c=next((c for c in r.findall(".//s:c",ns) if c.get("r")==sys.argv[2]),None); print(json.dumps({"formula":c.findtext("s:f",None,ns) if c is not None else None,"value":c.findtext("s:v",None,ns) if c is not None else None}))', document, address])).stdout);
+            } } });
           } finally {
             await writeFile(join(artifacts, "final-state.txt"), await app.getAXState({ disableDiffing: true })).catch(() => undefined);
             await writeFile(join(artifacts, "final.png"), await app.getScreenshot()).catch(() => undefined);
@@ -64,5 +62,7 @@ export function desktopSetupTest(input: Input) {
         if (!launchAttempted || cleanup?.verifiedExited) await rm(temporary, { recursive: true, force: true });
       }
     },
+    app: async ({ desktop }, use) => use(desktop.app),
+    document: async ({ desktop }, use) => use(desktop.document),
   });
 }

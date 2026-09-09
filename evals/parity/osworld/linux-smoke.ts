@@ -9,6 +9,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { createCua, createOpenSky } from "../../../src/index.js";
 import { withOwnedLinuxApp } from "../linux-app.js";
 import { runCodex } from "../codex.js";
+import { prepareLinuxBenchmarkApp } from "../linux-benchmark-app.js";
 import { runProfile } from "../run-profile.js";
 
 const exec = promisify(execFile);
@@ -19,8 +20,11 @@ if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true" || !ou
 const artifacts = resolve(output);
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const task = manifest.tasks.find((task: { id: string }) => task.id === taskId);
-if (!task || task.category === "vs_code") throw new Error("Linux office runner requires an office task; editor setup remains separate work");
+if (!task) throw new Error("Unknown Linux benchmark task");
+const isCode = task.category === "vs_code";
+if (isCode && !process.env.OPENSKY_EVAL_VSCODE) throw new Error("Provide OPENSKY_EVAL_VSCODE for editor tasks");
 const environment = JSON.parse(await readFile(join(artifacts, "environment.json"), "utf8"));
+if (isCode && !environment.vsCode) throw new Error("Editor installation fingerprint required before dispatch");
 const runtime = JSON.parse(await readFile(join(artifacts, "driver-runtime.json"), "utf8"));
 const nativeTransport = JSON.parse(await readFile(join(artifacts, "native-repl-probe.json"), "utf8"));
 if (environment.platform !== "linux" || !runtime.ready || !nativeTransport.passed) throw new Error("Verified Linux runtime, fingerprint and native agent transport required");
@@ -41,18 +45,15 @@ await copyFile(join(root, taskId, task.inputFile), document);
 let error: unknown;
 let score: Record<string, any> | undefined;
 try {
-  await withOwnedLinuxApp({ executable: "/usr/bin/libreoffice", artifacts, documentTitle: task.inputFile,
-    args: [`-env:UserInstallation=${pathToFileURL(join(temporary, "profile")).href}`, "--norestore", "--nologo", "--nofirststartwizard",
-      task.category === "libreoffice_calc" ? "--calc" : task.category === "libreoffice_impress" ? "--impress" : "--writer", document],
-    env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
-  }, async () => {
+  const launch = await prepareLinuxBenchmarkApp({ category: task.category, document, temporary, artifacts, vscodePath: process.env.OPENSKY_EVAL_VSCODE });
+  await withOwnedLinuxApp(launch.options, async () => {
     let sdk: ReturnType<typeof createOpenSky> | undefined;
     try {
       let screenshot: () => Promise<Uint8Array>;
       if (backend === "opensky") {
         sdk = createOpenSky({ homeDir: join(temporary, "readiness-sdk"), autoLaunch: false,
           driverOptions: { binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
-        const app = await createCua(sdk).getApp("LibreOffice");
+        const app = await createCua(sdk).getApp(launch.appName);
         screenshot = () => app.getScreenshot({ emit: false });
       } else {
         const packageRoot = process.env.OPENSKY_NATIVE_PROBE_PACKAGE!;
@@ -67,13 +68,13 @@ try {
         await writeFile(path, await screenshot());
         const text = (await exec("tesseract", [path, "stdout", "--psm", "11"], { timeout: 10_000 })).stdout;
         await writeFile(`${path}.txt`, text);
-        if (/File\s+Edit\s+View\s+Insert/.test(text)) { ready = true; break; }
+        if (launch.menus.every(menu => new RegExp(`\\b${menu}\\b`).test(text))) { ready = true; break; }
         await delay(250);
       }
       if (!ready) throw new Error("Editor controls did not become visible; agent not dispatched");
     } finally { await sdk?.close(); }
     if (backend === "setup") return;
-    const scope = { backend: backend as "native" | "opensky", appSelectors: ["LibreOffice"], isolatedDesktop: "linux" as const };
+    const scope = { backend: backend as "native" | "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" as const };
     const mcp = {
       command: process.execPath,
       args: ["--import", join(repo, "node_modules/tsx/dist/loader.mjs"), join(root, `../${backend}-mcp.ts`)],
@@ -86,12 +87,12 @@ try {
       enabled_tools: backend === "native" ? ["js"] : ["cua_repl"],
     };
     const guide = backend === "native" ? await readFile(join(root, "../native-linux-guide.md"), "utf8") :
-      'Use desktop.cua_repl. Bind let app = await cua.getApp("LibreOffice"); then use its public methods and fresh observations. Creation and observations emit automatically.';
+      `Use desktop.cua_repl. Bind let app = await cua.getApp(${JSON.stringify(launch.appName)}); then use its public methods and fresh observations. Creation and observations emit automatically.`;
     const result = await runCodex({ codex: join(nativeResources, "codex"), model: "gpt-5.6-terra", authentication: "api-key",
       budgetPath: process.env.OPENSKY_REMOTE_BUDGET, preReservedId: process.env.OPENSKY_REMOTE_RESERVATION,
       artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: profile.timeoutMs, maxToolCalls: profile.maxToolCalls,
-      mcp, authorizedApps: { LibreOffice: "LibreOffice" }, desktopProgramScope: scope,
-      prompt: `Task: ${task.instruction}\nYou are using Ubuntu Linux. The document ${task.inputFile} is already open in LibreOffice. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned LibreOffice instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nFinish when saved, or report the specific blocker.`,
+      mcp, authorizedApps: { [launch.appName]: launch.appName }, desktopProgramScope: scope,
+      prompt: `Task: ${task.instruction}\nYou are using Ubuntu Linux. The document ${task.inputFile} is already open in ${launch.appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${launch.appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nFinish when saved, or report the specific blocker.`,
     });
     const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), taskId, document], { timeout: 30_000 })).stdout);
     score = { taskId, backend, suite: "osworld-verified-linux-desktop", upstreamCommit: manifest.upstreamCommit,
