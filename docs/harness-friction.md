@@ -3062,3 +3062,20 @@ Real acceptance is pending; the paid workflow remains on verified486. The
 SDK fixture now retains exact public AX strings and includes drag in method
 timing, enabling observation fidelity checks alongside saved outcomes. Recording
 occurs after method timing and does not substitute app responses.
+
+AX-L03 initial acceptance: exact1cd buildCI34407163131 passed focused Rust
+checks and three unchanged real Calc cases against a new486 baseline. All saved
+cells match, and all nine retained AX observations match fields/indices after
+normalizing only owned document URIs from launch receipts. Six app groups exited,
+and both containers were removed. AX time56.351s→54.356s and suite110.45s→107.55s
+are single samples; this modest difference is not a proven general speed gain.
+The paid pin remains486 pending broader fidelity and performance work.
+
+Latest agent pair30/31 at SDK8c818c7 and the refreshed scoring profile completed
+with valid cleanup/usage. Native passed58.975s/13calls; OpenSky failed143.448s/
+11calls. OpenSky spent81.390s in AX reads and106.937s in tools overall, versus
+native12.806s tool time. Requested output values match; exactly18 extra E/I
+intermediate values cause the mandatory whole-sheet failure. Driver30's indexed
+Save took8.637s versus prior27's17.630s, but different agent strategies prevent
+attributing total elapsed improvement solely to that fix. Ubuntu patch labels
+still differ; other compared fingerprints match. No new broad parity claim.
