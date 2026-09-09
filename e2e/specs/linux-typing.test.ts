@@ -70,6 +70,33 @@ test("SHOT-L02: a screenshot of the new dialog targets its font field", { timeou
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Liberation Serif"');
 });
 
+test("COORD-L02: rejects a point outside the observed dialog and accepts a corrected save click", { timeout: 120_000 }, async ({ app, document }) => {
+  await app.pressKey("CTRL+A");
+  await app.typeText("Save after correcting the screenshot coordinates.");
+  await app.pressKey("CTRL+S");
+  await app.getScreenshot();
+  // This point was used in agent25: inside the document, below its small dialog image.
+  await expect(app.click([448, 588])).rejects.toMatchObject({ code: "invalid_params", message: expect.stringContaining("Latest screenshot is") });
+  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain("Use Word 2007 Format");
+  await app.getScreenshot();
+  await app.click([450, 172]);
+  await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe("Save after correcting the screenshot coordinates.");
+});
+
+test("COORD-L03: a fresh document observation replaces the old dialog's coordinate bounds", { timeout: 120_000 }, async ({ app, document }) => {
+  await app.pressKey("CTRL+A");
+  await app.typeText("A document after its dialog closes.");
+  await app.pressKey("CTRL+S");
+  await app.getScreenshot();
+  await app.click([450, 172]);
+  await expect(app.getAXState({ disableDiffing: true })).resolves.not.toContain("Use Word 2007 Format");
+  await app.click([400, 500]);
+  await app.pressKey("CTRL+END");
+  await app.typeText(" Still editable.");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe("A document after its dialog closes. Still editable.");
+});
+
 // One ordinary input event large enough to exercise slow real keyboard delivery.
 const longDocument = "The quick brown fox jumps over the lazy dog. ".repeat(100);
 

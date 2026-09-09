@@ -2875,3 +2875,41 @@ The earlier GitHub DNS failure was absent when execution used the authorized
 network path outside the restricted sandbox. Both pushes and the build dispatch
 completed there. Revalidate network restrictions before attributing a resolver
 failure to a service outage; do not leave an available build path unused.
+
+
+## COORD-L02: native screenshot coordinates outside a dialog image report success
+
+OpenSky/Terra25 returned a 595×190 save-dialog image, then accepted clicks at
+(448,588) and (450,557). Both are below that image. The two calls and follow-up
+captures consumed14.67s before accessibility recovery. Native-style Vec2 is
+documented in screenshot pixels, but only finite tuple validation was applied;
+legacy native input received these points without an image-bounds check.
+
+The facade candidate retains runtime dimensions per observed native target and
+rejects click/drag/scroll points outside the latest known image before input.
+Every new observation clears old dimensions; an image observation installs fresh
+ones. This prevents a dialog crop from constraining the subsequent observed
+document. No screenshot is required when no image mapping exists, and the public
+Uint8Array screenshot result is unchanged. Legacy opensky.click is unaffected.
+Build, E2E typecheck and19 existing facade checks pass. A real Writer baseline
+reproduced the missing rejection in coordinate-bounds-before-01 (17.52s).
+The candidate passed unchanged COORD-L02/03 and existing SHOT-L01/02 in
+coordinate-bounds-after-01 (116.55s). Invalid click time fell from4.412s
+(no-op success) to0.649ms (pre-input invalid_params); the corrected valid click
+still saved the expected text. The fresh-document case saved its subsequent
+edit, confirming that old dialog bounds were cleared. All five before/after
+owned app exits, keyboard maps and container removals were verified. The
+retrieved saved DOCX files and candidate source hash were independently checked.
+These are real SDK outcomes, not a new agent speedup claim.
+
+The preceding completed paired agent result remains unchanged: at SDK42806bd
+and driver435, native26 passed (55.715s/8calls) and OpenSky25 failed the strict
+reference comparison (182.606s/13calls). Named-sheet cached-value comparison
+found all requested Gross Profit and Year_Profit values correct; the only18
+value differences are additional E2:E10 and I2:I10 cells. The frozen reference
+leaves these blank. This is no longer the earlier missing-save/typing-deadline
+failure. Ubuntu patch labels differ24.04.5 versus24.04.4; other compared
+fingerprints match. Both cleanup/usage receipts were verified and settled.
+Evidence: calc-window-fixed-pair.json, saved-content-diagnostic.json, and the
+retained independent post-agent screenshot. Cumulative spending is$82.7464418,
+with no active reservation after this pair.

@@ -412,14 +412,38 @@ export class CuaFacade {
 }
 
 abstract class BoundTarget implements Target {
+  private screenshotBounds?: { handle: TargetHandle; width: number; height: number };
+
   protected constructor(protected readonly facade: CuaFacade, private observedHandle: TargetHandle) {}
 
   get targetHandle(): TargetHandle { return this.observedHandle; }
 
   private async observe(options: StateOptions, screenshot: boolean, accessibilityTree = true): Promise<AppState> {
+    // A new observation can follow a dialog or reveal a resized window. Never
+    // retain image coordinates across an observation that supplies no image.
+    this.screenshotBounds = undefined;
     const state = await this.facade.state(this.targetHandle, options, screenshot, this instanceof BoundApp, accessibilityTree);
     this.observedHandle = state.targetHandle;
+    const { width, height } = state.screenshot ?? {};
+    if (this instanceof BoundApp && typeof width === "number" && typeof height === "number" &&
+        Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+      this.screenshotBounds = { handle: state.targetHandle, width, height };
+    }
     return state;
+  }
+
+  private screenshotPoint(value: Vec2): { x: number; y: number } {
+    const coordinate = point(value);
+    const bounds = this.screenshotBounds;
+    if (bounds?.handle === this.targetHandle &&
+        (coordinate.x < 0 || coordinate.y < 0 || coordinate.x >= bounds.width || coordinate.y >= bounds.height)) {
+      throw new OpenSkyError(
+        `Latest screenshot is ${bounds.width}×${bounds.height}. Use this image's pixels: ` +
+        `0 ≤ x < ${bounds.width} and 0 ≤ y < ${bounds.height}, not desktop coordinates. No input was sent.`,
+        "invalid_params",
+      );
+    }
+    return coordinate;
   }
 
   toJSON() { return { targetHandle: this.targetHandle, kind: this instanceof BoundTab ? "tab" : "app" }; }
@@ -453,7 +477,7 @@ abstract class BoundTarget implements Target {
 
   async click(target: number | Vec2, options: ClickOptions = {}): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
-    const translated = typeof target === "number" ? { element_index: target } : point(target);
+    const translated = typeof target === "number" ? { element_index: target } : this.screenshotPoint(target);
     await this.facade.opensky.click({
       app: this.targetHandle,
       ...translated,
@@ -464,8 +488,8 @@ abstract class BoundTarget implements Target {
 
   async drag(from: Vec2, to: Vec2): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
-    const start = point(from);
-    const end = point(to);
+    const start = this.screenshotPoint(from);
+    const end = this.screenshotPoint(to);
     await this.facade.opensky.drag({
       app: this.targetHandle,
       from_x: start.x,
@@ -482,7 +506,7 @@ abstract class BoundTarget implements Target {
 
   async scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
-    const translated = typeof target === "number" ? { element_index: target } : point(target);
+    const translated = typeof target === "number" ? { element_index: target } : this.screenshotPoint(target);
     await this.facade.opensky.scroll({ app: this.targetHandle, ...translated, direction, pages });
   }
 

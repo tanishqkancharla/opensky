@@ -184,6 +184,8 @@ For an emitted earlier/later cursor, use `tab.getAXState({continuation: token})`
 
 Coordinates use screenshot-pixel tuples (`[x, y]`), not objects: `tab.click([x, y])`, `tab.scroll([x, y], "down", 1)`, and `tab.drag([fromX, fromY], [toX, toY])`. Browser coordinate input requires a fresh screenshot of that exact tab; an AX-only observation does not provide a mapping. Prefer current semantic indices when available.
 
+Native app coordinates also refer to the image's pixels. After a native screenshot, click, drag, and scroll reject points outside that image with `invalid_params` before sending input. The error includes the image dimensions so a corrected action can continue. A new observation replaces this geometry; an AX-only observation clears it. Native input without a known screenshot mapping retains its existing behavior.
+
 Browser outlines retain the driver's source indentation, named/stateful containers,
 and repeated labels. Only bare unnamed `generic` containers are abbreviated as
 `-`, with an inline legend; these placeholders are not action refs. The outline
