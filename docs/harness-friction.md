@@ -3181,3 +3181,12 @@ changes/completion. The frozen runner saves agent stdout to events.jsonl and
 uploads it after the task step, so no individual-agent action feed exists now.
 Quiet workflow logs are not a hang signal. Keep a live job rather than restart
 on an observation timeout; no new instrumentation is needed to continue coverage.
+
+
+OpenSky38 passed sorting records by amount in122.419s/15calls. All76 nonempty
+saved cell values match the original hash-verified gold workbook; cleanup and
+final usage receipts passed. Native39 is dispatched on the same frozen source.
+Current settled estimate$87.8222508 plus$5reserved remains inside the$100 limit.
+Sorting remains unpaired until native39 is verified; the full-set baseline stays
+4/20completed pairs with native4/OpenSky3. The stage watcher ended successfully
+and did not affect the underlying run or impose a task limit.
