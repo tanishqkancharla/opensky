@@ -1,0 +1,61 @@
+name: Linux benchmark grading preflight
+on:
+  push:
+    branches: [codex/linux-full-setup]
+    paths: ['.github/workflows/linux-benchmark-preflight.yml', 'e2e/ci/install-linux-desktop.sh']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  controls:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the shared benchmark desktop and grader
+        run: |
+          bash e2e/ci/install-linux-desktop.sh
+          npm ci --ignore-scripts
+          npm run build
+          npm ci --ignore-scripts --prefix e2e
+          npm run typecheck --prefix e2e
+          python -m pip install -r evals/parity/osworld/requirements.txt
+          python evals/parity/osworld/fetch-assets.py
+      - name: Check original completed and damaged documents
+        env:
+          OPENSKY_EVAL_LIBREOFFICE: /usr/bin/libreoffice
+          OPENSKY_EVAL_CONTROL_ARTIFACTS: ${{ github.workspace }}/artifacts/controls
+        run: |
+          mkdir -p artifacts/controls
+          export OPENSKY_EVAL_PYTHON="$(command -v python)"
+          npm test --prefix e2e -- specs/osworld-score.test.ts specs/osworld-expanded-score.test.ts specs/impress-export-score.test.ts --bail=0 --reporter=verbose --reporter=json --outputFile.json="$PWD/artifacts/results.json"
+      - name: Freeze references for both agent arms
+        run: |
+          python evals/parity/osworld/scoring_profile.py freeze \
+            --controls artifacts/controls --output artifacts/scoring-profile \
+            --libreoffice /usr/lib/libreoffice/program/soffice > artifacts/scoring-profile-freeze.json
+          python evals/parity/osworld/scoring_profile.py verify \
+            --profile artifacts/scoring-profile/profile.json \
+            --libreoffice /usr/lib/libreoffice/program/soffice > artifacts/scoring-profile-verified.json
+          dpkg-query -W libreoffice-core libreoffice-calc libreoffice-impress libreoffice-writer code > artifacts/app-packages.txt
+          python -m pip freeze > artifacts/python-packages.txt
+      - name: Retain immutable scoring references
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: linux-scoring-profile
+          path: artifacts/scoring-profile
+          if-no-files-found: error
+          retention-days: 90
+      - name: Retain grading controls and exporter receipts
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: linux-grading-controls
+          path: artifacts
+          if-no-files-found: warn
+          retention-days: 90
