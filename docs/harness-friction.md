@@ -2493,3 +2493,20 @@ groups exited and the container was removed. Added distinct CALC-L02 behavior
 coverage for a newly observed E50 after Page Down; typecheck passed, remote
 execution pending. Existing input regressions also remain to be rerun on this
 binary. No full-suite or agent acceptance is inferred from these SDK checks.
+
+SET-074 hosted validation: run 34308469414 passed all 52 grading controls with
+zero skips and froze seven references. Profile hash
+7b19e7bc0f75719fe7f8e39d0a189b45c17338f42a3c7b6610e96519a7d1b769 is now
+pinned by artifact run and verified against the actual exporter before model
+reservation admission. The agent workflow uses the same app installer and Code
+package, fetches all pinned task assets, and supports model-free setup by task
+ID. Hosted setup and paid agent outcome evidence remain pending.
+
+DRV-L06 scrolled-cell acceptance: calc-scroll-01 passed CALC-L02 in 81.038 s,
+saving numeric 42 to the newly observed E50 after Page Down. Cleanup verified.
+The four input regressions in geometry-input-regression-01 never reached their
+actions: Writer's owned document window was not observed. All four cleanup
+receipts passed. The initial live diagnostic missed the short-lived container,
+so linux-app now saves the real X11 window tree on launch failure before cleanup.
+This is failure-only evidence collection; launch criteria and tests are unchanged.
+Do not promote the new binary until these input regressions actually run.

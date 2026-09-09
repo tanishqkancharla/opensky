@@ -50,7 +50,14 @@ export async function withOwnedLinuxApp<T>(options: {
       }
       if (!owned) await delay(250);
     }
-    if (!owned) throw new Error("Owned document window did not become visible");
+    if (!owned) {
+      // Preserve the real desktop state before cleanup; a launch failure must
+      // distinguish a missing window from a dialog or an unexpected title.
+      await exec("xwininfo", ["-root", "-tree"], { timeout: 3_000 })
+        .then(result => writeFile(join(options.artifacts, "launch-window-tree.txt"), result.stdout))
+        .catch(() => undefined);
+      throw new Error("Owned document window did not become visible");
+    }
     const identity = owned;
     const inspect = async () => {
       const current = await processIdentity(identity.pid).catch(() => null);

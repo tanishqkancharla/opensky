@@ -1,5 +1,5 @@
 name: Linux paired agent evaluation
-run-name: ${{ inputs.mode == 'agent' && format('Linux agent / {0}', inputs.reservation_id) || 'Linux agent setup' }}
+run-name: ${{ inputs.mode == 'agent' && format('Linux agent / {0}', inputs.reservation_id) || format('Linux setup / {0}', inputs.setup_task || 'writer') }}
 
 on:
   push:
@@ -11,6 +11,10 @@ on:
         type: choice
         options: [setup, agent]
         default: setup
+      setup_task:
+        description: 'Benchmark task to validate without a model in setup mode'
+        type: string
+        default: '3ef2b351-8a84-4ff2-8724-d86eae9b842e'
       reservation_id:
         type: string
         default: ''
@@ -32,7 +36,9 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       OPENSKY_LINUX_AGENT_MODE: ${{ inputs.mode || 'setup' }}
-      OPENSKY_AGENT_TASK: 3ef2b351-8a84-4ff2-8724-d86eae9b842e
+      OPENSKY_AGENT_TASK: ${{ inputs.setup_task || '3ef2b351-8a84-4ff2-8724-d86eae9b842e' }}
+      OPENSKY_EVAL_SCORING_PROFILE: ${{ github.workspace }}/.scoring-profile/profile.json
+      OPENSKY_EVAL_SCORING_PROFILE_SHA256: 7b19e7bc0f75719fe7f8e39d0a189b45c17338f42a3c7b6610e96519a7d1b769
       OPENSKY_NATIVE_PACKAGE_SHA256: 62580188d87c3d3a9369dab7c73b42a8a32518d4df8a2d5bae6466ddeac5c05e
       OPENSKY_LINUX_OFFICE_ARTIFACT: ${{ github.workspace }}/artifacts/linux-office
       OPENSKY_REMOTE_RESERVATION: ${{ inputs.reservation_id }}
@@ -47,22 +53,40 @@ jobs:
       - name: Install desktop and scorer
         run: |
           printf 'OPENSKY_REMOTE_BUDGET=%s\n' "$RUNNER_TEMP/opensky-agent-budget/ledger.json" >> "$GITHUB_ENV"
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core xdotool x11-utils libreoffice-writer libreoffice-gtk3 fonts-liberation tesseract-ocr libpipewire-0.3-0 libei1 libxtst6
+          bash e2e/ci/install-linux-desktop.sh
           npm ci --ignore-scripts
           npm run build
           python -m pip install -r evals/parity/osworld/requirements.txt
-      - name: Use the driver from the passing desktop gate
+          python evals/parity/osworld/fetch-assets.py
+      - name: Use the pinned candidate driver
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: sdk-test-driver
-          run-id: 34291452142
+          run-id: 34308230956
           github-token: ${{ github.token }}
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
-          printf '%s\n' 'f1c088cb074f938cb27249cfeef665e3655c3933b51338be890d092269647950  .driver/opensky-driver' | sha256sum --check -
+          printf '%s\n' '3d21cdb9d26f67210c6ba80aef5066bcd895128203c8545294dc928f323037c8  .driver/opensky-driver' | sha256sum --check -
           chmod +x .driver/opensky-driver
+      - name: Use the single frozen Linux grading profile
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: linux-scoring-profile
+          run-id: 34308469414
+          github-token: ${{ github.token }}
+          path: .scoring-profile
+      - name: Verify grading references before admitting model spending
+        run: |
+          mkdir -p artifacts/linux-office
+          python evals/parity/osworld/scoring_profile.py verify \
+            --profile "$OPENSKY_EVAL_SCORING_PROFILE" \
+            --libreoffice /usr/lib/libreoffice/program/soffice > artifacts/linux-office/profile-admission.json
+          python - <<'PYTHON'
+          import json, os
+          profile = json.load(open('artifacts/linux-office/profile-admission.json'))
+          assert profile['sha256'] == os.environ['OPENSKY_EVAL_SCORING_PROFILE_SHA256']
+          PYTHON
       - name: Admit the existing cumulative reservation once
         if: inputs.mode == 'agent'
         env:
