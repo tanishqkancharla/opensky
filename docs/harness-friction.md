@@ -2711,3 +2711,16 @@ Driver candidate a9501e0ca requests foreground pixel input for compound panels
 and holds real XTest button presses for 50ms. Its focused build is pinned here;
 unchanged Calc and input regression outcomes remain required before updating
 the paid agent workflow. Full paired timing and the desktop matrix are pending.
+
+Exact a9501e0ca validation: build/focused Rust checks passed in 34318630951.
+Binary SHA256 27329643542ab30c5a9058ee140ee3bb69006e8f6af7e3f946a789d1861160d1
+passed both unchanged name-box/new-sheet workflows (98.06s), all four
+TYPE/KEY/CLICK/COORD input regressions (132.26s), and both existing indexed and
+scrolled-cell Calc workflows (124.13s). Saved E2 contains B2-C2 / 75000 and the
+new-sheet workbook contains Sheet1 and Sheet2. All eight owned app groups
+exited, all four input keyboard maps were restored, and containers were removed.
+Evidence: `calc-coordinate-held-01`, `input-regression-a950-01`,
+`calc-indexed-a950-01`. The agent workflow now pins this exact tested artifact;
+fresh paired agent timing is next. CLICK-L01 is an indexed save-button test,
+not double-click coverage. Real double-click behavior and the full canonical
+platform matrix remain pending; the driver PR stays draft.
