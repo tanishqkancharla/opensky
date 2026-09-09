@@ -2573,3 +2573,13 @@ checks its digest before model reservation admission. Runtime setup remains a
 separate gate. CI 34310637007 found one legacy facade-call expectation still
 requiring the old screenshot extraction flags; updated it to the intended
 pixel-only request. The two real SHOT workflows remain the behavioral evidence.
+
+LOOP-L01 timing support: the summary now maps typing/SHOT test artifact paths
+and reports recorded public SDK method counts, failures, totals and medians.
+It preserves skipped tests and distinguishes unavailable, empty and malformed
+timing evidence. Existing screenshot before/after runs each report two passes,
+four skips and verified cleanups; screenshot medians reproduce 5424.127 ms and
+611.189 ms (six samples each). Older input and Calc runs remain readable with
+unavailable timings. Temporary receipt copies verified missing-cleanup and
+malformed-timing failure behavior. No GUI rerun or agent score is implied;
+recorded fixture calls are not agent REPL calls or whole-run wall time.
