@@ -2522,3 +2522,17 @@ had no UTF-8 locale, unlike the passing full desktop image and hosted runner.
 The retained window tree showed a live Writer window with a title encoding
 failure. The next unchanged regression run explicitly uses LANG/LC_ALL=C.UTF-8;
 TYPE-L01 and KEY-L01 have reached their actual actions and passed so far.
+
+DRV-L06 final focused regression result: geometry-input-regression-02 passed
+TYPE-L01 36.003 s, KEY-L01 35.146 s, CLICK-L01 43.073 s, and COORD-L01
+76.599 s using df79e0cf1's exact binary. All four owned process groups exited,
+all four keyboard mappings were restored, and no remote containers remained.
+Only locale configuration changed from the setup failure; assertions were not
+weakened. Together with Calc read/edit/scroll this is seven real SDK checks,
+not canonical cross-platform certification or new agent task successes.
+
+SET-074 source admission follow-up: hosted setup 34309492537 correctly rejected
+the old profile because fetch-assets.py's network retry change altered its
+pinned scoring-source digest. The full grading preflight is rerunning at
+34309681923; both arms must use the newly validated artifact and hash afterward.
+No model dispatch/reservation occurred.
