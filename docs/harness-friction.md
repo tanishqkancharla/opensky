@@ -2974,3 +2974,10 @@ consumed24.640s. These are duplicate element resolution/classification steps
 inside the driver, not model reasoning. Next candidate should share one fresh,
 window-scoped live element resolution within a request; no cross-request pixel
 cache or weakened focus checks. This is diagnosis, not an implemented fix.
+
+Candidate4863e5bff shares a fresh live target within each X11 indexed-click
+request. Bounds refresh uses retained proxies and exact window correlation is
+required. Typed pre-input unavailability can choose pointer delivery; submitted
+AX requests that fail are never replayed. A negative doAction acknowledgment is
+an error. Build-only pin updated; paid workflow remains accepted4fb. Exact
+compile and real indexed/AX/window isolation validation remain pending.
