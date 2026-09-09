@@ -102,3 +102,17 @@ screenshotCalc("CALC-L05: fills and saves the range selected through the name bo
   await expect.poll(() => document.readCell("E2"), { timeout: 10_000 }).toMatchObject({ formula: "B2-C2-D2" });
   await expect.poll(() => document.readCell("E10"), { timeout: 10_000 }).toMatchObject({ formula: "B10-C10-D10" });
 });
+
+screenshotCalc("CALC-L06: a double click edits the existing cell value in place", { timeout: 180_000 }, async ({ app, document }) => {
+  await app.getScreenshot();
+  // B2's value in the retained 1280×883 Calc screenshot.
+  await app.click([145, 185], { clickCount: 2 });
+  await app.pressKey("HOME");
+  await app.typeText("9");
+  await app.pressKey("ENTER");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readCell("B2"), { timeout: 10_000 }).toEqual({ formula: null, value: "978000" });
+  await expect(document.readCell("A2")).resolves.toEqual({ formula: null, value: "2015" });
+});

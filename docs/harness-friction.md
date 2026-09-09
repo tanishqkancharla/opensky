@@ -2913,3 +2913,21 @@ fingerprints match. Both cleanup/usage receipts were verified and settled.
 Evidence: calc-window-fixed-pair.json, saved-content-diagnostic.json, and the
 retained independent post-agent screenshot. Cumulative spending is$82.7464418,
 with no active reservation after this pair.
+
+
+## CLICK-L02: already-focused coordinate clicks repeat accessibility discovery
+
+Agent25 spent86.844s in12 click calls; the background X11 path performs an
+accessibility hit test before using real mouse input. Driver candidate4e3028d6f
+checks exact native focus, point geometry and topmost input shapes on the same
+connection, then uses the existing XTest gesture directly when those checks
+succeed. Modifier cleanup and50ms press hold remain shared. It does not change
+indexed/Wayland or prior Chromium background-refusal behavior. Source review
+is not runtime acceptance; focus/stacking can still change between requests.
+
+New CALC-L06 exercises actual in-cell double-click editing: prepend9 to the
+existing78000 value and require978000 saved, with the year cell unchanged.
+This distinguishes double-click edit mode from a single selected cell. Current
+SDK30b0a73 and driver435 baseline is running CALC-L03/L04/L05/L06 in the same
+remote image used for candidate acceptance. Build-only workflow now pins the
+new driver; the paid evaluation pin remains the verified435 executable.
