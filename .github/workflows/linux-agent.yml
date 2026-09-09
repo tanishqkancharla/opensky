@@ -38,7 +38,7 @@ jobs:
       OPENSKY_LINUX_AGENT_MODE: ${{ inputs.mode || 'setup' }}
       OPENSKY_AGENT_TASK: ${{ inputs.setup_task || '3ef2b351-8a84-4ff2-8724-d86eae9b842e' }}
       OPENSKY_EVAL_SCORING_PROFILE: ${{ github.workspace }}/.scoring-profile/profile.json
-      OPENSKY_EVAL_SCORING_PROFILE_SHA256: 7b19e7bc0f75719fe7f8e39d0a189b45c17338f42a3c7b6610e96519a7d1b769
+      OPENSKY_EVAL_SCORING_PROFILE_SHA256: c7fa3e09273f8e9c0704eb872361ee8b8a0b41b388efacc206e8b0cb63a26565
       OPENSKY_NATIVE_PACKAGE_SHA256: 62580188d87c3d3a9369dab7c73b42a8a32518d4df8a2d5bae6466ddeac5c05e
       OPENSKY_LINUX_OFFICE_ARTIFACT: ${{ github.workspace }}/artifacts/linux-office
       OPENSKY_REMOTE_RESERVATION: ${{ inputs.reservation_id }}
@@ -73,7 +73,7 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: linux-scoring-profile
-          run-id: 34308469414
+          run-id: 34309681923
           github-token: ${{ github.token }}
           path: .scoring-profile
       - name: Verify grading references before admitting model spending

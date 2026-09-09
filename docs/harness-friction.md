@@ -2536,3 +2536,9 @@ the old profile because fetch-assets.py's network retry change altered its
 pinned scoring-source digest. The full grading preflight is rerunning at
 34309681923; both arms must use the newly validated artifact and hash afterward.
 No model dispatch/reservation occurred.
+
+SET-074 rebuilt profile: preflight 34309681923 passed all 52 controls without
+skips and froze profile c7fa3e09273f8e9c0704eb872361ee8b8a0b41b388efacc206e8b0cb63a26565
+against the current downloader/scoring sources. Both artifact copies have that
+hash; the hosted setup workflow now pins this run and hash. Source admission
+will still reject changes rather than silently using stale references.
