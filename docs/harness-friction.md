@@ -2372,3 +2372,11 @@ and unchanged Calc acceptance are pending. The Linux typing workflow now has
 a build_only dispatch option for focused remote iteration; its default still
 runs the three-desktop regression matrix. No agent workflow driver pin changes
 until the candidate is accepted.
+
+DRV-L06 first candidate result: a251619ec compiled and passed focused unit
+checks in CI 34294757380. Calc stayed responsive, returning 2,316-node walks;
+SETUP-L02 finished in 35.929 s with cleanup passed, but text headers appeared
+as coordinate names with numeric value zero. The driver collected Text but
+only surfaced it when Name was empty. Candidate cc2cf0d7440b6d36055af9afda2309960950cd1a preserves cell
+coordinates as names and observed displayed text as values. The original
+Net Sales assertion remains unchanged; no Calc acceptance is claimed yet.
