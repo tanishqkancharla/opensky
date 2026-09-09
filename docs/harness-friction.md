@@ -2309,3 +2309,49 @@ TYPE-L01, KEY-L01, CLICK-L01 and COORD-L01 on all three fresh GitHub desktops
 keyboard-map restorations passed. Artifacts: linux-dialog-selection-verified.
 The agent workflow now pins that exact built binary by artifact run and SHA256;
 no improved agent outcome is inferred until the matched font task is rerun.
+
+
+SET-073 Linux desktop setup evidence (2026-09-08): the first remote run stopped
+before app launch because ignored benchmark assets were absent from the Docker
+source archive. Original input files are now mounted read-only in the one-off
+desktop; a failed copy also cleans its temporary directory. The second run
+(linux-office-setup/office-setup-02) passed SETUP-L03: the public SDK read
+"VIRTUAL QUIZ" from the opened Impress slide (25.250 s). SETUP-L02 failed after
+130.641 s: Calc opened the correct visible income statement, but the public
+SDK returned x11_property_fallback_partial instead of its cell contents. Both
+owned process groups exited. These are setup/observation checks, not paid agent
+successes. A diagnostic retry shows a GetChildren timeout after 1,614 AT-SPI
+nodes, followed by an unresponsive app accessibility tree. The precise failing
+node and a safe traversal fix remain to be established; the failure is retained.
+
+VS Code setup is being checked in an expanded one-off image containing the
+official 1.136.2 package (commit 88e44fa0e00b08f7758b4f6d05632e4fd5e4df6f,
+package SHA256 2493226f723f66c8e83b9d806e3fbe83dcc43f381ece51eaa03d88889542b0c0).
+It uses an empty profile/extensions directory and disables updates, telemetry,
+extensions and welcome pages. A root-only --no-sandbox flag is limited to the
+disposable Docker setup; hosted agent runs should use their normal non-root
+user. No editor agent support, full-set scorer acceptance or frozen 20-task
+result is inferred from installing this package.
+
+SET-073 editor readiness correction: code-setup-01 opened the benchmark text,
+but OCR returned menu words out of visual order and the default Linux Electron
+renderer exposed only a frame. Readiness now checks the required menu words
+without assuming OCR ordering. The empty editor profile enables standard
+editor.accessibilitySupport and --force-renderer-accessibility for both future
+backend arms. This is the documented VS Code Linux accessibility option, not a
+mock; it changes the editor's accessibility mode and must be recorded in the
+matched environment. code-setup-02 passed SETUP-L04 in 14.946 s: the public
+getAXState included the real benchmark text. Both editor runs cleaned up their
+owned process group. This validates setup, not either editor task's outcome.
+Reference: https://github.com/microsoft/vscode/blob/88e44fa0e00b08f7758b4f6d05632e4fd5e4df6f/src/vs/workbench/electron-browser/desktop.contribution.ts
+
+**DRV-L06 — Calc virtual table enumeration stalls accessibility:**
+A read-only D-Bus diagnostic on a fresh copy of the same income statement
+(calc-tree-01; see linux-office-setup artifacts) reports ChildCount=2147483647
+for the table named "Sheet Sheet1". It visits 1,874 surrounding nodes without
+GetChildren or expanding that virtual table. The normal driver requests
+Accessible.GetChildren on every visited node, including this table; its
+diagnostic retry repeats the failure. Replace unbounded enumeration with
+visible/bounded virtual-container traversal, preserving actionable references
+and truthful partial-tree reporting. The original SETUP-L02 assertion remains
+the acceptance gate. No driver fix is implemented or accepted yet.
