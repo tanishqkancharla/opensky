@@ -45,3 +45,27 @@ test("COORD-L01: a screenshot click edits the font dialog rather than the docume
   await app.typeText("Liberation Serif");
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Liberation Serif"');
 });
+
+test("SHOT-L01: a screenshot preserves the observed save button target", { timeout: 120_000 }, async ({ app, document }) => {
+  await app.pressKey("CTRL+A");
+  await app.typeText("Save after observing a screenshot.");
+  await app.pressKey("CTRL+S");
+  const state = await app.getAXState({ disableDiffing: true });
+  expect(state).toMatch(/\[(\d+)\] push button "Use Word 2007 Format"/);
+  await app.getScreenshot();
+  await app.click(Number(state.match(/\[(\d+)\] push button "Use Word 2007 Format"/)![1]));
+  await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe("Save after observing a screenshot.");
+});
+
+test("SHOT-L02: a screenshot of the new dialog targets its font field", { timeout: 120_000 }, async ({ app }) => {
+  const state = await app.getAXState({ disableDiffing: true });
+  expect(state).toMatch(/\[(\d+)\] menu item "Character\.\.\."/);
+  await app.click(Number(state.match(/\[(\d+)\] menu item "Character\.\.\."/)![1]));
+  await app.getScreenshot();
+  // Coordinates in the Character dialog, observed by the preceding screenshot.
+  await app.click([350, 75]);
+  await app.pressKey("CTRL+A");
+  await app.typeText("Liberation Serif");
+  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('dialog = "Character"');
+  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Liberation Serif"');
+});

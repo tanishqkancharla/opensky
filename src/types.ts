@@ -106,6 +106,9 @@ export interface OpenSky {
     app: string;
     disableDiff?: boolean;
     includeScreenshot?: boolean;
+    /** Native window capture only when false: retain the last AX observation,
+     * skip its extraction, and return no AX text. Requires a screenshot. */
+    includeAccessibilityTree?: boolean;
     includeAppChrome?: boolean;
     /** App observations follow its frontmost visible native window and return
      * a new exact handle when it changes. Existing document handles stay fixed. */

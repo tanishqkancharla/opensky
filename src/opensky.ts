@@ -197,6 +197,7 @@ export class OpenSky implements OpenSkyApi {
     app: string;
     disableDiff?: boolean;
     includeScreenshot?: boolean;
+    includeAccessibilityTree?: boolean;
     includeAppChrome?: boolean;
     scope?: "window" | "app";
     query?: string;
@@ -204,6 +205,10 @@ export class OpenSky implements OpenSkyApi {
     continuation?: string;
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
+    if (args.includeAccessibilityTree === false && (args.includeScreenshot === false ||
+        args.query !== undefined || args.context_element_index !== undefined || args.continuation !== undefined)) {
+      throw invalidParams("Screenshot-only observation requires a screenshot and cannot include query/context");
+    }
     if (args.scope !== undefined && args.scope !== "window" && args.scope !== "app") throw invalidParams("scope must be window or app");
     if (args.scope === "app" && (args.query !== undefined || args.context_element_index !== undefined || args.continuation !== undefined)) {
       throw invalidParams("App scope cannot be combined with browser query/context");
@@ -238,6 +243,9 @@ export class OpenSky implements OpenSkyApi {
       resolved = await this.requireResolved(args.app);
     }
     this.assertTargetUsable(resolved);
+    if (args.includeAccessibilityTree === false && resolved.browser) {
+      throw invalidParams("Screenshot-only observation requires a native window; typed browser observations retain their page snapshot mapping");
+    }
     if (args.includeAppChrome === true && resolved.browser) {
       throw new OpenSkyError(
         "includeAppChrome is not available for an exact typed browser binding. " +
@@ -272,6 +280,18 @@ export class OpenSky implements OpenSkyApi {
         text:
           `Application ${JSON.stringify(resolved.name)} is running but has no usable ordinary window on the current desktop. ` +
           "Use an application keyboard shortcut or menu action to create or reveal a window, then observe again.",
+        target: targetIdentityFor(resolved),
+      };
+    }
+    if (args.includeAccessibilityTree === false) {
+      const screenshot = await this.captureNativeWindowScreenshot(resolved);
+      await this.persist();
+      return {
+        app: resolved.launchPath || resolved.name || args.app,
+        targetHandle: resolved.handle,
+        screenshot,
+        text: "",
+        // A pixel capture proves window identity, not current document AX metadata.
         target: targetIdentityFor(resolved),
       };
     }
@@ -1832,6 +1852,33 @@ export class OpenSky implements OpenSkyApi {
         return typeof id !== "number" || !excludeIds.has(id);
       }),
     );
+  }
+
+  /** Capture pixels without replacing the last AX read or its element tokens.
+   * The driver retains exact-window ownership and screenshot-to-input mapping. */
+  private async captureNativeWindowScreenshot(resolved: ResolvedApp): Promise<Screenshot | null> {
+    if (!resolved.windowId || resolved.browser) throw invalidParams("Screenshot capture requires an exact native window");
+    await mkdirPrivate(this.screenshotDir);
+    const screenshotPath = join(this.screenshotDir,
+      `${slug(resolved.name)}-${resolved.windowId}-${Date.now()}-${++this.screenshotSequence}.png`);
+    const result = await this.driver.call("get_window_state", {
+      pid: resolved.pid,
+      window_id: resolved.windowId,
+      include_accessibility_tree: false,
+      include_screenshot: true,
+      screenshot_out_file: screenshotPath,
+      screenshot_format: this.screenshotFormat,
+      screenshot_scale: this.screenshotScale,
+    });
+    const structured = asRecord(result.structured) ?? {};
+    if (structured.screenshot_frame_valid === false) {
+      throw new OpenSkyError("The driver could not validate the exact window screenshot", undefined, structured);
+    }
+    const filePath = optionalString(structured.screenshot_file_path) ??
+      await maybeWriteScreenshot(structured, screenshotPath);
+    if (!filePath) return null;
+    await chmod(filePath, 0o600).catch(() => undefined);
+    return await screenshotFromFile(filePath, frameOf(structured)) ?? null;
   }
 
   private async snapshotWindow(

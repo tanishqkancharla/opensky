@@ -9,7 +9,14 @@ trap 'rm -rf "$scratch"' EXIT
 # This is an availability probe; a future matched campaign must pin this digest.
 url=https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb
 printf '%s\n' "$url" > "$artifact/source-url.txt"
-curl --fail --location --retry 2 "$url" --output "$scratch/chatgpt.deb"
+if [[ -n "${OPENSKY_NATIVE_PACKAGE_FILE:-}" ]]; then
+  [[ -f "$OPENSKY_NATIVE_PACKAGE_FILE" ]] || { echo 'Pinned native package artifact is missing' >&2; exit 2; }
+  cp "$OPENSKY_NATIVE_PACKAGE_FILE" "$scratch/chatgpt.deb"
+  printf '%s\n' 'frozen GitHub artifact; original source recorded in source-url.txt' > "$artifact/package-origin.txt"
+else
+  curl --fail --location --retry 2 "$url" --output "$scratch/chatgpt.deb"
+  printf '%s\n' 'official download' > "$artifact/package-origin.txt"
+fi
 sha256sum "$scratch/chatgpt.deb" > "$artifact/package-sha256.txt"
 if [[ -n "${OPENSKY_NATIVE_PACKAGE_SHA256:-}" ]]; then
   printf '%s  %s\n' "$OPENSKY_NATIVE_PACKAGE_SHA256" "$scratch/chatgpt.deb" | sha256sum --check -
@@ -29,6 +36,10 @@ if len(packages)!=1 or len(binaries)!=1:
 (out/'package-path.txt').write_text(str(packages[0].parent))
 (out/'binary-path.txt').write_text(str(binaries[0]))
 PY
+if [[ "${OPENSKY_NATIVE_FREEZE_ONLY:-}" == 1 ]]; then
+  cp "$scratch/chatgpt.deb" "$artifact/chatgpt.deb"
+  exit 0
+fi
 export OPENSKY_NATIVE_PROBE_PACKAGE="$(cat "$artifact/package-path.txt")"
 export OAI_SKY_LINUX_BIN="$(cat "$artifact/binary-path.txt")"
 export OPENSKY_NATIVE_PROBE_ARTIFACT="$artifact"

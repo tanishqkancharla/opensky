@@ -322,7 +322,7 @@ export class CuaFacade {
     this.navigationVersions.set(handle, version);
   }
 
-  async state(handle: TargetHandle, options: StateOptions, screenshot: boolean, appScope = false): Promise<AppState> {
+  async state(handle: TargetHandle, options: StateOptions, screenshot: boolean, appScope = false, accessibilityTree = true): Promise<AppState> {
     this.assertOpen(handle);
     if ((options.context !== undefined || options.continuation !== undefined) &&
         (screenshot || options.query !== undefined || (options.context !== undefined && options.continuation !== undefined))) {
@@ -338,6 +338,7 @@ export class CuaFacade {
       ...(appScope ? { scope: "app" as const } : {}),
       disableDiff: navigation !== undefined && !storedContext ? true : options.disableDiffing,
       includeScreenshot: screenshot,
+      ...(!accessibilityTree ? { includeAccessibilityTree: false } : {}),
       ...(options.query === undefined ? {} : { query: options.query }),
       ...(options.context === undefined ? {} : { context_element_index: options.context }),
       ...(options.continuation === undefined ? {} : { continuation: options.continuation }),
@@ -415,8 +416,8 @@ abstract class BoundTarget implements Target {
 
   get targetHandle(): TargetHandle { return this.observedHandle; }
 
-  private async observe(options: StateOptions, screenshot: boolean): Promise<AppState> {
-    const state = await this.facade.state(this.targetHandle, options, screenshot, this instanceof BoundApp);
+  private async observe(options: StateOptions, screenshot: boolean, accessibilityTree = true): Promise<AppState> {
+    const state = await this.facade.state(this.targetHandle, options, screenshot, this instanceof BoundApp, accessibilityTree);
     this.observedHandle = state.targetHandle;
     return state;
   }
@@ -430,7 +431,7 @@ abstract class BoundTarget implements Target {
   }
 
   async getScreenshot(options: ObservationOptions = {}): Promise<Uint8Array> {
-    const state = await this.observe({}, true);
+    const state = await this.observe({}, true, !(this instanceof BoundApp));
     if (!state.screenshot) throw new CuaUnsupportedError("getScreenshot", "the exact target returned no screenshot");
     const screenshot = new Uint8Array(await readFile(fileURLToPath(state.screenshot.url)));
     this.facade.emit(screenshot, options);

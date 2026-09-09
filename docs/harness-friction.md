@@ -2542,3 +2542,27 @@ skips and froze profile c7fa3e09273f8e9c0704eb872361ee8b8a0b41b388efacc206e8b0cb
 against the current downloader/scoring sources. Both artifact copies have that
 hash; the hosted setup workflow now pins this run and hash. Source admission
 will still reject changes rather than silently using stale references.
+
+**PERF-L01 — Screenshot-only calls extracted the full accessibility tree:**
+Native BoundApp.getScreenshot now uses the driver's existing pixel-only path.
+Exact-window selection, screenshot input mapping and prior AX token authority
+are retained; typed browser observations retain their current path. Same-driver
+sequential remote runs shot-speed-before-01 and shot-speed-after-01 passed both
+SHOT-L01 (AX index remains usable after screenshot/save) and SHOT-L02 (new dialog
+screenshot targets its field). All four owned apps exited and containers were
+removed. Six screenshot calls per variant: median 5424.13 ms before, 611.19 ms
+after. Combined two-test duration 123939.18 ms before, 95464.22 ms after. These
+are small public-SDK latency samples, not new paired-agent scores or Mac/Windows
+GUI certification. TypeScript build and e2e typecheck passed; no mocks were added.
+
+**SET-075 — Mutable native package URL breaks a frozen campaign:**
+Hosted setup 34310173052 passed grading admission, then rejected the changed
+latest native package hash. The new observed official package hash is
+2caa7df314ce37e9048359d8e6a4a78e24574a3b54d6bf510f17754b66dda775. Added a
+model-free workflow to freeze exactly these bytes after package/entry-point
+inspection. Native probing can consume that immutable artifact and still verify
+its checksum; neither backend silently follows latest during a pair. New-package
+runtime validation remains pending. Official download source rechecked at
+https://learn.chatgpt.com/docs/linux/linux-app; Linux UI Computer Use support is
+not claimed by these internal-backend probes. Prior reference evidence remains
+versioned separately. No model spending occurred in the failed setup.

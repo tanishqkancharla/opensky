@@ -1,0 +1,25 @@
+name: Freeze native Linux reference
+on:
+  push:
+    branches: [codex/linux-full-setup]
+    paths: ['.github/workflows/linux-native-reference.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  freeze:
+    runs-on: ubuntu-24.04
+    env:
+      OPENSKY_NATIVE_PACKAGE_SHA256: 2caa7df314ce37e9048359d8e6a4a78e24574a3b54d6bf510f17754b66dda775
+      OPENSKY_NATIVE_FREEZE_ONLY: '1'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Verify and retain the official package and native entry points
+        run: bash e2e/ci/native-linux-probe.sh
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: native-reference-linux-x64
+          path: artifacts/native-linux
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 90
