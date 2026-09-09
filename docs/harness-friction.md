@@ -2635,3 +2635,17 @@ without poisoning or restarting. A later cell saved the exact expected nine
 text fragments once. Keymap restoration and owned-process cleanup passed.
 This is deterministic public-tool acceptance; the new Terra pair is still
 required for agent outcome and latency evidence.
+# PERF-L03: repeated foreground typing scans
+
+Real remote `type-profile-01` used the exact df79 driver and existing TYPE-L01 /
+COORD-L01 saved-file tests. Both passed with verified cleanup. Thirty characters
+took 4.309s to refuse background input and 5.913s in foreground; the 16-character
+selected font field took 10.014s then 10.155s. Timestamped daemon diagnostics
+show full accessibility walks repeated during the foreground retry. The wrapper
+adds diagnostic overhead, so these are route measurements, not an agent speedup.
+
+Driver candidate c2f9a2a60 directly sends unindexed foreground text through its
+existing real keyboard route. Native indexed and background paths remain intact.
+The focused build workflow pins this candidate; the agent campaign remains pinned
+to df79 until saved-file/selection/Unicode and keymap regressions pass. Full native
+desktop matrix and new agent timing remain unverified.
