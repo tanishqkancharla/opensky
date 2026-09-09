@@ -2380,3 +2380,12 @@ as coordinate names with numeric value zero. The driver collected Text but
 only surfaced it when Name was empty. Candidate cc2cf0d7440b6d36055af9afda2309960950cd1a preserves cell
 coordinates as names and observed displayed text as values. The original
 Net Sales assertion remains unchanged; no Calc acceptance is claimed yet.
+
+DRV-L06 cell-text acceptance: cc2cf0d74 passed SETUP-L02 in 34.755 s after
+CI 34306147428. CALC-L01 then failed its saved-file assertion: the formula
+B2-C2 and cached value 75000 were written to previously active G17, not the
+freshly observed E2 click target. Both owned process groups exited. Candidate
+bb6fac1c856d4eed03cbb8748deab78ebaf3dcc9 returns a typed pre-input background refusal for table-cell clicks,
+including coordinate hits. The existing SDK retry retains the target and uses
+real foreground input. The saved E2 assertion is not weakened. Build and
+acceptance are pending; paid agent runs still use the earlier accepted driver.

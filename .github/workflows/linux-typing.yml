@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: cc2cf0d7440b6d36055af9afda2309960950cd1a
+  OPENSKY_DRIVER_REF: bb6fac1c856d4eed03cbb8748deab78ebaf3dcc9
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
