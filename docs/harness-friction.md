@@ -2676,3 +2676,12 @@ observed after the plus click. Both app exits verified. The remote 1280×883
 layout and original CI 1280×881 layout were visually inspected; both controls
 occupy the selected pixels. The fixture accepts those two observed geometries.
 Root cause and driver correction remain open; no passing-agent claim.
+# CALC-L03 / CALC-L04 candidate: shared screenshot hit-testing
+
+Driver db81cc461 uses shared snapshot bounds for X11 coordinate hit-testing
+instead of raw toolkit Window extents. GTK accessibility misses on a headless
+desktop now request foreground input before attempting an ignored synthetic
+pointer fallback. This addresses the saved empty E2 / missing Sheet2 reproduced
+in calc-coordinate-before-03. The focused build workflow pins the candidate;
+both unchanged real SDK outcome assertions and input regressions must pass
+before an agent comparison. The paid campaign driver pin remains unchanged.
