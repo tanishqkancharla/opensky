@@ -2355,3 +2355,12 @@ diagnostic retry repeats the failure. Replace unbounded enumeration with
 visible/bounded virtual-container traversal, preserving actionable references
 and truthful partial-tree reporting. The original SETUP-L02 assertion remains
 the acceptance gate. No driver fix is implemented or accepted yet.
+
+DRV-L06 bounded visible-range feasibility: calc-table-03 reads screen bounds
+[33,153,1174,662] from the virtual table. Component.GetAccessibleAtPoint at its
+inset corners returns cells whose Table.GetRowAtIndex/GetColumnAtIndex values
+span rows 0–36 and columns 0–11. This establishes a 444-cell visible range
+without asking for the full child list. The diagnostic exits normally and its
+disposable container is removed. This is feasibility evidence only; bounded
+driver traversal, clipping/partial-cell behavior, action index stability and
+real SETUP-L02 acceptance still need implementation and verification.
