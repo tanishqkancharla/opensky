@@ -105,13 +105,13 @@ describe("single-tool native-style cua evaluator", () => {
     }
   });
 
-  it("has one schema, persists JS state, and does not duplicate emitted results", async () => {
+  it("exposes evaluation and waiting, persists JS state, and does not duplicate emitted results", async () => {
     const runtime = createCuaReplToolRuntime(driver(), "mac", {
       homeDir: await mkdtemp(join(tmpdir(), "opensky-cua-repl-")),
     });
     try {
-      assert.deepEqual(CUA_REPL_TOOL_NAMES, ["cua_repl"]);
-      assert.equal(runtime.tools.length, 1);
+      assert.deepEqual(CUA_REPL_TOOL_NAMES, ["cua_repl", "cua_repl_wait"]);
+      assert.equal(runtime.tools.length, 2);
       const tool = runtime.tools[0]!;
       assert.match(tool.description, /scroll\(index \| \[x, y\], direction, pages\?\)/);
       assert.match(tool.description, /drag\(\[fromX, fromY\], \[toX, toY\]\)/);

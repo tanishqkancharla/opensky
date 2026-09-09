@@ -489,7 +489,10 @@ async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs:
     // With microtaskMode=afterEvaluate this empty turn drains realm-created
     // Promise continuations under vm's synchronous timeout accounting.
     vm.runInContext("", context, { timeout: Math.max(1, remaining) });
-    if (!settled) await new Promise<void>((resolve) => setImmediate(resolve));
+    // While host actions are pending, repeatedly draining an idle realm spins
+    // setImmediate plus VM watchdogs at full speed. Yield for 1ms between
+    // drains; each drain still enforces its synchronous/microtask CPU timeout.
+    if (!settled) await new Promise<void>((resolve) => setTimeout(resolve, 1));
   }
   if (rejected) throw failure;
   return result;

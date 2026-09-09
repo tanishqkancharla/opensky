@@ -91,7 +91,7 @@ try {
         command: process.execPath,
         args: ["--import", join(repo, "node_modules/tsx/dist/loader.mjs"), join(root, `../${backend === "native" ? "native" : "opensky"}-mcp.ts`)],
         env: { PARITY_DESKTOP_SCOPE: JSON.stringify(scope), OPENSKY_HOME: join(artifacts, "agent-sdk"), OPENSKY_DRIVER_BINARY: driver, ...(driverSocket ? { OPENSKY_DRIVER_SOCKET: driverSocket } : {}), ...(nativeConfig ? { OPENSKY_NATIVE_REPL_CONFIG: nativeConfig } : {}) },
-        enabled_tools: backend === "native" ? ["js"] : ["cua_repl"],
+        enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
       };
       const guide = backend === "native"
         ? (await readFile(join(root, "../native-guide.md"), "utf8")).replaceAll('"org.libreoffice.script"', JSON.stringify(appSelector))

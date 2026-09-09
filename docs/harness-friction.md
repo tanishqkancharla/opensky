@@ -2598,3 +2598,20 @@ action completion beyond the CPU budget, next-cell binding continuity and
 recursive-microtask interruption. Desktop replay and new paired outcome remain
 pending; tests alone do not establish task parity. Native/app/profile freeze
 and all three hosted app setups passed with cleanup before these agent runs.
+
+
+**PERF-L02 — Strict REPL burned CPU while waiting for host actions:**
+The strict evaluator pumped an empty VM turn through `setImmediate` continuously
+while host I/O was pending. A real two-second host timer used a median 1,301.922ms
+of process CPU across three Node 24.5.0 macOS samples. The scheduler now yields
+with a 1ms timer between drains; the same three-sample measurement used median
+268.094ms CPU (79.4% less), with median wall time 1,999.603ms → 2,002.935ms.
+One hundred sequential 5ms host waits took median 500.671ms → 564.047ms wall time
+(+0.634ms/action), while CPU fell 320.132ms → 75.589ms. This trades a small
+scheduling delay for substantially lower idle CPU; it is not a measured Linux
+agent speedup. `e2e/ci/benchmark-repl-await.mts` reproduces the real-service
+measurement; raw before/after receipts are in the workspace
+`work/repl-idle-benchmark/{before,after}-repeated.jsonl`. VM synchronous and
+microtask timeouts and strict capability revocation are unchanged. Validation:
+14/14 existing AsyncRepl tests, 2/2 real timer fixture tests, and TypeScript build
+passed. No model runs or GUI apps were started.

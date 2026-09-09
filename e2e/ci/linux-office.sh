@@ -41,6 +41,13 @@ done
 libreoffice --version > "$OPENSKY_LINUX_OFFICE_ARTIFACT/libreoffice-version.txt"
 printf '%s\n' "$GITHUB_SHA" > "$OPENSKY_LINUX_OFFICE_ARTIFACT/sdk-source-sha.txt"
 node --import tsx e2e/ci/linux-environment.ts
+if [[ "${OPENSKY_LINUX_AGENT_MODE:-}" == repl ]]; then
+  export OPENSKY_DISPOSABLE_DESKTOP=1
+  cd e2e
+  npm test -- specs/linux-repl-cell.test.ts --reporter=verbose --reporter=json \
+    --outputFile.json="$OPENSKY_LINUX_OFFICE_ARTIFACT/results.json"
+  exit
+fi
 if [[ -n "${OPENSKY_LINUX_AGENT_MODE:-}" ]]; then
   if [[ "$OPENSKY_LINUX_AGENT_MODE" == agent ]]; then
     export CODEX_HOME="$runtime/codex"

@@ -185,8 +185,15 @@ export async function runCodex(options: CodexRunOptions) {
           params.message === `Allow the desktop MCP server to run tool "${replTool}"?` &&
           (options.authorizedReplCodes?.includes(metadata.tool_params?.code) || admittedPrograms.has(metadata.tool_params?.code) ||
             guardedProgramTransport && rejectedPrograms.has(metadata.tool_params?.code));
+        const waitToolForm = guardedProgramTransport && options.desktopProgramScope?.backend === "opensky" &&
+          metadata.codex_approval_kind === "mcp_tool_call" &&
+          params.message === 'Allow the desktop MCP server to run tool "cua_repl_wait"?' &&
+          [...activeCalls.values()].some(call => call.server === "desktop" && call.tool === "cua_repl_wait" &&
+            isDeepStrictEqual(call.arguments, metadata.tool_params) &&
+            typeof call.arguments?.cell_id === "string" && /^[a-f0-9-]{36}$/.test(call.arguments.cell_id) &&
+            Object.keys(call.arguments).every(key => ["cell_id", "yield_time_ms"].includes(key)));
         const allowed = !interruption && params.serverName === "desktop" && params.threadId === threadId &&
-          params.mode === "form" && (directForm || replForm || desktopToolForm) &&
+          params.mode === "form" && (directForm || replForm || desktopToolForm || waitToolForm) &&
           schema?.type === "object" && Object.keys(schema.properties ?? {}).length === 0 &&
           !(schema.required?.length);
         // Use the documented one-request accept response. Do not request the

@@ -9,7 +9,7 @@ on:
     inputs:
       mode:
         type: choice
-        options: [setup, agent]
+        options: [setup, repl, agent]
         default: setup
       setup_task:
         description: 'Benchmark task to validate without a model in setup mode'
@@ -57,6 +57,7 @@ jobs:
           bash e2e/ci/install-linux-desktop.sh
           npm ci --ignore-scripts
           npm run build
+          if [[ "$OPENSKY_LINUX_AGENT_MODE" == repl ]]; then npm ci --ignore-scripts --prefix e2e; fi
           python -m pip install -r evals/parity/osworld/requirements.txt
           python evals/parity/osworld/fetch-assets.py
       - name: Use the pinned candidate driver

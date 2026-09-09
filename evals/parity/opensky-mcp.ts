@@ -36,7 +36,7 @@ input.on("line", line => {
         case "ping": result = {}; break;
         case "tools/list": result = { tools: runtime.tools.map(tool => ({ name: tool.name, description: tool.description, inputSchema: tool.parameters })) }; break;
         case "tools/call": {
-          if (policy && !policy.accepts(request.params?.arguments?.code)) {
+          if (policy && request.params?.name !== "cua_repl_wait" && !policy.accepts(request.params?.arguments?.code)) {
             result = { isError: true, content: [{ type: "text", text: "Evaluation scope: use straight-line public cua calls for the fixture app only. No helper functions or other apps." }] };
             break;
           }
@@ -46,10 +46,12 @@ input.on("line", line => {
           if (limit) { result = limitResponse(limit); break; }
           // This runtime's implementation takes only id and params. Pi's
           // generic declaration widens it with unused host-context arguments.
-          const execute = tool.execute as unknown as (id: string, params: { code: string; title?: string }) => Promise<{ content: unknown; isError?: boolean; details?: unknown }>;
+          const execute = tool.execute as unknown as (id: string, params: Record<string, unknown>) => Promise<{ content: unknown; isError?: boolean; details?: unknown }>;
           const response = await execute(String(request.id), request.params.arguments);
           await appendFile(join(homeDir, "cua-trace.jsonl"), `${JSON.stringify(response.details)}\n`);
-          result = { content: response.content, isError: response.isError ?? false };
+          const cell = response.details as { cellId?: string; cellStatus?: string } | undefined;
+          result = { content: response.content, isError: response.isError ?? false,
+            ...(cell?.cellId ? { structuredContent: { cellId: cell.cellId, cellStatus: cell.cellStatus } } : {}) };
           break;
         }
         default: send({ jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found" } }); return;

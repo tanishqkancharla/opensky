@@ -97,7 +97,7 @@ try {
         OPENSKY_OWNED_DRIVER_PID: process.env.OPENSKY_OWNED_DRIVER_PID!, GITHUB_ACTIONS: "true",
         OPENSKY_NATIVE_REPL_CONFIG: nativeConfig,
       },
-      enabled_tools: backend === "native" ? ["js"] : ["cua_repl"],
+      enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
     };
     const guide = backend === "native" ? await readFile(join(root, "../native-linux-guide.md"), "utf8") :
       `Use desktop.cua_repl. Bind let app = await cua.getApp(${JSON.stringify(launch.appName)}); then use its public methods and fresh observations. Creation and observations emit automatically.`;

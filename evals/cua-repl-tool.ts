@@ -2,6 +2,7 @@ import { Type } from "typebox";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 
 import { AsyncLifecycle } from "./async-lifecycle.js";
+import { AsyncToolCell } from "./async-tool-cell.js";
 import { AsyncRepl, AsyncReplError } from "../src/async-repl.js";
 import { installNodeReplOutput, imageOutput, type ReplOutput } from "../src/node-repl.js";
 import { createCua, type App, type Browser, type Tab } from "../src/cua.js";
@@ -10,7 +11,7 @@ import type { DriverClient, OpenSkyOptions, OpenSkyTarget } from "../src/types.j
 
 type Content = ReplOutput;
 
-export const CUA_REPL_TOOL_NAMES = ["cua_repl"] as const;
+export const CUA_REPL_TOOL_NAMES = ["cua_repl", "cua_repl_wait"] as const;
 
 type BridgeCallTrace = {
   op: string;
@@ -35,6 +36,7 @@ export function createCuaReplToolRuntime(
   installNodeReplOutput(repl, (output) => activeEmissions?.push(output));
   const lifecycle = new AsyncLifecycle("CUA REPL runtime", () => opensky.close());
   let executionQueue: Promise<void> = Promise.resolve();
+  const cells = new AsyncToolCell();
   installSafeCuaBridge(repl, async (request) => {
     return lifecycle.run("bridge dispatch", async () => {
       const parsed = JSON.parse(request) as { op?: string; args?: unknown[] };
@@ -69,6 +71,7 @@ export function createCuaReplToolRuntime(
       "To open a URL use cua.createBrowserTab(id, url, {visible?, sessionName?}) or tab.goto(url). " +
       "Tab inventories include only this facade's owned tabs. An empty list does not establish that the user has no other tabs or windows. " +
       "Bindings persist across calls. Batch deterministic target actions and finish with getAXState(); action methods do not observe automatically. " +
+      "Long batches return a pending cell ID after at most 30 seconds; call cua_repl_wait with that ID until complete. Do not submit new code or replay the batch while pending. " +
       "Target methods: getAXState({disableDiffing?, query?, context?, continuation?, emit?}), getScreenshot({emit?}), getAXStateAndScreenshot({disableDiffing?, query?, emit?}), " +
       "click(index | [x, y]), typeText(text), pressKey(key), scroll(index | [x, y], direction, pages?), " +
       "setValue(index, value), selectText(index, text, options?), drag([fromX, fromY], [toX, toY]), performSecondaryAction(index, action). " +
@@ -88,9 +91,10 @@ export function createCuaReplToolRuntime(
     parameters: Type.Object({
       code: Type.String({ minLength: 1, description: "Async JavaScript using the preloaded cua object" }),
       title: Type.Optional(Type.String({ description: "Short human-readable action label" })),
+      yield_time_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 30000, description: "Wait for output before yielding a pending cell ID; does not stop execution. Default 30000." })),
     }),
     execute(_id, params) {
-      return lifecycle.run("tool execution", () => {
+      return cells.start(() => lifecycle.run("tool execution", () => {
         const execution = executionQueue.then(async () => {
           activeEmissions = [];
           activeBridgeCalls = [];
@@ -144,8 +148,18 @@ export function createCuaReplToolRuntime(
           () => undefined,
         );
         return execution;
-      });
+      }), params.yield_time_ms);
     },
+  }), defineTool({
+    name: "cua_repl_wait",
+    label: "cua_repl_wait",
+    description: "Wait for a pending cua_repl cell without replaying any code. Repeat with the same cell ID while pending. Completed output includes the original observations and errors; earlier bindings remain in the same REPL.",
+    executionMode: "sequential",
+    parameters: Type.Object({
+      cell_id: Type.String({ description: "Cell ID returned by cua_repl" }),
+      yield_time_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 30000 })),
+    }),
+    execute(_id, params) { return cells.wait(params.cell_id, params.yield_time_ms); },
   })];
 
   return { tools, close: () => lifecycle.close() };
