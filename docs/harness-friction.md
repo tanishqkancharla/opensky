@@ -3258,3 +3258,16 @@ the original agent's ambiguous indexed target1551, replace its frozen failure,
 or validate every multiline/control/platform combination. Full source archive
 and all three outcomes are retained under linux-office-setup/dropdown-multiline-*
 for reproduction. No driver/SDK implementation changes or model calls occurred.
+
+
+Splitting pair44/45 is complete: both failed (eight wrong/missing output cells
+for native, six wrong cells for OpenSky), with original nonempty cell values
+preserved and cleanup verified. Ubuntu labels differ; other fingerprints match.
+Frozen baseline:8/20 pairs, native7/OpenSky5. No failed attempt was replaced.
+
+Native46 passed the slide4 table-header task. Read-only PPTX inspection confirms
+T1/T2/T3/T4 and no other text changes; the original table bounds, row heights,
+column widths and explicit Russo One32.3pt white header fonts remain unchanged.
+The diagnostic retains raw gold comparisons, style fields and adapted-reference
+hash receipts without claiming a fresh render or changing the official score.
+OpenSky47 is pending. The helper improves failure diagnosis, not the model score.
