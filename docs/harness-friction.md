@@ -2364,3 +2364,11 @@ without asking for the full child list. The diagnostic exits normally and its
 disposable container is removed. This is feasibility evidence only; bounded
 driver traversal, clipping/partial-cell behavior, action index stability and
 real SETUP-L02 acceptance still need implementation and verification.
+
+DRV-L06 candidate a251619ec2716a9d9d501e40d3889d303beb83b9: child-count checks now prevent full virtual-table
+enumeration, and table corner queries delimit a bounded visible range clipped
+to the frame. Partial child lists are labeled in the returned tree. Compilation
+and unchanged Calc acceptance are pending. The Linux typing workflow now has
+a build_only dispatch option for focused remote iteration; its default still
+runs the three-desktop regression matrix. No agent workflow driver pin changes
+until the candidate is accepted.

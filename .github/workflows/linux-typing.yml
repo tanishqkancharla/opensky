@@ -5,13 +5,18 @@ on:
     branches: [codex/linux-input-parity]
     paths: ['src/**', 'e2e/**', '.github/workflows/linux-typing.yml']
   workflow_dispatch:
+    inputs:
+      build_only:
+        description: Build a candidate for focused one-off remote tests
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 7f9e72fcf4ccf295d41608ea8b15439596f43c0f
+  OPENSKY_DRIVER_REF: a251619ec2716a9d9d501e40d3889d303beb83b9
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -41,6 +46,7 @@ jobs:
           cargo build --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_keysyms_cover_latin1_unicode_and_control_keys
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml hotkey_alias_tests
+          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml virtual_table_tests
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/debug/cua-driver driver-artifact/opensky-driver
@@ -58,6 +64,7 @@ jobs:
           retention-days: 14
 
   evaluate:
+    if: ${{ !inputs.build_only }}
     strategy:
       fail-fast: false
       matrix:
