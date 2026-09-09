@@ -2931,3 +2931,11 @@ This distinguishes double-click edit mode from a single selected cell. Current
 SDK30b0a73 and driver435 baseline is running CALC-L03/L04/L05/L06 in the same
 remote image used for candidate acceptance. Build-only workflow now pins the
 new driver; the paid evaluation pin remains the verified435 executable.
+
+The baseline focused-click-before-01 passed all four cases in164.31s. Candidate
+4e3028d6f compiled but all four cases failed with action_outcome_mismatch: its
+new internal path label was unknown to the common action-record publisher.
+Correction4fb1e892e reuses the existing registered xtest transport, preserving
+SDK outcome validation. Both build paths now include the existing known-path
+normalization check. Failed artifacts remain focused-click-after-01; no speed
+claim or paid pin change is accepted before the same real cases pass.

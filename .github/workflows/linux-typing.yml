@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 4e3028d6f8c36182b0e5ad5d4b864e40cd720f46
+  OPENSKY_DRIVER_REF: 4fb1e892ec297eb3e9d68804174f7d94b25cb1b8
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -50,6 +50,7 @@ jobs:
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::native::coord_tests
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml frame_correlation_tests
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
+          cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/debug/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json

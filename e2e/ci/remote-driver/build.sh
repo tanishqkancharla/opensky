@@ -57,6 +57,7 @@ docker run --rm --name "$container" --cpus 2 --memory 4g \
     cargo test --locked -p platform-linux --lib atspi::native::coord_tests
     cargo test --locked -p platform-linux --lib frame_correlation_tests
     cargo test --locked -p cua-driver-core --lib element_token::tests
+    cargo test --locked -p cua-driver-core --lib every_known_legacy_action_path_normalizes
     cp /target/debug/cua-driver /artifacts/opensky-driver
     /artifacts/opensky-driver --opensky-driver-identity > /artifacts/identity.json
     python3 -c '\''import json,os; d=json.load(open("/artifacts/identity.json")); assert d["product"] == "opensky-driver" and d["protocolVersion"] == 1 and d["source"] == os.environ["EXPECTED_SOURCE_SHA"]'\''
