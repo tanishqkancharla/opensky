@@ -2676,12 +2676,38 @@ observed after the plus click. Both app exits verified. The remote 1280×883
 layout and original CI 1280×881 layout were visually inspected; both controls
 occupy the selected pixels. The fixture accepts those two observed geometries.
 Root cause and driver correction remain open; no passing-agent claim.
-# CALC-L03 / CALC-L04 candidate: shared screenshot hit-testing
+## CALC-L03 / CALC-L04 candidate: shared screenshot hit-testing
 
 Driver db81cc461 uses shared snapshot bounds for X11 coordinate hit-testing
 instead of raw toolkit Window extents. GTK accessibility misses on a headless
 desktop now request foreground input before attempting an ignored synthetic
-pointer fallback. This addresses the saved empty E2 / missing Sheet2 reproduced
+pointer fallback. This targets the saved empty E2 / missing Sheet2 reproduced
 in calc-coordinate-before-03. The focused build workflow pins the candidate;
 both unchanged real SDK outcome assertions and input regressions must pass
 before an agent comparison. The paid campaign driver pin remains unchanged.
+
+Validation of exact driver db81cc461 (binary SHA256
+ec5761dd43734a6636fc534849960545787032d5a67bb62958baa94e59b969c2):
+focused build 34316016256 passed, but **both unchanged Calc assertions failed**
+in `calc-coordinate-after-01`. The candidate is not accepted. A separate
+observation diagnostic, `calc-click-diagnostic-01`, recorded accessibility
+delivery for the name-box click and foreground global-input delivery for the
+new-sheet click. The latter placed the actual pointer at screen (116,861),
+matching screenshot (116,844) plus the client origin (0,17), without producing
+Sheet2. Both owned app exits and container removal were verified. Target
+selection, gesture delivery and focus restoration remain under investigation.
+
+Follow-up controls: real paced external clicks passed both saved outcomes;
+unpaced same-connection XTest passed the name-box workflow but failed new-sheet
+creation even with no focus restoration. Adding only flush plus a 50ms hold
+passed both (`calc-external-paced-01`, `calc-external-unpaced-01`,
+`calc-external-held-01`). The accessibility point probe found an actionable
+panel around the name box without an EditableText node, explaining the
+container activation path. The first probe timed out on Calc's virtual table;
+later probes skipped that explicitly irrelevant subtree and recorded the skip.
+All owned app groups exited. These are diagnostic bypasses, not SDK acceptance.
+
+Driver candidate a9501e0ca requests foreground pixel input for compound panels
+and holds real XTest button presses for 50ms. Its focused build is pinned here;
+unchanged Calc and input regression outcomes remain required before updating
+the paid agent workflow. Full paired timing and the desktop matrix are pending.
