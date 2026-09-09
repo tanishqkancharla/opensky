@@ -111,7 +111,7 @@ try {
       });
       const report = { taskId, backend, profile: profileLimits, scoringProfile,
         rawOutcome: savedFileOutcome.rawOutcome ?? savedFileOutcome, adaptedOutcome: savedFileOutcome.adaptedOutcome ?? null,
-        suite: manifest.suite, upstreamCommit: manifest.upstreamCommit, adaptations: manifest.adaptations, outcome, savedFileOutcome, taskLimit: result.taskLimit, infrastructureError: result.infrastructureError, toolCalls: result.toolCalls, admittedCalls: result.admission?.admittedCalls ?? null, contextCompactions: result.contextCompactions, usage: result.usage, elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt) };
+        suite: manifest.suite, upstreamCommit: manifest.upstreamCommit, adaptations: manifest.adaptations, outcome, savedFileOutcome, taskLimit: result.taskLimit, infrastructureError: result.infrastructureError, toolCalls: result.toolCalls, toolCallsByName: result.toolCallsByName, admittedCalls: result.admission?.admittedCalls ?? null, contextCompactions: result.contextCompactions, usage: result.usage, elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt) };
       await writeFile(join(artifacts, "score.json"), JSON.stringify(report, null, 2));
       console.log(JSON.stringify(report));
   });

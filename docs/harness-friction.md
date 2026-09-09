@@ -2615,3 +2615,15 @@ measurement; raw before/after receipts are in the workspace
 microtask timeouts and strict capability revocation are unchanged. Validation:
 14/14 existing AsyncRepl tests, 2/2 real timer fixture tests, and TypeScript build
 passed. No model runs or GUI apps were started.
+
+REPL-L01 transport continuation: the public CUA runtime now exposes
+cua_repl_wait. An action batch continues after a bounded (at most30s) reply wait
+and retains its cell ID, bindings and pending result. New code is refused until
+that result is retrieved; waiting never replays desktop actions. Repeated reads
+of the latest completed cell are marked replayed. The evaluator's default60s
+outer MCP timeout therefore bounds an individual wait, not the action batch.
+Both Linux/macOS paired adapters expose the same public wait tool. A real65s
+operation exercises multiple waits; the isolated Linux REPL-L01 desktop test
+checks exact saved text, subsequent-cell binding use and keymap restoration.
+Hosted desktop validation is pending. Wait calls remain included in agent tool
+counts and will be distinguished when interpreting interaction efficiency.

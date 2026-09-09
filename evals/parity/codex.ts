@@ -115,6 +115,7 @@ export async function runCodex(options: CodexRunOptions) {
   let threadId: string | undefined;
   let turnId: string | undefined;
   let toolCalls = 0;
+  const toolCallsByName: Record<string, number> = {};
   let usage: unknown = null;
   let eventOrdinal = 0;
   let lastUsageEvent = -1;
@@ -220,6 +221,7 @@ export async function runCodex(options: CodexRunOptions) {
       const item = params.item;
       if (item?.type === "mcpToolCall") {
         activeCalls.set(item.id, item); toolCalls++;
+        toolCallsByName[item.tool] = (toolCallsByName[item.tool] ?? 0) + 1;
         if (programPolicy && ["js", "cua_repl"].includes(item.tool)) {
           const code = item.arguments?.code;
           if (typeof code !== "string" || !programPolicy.accepts(code)) {
@@ -271,7 +273,7 @@ export async function runCodex(options: CodexRunOptions) {
     const classification = classifyRun(interruption, turn.status, admission, options.maxToolCalls);
     if (guarded && !admission) classification.infrastructureError = "missing_dispatch_receipt";
     const contextCompactions = items.filter(item => item.type === "contextCompaction").length;
-    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, contextCompactions, items, finalText, decisions, programRejections: [...rejectedPrograms], authentication, workspaceBillUsd: null };
+    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, toolCallsByName, contextCompactions, items, finalText, decisions, programRejections: [...rejectedPrograms], authentication, workspaceBillUsd: null };
     await writeFile(join(options.artifacts, "result.json"), JSON.stringify(result, null, 2));
     const finalInterruptedUsage = classification.taskLimit && turn.status === "interrupted" && activeCalls.size === 0 && lastUsageEvent > lastItemEvent;
     if (((turn.status === "completed" && !interruption) || finalInterruptedUsage) && usage) {
@@ -281,7 +283,7 @@ export async function runCodex(options: CodexRunOptions) {
     }
     return result;
   } catch (error) {
-    await writeFile(join(options.artifacts, "failure.json"), JSON.stringify({ startedAt, finishedAt: new Date().toISOString(), threadId, usage, toolCalls, decisions, error: error instanceof Error ? error.message : String(error) }, null, 2));
+    await writeFile(join(options.artifacts, "failure.json"), JSON.stringify({ startedAt, finishedAt: new Date().toISOString(), threadId, usage, toolCalls, toolCallsByName, decisions, error: error instanceof Error ? error.message : String(error) }, null, 2));
     throw error;
   } finally {
     clearTimeout(timer); clearTimeout(hardTimer);

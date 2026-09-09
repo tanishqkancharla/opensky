@@ -115,7 +115,7 @@ try {
       outcome: { ...savedFileOutcome, taskSuccess: savedFileOutcome.taskSuccess && !result.taskLimit }, savedFileOutcome,
       rawOutcome: savedFileOutcome.rawOutcome ?? savedFileOutcome, adaptedOutcome: savedFileOutcome.adaptedOutcome ?? null,
       infrastructureError: result.infrastructureError, taskLimit: result.taskLimit, usage: result.usage,
-      toolCalls: result.toolCalls, admittedCalls: result.admission?.admittedCalls, contextCompactions: result.contextCompactions,
+      toolCalls: result.toolCalls, toolCallsByName: result.toolCallsByName, admittedCalls: result.admission?.admittedCalls, contextCompactions: result.contextCompactions,
       elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt),
     };
     await writeFile(join(artifacts, "score.json"), JSON.stringify(score, null, 2));
