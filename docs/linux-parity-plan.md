@@ -29,6 +29,29 @@ Use `evals/runs/parity-budget.json` as the authoritative cumulative ledger;
 conservative full-reservation charges are estimates, not invoices. Report each
 completed run and keep the status canvas current. Exclude Codex's in-app browser.
 
+## Priority update — 2026-09-09
+
+Behavioral parity takes precedence over speed differences. Continue to report
+elapsed time, calls and context, but do not gate broader matched task coverage
+on small performance improvements. Fix a performance issue when it is clearly
+large enough to impair the experience or prevent useful iteration. Keep source
+and scoring comparability; do not change task expectations to obtain passes.
+
+Next, broaden paired agent coverage to VS Code and Impress on the accepted
+configuration. The latest Calc pair is native pass / OpenSky fail: all requested
+values match, but 18 extra intermediate cells violate whole-sheet rules. The
+metadata batching candidate passed three real Calc saved-outcome checks and
+nine observation comparisons (owned document URI excepted), but remains outside
+the accepted paired configuration; further speed tuning is parked.
+
+The custom driver builds currently use Rust's development profile while the
+canonical shipping workflow uses release. Historical timing measurements remain
+valid for the tested build, but release performance is unmeasured. This caveat
+must not be confused with a task-success result or used to postpone coverage.
+
+The historical notes below describe earlier gates and may have been superseded;
+the live campaign artifacts are authoritative for current run status.
+
 ## Current evidence and next gate
 
 - The deterministic Linux desktop gate passed for both backends in run

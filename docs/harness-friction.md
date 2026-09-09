@@ -3087,3 +3087,26 @@ applies, and only fully enriched prefixes may be returned, preserving global
 index semantics. Structural DFS, child requests, limits and frame identity are
 unchanged. Exact Linux build and retained-observation/saved-outcome comparison
 against1cd are pending; no speed gain or paid pin change is claimed.
+
+
+AX-L03 bounded candidate acceptance: exact45cb339ea build34408863210 passed
+three unchanged real Calc cases in ax-metadata-chunked-01. The binary SHA matches
+436eeb2022e6286d335ef4a7c2761ca6ac083cb7ed638fbfb2c6d30f83e0cc86; image and
+non-driver sources match the retained1cd baseline. All saved cells and nine AX
+observations match (only exact owned document URIs normalized). All three app
+groups exited and Docker inventory is empty. AX54.356s→50.751s is a single
+comparison, not a broad speed claim. The accepted paid pin remains486.
+
+User direction on2026-09-09 prioritizes behavioral parity over performance;
+park further tuning and broaden paired VS Code / Impress outcomes. Also,
+linux-typing.yml and remote-driver/build.sh build Rust's unoptimized development
+profile, while canonical cd-rust-cua-driver.yml shipping builds use release.
+Historical timings describe the tested development build; the effect of release
+optimization has not been measured. This is a comparison caveat, not a new
+behavior failure or a reason to defer broader coverage.
+
+Iteration retrieval: work/fetch-linux-sdk-artifact.py retrieves completed owned
+SDK artifacts in one compressed SSH stream, verifies terminal report/container
+state and safe archive members, and stages without output overwrites or changes
+to remote ownership. Its first real use retrieved ax-metadata-chunked-01 in1.521s;
+parent independently verified source hashes, saved outcomes and cleanup above.
