@@ -2434,3 +2434,32 @@ Impress, and reports rawOutcome plus adaptedOutcome separately. E2E and
 runner TypeScript checks pass. The matching profile still needs distribution
 through the hosted workflow and end-to-end admission verification before any
 Impress agent dispatch. Existing paid-agent workflow pins remain unchanged.
+
+DRV-L06 exact-window geometry follow-up: candidate
+978fe0adf32f424599486d4dc7896967e56f4c57 built successfully in hosted run
+34307064623 (binary SHA256
+a2f8c4150bf707a57bb01204f4c714700e3d5193ac3169899c72cc718f856e30).
+Remote calc-candidate-03 passed SETUP-L02 in 35.000 s but CALC-L01 still
+failed: the saved workbook contains formula B2-C2 with cached value 75000 in
+E1 instead of requested E2. Both owned process groups verified exited; the
+remote Docker inventory was empty when artifacts were collected. Thus real
+pointer input improves on the prior G17 no-op but has not passed cell targeting.
+Snapshot diagnostics apply a SCREEN-to-X11 frame rebase of (0,17), while
+get_element_bounds does not share that conversion or an exact-window hint.
+This is the next geometry hypothesis to verify, not accepted driver behavior.
+Keep the unchanged saved-E2 assertion; share the coordinate conversion before
+rerunning the focused tests and existing input regressions. Local evidence:
+evals/runs/linux-office-setup/calc-candidate-03 in the OpenSky SDK checkout.
+
+**LOOP-L01 — Repeated manual result inspection delays the next iteration:**
+A completed remote test previously required separate result JSON, cleanup,
+spreadsheet XML, and driver-log reads, often after copying all screenshots.
+`e2e/ci/summarize-desktop-run.py` now emits these facts in one read-only command,
+including over SSH stdin without an installation. It preserves original test
+failures, skips, and missing evidence rather than grading new acceptance.
+Verified remotely against calc-candidate-03 (35.000 s reading pass, 85.539 s
+saved-cell failure, E1 formula, both cleanups verified) and locally against
+shared-setup-01 (Impress/Code passes). Remote summary command completed in
+approximately one second; no end-to-end iteration speedup has yet been measured.
+Container removal and actual binary hashing still require independent checks.
+Usage: docs/remote-run-summary.md.
