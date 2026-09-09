@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { verifyDriverRuntime } from "../../evals/parity/driver-runtime.js";
+import { verifyScoringProfile } from "../../evals/parity/scoring-profile.js";
 import { recordEnvironment } from "../../evals/parity/fingerprint.js";
 import { verifyNativeLinuxRepl } from "../../evals/parity/native-linux-repl.js";
 
@@ -27,7 +28,12 @@ const configuration = {
 await writeFile(nativeConfig, JSON.stringify(configuration, null, 2));
 await verifyDriverRuntime({ binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET,
   ownedLinuxPid: Number(process.env.OPENSKY_OWNED_DRIVER_PID), artifacts });
+const scoringProfilePath = process.env.OPENSKY_EVAL_SCORING_PROFILE;
+const scoringProfile = scoringProfilePath ? await verifyScoringProfile({
+  python: process.env.OPENSKY_EVAL_PYTHON!, officeExecutable: "/usr/lib/libreoffice/program/soffice",
+  profilePath: scoringProfilePath, expectedSha256: process.env.OPENSKY_EVAL_SCORING_PROFILE_SHA256,
+}) : { name: "upstream-pinned-v1", sha256: null };
 await recordEnvironment({ repo: process.cwd(), appPath: "/usr/lib/libreoffice", driver,
-  vscodePath: process.env.OPENSKY_EVAL_VSCODE,
+  vscodePath: process.env.OPENSKY_EVAL_VSCODE, scoringProfile,
   codex: join(resources, "codex"), python: process.env.OPENSKY_EVAL_PYTHON!, nativeConfig, artifacts });
 await verifyNativeLinuxRepl(configuration, artifacts);

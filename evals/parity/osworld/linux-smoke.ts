@@ -10,6 +10,7 @@ import { createCua, createOpenSky } from "../../../src/index.js";
 import { withOwnedLinuxApp } from "../linux-app.js";
 import { runCodex } from "../codex.js";
 import { prepareLinuxBenchmarkApp } from "../linux-benchmark-app.js";
+import { verifyScoringProfile } from "../scoring-profile.js";
 import { runProfile } from "../run-profile.js";
 
 const exec = promisify(execFile);
@@ -34,6 +35,18 @@ const nativeResources = resolve(nativeConfiguration.command, "../../..");
 const driver = process.env.OPENSKY_DRIVER_BINARY!;
 const python = process.env.OPENSKY_EVAL_PYTHON!;
 const profile = runProfile();
+const scoringProfilePath = process.env.OPENSKY_EVAL_SCORING_PROFILE;
+if (!scoringProfilePath && (task.category === "libreoffice_impress" || process.env.OPENSKY_EVAL_SCORING_PROFILE_SHA256)) {
+  throw new Error("A frozen, validated Linux scoring profile is required for Impress");
+}
+const scoringProfile = scoringProfilePath ? await verifyScoringProfile({
+  python, officeExecutable: "/usr/lib/libreoffice/program/soffice", profilePath: scoringProfilePath,
+  expectedSha256: process.env.OPENSKY_EVAL_SCORING_PROFILE_SHA256,
+}) : { name: "upstream-pinned-v1", sha256: null };
+if (scoringProfilePath && environment.scoringProfile?.sha256 !== scoringProfile.sha256) {
+  throw new Error("Scoring profile differs from the captured environment");
+}
+await writeFile(join(artifacts, "scoring-profile.json"), JSON.stringify(scoringProfile, null, 2), { flag: "wx" });
 for (const asset of task.assets) {
   const bytes = await readFile(join(root, taskId, asset.file));
   if (createHash("sha256").update(bytes).digest("hex") !== asset.sha256) throw new Error(`Task asset changed: ${asset.file}`);
@@ -94,11 +107,13 @@ try {
       mcp, authorizedApps: { [launch.appName]: launch.appName }, desktopProgramScope: scope,
       prompt: `Task: ${task.instruction}\nYou are using Ubuntu Linux. The document ${task.inputFile} is already open in ${launch.appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${launch.appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nFinish when saved, or report the specific blocker.`,
     });
-    const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), taskId, document], { timeout: 30_000 })).stdout);
+    const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), taskId, document,
+      ...(scoringProfilePath ? ["--profile", scoringProfilePath, "--expected-profile-sha256", scoringProfile.sha256!] : []),
+    ], { timeout: 30_000 })).stdout);
     score = { taskId, backend, suite: "osworld-verified-linux-desktop", upstreamCommit: manifest.upstreamCommit,
-      profile, scoringProfile: { name: "upstream-pinned-v1", sha256: null },
+      profile, scoringProfile,
       outcome: { ...savedFileOutcome, taskSuccess: savedFileOutcome.taskSuccess && !result.taskLimit }, savedFileOutcome,
-      rawOutcome: savedFileOutcome.rawOutcome ?? savedFileOutcome, adaptedOutcome: null,
+      rawOutcome: savedFileOutcome.rawOutcome ?? savedFileOutcome, adaptedOutcome: savedFileOutcome.adaptedOutcome ?? null,
       infrastructureError: result.infrastructureError, taskLimit: result.taskLimit, usage: result.usage,
       toolCalls: result.toolCalls, admittedCalls: result.admission?.admittedCalls, contextCompactions: result.contextCompactions,
       elapsedMs: Date.parse(result.finishedAt) - Date.parse(result.startedAt),

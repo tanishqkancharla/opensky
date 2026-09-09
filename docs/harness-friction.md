@@ -2417,3 +2417,20 @@ and consent callers retained the prior two-argument perform_action API. The
 wrapper is preserved and a click-specific entry point receives the new policy
 flag; no existing caller is silently assigned different parameters. Corrected
 candidate: 978fe0adf32f424599486d4dc7896967e56f4c57. No desktop test was dispatched from the failed build.
+
+SET-073 Linux grader acceptance: grader-controls-01 passed all 52 tests
+(108.54 s), spanning the frozen twenty tasks and five real Impress export
+control groups. All five completed specimens passed; unchanged, incorrect,
+damaged-content and damaged-format specimens failed as required. Export
+process/profile cleanup receipts passed. The frozen task-preserving-export-v1
+profile has SHA256 1570bdddb8f92038fb316c4886d8b1d12fabfd868e09f2bb60bff58b42691900,
+seven reference files, and LibreOffice 24.2.7.2 exporter identity. It adapts the
+five Impress references only; other task categories retain raw scoring. This
+is grader acceptance, not twenty agent task successes.
+
+The Linux runner now verifies an optional frozen profile against the actual
+exporter and environment fingerprint before app launch, requires it for
+Impress, and reports rawOutcome plus adaptedOutcome separately. E2E and
+runner TypeScript checks pass. The matching profile still needs distribution
+through the hosted workflow and end-to-end admission verification before any
+Impress agent dispatch. Existing paid-agent workflow pins remain unchanged.
