@@ -2850,3 +2850,28 @@ validates correlated frame geometry, and terminates on window mismatch before
 that attempt can mutate or reach another fallback. Indexed/explicit foreground
 paths are unchanged. Build and real unchanged focus/range/input/indexed acceptance
 are pending; agent evaluations remain on a950 until the candidate is validated.
+
+
+Exact-window candidate435ef5940 built successfully with focused Rust checks in
+CI34394343940. Exact binarySHA256
+4031b914b757bde656f5ea6d0b4ca4cb612fbaa8d3d91e3e7b3e4671fd796d99
+passed unchanged FOCUS-L03 (29.20s run), foreground/sibling FOCUS-L01/02
+(24.63s), CALC-L01/L02/L05 (178.50s), and TYPE/KEY/CLICK/COORD-L01
+(104.91s). All13 owned process-group exits, temporary focus-fixture cleanup,
+four keyboard maps and container removal were verified. Retrieved saved
+E2:E10 contains all nine expected formulas. CALC-L05 took64.476s;
+range-address typing took0.245s, retaining the earlier speed improvement.
+Evidence: focus-modal-435-01, focus-siblings-435-01, calc-regression-435-01,
+input-regression-435-01 under linux-office-setup. The agent workflow now pins
+this exact artifact for a fresh measured pair; no new agent result is claimed.
+
+Remaining limitations: the frame-focus refusal also rejects a nonmodal sibling
+inside the same application process, whereas FOCUS-L02 uses separate processes.
+The pre-existing Tk fallback still targets a global application name rather
+than the caller's XID. These are not covered or resolved by the passing ten
+checks. Canonical desktop matrix and full20 remain incomplete.
+
+The earlier GitHub DNS failure was absent when execution used the authorized
+network path outside the restricted sandbox. Both pushes and the build dispatch
+completed there. Revalidate network restrictions before attributing a resolver
+failure to a service outage; do not leave an available build path unused.
