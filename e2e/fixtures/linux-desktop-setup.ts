@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createOpenSky, createCua } from "../../src/index.js";
 import type { App } from "../../src/cua.js";
+import { recordAppTiming } from "./app-timing.js";
 import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 
 import { prepareLinuxBenchmarkApp } from "../../evals/parity/linux-benchmark-app.js";
@@ -44,7 +45,7 @@ export function desktopSetupTest(input: Input) {
         await withOwnedLinuxApp(launch.options, async () => {
           sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
             driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
-          const app = await createCua(sdk).getApp(launch.appName);
+          const app = recordAppTiming(await createCua(sdk).getApp(launch.appName), artifacts);
           try {
             await expect.poll(async () => {
               const image = join(artifacts, "ready.png");

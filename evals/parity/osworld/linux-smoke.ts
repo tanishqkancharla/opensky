@@ -87,7 +87,10 @@ try {
       }
       if (!ready) throw new Error("Editor controls did not become visible; agent not dispatched");
     } finally { await sdk?.close(); }
-    if (backend === "setup") return;
+    if (backend === "setup") {
+      await captureLinuxFinalObservation(artifacts, process.env.OPENSKY_NATIVE_PROBE_PACKAGE);
+      return;
+    }
     const scope = { backend: backend as "native" | "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" as const };
     const mcp = {
       command: process.execPath,

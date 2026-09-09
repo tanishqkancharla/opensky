@@ -81,3 +81,24 @@ screenshotCalc("CALC-L04: adds and saves a sheet with the visible plus button", 
   await app.pressKey("ENTER");
   await expect.poll(() => document.readSheetNames(), { timeout: 10_000 }).toEqual(["Sheet1", "Sheet2"]);
 });
+
+// Replay attempt 23's range entry after selecting E2 from the current observation.
+// The remote desktop and CI have different font metrics, so cell pixel centers differ.
+screenshotCalc("CALC-L05: fills and saves the range selected through the name box", { timeout: 240_000 }, async ({ app, document }) => {
+  await app.getScreenshot();
+  const sheet = await app.getAXState({ disableDiffing: true });
+  expect(sheet).toMatch(/\[(\d+)\] table cell "E2"/);
+  await app.click(Number(sheet.match(/\[(\d+)\] table cell "E2"/)![1]));
+  await app.typeText("=B2-C2-D2");
+  await app.pressKey("ENTER");
+  await app.click([70, 123]);
+  await app.pressKey("CTRL+A");
+  await app.typeText("E2:E10");
+  await app.pressKey("ENTER");
+  await app.pressKey("CTRL+D");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readCell("E2"), { timeout: 10_000 }).toMatchObject({ formula: "B2-C2-D2" });
+  await expect.poll(() => document.readCell("E10"), { timeout: 10_000 }).toMatchObject({ formula: "B10-C10-D10" });
+});

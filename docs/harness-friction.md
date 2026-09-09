@@ -2775,3 +2775,34 @@ and capture errors do not alter task scoring. A bounded child limits only this
 diagnostic; no whole-agent deadline or tool-call cap was added. Evaluator
 TypeScript validation and unavailable-observer fallback passed. Actual remote
 capture validation remains pending.
+
+
+## PERF-L04: unnecessary background discovery for an already-focused input
+
+Exact a950 range replay with the uncapped client completed its six-character
+name-box typing action in 20.713s. It no longer hit a client deadline. The first
+replay's E2 assertion failed because CI and exe.dev font metrics put the same
+pixel in different columns: the saved formula landed in F2, matching the remote
+screenshot. `calc-range-uncapped-01` is retained as a layout-mismatched diagnostic,
+not proof of a driver targeting regression. CALC-L05 now selects E2 from current
+accessibility state before replaying the same name-box range action.
+
+Driver candidate bf40378b1 tries unindexed X11 typing through real keys only if
+fresh active-window and core-focus ancestry checks identify the exact target.
+It rechecks before every character without activation, restoration, persistent
+focus caches or server grabs. A pre-input miss retains the existing background
+path; possible partial delivery errors never fall through or request retry.
+There remains a check-to-event race with other X clients; this is not an atomic
+focus lease. Indexed, explicit foreground, Wayland and existing terminal paths
+are preserved. Compilation and real foreground, sibling-window, modal and
+indexed saved-outcome acceptance remain pending. The paid agent workflow still
+pins validated a950; the build-only workflow selects bf40378b1 for evaluation.
+
+
+The corrected real range test passed on a950 + SDK23086b1 in
+`calc-range-uncapped-02` (90.475s). Saved E2 contains B2-C2-D2 and E10 contains
+B10-C10-D10. The name-box range action took 20.985s; the initial indexed cell
+click took 25.584s. This confirms the selected-range saved outcome, not a full
+agent task or a performance improvement. Both range-replay app exits and
+container removals were verified. The setup-only CI path also calls the final
+screenshot helper so that diagnostic can be validated without model spending.
