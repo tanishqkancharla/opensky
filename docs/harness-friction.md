@@ -3211,3 +3211,13 @@ Reference-only verification passed; no new agent acceptance follows from it.
 Eight tiny numeric differences already exist between original and gold input
 values, so diagnostics report both comparisons without attributing those
 differences to the agent or changing the scoring policy.
+
+
+Dropdown pair40/41 completed: native passed, OpenSky failed, with all compared
+environment fingerprints matching and both cleanup/usage receipts valid.
+Saved-output diagnostic shows correct Pass/Fail/Held choices only in D2;
+D3:D29 has an empty list. Existing cell values are unchanged. This validates
+the original failure independently and narrows the behavior to applying list
+entries across the selected range; cause classification remains pending trace
+inspection. Keep this failure selected in the frozen baseline (6/20 pairs,
+native 6 passed, OpenSky 4 passed). Chart42 is running on unchanged software.
