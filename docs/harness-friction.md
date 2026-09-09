@@ -3221,3 +3221,40 @@ the original failure independently and narrows the behavior to applying list
 entries across the selected range; cause classification remains pending trace
 inspection. Keep this failure selected in the frozen baseline (6/20 pairs,
 native 6 passed, OpenSky 4 passed). Chart42 is running on unchanged software.
+
+
+Chart pair42/43 passed on both backends, with all compared fingerprints matching.
+Both saved chart structures (full title, two ten-week series, cached values and
+placement) and worksheet values match the original reference. Fixed baseline:
+7/20 pairs, native 7 passed and OpenSky 5 passed. Native44 subsequently failed
+splitting names/ranks: eight output cells differ from gold, with all original
+nonempty values preserved. Matching OpenSky45 remains pending.
+
+DROPDOWN-L01 is a real public-SDK diagnostic using the original workbook and
+accepted driver486/SDK8c in the disposable remote Linux desktop. Before01 failed
+setup because OCR read Entries as Enties; cleanup passed and no target input
+was attempted. Fixture accepts only that observed OCR variant. Exact numeric
+serialization (9.0 versus9) is normalized without tolerance; OCR caret suffixes
+are tolerated only in the visual observation, while saved choices stay exact.
+Before02 verified multiline text remains in the visually focused Entries field
+with three correct choices, then failed immediate CTRL+S after closing Validity.
+The SDK intentionally retains the exact observed window ID for input and refuses
+when that dialog is gone; a new observation adopts the workbook window. This
+is a post-dialog API usability limitation, not proven driver input corruption.
+Before03 adds the normal post-dismissal observation to complete the saved range
+check. No passing saved-output acceptance is claimed until it finishes. Both
+prior runs retain source archives, screenshots, output readers and clean exits.
+
+
+Before03 passed the real public SDK workflow. Separate observations verified
+that multiline typing left the Validity dialog open with all three choices.
+After observing the workbook following dialog dismissal, save succeeded. Both
+the fixture reader and an independent openpyxl inspection verified unchanged
+original cell values and exactly the gold list rule across D2:D29. All 28 cells
+have Pass/Fail/Held with visible dropdown arrows. Cleanup receipt confirms app
+exit; retrieved Docker inventory is empty. This rules out a general multiline
+entry failure for correctly coordinate-focused Entries. It does not resolve
+the original agent's ambiguous indexed target1551, replace its frozen failure,
+or validate every multiline/control/platform combination. Full source archive
+and all three outcomes are retained under linux-office-setup/dropdown-multiline-*
+for reproduction. No driver/SDK implementation changes or model calls occurred.
