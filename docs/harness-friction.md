@@ -2411,3 +2411,9 @@ original benchmark assets are mounted read-only, verified against their pins,
 and original/correct/damaged file controls run without an agent. Real Impress
 export controls are included. grader-controls-01 is active; no scoring profile
 or agent result has been promoted from its pending outcome.
+
+DRV-L06 candidate build 34306855419 failed compilation because browser setup
+and consent callers retained the prior two-argument perform_action API. The
+wrapper is preserved and a click-specific entry point receives the new policy
+flag; no existing caller is silently assigned different parameters. Corrected
+candidate: 978fe0adf32f424599486d4dc7896967e56f4c57. No desktop test was dispatched from the failed build.
