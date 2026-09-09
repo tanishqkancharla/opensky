@@ -3142,3 +3142,20 @@ supporting hashes verified; seven missing/changed-evidence controls rejected.
 The live endpoint was verified at3/20 pairs, native3/OpenSky2, with old-build
 Writer rows pending and native36 running. The OS-label exception is explicit;
 this is not acceptance of the strict identical-environment campaign requirement.
+
+
+Baseline selection safeguards: refreshing now refuses to drop or replace a
+previously selected arm, or accept changed supporting hashes. This prevents a
+later passing retry from silently replacing a failure after evidence loss.
+Inventory classifies pending evidence, invalid terminal attempts and later
+valid duplicates separately; the status page renders concise notes without
+counting pending attempts as failures. Offline loss/replacement/hash-change
+and evidence-state controls passed. Live endpoint verification kept native36
+Passed/OpenSky37 Running,3completed pairs,0unscored terminal attempts and one
+pending-evidence attempt. Raw outcomes and immutable plan remain unchanged.
+
+Native36 passed Calc fill-blanks in48.932s/5calls with valid cleanup/usage. A
+separate saved-file diagnostic verified all cells against frozen gold: exactly
+46 originally empty cells changed insideB1:E30, with all other values preserved.
+OpenSky37 is dispatched on the same source; its result remains pending. The
+shared diagnostic helper writes only additive analysis, never official scores.
