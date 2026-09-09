@@ -3051,3 +3051,14 @@ compares exact committed scorer/manifest source hashes (including added/deleted
 files) with the pinned immutable profile before reserving funds. Its negative
 check catches the old profile in under one second; remote admission stays
 mandatory. This is grading validation, not a task evaluation or parity gain.
+
+
+## AX-L03: independent per-node metadata adds observation latency
+
+Driver486's full Calc observation spends5.396s of6.148s walking2,316nodes. The
+next driver candidate overlaps independent Action/Value/Text reads within each
+node while keeping traversal order, global indices and returned fields intact.
+Real acceptance is pending; the paid workflow remains on verified486. The
+SDK fixture now retains exact public AX strings and includes drag in method
+timing, enabling observation fidelity checks alongside saved outcomes. Recording
+occurs after method timing and does not substitute app responses.
