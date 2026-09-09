@@ -3190,3 +3190,24 @@ Current settled estimate$87.8222508 plus$5reserved remains inside the$100 limit.
 Sorting remains unpaired until native39 is verified; the full-set baseline stays
 4/20completed pairs with native4/OpenSky3. The stage watcher ended successfully
 and did not affect the underlying run or impose a task limit.
+
+
+Sorting pair38/39 is complete: both saved all 76 nonempty cell values exactly
+as the frozen gold reference, with cleanup and usage verified. The fixed
+software baseline now contains 5/20 pairs (native 5 passed, OpenSky 4 passed).
+Ubuntu patch labels differ for this pair; other compared fingerprints match.
+
+Native40 passed the dropdown task. An additive saved-file inspection verified
+literal choices Pass/Fail/Held, coverage D2:D29, unsuppressed dropdown arrow,
+validation settings matching gold, and unchanged cell data. The frozen grader
+does not check the arrow flag; this supplemental evidence does not alter its
+score and does not constitute fresh GUI rendering. OpenSky41 is pending.
+
+Chart diagnostic preparation: the frozen reference contains one clustered
+column chart on Sheet2, title Sales & COGS, with two ten-week series. Read-only
+inspection can report full title, series names/cache points, source cells and
+charts on all sheets, including details not fully checked by the frozen grader.
+Reference-only verification passed; no new agent acceptance follows from it.
+Eight tiny numeric differences already exist between original and gold input
+values, so diagnostics report both comparisons without attributing those
+differences to the agent or changing the scoring policy.
