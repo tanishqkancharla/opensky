@@ -69,3 +69,16 @@ test("SHOT-L02: a screenshot of the new dialog targets its font field", { timeou
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('dialog = "Character"');
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Liberation Serif"');
 });
+
+// One ordinary input event large enough to exercise slow real keyboard delivery.
+const longDocument = "The quick brown fox jumps over the lazy dog. ".repeat(100);
+
+test("TYPE-L02: saves a long document entered in one typing action", { timeout: 240_000 }, async ({ app, document, keyboard }) => {
+  await app.pressKey("CTRL+A");
+  await app.typeText(longDocument);
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toContain("Use Word 2007 Format");
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe(longDocument);
+  await expect(keyboard.unchanged()).resolves.toBe(true);
+});

@@ -12,6 +12,7 @@ import { runCodex } from "../codex.js";
 import { prepareLinuxBenchmarkApp } from "../linux-benchmark-app.js";
 import { verifyScoringProfile } from "../scoring-profile.js";
 import { runProfile } from "../run-profile.js";
+import { captureLinuxFinalObservation } from "../linux-final-observation.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -107,6 +108,7 @@ try {
       mcp, authorizedApps: { [launch.appName]: launch.appName }, desktopProgramScope: scope,
       prompt: `Task: ${task.instruction}\nYou are using Ubuntu Linux. The document ${task.inputFile} is already open in ${launch.appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${launch.appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nFinish when saved, or report the specific blocker.`,
     });
+    await captureLinuxFinalObservation(artifacts, process.env.OPENSKY_NATIVE_PROBE_PACKAGE);
     const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), taskId, document,
       ...(scoringProfilePath ? ["--profile", scoringProfilePath, "--expected-profile-sha256", scoringProfile.sha256!] : []),
     ], { timeout: 30_000 })).stdout);

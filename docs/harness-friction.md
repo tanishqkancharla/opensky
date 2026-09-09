@@ -2724,3 +2724,54 @@ Evidence: `calc-coordinate-held-01`, `input-regression-a950-01`,
 fresh paired agent timing is next. CLICK-L01 is an indexed save-button test,
 not double-click coverage. Real double-click behavior and the full canonical
 platform matrix remain pending; the driver PR stays draft.
+
+
+## RUN-L04: driver client interrupts an otherwise resumable action
+
+OpenSky attempt 23 (`34319911691`, SDK `2c5f01a`) completed with a failed
+saved-workbook score after one typing RPC exceeded the CLI client's default
+30-second deadline. The REPL continuation worked. Killing the CLI does not
+cancel the daemon's action, so this is a product failure with unknown delivery,
+not an invalid benchmark to exclude.
+
+Both CLI and MCP transports now omit ordinary operation deadlines by default;
+`timeoutMs: null` also waits for completion. Explicit positive integer deadlines
+remain available. Identity, startup, handshake, drain and shutdown limits remain
+separate. Explicit timeout errors retain unknown-delivery/no-replay semantics.
+
+Real public-SDK TYPE-L02 enters 4,400 ASCII characters with one typeText call,
+saves through the normal format confirmation, and checks exact saved text and
+keyboard restoration. On exact driver a9501e0ca, the old CLI failed at 30 seconds
+(`deadline-before-cli-01`); the new CLI saved correctly after a single 50.152s
+typing action (`deadline-after-cli-01`). The old client also could not confirm
+session end while typing remained in flight; its app exit and container removal
+were verified. Candidate app exit and keyboard map restoration passed.
+
+The first real MCP run (`deadline-after-mcp-01`) exposed loss of the bare typed
+background_unavailable code in error envelopes, preventing the same foreground
+retry available through CLI. MCP now preserves structured error codes only on
+error responses; successful arbitrary payloads are not reclassified as refusals.
+The unchanged real test passed in `deadline-after-mcp-02`: one 50.128s
+typing action saved all 4,400 characters, with restored keyboard map, verified
+owned app exit and removed container. The initial MCP failure remains retained.
+Build/E2E typecheck and existing transport contracts passed; those are not real-driver acceptance. Agent timing parity and
+the exact spreadsheet interaction still require fresh validation.
+
+## OBS-L01: no post-save evidence when an agent claims completion
+
+Native attempt 24 (`34320620267`) displayed correct Sheet2 calculations but its
+saved workbook was byte-identical to the initial asset (SHA256
+8f9da5481c2bcefefebae562e037a71b5b93163ff6b48295fd4df30b86cf8279).
+It ended immediately after Ctrl+S without observing afterward. A format dialog
+is strongly indicated by prior successful native20's explicit confirmation,
+but the exact final dialog was not captured. The grader correctly failed the
+unchanged file; no scorer relaxation is warranted.
+
+The Linux evaluator now retains an independent full-desktop final-state.jpg and
+final-observation.json after the agent returns, before scoring and cleanup.
+This read-only diagnostic uses the native observer for both arms, even if the
+OpenSky evaluator is poisoned. It never saves or dismisses dialogs for the agent,
+and capture errors do not alter task scoring. A bounded child limits only this
+diagnostic; no whole-agent deadline or tool-call cap was added. Evaluator
+TypeScript validation and unavailable-observer fallback passed. Actual remote
+capture validation remains pending.

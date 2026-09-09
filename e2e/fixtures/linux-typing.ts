@@ -16,6 +16,8 @@ type Fixture = { app: App; document: { readText(): Promise<string> }; keyboard: 
 export const test = base.extend<Fixture & { fixture: Fixture }>({
   fixture: async ({ task }, use) => {
     assertDisposableLinuxDesktop();
+    const transport = process.env.OPENSKY_TEST_TRANSPORT;
+    if (transport !== undefined && transport !== "cli" && transport !== "mcp") throw new Error("Invalid OPENSKY_TEST_TRANSPORT");
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "typing", task.name.split(":")[0]);
     await mkdir(artifacts, { recursive: true });
     const originalKeyboard = (await exec("xmodmap", ["-pke"])).stdout;
@@ -29,7 +31,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
         args: [`-env:UserInstallation=${pathToFileURL(join(temporary, "profile")).href}`, "--norestore", "--nologo", "--nofirststartwizard", "--writer", document],
         env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
       }, async () => {
-        sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
+        sdk = createOpenSky({ transport, homeDir: join(temporary, "sdk"), autoLaunch: false,
           driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
         const app = recordAppTiming(await createCua(sdk).getApp("LibreOffice"), artifacts);
         try {

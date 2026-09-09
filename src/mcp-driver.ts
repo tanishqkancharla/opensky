@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   CuaDriverClient,
+  operationTimeoutMs,
   type CuaDriverOptions,
   asRecord,
   isPreDispatchSessionEnded,
@@ -15,7 +16,6 @@ import type { DriverClient, DriverResult, OpenSkyTarget } from "./types.js";
 
 const MCP_PROTOCOL_VERSION = "2025-06-18";
 const SUPPORTED_PROTOCOL_VERSIONS = new Set(["2024-11-05", MCP_PROTOCOL_VERSION]);
-const DEFAULT_CALL_TIMEOUT_MS = 30_000;
 const DEFAULT_HANDSHAKE_TIMEOUT_MS = 10_000;
 const DEFAULT_CLOSE_TIMEOUT_MS = 3_000;
 const DEFAULT_KILL_TIMEOUT_MS = 2_000;
@@ -59,7 +59,7 @@ interface PendingResponse {
   method: string;
   resolve(value: unknown): void;
   reject(error: unknown): void;
-  timer: NodeJS.Timeout;
+  timer?: NodeJS.Timeout;
 }
 
 interface ExitState {
@@ -82,7 +82,7 @@ export class StdioMcpDriverClient implements DriverClient {
   private readonly maxLineBytes: number;
   private readonly maxStderrBytes: number;
   private readonly maxPendingCalls: number;
-  private readonly callTimeoutMs: number;
+  private readonly callTimeoutMs: number | null;
   private readonly handshakeTimeoutMs: number;
   private readonly drainTimeoutMs: number;
   private readonly closeTimeoutMs: number;
@@ -114,7 +114,7 @@ export class StdioMcpDriverClient implements DriverClient {
     this.maxLineBytes = positiveInteger(options.maxLineBytes, DEFAULT_MAX_LINE_BYTES, "maxLineBytes");
     this.maxStderrBytes = positiveInteger(options.maxStderrBytes, DEFAULT_MAX_STDERR_BYTES, "maxStderrBytes");
     this.maxPendingCalls = positiveInteger(options.maxPendingCalls, DEFAULT_MAX_PENDING_CALLS, "maxPendingCalls");
-    this.callTimeoutMs = positiveInteger(options.timeoutMs, DEFAULT_CALL_TIMEOUT_MS, "timeoutMs");
+    this.callTimeoutMs = operationTimeoutMs(options.timeoutMs);
     this.handshakeTimeoutMs = positiveInteger(options.handshakeTimeoutMs, DEFAULT_HANDSHAKE_TIMEOUT_MS, "handshakeTimeoutMs");
     this.closeTimeoutMs = positiveInteger(options.closeTimeoutMs, DEFAULT_CLOSE_TIMEOUT_MS, "closeTimeoutMs");
     this.drainTimeoutMs = positiveInteger(options.drainTimeoutMs, this.closeTimeoutMs, "drainTimeoutMs");
@@ -378,7 +378,7 @@ export class StdioMcpDriverClient implements DriverClient {
       : combined;
   }
 
-  private request(method: string, params: Record<string, unknown>, timeoutMs: number): Promise<unknown> {
+  private request(method: string, params: Record<string, unknown>, timeoutMs: number | null): Promise<unknown> {
     if (this.pending) return Promise.reject(driverError("MCP request overlap violated serialized transport", "mcp_protocol_error"));
     const child = this.child;
     if (!child || !child.stdin.writable || this.quarantined) {
@@ -391,7 +391,7 @@ export class StdioMcpDriverClient implements DriverClient {
     }
 
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const timer = timeoutMs === null ? undefined : setTimeout(() => {
         if (this.pending?.id !== id) return;
         this.pending = undefined;
         reject(driverError(`MCP ${method} timed out after ${timeoutMs}ms; delivery is unknown and the request was not replayed.`, "mcp_transport_timeout", {
@@ -453,9 +453,12 @@ export class StdioMcpDriverClient implements DriverClient {
   private requireToolSuccess(tool: string, parsed: ReturnType<typeof parseDriverOutput>): DriverResult {
     const refusal = parseDriverRefusal(parsed.result.structured, parsed.result.text);
     if (parsed.isError || refusal) {
+      // Error envelopes may carry a bare typed code without a refusal wrapper.
+      // Preserve it just as the CLI transport does; successful payloads remain data.
+      const code = asRecord(parsed.result.structured)?.code;
       throw driverError(
         refusal?.message || parsed.message || `${tool} failed.`,
-        refusal?.code,
+        refusal?.code || (typeof code === "string" && code.trim() ? code : undefined),
         parsed.result.structured,
       );
     }

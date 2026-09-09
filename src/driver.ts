@@ -11,7 +11,8 @@ import type { DriverClient, DriverResult, OpenSkyTarget } from "./types.js";
 export interface CuaDriverOptions {
   binaryPath?: string;
   appPath?: string;
-  timeoutMs?: number;
+  /** Operation deadline; omitted or null waits for completion. Lifecycle checks stay bounded. */
+  timeoutMs?: number | null;
   autoStart?: boolean;
   /** Retained for source compatibility. OpenSky never downloads upstream Cua Driver. */
   autoInstall?: boolean;
@@ -25,14 +26,25 @@ const INSTALL_HELP = "Build OpenSky Driver from https://github.com/tanishqkancha
 const PERMISSION_HELP =
   "In System Settings, enable Accessibility and Screen Recording for the desktop helper that appeared (OpenSky Driver), then run `opensky doctor` again.";
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+/** Node timers above this range overflow and otherwise fire almost immediately. */
+export function operationTimeoutMs(value: number | null | undefined): number | null {
+  if (value == null) return null;
+  if (!Number.isInteger(value) || value <= 0 || value > 2_147_483_647) {
+    throw new TypeError("timeoutMs must be null or a positive integer no greater than 2147483647");
+  }
+  return value;
+}
 
 export class CuaDriverClient implements DriverClient {
   readonly sessionOwnership = { kind: "cli-explicit" } as const;
   private daemonReady = false;
   private verifiedBinary?: { path: string; promise: Promise<string> };
 
-  constructor(private readonly options: CuaDriverOptions = {}) {}
+  private readonly callTimeoutMs: number | null;
+
+  constructor(private readonly options: CuaDriverOptions = {}) {
+    this.callTimeoutMs = operationTimeoutMs(options.timeoutMs);
+  }
 
   async call(tool: string, args: Record<string, unknown> = {}): Promise<DriverResult> {
     await this.ensureDaemon();
@@ -41,7 +53,7 @@ export class CuaDriverClient implements DriverClient {
       payload.session = this.options.session;
     }
 
-    let result = await this.execDriver(this.callArgs(tool, payload), this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    let result = await this.execDriver(this.callArgs(tool, payload), this.callTimeoutMs);
     let parsed = parseDriverOutput(result.stdout);
 
     // Long-lived REPLs and one-shot CLI calls may reuse a session that the
@@ -56,7 +68,7 @@ export class CuaDriverClient implements DriverClient {
     ) {
       const revived = await this.execDriver(
         this.callArgs("start_session", { session: this.options.session }),
-        this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        this.callTimeoutMs,
       );
       const revivedParsed = parseDriverOutput(revived.stdout);
       const revivalRefusal = refusalFromResult(revivedParsed.result);
@@ -67,7 +79,7 @@ export class CuaDriverClient implements DriverClient {
           revivedParsed.result.structured,
         );
       }
-      result = await this.execDriver(this.callArgs(tool, payload), this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+      result = await this.execDriver(this.callArgs(tool, payload), this.callTimeoutMs);
       parsed = parseDriverOutput(result.stdout);
     }
 
@@ -261,7 +273,7 @@ export class CuaDriverClient implements DriverClient {
     return ["--socket", socket, ...args];
   }
 
-  private async execDriver(args: string[], timeoutMs: number) {
+  private async execDriver(args: string[], timeoutMs: number | null) {
     const binary = await this.requireBinary();
     return this.exec(binary, args, timeoutMs);
   }
@@ -269,7 +281,7 @@ export class CuaDriverClient implements DriverClient {
   private exec(
     command: string,
     args: string[],
-    timeoutMs: number,
+    timeoutMs: number | null,
   ): Promise<{ stdout: string; stderr: string; code: number }> {
     const env = this.driverEnv();
     return new Promise((resolve, reject) => {
@@ -287,9 +299,9 @@ export class CuaDriverClient implements DriverClient {
       child.stderr.on("data", (chunk: string) => {
         stderr += chunk;
       });
-      const timer = setTimeout(() => {
+      const timer = timeoutMs === null ? undefined : setTimeout(() => {
         child.kill("SIGKILL");
-        reject(driverError(`desktop helper timed out after ${timeoutMs}ms`));
+        reject(driverError(`desktop helper timed out after ${timeoutMs}ms; delivery is unknown. Stopping the client does not cancel the daemon action; the request was not replayed.`, "driver_transport_timeout", { delivery: "unknown" }));
       }, timeoutMs);
       child.on("error", (error) => {
         clearTimeout(timer);

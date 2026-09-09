@@ -411,7 +411,10 @@ with `drainTimeoutMs`. A drain timeout does not schedule a late finalizer.
 An injected `driver` is caller-owned: OpenSky never closes its transport. Close
 every consumer before calling `StdioMcpDriverClient.closeTransport()` yourself.
 Do not combine injection with `transport` or `driverOptions`. Advanced MCP options
-bound calls (30 seconds), queued/admitted work (64), frames (32 MiB), and shutdown;
+bound queued/admitted work (64), frames (32 MiB), and shutdown. Ordinary driver
+calls in both CLI and MCP transports wait for completion by default; set
+`driverOptions.timeoutMs` to a positive integer to opt into a deadline, or
+`null` to explicitly leave it uncapped. Lifecycle checks remain bounded. Explicit
 timeouts, malformed replies, and lost connections quarantine the client without
 replaying unknown-delivery calls. Low-level `invoke`/`driver.call` with explicit
 session labels are trusted escape hatches, not a sandbox for untrusted consumers.
