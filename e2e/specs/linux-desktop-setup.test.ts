@@ -116,3 +116,16 @@ screenshotCalc("CALC-L06: a double click edits the existing cell value in place"
   await expect.poll(() => document.readCell("B2"), { timeout: 10_000 }).toEqual({ formula: null, value: "978000" });
   await expect(document.readCell("A2")).resolves.toEqual({ formula: null, value: "2015" });
 });
+
+screenshotCalc("DRAG-L02: drags across two cells and fills only the selected range", { timeout: 180_000 }, async ({ app, document }) => {
+  await app.getScreenshot();
+  // A2 to A3 in the retained 1280×883 remote Calc screenshot.
+  await app.drag([65, 185], [65, 204]);
+  await app.pressKey("CTRL+D");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readCell("A3"), { timeout: 10_000 }).toEqual({ formula: null, value: "2015" });
+  await expect(document.readCell("A2")).resolves.toEqual({ formula: null, value: "2015" });
+  await expect(document.readCell("A4")).resolves.toEqual({ formula: null, value: "2017" });
+});

@@ -1153,14 +1153,22 @@ export class OpenSky implements OpenSkyApi {
       );
     }
     await this.requireUsableInputWindow(resolved);
-    await this.driver.call("drag", {
+    const payload = {
       pid: resolved.pid,
       window_id: resolved.windowId,
       from_x: raw.from_x,
       from_y: raw.from_y,
       to_x: raw.to_x,
       to_y: raw.to_y,
-    });
+    };
+    try {
+      await this.driver.call("drag", payload);
+    } catch (error) {
+      // Only this typed refusal proves that the drag sent no input. Retry once
+      // against the same exact window; an arbitrary drag error may be partial.
+      if (!(error instanceof OpenSkyError) || error.code !== "background_unavailable" || !resolved.windowId) throw error;
+      await this.driver.call("drag", { ...payload, delivery_mode: "foreground" });
+    }
     this.markAction(resolved);
   }
 

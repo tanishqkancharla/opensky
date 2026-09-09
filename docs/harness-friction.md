@@ -3021,6 +3021,33 @@ Agent27's two scrollbar drag attempts both failed: the native-style facade
 accepts only two points, so the agent-supplied foreground option was dropped.
 The legacy SDK drag calls the driver without click's typed pre-input foreground
 retry. Agent recovered through the name box; this did not cause the final
-extra-cell scoring failure. Pending: apply the same precise pre-input retry
-contract and validate a real scrollbar drag, with no retry after uncertain
-input delivery. No driver fix or successful drag is claimed yet.
+extra-cell scoring failure. The SDK now retries once only for a typed
+`OpenSkyError` with code `background_unavailable`, retaining the exact window
+and endpoints and requesting foreground delivery. Other errors and errors from
+the retry propagate; uncertain input is never replayed. The facade stays a
+normal two-point drag.
+
+Real remote DRAG-L02 reproduces the refusal before the change, then passes with
+the change: drag A2:A3, fill down, save, independently read A2=2015/A3=2015 and
+unchanged A4=2017. The original baseline retains A3=2016. Both owned apps exited
+and both containers were removed. SDK build and E2E typecheck passed. This
+proves public cell-range dragging; the exact agent scrollbar gesture and
+cross-platform drag behavior still need validation. No newer agent result is
+claimed.
+
+
+SCORE-L02 profile admission follow-up: agent attempt 29 stopped before model
+admission because its frozen profile still pinned the old scorer and lacked
+the new named-sheet control source. The admission guard correctly refused the
+mismatch; the rollout omitted the required profile rebuild. Both admission and
+agent steps were skipped, and the unused reservation was reconciled at zero
+model cost from terminal CI evidence.
+
+Preflight 34405939927 at SDK 80ffd7e passed all 52 real grading controls without
+skips and froze profile b273feecbe566519f2c547c4329f8fe7f033c80a416a0715db40d2c060fd0bc5.
+All seven retained reference hashes and exporter cleanup receipts were verified.
+Both agent arms now pin this profile. The local dispatch controller additionally
+compares exact committed scorer/manifest source hashes (including added/deleted
+files) with the pinned immutable profile before reserving funds. Its negative
+check catches the old profile in under one second; remote admission stays
+mandatory. This is grading validation, not a task evaluation or parity gain.
