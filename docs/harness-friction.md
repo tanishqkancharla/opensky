@@ -3159,3 +3159,25 @@ separate saved-file diagnostic verified all cells against frozen gold: exactly
 46 originally empty cells changed insideB1:E30, with all other values preserved.
 OpenSky37 is dispatched on the same source; its result remains pending. The
 shared diagnostic helper writes only additive analysis, never official scores.
+
+
+Fill-blanks pair36/37 completed on unchanged8c software with all recorded
+fingerprints matching, including Ubuntu label. Both passed:46originally blank
+cells filled insideB1:E30, every other cell value preserved, full saved values
+matching gold and cleanup verified. Native48.932s/5calls, OpenSky246.626s/16calls;
+no timing change is required for this behavioral pass. The fixed baseline is
+4/20pairs with native4/OpenSky3; the earlier Calc-profit failure stays selected.
+
+The OpenSky trace contains79 public SDK calls with one rejected operation:
+getAXState({query:"A1"}) on a native app. It recovered with ordinary screenshot
+and name-box actions; all78 other calls completed. Shared StateOptions.query
+is exposed on App but runtime rejects native app query/context as browser-only.
+A future type/documentation clarification is warranted; this is API-use
+confusion, not evidence of driver input failure. Do not modify the frozen
+baseline source to tune this otherwise successful run.
+
+Hosted live monitoring: gh run watch --compact --interval30 can report stage
+changes/completion. The frozen runner saves agent stdout to events.jsonl and
+uploads it after the task step, so no individual-agent action feed exists now.
+Quiet workflow logs are not a hang signal. Keep a live job rather than restart
+on an observation timeout; no new instrumentation is needed to continue coverage.
