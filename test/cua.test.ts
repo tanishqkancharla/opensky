@@ -371,7 +371,7 @@ describe("native-style cua facade", () => {
     assert.deepEqual(fake.calls.filter((call) => call.method === "get_app_state").slice(1).map((call) => call.args), [
       { app: "tgt_app", scope: "app", disableDiff: true, includeScreenshot: false },
       { app: "tgt_app", scope: "app", disableDiff: undefined, includeScreenshot: false, query: "needle" },
-      { app: "tgt_app", scope: "app", disableDiff: undefined, includeScreenshot: true },
+      { app: "tgt_app", scope: "app", disableDiff: undefined, includeScreenshot: true, includeAccessibilityTree: false },
       { app: "tgt_app", scope: "app", disableDiff: true, includeScreenshot: true },
     ]);
   });

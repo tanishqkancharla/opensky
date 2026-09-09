@@ -2566,3 +2566,10 @@ runtime validation remains pending. Official download source rechecked at
 https://learn.chatgpt.com/docs/linux/linux-app; Linux UI Computer Use support is
 not claimed by these internal-backend probes. Prior reference evidence remains
 versioned separately. No model spending occurred in the failed setup.
+
+SET-075 frozen reference run 34310637093 succeeded and retained the exact new
+package plus entry-point metadata. linux-agent now downloads that artifact and
+checks its digest before model reservation admission. Runtime setup remains a
+separate gate. CI 34310637007 found one legacy facade-call expectation still
+requiring the old screenshot extraction flags; updated it to the intended
+pixel-only request. The two real SHOT workflows remain the behavioral evidence.
