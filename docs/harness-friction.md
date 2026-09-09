@@ -2463,3 +2463,23 @@ shared-setup-01 (Impress/Code passes). Remote summary command completed in
 approximately one second; no end-to-end iteration speedup has yet been measured.
 Container removal and actual binary hashing still require independent checks.
 Usage: docs/remote-run-summary.md.
+
+**LOOP-L02 — Hosted build queue and artifact transfer on every candidate:**
+Added an optional one-off remote Docker compiler helper under
+`e2e/ci/remote-driver`. It archives exact committed driver source, retains Cargo
+caches keyed by builder image digest, checks all six focused Rust filters, and
+verifies embedded source identity plus binary SHA256. Outer/nested shell syntax
+and archive contents passed local checks. No remote compilation or speedup has
+yet been verified: the VM currently has 7.5 GiB disk free, so cold build capacity
+needs to be established before using it. It does not replace hosted or real GUI
+acceptance; no persistent GitHub runner is registered.
+
+**SET-074 — Frozen Linux grading references must be shared across agent arms:**
+The remote 52-control pass and profile freeze prove the Linux exporter controls,
+but hosted agent jobs still need an immutable downloadable profile. Added a
+model-free hosted preflight that installs the shared Writer/Calc/Impress and
+pinned Code release, verifies original benchmark assets, runs all grader
+controls, and uploads one frozen profile plus receipts. An agent run will pin
+that artifact run and profile hash after successful preflight; regeneration
+per arm is not allowed. Workflow execution and downstream artifact admission
+remain pending. These controls do not increase the agent task-success score.
