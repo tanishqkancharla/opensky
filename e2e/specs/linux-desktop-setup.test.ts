@@ -36,3 +36,17 @@ calc("CALC-L01: edits an observed cell and saves its calculated value", { timeou
   await app.pressKey("ENTER");
   await expect.poll(() => document.readCell("E2"), { timeout: 10_000 }).toEqual({ formula: "B2-C2", value: "75000" });
 });
+
+calc("CALC-L02: edits a newly observed cell after scrolling the sheet", { timeout: 120_000 }, async ({ app, document }) => {
+  await app.pressKey("CTRL+HOME");
+  await app.pressKey("PAGEDOWN");
+  const sheet = await app.getAXState({ disableDiffing: true });
+  expect(sheet).toMatch(/\[(\d+)\] table cell "E50"/);
+  await app.click(Number(sheet.match(/\[(\d+)\] table cell "E50"/)![1]));
+  await app.typeText("42");
+  await app.pressKey("ENTER");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readCell("E50"), { timeout: 10_000 }).toEqual({ formula: null, value: "42" });
+});

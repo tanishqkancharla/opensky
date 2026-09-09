@@ -2483,3 +2483,13 @@ controls, and uploads one frozen profile plus receipts. An agent run will pin
 that artifact run and profile hash after successful preflight; regeneration
 per arm is not allowed. Workflow execution and downstream artifact admission
 remain pending. These controls do not increase the agent task-success score.
+
+DRV-L06 geometry acceptance: df79e0cf16e25ef586b1a9baf738d6cd39fa75cf
+passed build and all six focused Rust filters in hosted run 34308230956.
+Exact binary 3d21cdb9d26f67210c6ba80aef5066bcd895128203c8545294dc928f323037c8
+passed remote calc-candidate-04: SETUP-L02 34.558 s and CALC-L01 76.844 s.
+The saved E2 now contains formula B2-C2 and cached value 75000; both process
+groups exited and the container was removed. Added distinct CALC-L02 behavior
+coverage for a newly observed E50 after Page Down; typecheck passed, remote
+execution pending. Existing input regressions also remain to be rerun on this
+binary. No full-suite or agent acceptance is inferred from these SDK checks.
