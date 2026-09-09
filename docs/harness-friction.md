@@ -2939,3 +2939,38 @@ Correction4fb1e892e reuses the existing registered xtest transport, preserving
 SDK outcome validation. Both build paths now include the existing known-path
 normalization check. Failed artifacts remain focused-click-after-01; no speed
 claim or paid pin change is accepted before the same real cases pass.
+
+Corrected4fb1e892e built inCI34400764844 and passed the unchanged four Calc
+cases in focused-click-after-02 (144.07s versus164.31s baseline). Independent
+retained-workbook verification passed, including all nine range formulas and
+the double-click edit. Recorded non-driver source/image hashes match. Coordinate
+clicks fell from5.984/5.680/5.937s to0.204/0.201/0.174s; indexed clicking still
+took24.835s. All four app groups exited and the container was removed. This is
+a single sequential SDK comparison; further dialog/focus/input checks remain
+pending, and no agent speedup or paid pin change is claimed.
+
+A local read-only comparison helper now checks individual Vitest passes, source
+and image equality, driver identity, owned-app cleanup, and actual saved XLSX
+contents together. It rejects failed or same-driver comparisons before emitting
+speed deltas. It reduces repeated manual parsing but cannot prove current remote
+container removal; that remains a separate check.
+
+The exact4fb1e892e executable has now passed17 real SDK cases: four Calc
+coordinate/range/double-click cases, eight input/dialog/screenshot cases, three
+focus/isolation cases, and two fresh/scrolled indexed-cell cases. Artifacts:
+focused-click-after-02, click-dialog-4fb-01, click-focus-4fb-01,
+click-indexed-4fb-01. All20 owned app groups exited, eight keyboard maps match,
+focus temporary directories were removed, and all four containers are gone.
+Retrieved XLSX, DOCX and ODT saved outcomes were independently checked.
+BuildCI34400764844 produced SHA256
+3550951c28dd413893f39b2fb4e7c5c5cadb1256517800b8937bad8daab420ce.
+This is supporting Linux SDK acceptance; the canonical cross-platform matrix
+and a fresh agent benchmark remain pending. The evaluation pin now selects
+this exact verified build.
+
+The remaining CALC-L05 indexed click took24.835s: the initial background RPC
+took9.760s and the foreground retry15.010s. Five full2,316-node AT-SPI walks
+consumed24.640s. These are duplicate element resolution/classification steps
+inside the driver, not model reasoning. Next candidate should share one fresh,
+window-scoped live element resolution within a request; no cross-request pixel
+cache or weakened focus checks. This is diagnosis, not an implemented fix.
