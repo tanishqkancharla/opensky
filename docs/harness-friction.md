@@ -2635,7 +2635,7 @@ without poisoning or restarting. A later cell saved the exact expected nine
 text fragments once. Keymap restoration and owned-process cleanup passed.
 This is deterministic public-tool acceptance; the new Terra pair is still
 required for agent outcome and latency evidence.
-# PERF-L03: repeated foreground typing scans
+## PERF-L03: repeated foreground typing scans
 
 Real remote `type-profile-01` used the exact df79 driver and existing TYPE-L01 /
 COORD-L01 saved-file tests. Both passed with verified cleanup. Thirty characters
@@ -2649,7 +2649,7 @@ existing real keyboard route. Native indexed and background paths remain intact.
 The focused build workflow pins this candidate; the agent campaign remains pinned
 to df79 until saved-file/selection/Unicode and keymap regressions pass. Full native
 desktop matrix and new agent timing remain unverified.
-# CALC-L03 / CALC-L04: reproduce agent coordinate failures
+## CALC-L03 / CALC-L04: reproduce agent coordinate failures
 
 Agent arm 22 (CI 34313264489, SDK 48c6ab55, df79 driver) outlived the old
 REPL deadline but stopped at the spending guard after 728.8s. It repeatedly
@@ -2660,3 +2660,19 @@ sheet names. No model or mocked input is used. Typecheck passes; remote real
 desktop reproduction is pending. The first remote attempt lacked the workbook
 mount and failed before app launch, so it is setup evidence only; a corrected
 runner fingerprints and mounts the existing task asset explicitly.
+
+PERF-L03 validation: c2f9a2a60 passed Linux build/focused Rust checks in CI
+34314822844. The exact f5421082 binary passed TYPE-L01 and COORD-L01 with both
+saved/visible outcomes, app exits and keymaps verified. Same image, wrapper, SDK
+and test-source hashes; foreground typing 5.913s → 1.609s and 10.155s → 0.197s.
+Including background attempts: 10.222s → 5.911s and 20.169s → 10.310s. Combined
+test runtime 96.07s → 81.36s in one sequential diagnostic pair; this is not an
+agent benchmark. The accelerator and indexed-save checks separately passed;
+both app exits and keymaps were verified from their retained receipts.
+
+CALC-L03/L04 validation: corrected `calc-coordinate-before-03` reproduces both
+failures on exact df79. Saved E2 is empty after name-box input, and no Sheet2 is
+observed after the plus click. Both app exits verified. The remote 1280×883
+layout and original CI 1280×881 layout were visually inspected; both controls
+occupy the selected pixels. The fixture accepts those two observed geometries.
+Root cause and driver correction remain open; no passing-agent claim.
