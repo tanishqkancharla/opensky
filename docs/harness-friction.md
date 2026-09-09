@@ -2510,3 +2510,15 @@ receipts passed. The initial live diagnostic missed the short-lived container,
 so linux-app now saves the real X11 window tree on launch failure before cleanup.
 This is failure-only evidence collection; launch criteria and tests are unchanged.
 Do not promote the new binary until these input regressions actually run.
+
+SET-074 first hosted Calc setup run 34309203584 stopped before driver/model
+admission because the asset host reset an HTTPS connection. fetch-assets now
+retries transient network errors up to three attempts with short backoff;
+checksum mismatches and permanent HTTP errors still fail immediately. Existing
+verified assets remain unchanged. New hosted execution is required.
+
+Writer regression setup diagnosis: the older opensky-input-debug:0ee7c90 image
+had no UTF-8 locale, unlike the passing full desktop image and hosted runner.
+The retained window tree showed a live Writer window with a title encoding
+failure. The next unchanged regression run explicitly uses LANG/LC_ALL=C.UTF-8;
+TYPE-L01 and KEY-L01 have reached their actual actions and passed so far.
