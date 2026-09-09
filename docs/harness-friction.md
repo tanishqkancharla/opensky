@@ -2583,3 +2583,18 @@ four skips and verified cleanups; screenshot medians reproduce 5424.127 ms and
 unavailable timings. Temporary receipt copies verified missing-cleanup and
 malformed-timing failure behavior. No GUI rerun or agent score is implied;
 recorded fixture calls are not agent REPL calls or whole-run wall time.
+
+**REPL-L01 — A legitimate action batch exhausted a hidden awaited-work limit:**
+Matched Calc runs 34311313179/34311623462 at SDK757b7d9 passed all fingerprint
+comparisons, cleanup and usage reconciliation. Native passed the raw OSWorld
+workbook scorer (67.136s,12calls); OpenSky failed (111.632s,4calls) when its
+third call batched nine formula entries and hit AsyncRepl's default60s wall
+limit. The poisoned evaluator then refused recovery. This is retained as a
+real interface failure, not relabeled as success or removed from results.
+Public CUA REPL now sets awaitTimeoutMs:null: host actions may finish normally
+while synchronous code/microtask bursts retain the60s CPU watchdog. Explicit
+AsyncRepl timeouts retain their existing behavior. Real-timer REPL tests verify
+action completion beyond the CPU budget, next-cell binding continuity and
+recursive-microtask interruption. Desktop replay and new paired outcome remain
+pending; tests alone do not establish task parity. Native/app/profile freeze
+and all three hosted app setups passed with cleanup before these agent runs.

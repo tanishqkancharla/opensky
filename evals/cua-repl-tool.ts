@@ -31,7 +31,7 @@ export function createCuaReplToolRuntime(
   const cua = createCua(opensky, { emit: (value) => activeEmissions?.push(value) });
   const targets = new Map<string, App | Tab>();
   const browsers = new Map<string, Browser>();
-  const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
+  const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true, awaitTimeoutMs: null });
   installNodeReplOutput(repl, (output) => activeEmissions?.push(output));
   const lifecycle = new AsyncLifecycle("CUA REPL runtime", () => opensky.close());
   let executionQueue: Promise<void> = Promise.resolve();

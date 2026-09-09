@@ -27,6 +27,9 @@ export class AsyncReplError extends Error {
 export interface AsyncReplOptions {
   context?: Record<string, unknown>;
   timeoutMs?: number;
+  /** Wall-clock limit while awaiting host actions. null allows long action batches;
+   * synchronous JavaScript and microtask bursts still use timeoutMs. */
+  awaitTimeoutMs?: number | null;
   /** When false, omit `process` and `require` from the sandbox (used by `opensky serve`). */
   allowNodeApis?: boolean;
   /** Harden a no-Node-API evaluator as a security boundary. Context values must be installed through a context-native membrane. */
@@ -37,6 +40,7 @@ export class AsyncRepl {
   private readonly sandbox: vm.Context;
   private queue: Promise<void> = Promise.resolve();
   private readonly timeoutMs: number;
+  private readonly awaitTimeoutMs: number | null;
   private readonly strictSandbox: boolean;
   private readonly strictEvaluation = new AsyncLocalStorage<number>();
   private readonly activeEvaluations = new Set<number>();
@@ -46,6 +50,10 @@ export class AsyncRepl {
 
   constructor(options: AsyncReplOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? 60_000;
+    this.awaitTimeoutMs = options.awaitTimeoutMs === undefined ? this.timeoutMs : options.awaitTimeoutMs;
+    if (this.awaitTimeoutMs !== null && (!Number.isSafeInteger(this.awaitTimeoutMs) || this.awaitTimeoutMs <= 0)) {
+      throw new Error("awaitTimeoutMs must be a positive integer or null");
+    }
     this.strictSandbox = options.strictSandbox === true;
     if (this.strictSandbox && options.allowNodeApis !== false) {
       throw new Error("strictSandbox requires allowNodeApis: false");
@@ -141,8 +149,8 @@ export class AsyncRepl {
           ? this.strictEvaluation.run(generation, () => script.runInContext(this.sandbox, { timeout: this.timeoutMs }))
           : script.runInContext(this.sandbox, { timeout: this.timeoutMs });
         const value = this.strictSandbox
-          ? await awaitContextValue(evaluated, this.sandbox, this.timeoutMs)
-          : await withDeadline(Promise.resolve(evaluated), this.timeoutMs);
+          ? await awaitContextValue(evaluated, this.sandbox, this.timeoutMs, this.awaitTimeoutMs)
+          : await withDeadline(Promise.resolve(evaluated), this.awaitTimeoutMs);
         if (this.strictSandbox) {
           logs.push(...Array.from(this.sandbox.__openskyLogs as unknown[], (value) => String(value)));
         }
@@ -449,7 +457,8 @@ function assertStrictVmSupport(): void {
   }
 }
 
-async function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+async function withDeadline<T>(promise: Promise<T>, timeoutMs: number | null): Promise<T> {
+  if (timeoutMs === null) return promise;
   let timer: NodeJS.Timeout | undefined;
   const deadline = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => reject(new Error(`Evaluation timed out after ${timeoutMs}ms`)), timeoutMs);
@@ -461,7 +470,7 @@ async function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<
   }
 }
 
-async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs: number): Promise<unknown> {
+async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs: number, awaitTimeoutMs: number | null): Promise<unknown> {
   if (!value || (typeof value !== "object" && typeof value !== "function") || typeof (value as { then?: unknown }).then !== "function") {
     return value;
   }
@@ -473,10 +482,10 @@ async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs:
     (next) => { settled = true; result = next; },
     (error) => { settled = true; rejected = true; failure = error; },
   );
-  const deadline = Date.now() + timeoutMs;
+  const deadline = awaitTimeoutMs === null ? null : Date.now() + awaitTimeoutMs;
   while (!settled) {
-    const remaining = deadline - Date.now();
-    if (remaining <= 0) throw new Error(`Evaluation timed out after ${timeoutMs}ms`);
+    const remaining = deadline === null ? timeoutMs : Math.min(timeoutMs, deadline - Date.now());
+    if (remaining <= 0) throw new Error(`Evaluation timed out after ${awaitTimeoutMs}ms`);
     // With microtaskMode=afterEvaluate this empty turn drains realm-created
     // Promise continuations under vm's synchronous timeout accounting.
     vm.runInContext("", context, { timeout: Math.max(1, remaining) });
