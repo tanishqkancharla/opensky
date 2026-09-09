@@ -3271,3 +3271,17 @@ column widths and explicit Russo One32.3pt white header fonts remain unchanged.
 The diagnostic retains raw gold comparisons, style fields and adapted-reference
 hash receipts without claiming a fresh render or changing the official score.
 OpenSky47 is pending. The helper improves failure diagnosis, not the model score.
+
+
+Header pair46/47 is complete: both passed, with identical compared environment
+fingerprints and saved table snapshots (text, header fonts and geometry). Both
+preserve other slide text. The fixed baseline now has 9/20 pairs: native 8 passed,
+OpenSky 6 passed. Original failures remain selected. OpenSky48 is running the
+next duplicate-slides task on the same frozen source.
+
+Duplicate-slide diagnostic preparation verifies the requested order as original
+slides1–24 followed by copies23 and24. It reports exact text order, picture hashes
+and geometry separately, preserving raw reference differences and official
+scores. The raw golds contain unrelated earlier-slide differences; the existing
+frozen task-preserving scoring profile handles that policy. No new agent result
+or adapted-reference rendering is inferred from this read-only preparation.
