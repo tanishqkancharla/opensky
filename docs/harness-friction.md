@@ -2839,3 +2839,14 @@ when focus belongs to another window, and preserve genuine background targeting.
 No paid-driver pin or agent speed claim is permitted from this candidate until
 that behavior and the remaining indexed/scrolled acceptance are verified.
 Evidence: `focus-typing-bf403-01`; the unchanged FOCUS-L03 assertion remains.
+
+
+The unchanged a950 control (`focus-modal-a950-01`,27.58s) also appended the
+forbidden text to the Find dialog. Its final-modal-state and both owned app
+cleanup receipts were retrieved. This establishes that the wrong-window
+mutation predates the fast path. Candidate435ef5940 scopes all three background
+editable write attempts and focused-widget classification to the requested XID,
+validates correlated frame geometry, and terminates on window mismatch before
+that attempt can mutate or reach another fallback. Indexed/explicit foreground
+paths are unchanged. Build and real unchanged focus/range/input/indexed acceptance
+are pending; agent evaluations remain on a950 until the candidate is validated.
