@@ -2806,3 +2806,36 @@ click took 25.584s. This confirms the selected-range saved outcome, not a full
 agent task or a performance improvement. Both range-replay app exits and
 container removals were verified. The setup-only CI path also calls the final
 screenshot helper so that diagnostic can be validated without model spending.
+
+
+Exact bf40378b1 built successfully in CI34388992875 (binary SHA256
+ a79ba9ed566c097931daab2ede6e85c0c86a0bc935e3b7e68f01836a448e4384).
+The unchanged CALC-L05 passed in63.343s versus90.475s on a950, with the same
+image/runner/test/fixture/SDK fingerprints and all nine saved formulas verified.
+Range typing fell20.985s to0.219s; formula typing fell5.466s to0.239s.
+This is one deterministic diagnostic comparison, not an agent speedup.
+Four unchanged TYPE/KEY/CLICK/COORD regressions also passed (105.97s), with
+all owned app exits, keyboard maps and container removals verified.
+
+OBS-L01 real setup validation passed in CI34389002642: final-state.jpg visually
+shows the owned Calc desktop; final-observation.json records successful101ms
+capture, and app exit/temp cleanup passed. This no-model setup has no agent score.
+
+## FOCUS-L03: a document request can mutate an active dialog
+
+New real public-SDK focus tests use two independently owned Writer processes
+and exact SDK window handles. FOCUS-L01 (foreground document) and FOCUS-L02
+(background target with sibling retaining focus) passed on bf40378b1.
+FOCUS-L03 failed: typing at the bound document while its Find dialog was active
+appended FORBIDDEN DOCUMENT INPUT to that dialog's search field. The captured
+final-modal-state.json contains the combined field value, proving wrong-window
+mutation rather than only an unexpected return value. Both owned app groups
+and temporary directories exited/removed in all three cases.
+
+The original PID-wide accessibility fallback remains suspect; a950 control is
+being run before attributing the bug to the optimization. Exact-window scoping
+must cover every editable classification/write/retry path, refuse before input
+when focus belongs to another window, and preserve genuine background targeting.
+No paid-driver pin or agent speed claim is permitted from this candidate until
+that behavior and the remaining indexed/scrolled acceptance are verified.
+Evidence: `focus-typing-bf403-01`; the unchanged FOCUS-L03 assertion remains.
