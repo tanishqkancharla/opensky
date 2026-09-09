@@ -3079,3 +3079,11 @@ intermediate values cause the mandatory whole-sheet failure. Driver30's indexed
 Save took8.637s versus prior27's17.630s, but different agent strategies prevent
 attributing total elapsed improvement solely to that fix. Ubuntu patch labels
 still differ; other compared fingerprints match. No new broad parity claim.
+
+
+AX-L03 next candidate: read metadata concurrently across bounded groups of eight
+structurally discovered preorder nodes. The same original operation deadline
+applies, and only fully enriched prefixes may be returned, preserving global
+index semantics. Structural DFS, child requests, limits and frame identity are
+unchanged. Exact Linux build and retained-observation/saved-outcome comparison
+against1cd are pending; no speed gain or paid pin change is claimed.
