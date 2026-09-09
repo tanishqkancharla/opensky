@@ -49,6 +49,14 @@ canonical shipping workflow uses release. Historical timing measurements remain
 valid for the tested build, but release performance is unmeasured. This caveat
 must not be confused with a task-success result or used to postpone coverage.
 
+The first VS Code pair completed on accepted SDK8c818c7 / driver4863e5b:
+native32 (CI34409909946) and OpenSky33 (CI34410305380) both passed replacing
+“text” with “test”. Both retained saved files exactly match frozen gold, all
+cleanup/usage receipts passed, and all compared fingerprints match except the
+Ubuntu patch label. This establishes one editor task, not broad editor parity.
+Native16.805s/5calls and OpenSky37.595s/7calls remain secondary metrics. Evidence:
+`evals/runs/campaign-linux-smoke-1/code-replace-pair.json`.
+
 The historical notes below describe earlier gates and may have been superseded;
 the live campaign artifacts are authoritative for current run status.
 

@@ -3110,3 +3110,14 @@ SDK artifacts in one compressed SSH stream, verifies terminal report/container
 state and safe archive members, and stages without output overwrites or changes
 to remote ownership. Its first real use retrieved ax-metadata-chunked-01 in1.521s;
 parent independently verified source hashes, saved outcomes and cleanup above.
+
+
+Dashboard comparison guard: the local scorecard now requires matching nonempty
+Code fingerprints for VS Code pairs and matching grading profiles whenever
+either arm provides one (mandatory for Impress). It also compares run profiles.
+Historical Writer pairs that both predate grading profiles remain eligible.
+Seventeen retained-record and changed/missing-field controls passed; the live
+server was restarted on the same localhost port and verified to show native32
+passed/OpenSky33 running before the latter completed. This validation concerns
+score selection, not new desktop behavior; the real Code pair is documented in
+the Linux plan and campaign evidence.
