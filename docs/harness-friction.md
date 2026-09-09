@@ -2627,3 +2627,11 @@ operation exercises multiple waits; the isolated Linux REPL-L01 desktop test
 checks exact saved text, subsequent-cell binding use and keymap restoration.
 Hosted desktop validation is pending. Wait calls remain included in agent tool
 counts and will be distinguished when interpreting interaction efficiency.
+
+REPL-L01 real Linux acceptance: hosted run34312831722 passed the actual MCP
+Writer workflow. Its first batch lasted124.434s across five waits (four30s
+pending replies and a4.425s terminal reply), exceeding both former60s limits
+without poisoning or restarting. A later cell saved the exact expected nine
+text fragments once. Keymap restoration and owned-process cleanup passed.
+This is deterministic public-tool acceptance; the new Terra pair is still
+required for agent outcome and latency evidence.
