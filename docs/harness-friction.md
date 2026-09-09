@@ -2981,3 +2981,46 @@ required. Typed pre-input unavailability can choose pointer delivery; submitted
 AX requests that fail are never replayed. A negative doAction acknowledgment is
 an error. Build-only pin updated; paid workflow remains accepted4fb. Exact
 compile and real indexed/AX/window isolation validation remain pending.
+
+Exact candidate4863e5bff passed build/focused Rust checks inCI34403392571, then
+12 real SDK cases: CALC-L01/02/05, FOCUS-L04, and eight input/dialog/screenshot
+cases. Artifacts indexed-resolution-486-01, indexed-window-after-01 and
+indexed-dialog-486-01 retain the source identity and saved outcomes. Binary
+SHA256ebf7f5426faf4c36431c4ea27f819dae6767742e54114ba8f971b3ac20f38968.
+All13 owned app groups exited; eight keymaps and focus temporary cleanup were
+verified, and the three containers are gone. Retrieved XLSX/DOCX/ODT contents
+were independently verified. Cross-window refusal also passed on the4fb
+baseline; it is regression evidence, not a newly reproduced defect.
+
+The three indexed click calls now take5.214/5.197/5.216s versus
+25.224/24.951/24.835s before. Each new driver RPC contains one2,316-node walk.
+Recorded non-driver source/image hashes match; per-case comparisons come from
+different suite selections and single samples. This is supporting SDK evidence,
+not an agent benchmark or canonical cross-platform certification.
+
+## SCORE-L02: content guard adds an unrequested sheet-order requirement
+
+Native28 passed upstream (score1) with all named-sheet values matching gold,
+but the additional Calc content guard compared an ordered list of sheets and
+rejected [Sheet1,Sheet2] against [Sheet2,Sheet1]. This task names sheets without
+requiring order. The guard now compares sparse content keyed by sheet name;
+mandatory upstream rules still enforce order where specified (six of eight
+Calc tasks). Original scores and artifacts remain intact; a separate explicit
+named-sheet-content-v2 regrade corrects native28. No new agent run is claimed.
+
+Copied real-file checks: native28 now passes, native26 stays passed, OpenSky27
+extra18E/Icells still fail, and a damaged J2 copy fails. A scan of28 retained
+receipts found no additional upstream-pass/content-guard-fail Calc cases.
+The durable canonical-gold control checks original/reordered successes, damaged
+J2/extraE2 failures, and explicit upstream sheet-order refusal before paid CI
+admission. Original reference hashes remain unchanged; control tempfiles exit.
+
+## DRAG-L01: foreground-only drag refusal has no public recovery path
+
+Agent27's two scrollbar drag attempts both failed: the native-style facade
+accepts only two points, so the agent-supplied foreground option was dropped.
+The legacy SDK drag calls the driver without click's typed pre-input foreground
+retry. Agent recovered through the name box; this did not cause the final
+extra-cell scoring failure. Pending: apply the same precise pre-input retry
+contract and validate a real scrollbar drag, with no retry after uncertain
+input delivery. No driver fix or successful drag is claimed yet.

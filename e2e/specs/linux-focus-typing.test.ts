@@ -37,3 +37,20 @@ test("FOCUS-L03: a document typing request cannot write into its active Find dia
   await expect.poll(() => target.readText()).toBe("Target document.");
   await expect.poll(() => sibling.readText()).toBe("Sibling document.");
 });
+
+// A raw public-SDK index remains application-wide. It must still belong to
+// the window named by the click request, even within the same process.
+test("FOCUS-L04: a document click cannot activate its dialog's Close button", { timeout: 180_000 }, async ({ target, sibling, modal }) => {
+  await target.activate();
+  await target.pressKey("CTRL+H");
+  await modal.typeText("Keep this search");
+  const dialog = await modal.readTree();
+  expect(dialog).toMatch(/\[(\d+)\] push button "Close"/);
+  await expect(target.click(Number(dialog.match(/\[(\d+)\] push button "Close"/)![1]))).rejects.toThrow();
+  await expect(modal.readState()).resolves.toContain("Keep this search");
+  await modal.close();
+  await target.pressKey("CTRL+S");
+  await sibling.save();
+  await expect.poll(() => target.readText()).toBe("Target document.");
+  await expect.poll(() => sibling.readText()).toBe("Sibling document.");
+});

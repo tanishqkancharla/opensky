@@ -9,11 +9,11 @@ import { createOpenSky } from "../../src/index.js";
 import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 const exec = promisify(execFile);
 
-type Target = { activate(): Promise<void>; pressKey(key: string): Promise<void>; typeText(text: string): Promise<void>; readText(): Promise<string> };
+type Target = { click(index: number): Promise<void>; activate(): Promise<void>; pressKey(key: string): Promise<void>; typeText(text: string): Promise<void>; readText(): Promise<string> };
 type Fixture = {
   target: Target;
   sibling: { activate(): Promise<void>; save(): Promise<void>; readText(): Promise<string>; hasFocus(): Promise<boolean> };
-  modal: { typeText(text: string): Promise<void>; readState(): Promise<string>; close(): Promise<void> };
+  modal: { readTree(): Promise<string>; typeText(text: string): Promise<void>; readState(): Promise<string>; close(): Promise<void> };
 };
 
 async function createDocument(path: string, text: string): Promise<void> {
@@ -73,6 +73,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
         const state = await sdk.get_app_state({ app: "LibreOffice", scope: "window", includeScreenshot: false });
         const handle = state.targetHandle;
         const target: Target = {
+          click: async index => { await timed("target.click", () => sdk.invoke("click", { pid: targetOwned.pid, window_id: Number(targetOwned.window), element_index: index })); },
           activate: async () => { await sdk.bring_to_front({ app: handle }); },
           pressKey: async key => { await timed(`target.pressKey(${key})`, () => sdk.press_key({ app: handle, key })); },
           typeText: async text => { await timed("target.typeText", () => sdk.type_text({ app: handle, text })); },
@@ -99,6 +100,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
                 hasFocus: async () => (await exec("xdotool", ["getactivewindow"])).stdout.trim() === siblingOwned.window,
               },
               modal: {
+                readTree: async () => String(((await sdk.invoke("get_window_state", { ...await modalTarget(), include_screenshot: false })).structured as { tree_markdown?: string })?.tree_markdown ?? ""),
                 typeText: async text => { await sdk.invoke("type_text", { ...await modalTarget(), text, delivery_mode: "foreground" }); },
                 readState: async () => JSON.stringify((await sdk.invoke("get_window_state", { ...await modalTarget(), include_screenshot: false })).structured),
                 close: async () => { await sdk.invoke("press_key", { ...await modalTarget(), key: "Escape", delivery_mode: "foreground" }); },

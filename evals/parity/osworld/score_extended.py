@@ -21,9 +21,11 @@ def workbook_data(path):
     from openpyxl import load_workbook
     book = load_workbook(path, data_only=True)
     # Sparse storage avoids enumerating a million blank validation cells.
-    # Coordinates and saved cell values are the externally visible workbook.
-    return [(sheet.title, {cell.coordinate: cell.value for cell in sheet._cells.values()
-                          if cell.value is not None}) for sheet in book]
+    # Match content by worksheet name, without adding an order requirement.
+    # Any task-specific sheet-order rule remains enforced by the mandatory
+    # upstream grader; its result is still combined with this content guard.
+    return {sheet.title: {cell.coordinate: cell.value for cell in sheet._cells.values()
+                          if cell.value is not None} for sheet in book}
 
 
 def slide_text(path):
