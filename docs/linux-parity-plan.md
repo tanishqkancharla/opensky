@@ -57,6 +57,20 @@ Ubuntu patch label. This establishes one editor task, not broad editor parity.
 Native16.805s/5calls and OpenSky37.595s/7calls remain secondary metrics. Evidence:
 `evals/runs/campaign-linux-smoke-1/code-replace-pair.json`.
 
+The first Impress pair also completed on the same accepted software: OpenSky34
+(CI34410676094) and native35 (CI34411170884) both passed making slide1 green.
+Both saved backgrounds are reference color00a933, raw and adapted full graders
+passed, and cleanup/usage receipts passed. Native23.070s/8calls versus
+OpenSky82.821s/7calls is secondary. Evidence: impress-background-pair.json.
+
+The next fixed-software20-task index reuses all eligible8c results, including
+the Calc failure, and excludes older SDK results from its aggregate. This is
+an additive evidence index, not an identical-environment campaign: retained
+Ubuntu labels differ24.04.4/24.04.5, so the strict desktop-fingerprint freeze in
+campaign.ts remains unmet. Preserve that limitation and all raw evidence. The
+next untested item in committed fullTaskIds is Calc fill-blanks01b269ae, with
+native first according to the already frozen counterbalancing order.
+
 The historical notes below describe earlier gates and may have been superseded;
 the live campaign artifacts are authoritative for current run status.
 
@@ -104,3 +118,29 @@ the live campaign artifacts are authoritative for current run status.
   one-off Docker tests work without it; registration is optional, not a blocker.
 - Preserve macOS driver follow-ups for later; historical macOS results do not
   count as Linux evidence.
+
+
+## Fixed-software index and continuing the20-task set
+
+`evals/runs/linux-baseline-8c818c7/plan.json` was frozen additively after arms30–35
+with SHAecd69e4df775175f986e17484fd54c859513e2922084ceadb2433b15f6052827.
+It records the committed20-task manifest, exact software/runtime fingerprints,
+Terra medium with native compaction, scoring profile, imported evidence and
+selection policy. Select the first valid arm per task/backend by CI run ID,
+including failures; retain later attempts separately rather than replacing a
+failure. Raw source artifacts remain in campaign-linux-smoke-1.
+
+`work/refresh-linux-baseline.py` verifies raw CI/admission/result/score/cleanup,
+configuration, model, app and driver fingerprints, then refreshes only the
+additive summary. The current index contains all six imported arms:3/20 pairs,
+native3passed/OpenSky2passed. The public status view now selects this index and
+marks older-build Writer tasks as not yet run on this build. Those historical
+scores remain preserved. The index is explicitly a fixed-software comparison:
+Ubuntu patch labels differ; strict identical-environment freeze remains unmet.
+
+Continue per-arm finalization and accounting through the existing helpers, then
+refresh the baseline and status narrative. Keep accepted main SDK8c818c7 fixed
+for this index. Native36 is dispatched for Calc fill-blanks01b269ae as the next
+item in fullTaskIds; OpenSky37 follows after valid completion/reconciliation.
+No whole-agent deadline or tool-call limit is introduced. Current cumulative
+settled estimate is$86.2227098, with$5 reserved for native36, within$100 approval.

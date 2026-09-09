@@ -3121,3 +3121,24 @@ server was restarted on the same localhost port and verified to show native32
 passed/OpenSky33 running before the latter completed. This validation concerns
 score selection, not new desktop behavior; the real Code pair is documented in
 the Linux plan and campaign evidence.
+
+
+One-run artifact finalization: work/finalize-linux-agent.py composes the existing
+fetcher's terminal/source/identity checks, exclusive artifact installation and
+unchanged usage reconciler. It refuses live, interrupted, invalid and incomplete
+cleanup evidence, and never dispatches paid work or updates dashboard narrative.
+Offline controls passed; first real uses finalized OpenSky34 and native35. Both
+independent saved-background checks and raw/adapted graders passed, along with
+cleanup and usage. This removes manual fetch/install/reconcile handoffs without
+introducing a second accounting policy. Artifacts remain staged for audit.
+
+
+Fixed-software baseline indexing: a separate immutable plan and refreshable
+summary prevent historical SDK versions or passing retries from inflating the
+current20-task metric. The refresh helper checks raw receipts, configuration,
+cleanup and evidence hashes, retains failures and inventory of excluded/later
+attempts, and does not alter scoring or accounting. Six imported arms and all
+supporting hashes verified; seven missing/changed-evidence controls rejected.
+The live endpoint was verified at3/20 pairs, native3/OpenSky2, with old-build
+Writer rows pending and native36 running. The OS-label exception is explicit;
+this is not acceptance of the strict identical-environment campaign requirement.
