@@ -3576,3 +3576,9 @@ L01–L04 acceptance this completes the focused sequential selection suite on624
 Coincident maximized-window ambiguity and concurrent-client races remain explicit
 limitations. Proceed to a separate matched agent correction campaign; original
 20-task baseline and all failed attempts remain unchanged.
+
+## Linux indexed target identity evaluation candidate
+
+The previous driver624 could retarget a retained OK index to Cancel after enabling an earlier GTK control, or activate another control after OK was removed. Candidate8edfebc14001f58e08488cc7b2f01ca692100347 binds observed indices to scoped AT-SPI object/frame identities. Build34528098770 and focused Rust checks passed. Exact binary SHA25636078d7ac04e98fe48406b1c4d759ce67919186276c8bd32516fb68348a06e71 passed seven real remote public SDK/MCP regressions: INDEX-L01/L02, DROPDOWN-L05, CALC-L01/L02, FOCUS-L04 and CLICK-L03. Retained artifacts gtk-index-identity-after-01, dropdown-index-identity-after-01 and index-identity-regressions-after-01 include independently inspected saved cells/formulas, dropdown choices/title, preserved document contents, app cleanup and empty container inventory.
+
+The paid Linux workflow now pins that tested artifact for a separate campaign-linux-index-candidate, with unchanged e8 runtime, tasks, native package and scoring. Historical scores are preserved; no new agent success is implied. Driver PR3 remains draft: canonical desktop certification is pending. Subsequent driver commits only reorder modules for rustfmt and add the already-supported select_text tool to the Linux MCP compatibility roster; the compiled evaluation driver remains8ed. The original dropdown agent failure and LibreOffice crash are not proven consequences of the reproduced GTK defect.
