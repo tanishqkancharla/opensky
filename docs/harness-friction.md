@@ -3522,3 +3522,14 @@ documents stayed unchanged; cleanup passed (`selection-guard-before-01`). This
 is a separate unresolved limitation. G04 now opens one window; sibling/dialog
 fixtures arrange distinct window bounds through ordinary window-manager input,
 and no longer accept ambiguous-identity refusal as evidence of their guards.
+
+
+The narrowed unchanged G04 reproduced the intended failure on12c in
+`selection-guard-before-02`: selection succeeded, then the stale toolbar click
+resolved instead of rejecting. The identical fixture passed on624 in
+`selection-guard-after-01`: stale reference refused, fresh target clicked, and
+exactly `needle` had saved solid strikethrough with all text unchanged. Saved XML,
+app exit, temporary removal and empty container inventory were independently
+verified. This accepts the sequential stale-target correction for the tested
+Writer workflow; G01–G03 and full L01–L04 on624 remain pending. No new agent score
+or model spending is claimed. Original failed outcomes remain retained.
