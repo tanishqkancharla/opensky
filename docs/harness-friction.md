@@ -3367,3 +3367,15 @@ and source archives are retained under linux-office-setup/editable-click-*.
 This is real narrow X11 acceptance, not an agent-task retry or Wayland/matrix
 acceptance. Focus, indexed Calc, and multiline regressions remain pending;
 paid baseline pins and its frozen failed dropdown arm remain unchanged.
+
+The same isolated candidate passed seven subsequent real regressions in
+editable-regressions-after-01: CALC-L01/L02/L05, FOCUS-L02/L03/L04, and
+DROPDOWN-L01. Full SDK source still matches8c; archivef9123277 retains all
+tests, fixtures and original inputs. Independent saved-file checks verified
+E2/E50, every E2:E10 formula and cached result, all outside cells, both documents
+in each focus test, and all28dropdown choices. Ten unique owned app groups
+exited; the final container inventory was empty. No model calls or spending
+occurred in these SDK tests. The driver change is supported for these X11
+workflows; native Wayland remains explicitly unsupported for this fallback,
+and the canonical cross-platform matrix/release acceptance is still pending.
+Frozen agent baseline and accounting remain unchanged by these checks.
