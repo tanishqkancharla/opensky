@@ -119,9 +119,30 @@ export const test = base.extend<Fixture & { fixture: FixtureState }>({
           await sdk.invoke("bring_to_front", sibling);
           const id = String(sibling.window_id);
           const maximized = (await exec("xprop", ["-id", id, "_NET_WM_STATE"])).stdout;
-          // Use Openbox's ordinary restore action only when actually maximized.
+          // Send the ordinary EWMH restore request to the owned window.
+          // The image's default Openbox config has no maximize key binding.
           if (maximized.includes("_NET_WM_STATE_MAXIMIZED")) {
-            await exec("xdotool", ["key", "--clearmodifiers", "alt+F10"]);
+            await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c", `
+import ctypes as C,sys
+X=C.CDLL('libX11.so.6')
+class Data(C.Union): _fields_=[('b',C.c_char*20),('s',C.c_short*10),('l',C.c_long*5)]
+class Message(C.Structure): _fields_=[('type',C.c_int),('serial',C.c_ulong),('send_event',C.c_int),('display',C.c_void_p),('window',C.c_ulong),('message_type',C.c_ulong),('format',C.c_int),('data',Data)]
+class Event(C.Union): _fields_=[('message',Message),('pad',C.c_long*24)]
+X.XOpenDisplay.argtypes=[C.c_char_p];X.XOpenDisplay.restype=C.c_void_p
+X.XDefaultRootWindow.argtypes=[C.c_void_p];X.XDefaultRootWindow.restype=C.c_ulong
+X.XInternAtom.argtypes=[C.c_void_p,C.c_char_p,C.c_int];X.XInternAtom.restype=C.c_ulong
+X.XSendEvent.argtypes=[C.c_void_p,C.c_ulong,C.c_int,C.c_long,C.POINTER(Event)]
+X.XSync.argtypes=[C.c_void_p,C.c_int];X.XCloseDisplay.argtypes=[C.c_void_p]
+d=X.XOpenDisplay(None)
+if not d: raise RuntimeError('No isolated X display')
+try:
+ e=Event();e.message.type=33;e.message.send_event=1;e.message.display=d;e.message.window=int(sys.argv[1]);e.message.format=32
+ e.message.message_type=X.XInternAtom(d,b'_NET_WM_STATE',0)
+ e.message.data.l[:]=[0,X.XInternAtom(d,b'_NET_WM_STATE_MAXIMIZED_HORZ',0),X.XInternAtom(d,b'_NET_WM_STATE_MAXIMIZED_VERT',0),1,0]
+ if not X.XSendEvent(d,X.XDefaultRootWindow(d),0,(1<<20)|(1<<19),C.byref(e)): raise RuntimeError('Window manager rejected restore request')
+ X.XSync(d,0)
+finally: X.XCloseDisplay(d)
+`, id]);
             await expect.poll(async () => (await exec("xprop", ["-id", id, "_NET_WM_STATE"])).stdout,
               { timeout: 5_000 }).not.toContain("_NET_WM_STATE_MAXIMIZED");
           }

@@ -3533,3 +3533,11 @@ app exit, temporary removal and empty container inventory were independently
 verified. This accepts the sequential stale-target correction for the tested
 Writer workflow; G01–G03 and full L01–L04 on624 remain pending. No new agent score
 or model spending is claimed. Original failed outcomes remain retained.
+
+
+`selection-guards-after-02` stopped all three remaining guard cases in fixture
+setup: the image has no Openbox maximize/restore key binding, so assumed Alt+F10
+did not restore the sibling window. No guard assertion was reached. Fixture
+setup now sends the ordinary EWMH restore request to the owned window and checks
+the reported state before arranging distinct bounds; no application behavior is
+mocked or driver input changed. Typecheck passes; remote rerun pending.
