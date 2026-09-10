@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 624fc7ea6cd799317bfcf4b402d3cf9f1b8c38e4
+  OPENSKY_DRIVER_REF: 8edfebc14001f58e08488cc7b2f01ca692100347
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -50,6 +50,7 @@ jobs:
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml virtual_table_tests
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::native::coord_tests
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml frame_correlation_tests
+          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::cache::tests
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml select_text
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
