@@ -3463,3 +3463,14 @@ cleanup passed. Driver00fb3c4 adds select_text to the existing R1 desktop-input
 classification, window-scope/own-process/origin restrictions and token capability;
 it does not weaken unknown-tool denial. The two focused policy tests pass locally.
 Corrected Linux build and native acceptance remain pending.
+
+CI34514497505 built00fb and its focused checks passed. Real SELECT-L01
+(`selection-after-02`) then reached the Text interface and refused a character
+count mismatch before mutation. Original Unicode paragraph/text and cleanup
+were independently verified. Candidate12c5233 selects an offset convention only
+when native count exactly equals live scalar or UTF-16 count, then verifies
+GetText over the full matched substring before applying range/caret mutation.
+Unknown counts and incorrect substring probes remain refusals; the actual unit
+is reported. Five pure matching/unit tests pass. Linux build and real acceptance
+remain pending. SELECT-L04 is drafted to assert saved paragraph strikethrough
+and unchanged text, rather than only a successful selection call.

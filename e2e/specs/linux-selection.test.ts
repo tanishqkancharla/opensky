@@ -21,3 +21,12 @@ test("SELECT-L03: places the insertion point after the contextual match", async 
   await app.pressKey("CTRL+S");
   await expect.poll(() => document.readText()).toBe("First paragraph must stay unchanged.\n😀 café é one needle; two needle AFTER.\nLast paragraph must stay unchanged.");
 });
+
+
+test("SELECT-L04: strikethrough applies to the selected paragraph without changing its text", async ({ app, paragraph, strikeButton, document }) => {
+  await app.selectText(paragraph, "😀 café é one needle; two needle.");
+  await app.click(strikeButton);
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => document.readStruckText()).toEqual(["", "😀 café é one needle; two needle.", ""]);
+  await expect.poll(() => document.readText()).toBe("First paragraph must stay unchanged.\n😀 café é one needle; two needle.\nLast paragraph must stay unchanged.");
+});
