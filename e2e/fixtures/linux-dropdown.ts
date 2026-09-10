@@ -146,7 +146,9 @@ export const test = base.extend<Fixtures & { fixture: Fixtures }>({
           await use({ app, dialog: { entriesPoint, okPoint: center(ok), async observe() {
             const screen = await capture();
             const state = await app.getAXState({ disableDiffing: true });
-            return { open: state.includes('dialog = "Validity"') && screen.words.some(word => matchesLabel(word.text, "Entries")),
+            // The Entries label is absent on Input Help; tab selection must
+            // not be mistaken for dismissing the surrounding Validity dialog.
+            return { open: state.includes('dialog = "Validity"'),
               // OCR sometimes appends the visible caret as ] or ). The saved
               // workbook assertion below still requires exact literal choices.
               choices: screen.words.map(word => word.text.replace(/[|)\]]+$/, "")).filter(text => ["Pass", "Fail", "Held"].includes(text)) };

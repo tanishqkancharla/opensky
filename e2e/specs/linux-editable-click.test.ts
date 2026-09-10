@@ -6,6 +6,7 @@ test("CLICK-L03: clicking an editable title focuses it without accepting the dia
   await expect(titleField.observe()).resolves.toContain('dialog = "Validity"');
   await app.pressKey("CTRL+A");
   await app.typeText(titleField.replacement);
+  await expect(titleField.observe()).resolves.toContain('dialog = "Validity"');
   await expect(titleField.observe()).resolves.toContain(JSON.stringify(titleField.replacement));
   await app.click(dialog.okPoint);
   await expect(dialog.observe()).resolves.toMatchObject({ open: false });

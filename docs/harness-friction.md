@@ -3337,3 +3337,9 @@ is X11-only. This candidate prevents accidental activation on Wayland but does
 not supply working indexed editable clicks there. A Wayland pointer/focus
 implementation and real compositor validation remain required. X11's exact
 window correlation and no-replay rules remain intact by source review.
+
+Pre-run review corrected CLICK-L03's inherited dialog-open observation: the
+Validity AX dialog determines open/closed state. The Entries label disappears
+on Input Help and cannot serve as dialog-dismissal evidence. The test also
+asserts the dialog remains open after replacement typing. This is a fixture
+correction before its first GUI run, not an observed driver pass.
