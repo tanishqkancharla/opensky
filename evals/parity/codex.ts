@@ -42,6 +42,21 @@ export function evaluationEnvironment(): NodeJS.ProcessEnv {
   return env;
 }
 
+/** Built-in inventory only: never authorize reading resources or invoking a server.
+ * Codex reports these built-ins as mcpToolCall/server=codex even though the
+ * configured MCP server table contains only the isolated desktop transport.
+ */
+export function isBuiltinResourceDiscovery(item: Json): boolean {
+  if (item.type !== "mcpToolCall" || item.server !== "codex" ||
+      !["list_mcp_resources", "list_mcp_resource_templates"].includes(item.tool) ||
+      item.pluginId != null || item.appContext != null) return false;
+  const args = item.arguments;
+  if (!args || typeof args !== "object" || Array.isArray(args)) return false;
+  return Object.keys(args).every(key => key === "server" || key === "cursor") &&
+    (args.server === undefined || args.server === "desktop") &&
+    (args.cursor === undefined || typeof args.cursor === "string");
+}
+
 export async function runCodex(options: CodexRunOptions) {
   if ((options.timeoutMs !== null && (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs <= 0)) ||
       (options.maxToolCalls !== null && (!Number.isSafeInteger(options.maxToolCalls) || options.maxToolCalls <= 0))) {
@@ -230,7 +245,7 @@ export async function runCodex(options: CodexRunOptions) {
           }
           else admittedPrograms.add(code);
         }
-        if (item.server !== "desktop") stop("unexpected_tool_server");
+        if (item.server !== "desktop" && !isBuiltinResourceDiscovery(item)) stop("unexpected_tool_server");
         // Scored arms enforce admission inside the transport. Wait for its
         // denial receipt so cancellation cannot race an extra desktop action.
         if (!guarded && options.maxToolCalls !== null && toolCalls > options.maxToolCalls) stop("tool_call_budget_exceeded");
@@ -239,7 +254,7 @@ export async function runCodex(options: CodexRunOptions) {
     if (message.method === "item/completed") {
       lastItemEvent = eventOrdinal;
       items.push(params.item); activeCalls.delete(params.item.id);
-      if (params.item.type === "mcpToolCall" && (params.item.status === "failed" || params.item.result?.isError || params.item.error)) programPolicy?.executionFailed();
+      if (params.item.type === "mcpToolCall" && params.item.server === "desktop" && (params.item.status === "failed" || params.item.result?.isError || params.item.error)) programPolicy?.executionFailed();
       if (params.item.type === "agentMessage") finalText = params.item.text;
       const limit = params.item.result?.structuredContent?.parityTaskLimit;
       if (params.item.type === "mcpToolCall" && ["tool_call_budget_exceeded", "run_timeout"].includes(limit)) stop(limit);
