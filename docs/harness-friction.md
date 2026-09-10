@@ -3379,3 +3379,49 @@ occurred in these SDK tests. The driver change is supported for these X11
 workflows; native Wayland remains explicitly unsupported for this fallback,
 and the canonical cross-platform matrix/release acceptance is still pending.
 Frozen agent baseline and accounting remain unchanged by these checks.
+
+### FINALIZE-L01 — completed arms missing from the live baseline
+
+The local controller finalized and settled a run but required a separate manual
+`refresh-linux-baseline.py` invocation before its outcome appeared in the frozen
+baseline. The local `work/finalize-linux-agent.py` now calls that existing verifier
+after reconciliation when an existing plan matches the arm software revision.
+It does not create plans, regrade outcomes, dispatch retries, or change budget
+limits. A refresh failure explicitly reports that settlement already succeeded.
+
+Validation used retained passing image arm52 and failing dropdown arm41: both
+refresh paths preserved every selected outcome and provenance hash, the frozen
+plan, ledger and dashboard selection. An older software arm was skipped. This
+is controller validation only; no new agent or GUI acceptance is claimed.
+Legacy dashboard running markers remain caller-owned because task/backend alone
+cannot distinguish a completed arm from a later attempt. Exact run identity is
+required before automating their removal.
+
+### LIB-008 Linux follow-up — selection refuses supported recovery
+
+Frozen agent arm62 (CI34508871812, SDK8c/driver486) called
+`selectText(1088, "2")` twice. Runtime trace lines2/5 report background delivery
+unavailable before the keyboard selection completes. `pressElementKey` sends
+background first, but its focus-error matcher does not recognize this typed
+`background_unavailable` refusal. The facade also ignores the agent-provided
+`delivery_mode` option on selectText. A native-app query observation was separately
+rejected as browser-only. No source correction or real selection acceptance is
+claimed yet.
+
+The agent recovered with coordinates and keyboard selection, deliberately
+formatted the title only, and saved unchanged text with1of8gold subscript digits.
+This incomplete scope is independently established by saved character formatting
+and its final answer; the API refusal is not proven to cause the seven omissions.
+Original failed score and trace remain retained.
+
+Before changing recovery, reproduce a saved replacement in a non-first paragraph:
+the current algorithm combines an element-local offset with Ctrl+Home document
+start, and per-key recovery can refocus between movements. Cover duplicate/context
+selection, sibling windows and modal refusal. Any replay must use a typed
+pre-input refusal and an exact window, not a widened generic error regex.
+The independent diagnostic is retained in arm62/subscript-diagnostic.json.
+
+Native arm63 (CI34509449602) independently produced the same title-only1of8
+subscript result with unchanged text. Both original failures are now paired.
+This is counterevidence against attributing the seven omitted occurrences to
+OpenSky selection refusal; the refusal itself remains an observed SDK gap.
