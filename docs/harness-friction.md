@@ -3450,3 +3450,8 @@ selection, sibling-focus preservation and modal refusal remain pending; this
 is not yet a verified fix or an improved agent result. The frozen paid baseline
 continues using SDK8c/driver486. Older drivers lacking the new operation refuse;
 there is intentionally no fallback to the known incorrect Linux key sequence.
+
+Linux CI34512906961 caught one X11 reply-lifetime compiler error in driver1bad.
+Candidate1c39cd44d binds the focus reply before the connection is dropped.
+The first build failed before artifact creation; no GUI result or model spending
+was produced. A corrected Linux build is pending.
