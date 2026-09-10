@@ -12,6 +12,7 @@ test("VISIBLE-L01: label identifies the visible editor and hidden tab contents d
   await form.selectTab("Criteria");
   await expect(form.read()).resolves.toContain("Pass");
   await form.accept();
+  await expect(form.read()).resolves.toContain('frame = "Order_Id_Mark_Pass_Fail.xlsx — LibreOffice Calc"');
   await app.pressKey("CTRL+S");
   await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
   await app.pressKey("ENTER");
