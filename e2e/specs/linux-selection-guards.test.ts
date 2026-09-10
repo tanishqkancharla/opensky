@@ -3,7 +3,7 @@ import { test } from "../fixtures/linux-selection-guards.js";
 
 test("SELECT-G01: refuses selection while its sibling owns focus and preserves sibling typing", { timeout: 180_000 }, async ({ sdk, target, sibling, selection, documents, desktop }) => {
   await sdk.invoke("bring_to_front", sibling);
-  await expect(sdk.invoke("select_text", selection)).rejects.toThrow(/refused|focused widget/i);
+  await expect(sdk.invoke("select_text", selection)).rejects.toThrow(/another window.*focused widget/i);
   await expect(desktop.activeWindow()).resolves.toBe(sibling.window_id);
   await sdk.invoke("type_text", { ...sibling, text: " Added once.", delivery_mode: "foreground" });
   await sdk.invoke("press_key", { ...sibling, key: "s", modifiers: ["ctrl"], delivery_mode: "foreground" });
@@ -14,7 +14,7 @@ test("SELECT-G01: refuses selection while its sibling owns focus and preserves s
 
 test("SELECT-G02: a document selection cannot disturb its active Find dialog", { timeout: 180_000 }, async ({ sdk, target, selection, modal, documents, desktop }) => {
   await expect(modal.readState()).resolves.toContain("Keep this search");
-  await expect(sdk.invoke("select_text", selection)).rejects.toThrow(/refused|another window|modal/i);
+  await expect(sdk.invoke("select_text", selection)).rejects.toThrow(/another window|another modal|modal window/i);
   await expect(desktop.activeWindow()).resolves.toBe(modal.target.window_id);
   await expect(modal.readState()).resolves.toContain("Keep this search");
   await sdk.invoke("press_key", { ...modal.target, key: "Escape", delivery_mode: "foreground" });
@@ -43,5 +43,4 @@ test("SELECT-G04: selection invalidates retained toolbar tokens and a fresh targ
   await sdk.invoke("press_key", { ...target, key: "s", modifiers: ["ctrl"], delivery_mode: "foreground" });
   await expect.poll(() => documents.struck()).toEqual(["needle"]);
   await expect.poll(() => documents.target()).toBe("Target document. needle.");
-  await expect.poll(() => documents.sibling()).toBe("Sibling document. needle.");
 });

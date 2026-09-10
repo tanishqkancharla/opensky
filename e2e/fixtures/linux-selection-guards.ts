@@ -79,7 +79,9 @@ print(json.dumps([struck(p) for p in root.findall('.//o:text/t:p',n)]))
 }
 
 
-export const test = base.extend<Fixture & { fixture: Fixture }>({
+type FixtureState = Omit<Fixture, "sibling"> & { sibling: Window | null };
+
+export const test = base.extend<Fixture & { fixture: FixtureState }>({
   fixture: async ({ task }, use) => {
     assertDisposableLinuxDesktop();
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "selection-guards", task.name.split(":")[0]);
@@ -89,13 +91,16 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
     const siblingFile = join(temporary, "guard-sibling.odt");
     await createDocument(targetFile, "Target document. needle.");
     await createDocument(siblingFile, "Sibling document. needle.");
+    const openSibling = !task.name.startsWith("SELECT-G04:");
     const sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
       driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
     try {
-      // Same process, two windows: exercise the focused sibling guard, not
-      // background selection in an unrelated application process.
+      // G04 isolates token invalidation in one window. Coincident maximized
+      // sibling bounds currently cause a separate unresolved frame-identity
+      // refusal before selection; before01 did not reach its stale assertion.
+      // Other cases use same-process siblings with distinct ordinary WM bounds.
       await withOwnedLinuxApp({ executable: "/usr/bin/libreoffice", documentTitle: "guard-target.odt", artifacts,
-        args: [`-env:UserInstallation=${pathToFileURL(join(temporary, "profile")).href}`, "--norestore", "--nologo", "--nofirststartwizard", "--writer", targetFile, siblingFile],
+        args: [`-env:UserInstallation=${pathToFileURL(join(temporary, "profile")).href}`, "--norestore", "--nologo", "--nofirststartwizard", "--writer", targetFile, ...(openSibling ? [siblingFile] : [])],
         env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
       }, async owned => {
         const target = { pid: owned.pid, window_id: Number(owned.window) };
@@ -108,10 +113,27 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
           }, { timeout: 20_000 }).toBe(true);
           return { pid: owned.pid, window_id: Number(found!.window_id ?? found!.id ?? found!.xid) };
         };
-        const sibling = await findWindow(/^guard-sibling\.odt/);
-        expect(sibling.window_id).not.toBe(target.window_id);
-        await sdk.invoke("bring_to_front", sibling);
-        await sdk.invoke("press_key", { ...sibling, key: "End", modifiers: ["ctrl"], delivery_mode: "foreground" });
+        const sibling = openSibling ? await findWindow(/^guard-sibling\.odt/) : null;
+        if (sibling) {
+          expect(sibling.window_id).not.toBe(target.window_id);
+          await sdk.invoke("bring_to_front", sibling);
+          const id = String(sibling.window_id);
+          const maximized = (await exec("xprop", ["-id", id, "_NET_WM_STATE"])).stdout;
+          // Use Openbox's ordinary restore action only when actually maximized.
+          if (maximized.includes("_NET_WM_STATE_MAXIMIZED")) {
+            await exec("xdotool", ["key", "--clearmodifiers", "alt+F10"]);
+            await expect.poll(async () => (await exec("xprop", ["-id", id, "_NET_WM_STATE"])).stdout,
+              { timeout: 5_000 }).not.toContain("_NET_WM_STATE_MAXIMIZED");
+          }
+          await exec("xdotool", ["windowsize", "--sync", id, "740", "520"], { timeout: 5_000 });
+          await exec("xdotool", ["windowmove", "--sync", id, "350", "250"], { timeout: 5_000 });
+          const siblingGeometry = (await exec("xdotool", ["getwindowgeometry", "--shell", id])).stdout;
+          const targetGeometry = (await exec("xdotool", ["getwindowgeometry", "--shell", String(target.window_id)])).stdout;
+          const bounds = (value: string) => value.split("\n").filter(line => /^(X|Y|WIDTH|HEIGHT)=/.test(line)).join("\n");
+          expect(bounds(siblingGeometry)).not.toBe(bounds(targetGeometry));
+          await writeFile(join(artifacts, "window-layout.json"), JSON.stringify({ targetGeometry, siblingGeometry }, null, 2));
+          await sdk.invoke("press_key", { ...sibling, key: "End", modifiers: ["ctrl"], delivery_mode: "foreground" });
+        }
         await sdk.invoke("bring_to_front", target);
         let selection: Fixture["selection"] | undefined;
         let toolbar: ObservedElement | undefined;
@@ -153,6 +175,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
           await copyFile(siblingFile, join(artifacts, "guard-sibling.odt"));
           await writeFile(join(artifacts, "final-windows.json"), JSON.stringify(await windows(), null, 2)).catch(() => undefined);
           for (const [name, window] of [["target", target], ["sibling", sibling], ["modal", modalWindow]] as const) {
+            if (!window) continue;
             await writeFile(join(artifacts, `final-${name}-state.json`), JSON.stringify(await sdk.invoke("get_window_state", { ...window, include_screenshot: true }), null, 2)).catch(() => undefined);
           }
         }
@@ -166,7 +189,10 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
   },
   sdk: async ({ fixture }, use) => use(fixture.sdk),
   target: async ({ fixture }, use) => use(fixture.target),
-  sibling: async ({ fixture }, use) => use(fixture.sibling),
+  sibling: async ({ fixture }, use) => {
+    if (!fixture.sibling) throw new Error("This case deliberately has no open sibling window");
+    await use(fixture.sibling);
+  },
   selection: async ({ fixture }, use) => use(fixture.selection),
   toolbar: async ({ fixture }, use) => use(fixture.toolbar),
   documents: async ({ fixture }, use) => use(fixture.documents),

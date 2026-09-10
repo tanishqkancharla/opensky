@@ -3512,3 +3512,13 @@ same-process focused sibling, active Find dialog, superseded snapshot, and stale
 toolbar refusal followed by fresh-target formatting. E2E typecheck and discovery
 pass; these checks are not GUI acceptance. The original SELECT-L04 failure is
 retained in its immutable artifact directory.
+
+
+CI34517797281 built624fc7e successfully and passed its focused checks (model
+job skipped). The first G04 run on prior12c stopped at selection with
+`selection window identity is ambiguous`: two maximized Writer windows shared
+identical geometry. It did not reach the stale-toolbar assertion. Both saved
+documents stayed unchanged; cleanup passed (`selection-guard-before-01`). This
+is a separate unresolved limitation. G04 now opens one window; sibling/dialog
+fixtures arrange distinct window bounds through ordinary window-manager input,
+and no longer accept ambiguous-identity refusal as evidence of their guards.

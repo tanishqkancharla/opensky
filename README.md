@@ -222,7 +222,7 @@ The original snake_case, app-argument API remains available for backward compati
 | `perform_secondary_action` | Supported `click` actions (`press`/`show_menu`/`open`/…), `bring_to_front`, or Delete |
 | `press_key` | Native `press_key` / `hotkey`; exact tabs use trusted `browser_key` with optional type-capable element targeting |
 | `scroll` | Native `scroll`; exact tabs use a semantic scroll ref or fresh screenshot coordinates with proven pixel-to-CSS metadata |
-| `select_text` | Linux: verified native Text range/caret in the observed element (requires updated driver); other platforms: element-targeted Home/arrows. `exact` alias and prefix/suffix disambiguation. |
+| `select_text` | Linux: verified native Text range/caret in the observed element (requires updated driver). Observe again after selection before using an indexed control; other platforms: element-targeted Home/arrows. `exact` alias and prefix/suffix disambiguation. |
 | `set_value` | `set_value` (including exact slider/stepper values) |
 | `type_text` | `type_text` (element, coordinates, or verified focus) |
 | `close()` | Ends only driver sessions owned by this OpenSky instance; safe to call repeatedly |
