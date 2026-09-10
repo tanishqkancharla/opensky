@@ -3343,3 +3343,13 @@ Validity AX dialog determines open/closed state. The Entries label disappears
 on Input Help and cannot serve as dialog-dismissal evidence. The test also
 asserts the dialog remains open after replacement typing. This is a fixture
 correction before its first GUI run, not an observed driver pass.
+
+CLICK-L03 before01 reproduced dialog submission from the indexed click alone
+on accepted driver486 and SDK8c. The fresh marked Title target was1597 with
+activate; immediately after click, both AX and screenshot returned to the
+workbook. Failure was the first post-click assertion, before replacement
+typing. App group104/pid134 exited; container removal and source hashes are
+retained. An isolated candidate fbf0d0c632763f0daae0e326c1d2fe3a44a89f2a contains only this
+correction on486 (cherry-picked with provenance), excluding metadata speed
+candidates. The separate build-only workflow is pinned to it; paid baseline
+remains8c/486. Build and candidate GUI acceptance are still pending.
