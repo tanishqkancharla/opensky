@@ -3552,3 +3552,15 @@ pending normal-regression status, not the frozen agent scores. Candidate
 linux-agent.yml now pins the tested624 binary from CI34517797281; its immutable
 native package and scoring profile are unchanged. No candidate agent dispatch
 has occurred yet.
+
+
+`selection-guards-after-03` reached the real refusal assertions. G01/G03 then
+failed exact saved text because LibreOffice corrected `document. needle.` to
+`document. Needle.` after typing; G02 failed during teardown capture of the
+already closed Find dialog. Saved documents and cleanup were inspected. Fixture
+text now uses `document contains needle.` so ordinary autocorrection does not
+change unrelated fixture text. Teardown captures each distinct still-live window
+once and retains optional capture errors separately, avoiding a closed-dialog
+capture turning a completed behavior test into failure. No driver behavior or
+LibreOffice settings changed. Typecheck passed; clean rerun pending. Original
+failures remain visible in retained artifacts.

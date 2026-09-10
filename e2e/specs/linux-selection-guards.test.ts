@@ -8,8 +8,8 @@ test("SELECT-G01: refuses selection while its sibling owns focus and preserves s
   await sdk.invoke("type_text", { ...sibling, text: " Added once.", delivery_mode: "foreground" });
   await sdk.invoke("press_key", { ...sibling, key: "s", modifiers: ["ctrl"], delivery_mode: "foreground" });
   await sdk.invoke("press_key", { ...target, key: "s", modifiers: ["ctrl"], delivery_mode: "foreground" });
-  await expect.poll(() => documents.target()).toBe("Target document. needle.");
-  await expect.poll(() => documents.sibling()).toBe("Sibling document. needle. Added once.");
+  await expect.poll(() => documents.target()).toBe("Target document contains needle.");
+  await expect.poll(() => documents.sibling()).toBe("Sibling document contains needle. Added once.");
 });
 
 test("SELECT-G02: a document selection cannot disturb its active Find dialog", { timeout: 180_000 }, async ({ sdk, target, selection, modal, documents, desktop }) => {
@@ -19,8 +19,8 @@ test("SELECT-G02: a document selection cannot disturb its active Find dialog", {
   await expect(modal.readState()).resolves.toContain("Keep this search");
   await sdk.invoke("press_key", { ...modal.target, key: "Escape", delivery_mode: "foreground" });
   await sdk.invoke("press_key", { ...target, key: "s", modifiers: ["ctrl"], delivery_mode: "foreground" });
-  await expect.poll(() => documents.target()).toBe("Target document. needle.");
-  await expect.poll(() => documents.sibling()).toBe("Sibling document. needle.");
+  await expect.poll(() => documents.target()).toBe("Target document contains needle.");
+  await expect.poll(() => documents.sibling()).toBe("Sibling document contains needle.");
 });
 
 test("SELECT-G03: a superseded observed selection token is rejected without replacing text", { timeout: 180_000 }, async ({ sdk, target, selection, documents }) => {
@@ -29,8 +29,8 @@ test("SELECT-G03: a superseded observed selection token is rejected without repl
   await sdk.invoke("press_key", { ...target, key: "End", modifiers: ["ctrl"], delivery_mode: "foreground" });
   await sdk.invoke("type_text", { ...target, text: " Added once.", delivery_mode: "foreground" });
   await sdk.invoke("press_key", { ...target, key: "s", modifiers: ["ctrl"], delivery_mode: "foreground" });
-  await expect.poll(() => documents.target()).toBe("Target document. needle. Added once.");
-  await expect.poll(() => documents.sibling()).toBe("Sibling document. needle.");
+  await expect.poll(() => documents.target()).toBe("Target document contains needle. Added once.");
+  await expect.poll(() => documents.sibling()).toBe("Sibling document contains needle.");
 });
 
 // Regression draft: selection can enable menus and shift application-wide
@@ -42,5 +42,5 @@ test("SELECT-G04: selection invalidates retained toolbar tokens and a fresh targ
   await sdk.invoke("click", freshToolbar);
   await sdk.invoke("press_key", { ...target, key: "s", modifiers: ["ctrl"], delivery_mode: "foreground" });
   await expect.poll(() => documents.struck()).toEqual(["needle"]);
-  await expect.poll(() => documents.target()).toBe("Target document. needle.");
+  await expect.poll(() => documents.target()).toBe("Target document contains needle.");
 });

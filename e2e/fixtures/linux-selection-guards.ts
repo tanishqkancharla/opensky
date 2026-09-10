@@ -89,8 +89,8 @@ export const test = base.extend<Fixture & { fixture: FixtureState }>({
     const temporary = await mkdtemp(join(tmpdir(), "opensky-selection-guards-"));
     const targetFile = join(temporary, "guard-target.odt");
     const siblingFile = join(temporary, "guard-sibling.odt");
-    await createDocument(targetFile, "Target document. needle.");
-    await createDocument(siblingFile, "Sibling document. needle.");
+    await createDocument(targetFile, "Target document contains needle.");
+    await createDocument(siblingFile, "Sibling document contains needle.");
     const openSibling = !task.name.startsWith("SELECT-G04:");
     const sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
       driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
@@ -162,7 +162,7 @@ finally: X.XCloseDisplay(d)
           const result = await sdk.invoke("get_window_state", { ...target, include_screenshot: false });
           const state = result.structured as { snapshot_id?: string; elements?: Array<{ element_index: number; element_token?: string; role?: string; label?: string; value?: string }> };
           const paragraph = state.elements?.find(element => element.role === "paragraph" &&
-            [element.label, element.value].some(value => value?.includes("Target document. needle.")));
+            [element.label, element.value].some(value => value?.includes("Target document contains needle.")));
           const strike = state.elements?.find(element => element.role === "toggle button" && element.label === "Strikethrough");
           if (paragraph?.element_token && strike?.element_token && state.snapshot_id) {
             selection = { ...target, element_index: paragraph.element_index, element_token: paragraph.element_token, snapshot_id: state.snapshot_id, text: "needle" };
@@ -194,11 +194,28 @@ finally: X.XCloseDisplay(d)
         } finally {
           await copyFile(targetFile, join(artifacts, "guard-target.odt"));
           await copyFile(siblingFile, join(artifacts, "guard-sibling.odt"));
-          await writeFile(join(artifacts, "final-windows.json"), JSON.stringify(await windows(), null, 2)).catch(() => undefined);
-          for (const [name, window] of [["target", target], ["sibling", sibling], ["modal", modalWindow]] as const) {
-            if (!window) continue;
-            await writeFile(join(artifacts, `final-${name}-state.json`), JSON.stringify(await sdk.invoke("get_window_state", { ...window, include_screenshot: true }), null, 2)).catch(() => undefined);
+          const captureErrors: Array<{ window: string; error: string }> = [];
+          let liveWindows: Record<string, unknown>[] = [];
+          try {
+            liveWindows = await windows();
+            await writeFile(join(artifacts, "final-windows.json"), JSON.stringify(liveWindows, null, 2));
+          } catch (error) {
+            captureErrors.push({ window: "inventory", error: String(error) });
           }
+          const liveWindowIds = new Set(liveWindows.map(window => Number(window.window_id ?? window.id ?? window.xid)));
+          const capturedWindows = new Set<number>();
+          for (const [name, window] of [["target", target], ["sibling", sibling], ["modal", modalWindow]] as const) {
+            if (!window || !liveWindowIds.has(window.window_id) || capturedWindows.has(window.window_id)) continue;
+            capturedWindows.add(window.window_id);
+            try {
+              const state = await sdk.invoke("get_window_state", { ...window, include_screenshot: true });
+              await writeFile(join(artifacts, `final-${name}-state.json`), JSON.stringify(state, null, 2));
+            } catch (error) {
+              // A window may close between inventory and this optional capture.
+              captureErrors.push({ window: name, error: String(error) });
+            }
+          }
+          if (captureErrors.length) await writeFile(join(artifacts, "final-capture-errors.json"), JSON.stringify(captureErrors, null, 2)).catch(() => undefined);
         }
       });
     } finally {
