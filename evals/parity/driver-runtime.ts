@@ -2,6 +2,7 @@ import { readFile, readdir, readlink, realpath, writeFile } from "node:fs/promis
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { join } from "node:path";
+import { assertDisposableLinuxDesktop } from "./linux-app.js";
 import { OpenSkyDriverClient } from "../../src/driver.js";
 
 /** Query the daemon that will actually receive actions, not the CLI's default
@@ -20,8 +21,9 @@ export async function verifyDriverRuntime(options: { binaryPath: string; socket?
     permissions = response.structured as Record<string, unknown>;
     const source = permissions?.source as Record<string, unknown> | undefined;
     if (process.platform === "linux") {
-      if (process.env.GITHUB_ACTIONS !== "true" || !options.socket || !Number.isSafeInteger(options.ownedLinuxPid) || options.ownedLinuxPid! <= 0) {
-        throw new Error("Linux runtime verification requires a disposable CI desktop and the owned daemon PID/socket");
+      assertDisposableLinuxDesktop();
+      if (!options.socket || !Number.isSafeInteger(options.ownedLinuxPid) || options.ownedLinuxPid! <= 0) {
+        throw new Error("Linux runtime verification requires a disposable desktop and the owned daemon PID/socket");
       }
       const pid = options.ownedLinuxPid!;
       const proc = `/proc/${pid}`;

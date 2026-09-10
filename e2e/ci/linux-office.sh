@@ -43,8 +43,13 @@ printf '%s\n' "$GITHUB_SHA" > "$OPENSKY_LINUX_OFFICE_ARTIFACT/sdk-source-sha.txt
 node --import tsx e2e/ci/linux-environment.ts
 if [[ "${OPENSKY_LINUX_AGENT_MODE:-}" == repl ]]; then
   export OPENSKY_DISPOSABLE_DESKTOP=1
+  case "${OPENSKY_REPL_CASE:-async-typing}" in
+    async-typing) repl_spec=specs/linux-repl-cell.test.ts ;;
+    dropdown) repl_spec=specs/linux-dropdown-repl.test.ts ;;
+    *) echo 'Unknown public REPL regression'; exit 2 ;;
+  esac
   cd e2e
-  npm test -- specs/linux-repl-cell.test.ts --reporter=verbose --reporter=json \
+  npm test -- "$repl_spec" --reporter=verbose --reporter=json \
     --outputFile.json="$OPENSKY_LINUX_OFFICE_ARTIFACT/results.json"
   exit
 fi

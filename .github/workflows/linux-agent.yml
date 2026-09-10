@@ -11,6 +11,11 @@ on:
         type: choice
         options: [setup, repl, agent]
         default: setup
+      repl_case:
+        description: 'Deterministic public-interface regression; used only in repl mode'
+        type: choice
+        options: [async-typing, dropdown]
+        default: async-typing
       setup_task:
         description: 'Benchmark task to validate without a model in setup mode'
         type: string
@@ -36,6 +41,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       OPENSKY_LINUX_AGENT_MODE: ${{ inputs.mode || 'setup' }}
+      OPENSKY_REPL_CASE: ${{ inputs.repl_case || 'async-typing' }}
       OPENSKY_AGENT_TASK: ${{ inputs.setup_task || '3ef2b351-8a84-4ff2-8724-d86eae9b842e' }}
       OPENSKY_EVAL_SCORING_PROFILE: ${{ github.workspace }}/.scoring-profile/profile.json
       OPENSKY_EVAL_SCORING_PROFILE_SHA256: b273feecbe566519f2c547c4329f8fe7f033c80a416a0715db40d2c060fd0bc5

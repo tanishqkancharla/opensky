@@ -30,7 +30,7 @@ type Fixtures = {
 };
 
 // This reads the externally saved workbook; it never saves it or reaches into Calc.
-async function readWorkbook(path: string): Promise<{ values: Values; choices: Choices; promptTitles: Record<string, string[]> }> {
+export async function readWorkbook(path: string): Promise<{ values: Values; choices: Choices; promptTitles: Record<string, string[]> }> {
   return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c", `
 import json,posixpath,re,sys,zipfile,xml.etree.ElementTree as E
 from decimal import Decimal
