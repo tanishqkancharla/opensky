@@ -3285,3 +3285,55 @@ and geometry separately, preserving raw reference differences and official
 scores. The raw golds contain unrelated earlier-slide differences; the existing
 frozen task-preserving scoring profile handles that policy. No new agent result
 or adapted-reference rendering is inferred from this read-only preparation.
+
+
+## CLICK-L03: indexed editable activation can submit a dialog
+
+Observed: OpenSky dropdown41 batches an indexed click on an unlabeled text
+control advertising `activate` with multiline typing; the next observation is
+the workbook. The trace does not establish whether click or typing submitted
+the dialog. Coordinate-focused DROPDOWN-L01 now passes the same multiline
+string and all 28 saved validations, so general newline delivery is not the
+remaining hypothesis.
+
+Source inspection found an inconsistent click contract in Linux AT-SPI:
+coordinate actions avoid EditableText activation because it can submit dialogs,
+while both indexed activation entry points allowed it. An unvalidated local
+driver candidate now refuses activation before input for editable controls,
+uses the existing exact-target pointer fallback, and requires foreground
+recovery when that target window is not already focused. Unknown/failed AX
+mutations still cannot be replayed. The baseline remains driver486/SDK8c.
+
+Validation so far: Rust parsing and diff hygiene only. GitHub/remote network
+access is unavailable; no Linux build, real GUI result, promotion, or parity
+pass is claimed. Existing failed agent41 remains selected.
+
+Required real regression: in a fresh LibreOffice Validity dialog, use a visible
+single-line editable field that exposes `activate` (such as the Input Help
+Title field), identify it from a fresh public AX observation after entering a
+unique marker, then indexed-click it and observe before sending more text.
+Assert the dialog stays open, editing changes that field, and accepting/saving
+persists that title with other document values unchanged. Run first on486,
+then the exact candidate. The Entries editor alone may expose no activation
+action and therefore cannot establish coverage of this bug. Also rerun
+DROPDOWN-L01, indexed Calc selection, and focus/modal isolation. Verify owned
+app exits and container removal. Background editable clicks may now explicitly
+require foreground delivery; cross-platform/Wayland behavior is unverified.
+
+CLICK-L03 is now drafted in e2e/specs/linux-editable-click.test.ts with its
+fixture in e2e/fixtures/linux-editable-click.ts. Setup uses the real dropdown
+fixture, fills valid choices, opens Input Help, locates Title from its screenshot,
+and enters a unique marker. A fresh AX snapshot must identify exactly one
+marked text control advertising activate; no historical ordinal is reused.
+Focus is moved away before the tested indexed click. The test checks the dialog
+is still open immediately after clicking, edits the title, accepts/saves, and
+reads the external workbook for all28prompt titles, original choices and cells.
+Screenshots and AX observations are retained. Typecheck and a read-only reader
+check on retained workbooks are supporting checks, not real GUI acceptance.
+
+Review clarified the native Wayland limitation: the generic editable guard
+refuses before input, while the existing explicit-foreground pointer fallback
+is X11-only. This candidate prevents accidental activation on Wayland but does
+not supply working indexed editable clicks there. A Wayland pointer/focus
+implementation and real compositor validation remain required. X11's exact
+window correlation and no-replay rules remain intact by source review.

@@ -26,11 +26,11 @@ type Choices = Record<string, { type: string; choices: string[]; arrowVisible: b
 type Fixtures = {
   app: App;
   dialog: { entriesPoint: Point; okPoint: Point; observe(): Promise<{ open: boolean; choices: string[] }> };
-  document: { readChoices(): Promise<Choices>; expectedChoices: Choices; readValues(): Promise<Values>; originalValues: Values };
+  document: { readChoices(): Promise<Choices>; readPromptTitles(): Promise<Record<string, string[]>>; expectedChoices: Choices; readValues(): Promise<Values>; originalValues: Values };
 };
 
 // This reads the externally saved workbook; it never saves it or reaches into Calc.
-async function readWorkbook(path: string): Promise<{ values: Values; choices: Choices }> {
+async function readWorkbook(path: string): Promise<{ values: Values; choices: Choices; promptTitles: Record<string, string[]> }> {
   return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c", `
 import json,posixpath,re,sys,zipfile,xml.etree.ElementTree as E
 from decimal import Decimal
@@ -40,7 +40,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  if 'xl/sharedStrings.xml' in z.namelist():
   shared=[''.join(e.itertext()) for e in E.fromstring(z.read('xl/sharedStrings.xml')).findall('s:si',n)]
  rel={r.get('Id'):r.get('Target') for r in E.fromstring(z.read('xl/_rels/workbook.xml.rels'))}
- values={}; choices={}
+ values={}; choices={}; prompt_titles={}
  for sheet in E.fromstring(z.read('xl/workbook.xml')).findall('s:sheets/s:sheet',n):
   target=rel[sheet.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id')]
   path=target.lstrip('/') if target.startswith('/') else posixpath.normpath('xl/'+target)
@@ -54,15 +54,17 @@ with zipfile.ZipFile(sys.argv[1]) as z:
   values[sheet.get('name')]=cells
   if sheet.get('name')=='Sheet1':
    for row in range(2,30):
-    matches=[]
+    matches=[]; titles=[]
     for d in tree.findall('s:dataValidations/s:dataValidation',n):
      for area in d.get('sqref','').split():
       parts=area.replace('$','').split(':'); a=re.fullmatch(r'([A-Z]+)([0-9]+)',parts[0]); b=re.fullmatch(r'([A-Z]+)([0-9]+)',parts[-1])
       if a and b and a[1]==b[1]=='D' and int(a[2])<=row<=int(b[2]):
+       titles.append(d.get('promptTitle',''))
        f=d.findtext('s:formula1','',n)
        matches.append({'type':d.get('type'),'choices':f[1:-1].split(',') if len(f)>=2 and f[0]==f[-1]=='"' else [],'arrowVisible':d.get('showDropDown','false') not in ('1','true')})
     choices['D'+str(row)]=matches
- print(json.dumps({'values':values,'choices':choices}))
+    prompt_titles['D'+str(row)]=titles
+ print(json.dumps({'values':values,'choices':choices,'promptTitles':prompt_titles}))
 `, path], { timeout: 10_000 })).stdout);
 }
 
@@ -150,6 +152,7 @@ export const test = base.extend<Fixtures & { fixture: Fixtures }>({
               choices: screen.words.map(word => word.text.replace(/[|)\]]+$/, "")).filter(text => ["Pass", "Fail", "Held"].includes(text)) };
           } }, document: { originalValues, expectedChoices,
             readChoices: async () => (await readWorkbook(documentPath)).choices,
+            readPromptTitles: async () => (await readWorkbook(documentPath)).promptTitles,
             readValues: async () => (await readWorkbook(documentPath)).values } });
         } finally {
           // Preserve saved output first, even if the app is no longer observable.
