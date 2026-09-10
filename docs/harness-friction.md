@@ -3501,3 +3501,14 @@ refuses old references after submitted selection mutation. Scoped PID snapshot
 invalidation is in development because index ordering spans sibling windows;
 other sessions/PIDs must remain untouched. Formatting after fresh observation is
 verified diagnostically; guard acceptance and agent improvement remain pending.
+
+
+Driver624fc7e implements invalidation at submission and completion/unwind for
+all snapshots belonging to the PID/current runtime. Twenty-five focused registry
+tests pass locally; Linux build and real acceptance are pending. It cannot revoke
+already-resolved concurrent actions or prevent a late concurrent snapshot from
+registering after completion. The new SELECT-G01–G04 public-SDK drafts cover a
+same-process focused sibling, active Find dialog, superseded snapshot, and stale
+toolbar refusal followed by fresh-target formatting. E2E typecheck and discovery
+pass; these checks are not GUI acceptance. The original SELECT-L04 failure is
+retained in its immutable artifact directory.
