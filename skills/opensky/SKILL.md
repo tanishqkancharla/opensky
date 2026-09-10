@@ -246,6 +246,8 @@ native window drag.
 
 `selection_type`: `text` (default), `exact` (alias), `cursor_before`, `cursor_after`. `prefix` / `suffix` disambiguate repeated matches.
 
+On Linux, this requires the updated driver’s native Text selection operation and an element from the latest observation. Duplicate live matches without unique context are refused. A partial or unverified result may have changed the selection; observe before continuing. OpenSky does not replay selection failures through keyboard input.
+
 ### `set_value` vs `type_text`
 
 - `set_value` replaces the whole AX value (multiline safe, does not send Return) and is the preferred exact path for sliders, steppers, and date pickers.

@@ -1475,6 +1475,29 @@ export class OpenSky implements OpenSkyApi {
     if (resolved.browser) {
       throw new OpenSkyError("select_text is not available for typed browser pages; copy observed page text directly instead.");
     }
+    if (this.target === "linux") {
+      // Native Text offsets belong to this element, not the whole document.
+      // The driver matches live text and verifies the resulting range/caret.
+      // Never replay a partial selection as keyboard or pointer input.
+      const result = await this.driver.call("select_text", {
+        pid: resolved.pid,
+        ...this.elementTarget(resolved, args.element_index),
+        text: args.text,
+        ...(args.prefix === undefined ? {} : { prefix: args.prefix }),
+        ...(args.suffix === undefined ? {} : { suffix: args.suffix }),
+        selection_type: selectionType,
+      });
+      this.markAction(resolved);
+      const outcome = asRecord(result.structured);
+      if (outcome?.status !== "completed" || outcome.verified !== true) {
+        throw new OpenSkyError(
+          "The driver did not verify the requested text selection. Observe before retrying; selection may have changed.",
+          typeof outcome?.code === "string" ? outcome.code : "selection_unverified",
+          outcome,
+        );
+      }
+      return;
+    }
     const snapshot = this.memory.trees[windowKey(resolved)];
     const element = snapshot?.elements.find((item) => item.element_index === args.element_index);
     const haystack = element?.value ?? snapshot?.tree ?? "";

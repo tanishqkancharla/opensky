@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: fbf0d0c632763f0daae0e326c1d2fe3a44a89f2a
+  OPENSKY_DRIVER_REF: 1bad7faec00bec6c0cde19bcc8b9033ed7d86002
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -44,6 +44,7 @@ jobs:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
         run: |
           cargo build --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
+          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_selection::tests
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_keysyms_cover_latin1_unicode_and_control_keys
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml hotkey_alias_tests
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml virtual_table_tests

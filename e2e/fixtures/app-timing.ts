@@ -4,7 +4,7 @@ import type { App } from "../../src/cua.js";
 
 /** Observe public calls without substituting or changing their app behavior. */
 export function recordAppTiming(app: App, artifacts: string): App {
-  const measured = new Set(["getScreenshot", "getAXState", "getAXStateAndScreenshot", "click", "drag", "typeText", "pressKey"]);
+  const measured = new Set(["getScreenshot", "getAXState", "getAXStateAndScreenshot", "click", "drag", "typeText", "pressKey", "selectText"]);
   let observationSequence = 0;
   return new Proxy(app, {
     get(target, key) {

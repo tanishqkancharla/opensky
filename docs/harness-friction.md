@@ -3425,3 +3425,28 @@ Native arm63 (CI34509449602) independently produced the same title-only1of8
 subscript result with unchanged text. Both original failures are now paired.
 This is counterevidence against attributing the seven omitted occurrences to
 OpenSky selection refusal; the refusal itself remains an observed SDK gap.
+
+
+LIB-008 Linux selection reproduction (2026-09-10): the frozen strikethrough pair
+now establishes a native-only outcome gap. Native64 struck all 387 characters
+in the requested final paragraph; OpenSky65 struck none after two selectText
+refusals, then incorrectly reported success. Original scores remain unchanged.
+The independent saved-file evidence is in `65-writer-strike-opensky/linux-office/strike-diagnostic.json`.
+
+`SELECT-L01` reproduces the exact pre-input refusal on the unchanged SDK8c and
+driver486 in an owned Linux Writer window. Its later paragraph contains an
+emoji, a combining character, and two identical words; prefix/suffix identify
+only the second word. Selection fails before typing; all three original
+paragraphs remain intact. App process-group exit, temporary removal and empty
+container inventory are verified in `linux-office-setup/selection-before-01`.
+
+Candidate implementation in this work branch calls the Linux driver's new
+`select_text` operation with the observed token/snapshot. It accepts only an
+explicit completed, verified result; no keyboard or pointer replay occurs.
+The isolated driver candidate uses live Text-interface range/caret mutation
+and read-back. `SELECT-L02/L03` cover before/after caret placement. SDK build
+and E2E typecheck pass. Linux candidate build/runtime, formatting action after
+selection, sibling-focus preservation and modal refusal remain pending; this
+is not yet a verified fix or an improved agent result. The frozen paid baseline
+continues using SDK8c/driver486. Older drivers lacking the new operation refuse;
+there is intentionally no fallback to the known incorrect Linux key sequence.
