@@ -3455,3 +3455,11 @@ Linux CI34512906961 caught one X11 reply-lifetime compiler error in driver1bad.
 Candidate1c39cd44d binds the focus reply before the connection is dropped.
 The first build failed before artifact creation; no GUI result or model spending
 was produced. A corrected Linux build is pending.
+
+CI34513349949 built1c39 and passed67focused Rust checks. Its real SELECT-L01
+run (`selection-after-01`) was refused by missing canonical risk registration
+before selection. All three paragraphs stayed unchanged and app/temp/container
+cleanup passed. Driver00fb3c4 adds select_text to the existing R1 desktop-input
+classification, window-scope/own-process/origin restrictions and token capability;
+it does not weaken unknown-tool denial. The two focused policy tests pass locally.
+Corrected Linux build and native acceptance remain pending.

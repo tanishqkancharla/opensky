@@ -24,7 +24,8 @@ alongside successful outcomes. Repair observed gaps and rerun the same tasks.
 
 Preserve native compaction with no whole-task deadline or tool-call budget.
 Keep the existing independently enforced spending controls: cumulative limit
-currently approved through $100, with user review before every further $50.
+currently approved through $150 (explicit approval on 2026-09-10), with user
+review before the next $50 increment.
 Use `evals/runs/parity-budget.json` as the authoritative cumulative ledger;
 conservative full-reservation charges are estimates, not invoices. Report each
 completed run and keep the status canvas current. Exclude Codex's in-app browser.
@@ -74,7 +75,33 @@ native first according to the already frozen counterbalancing order.
 The historical notes below describe earlier gates and may have been superseded;
 the live campaign artifacts are authoritative for current run status.
 
-## Current evidence and next gate
+## Current evidence and next gate (2026-09-10)
+
+The frozen software baseline is in `evals/runs/linux-baseline-8c818c7` with an
+immutable 20-task plan. All twenty pairs are complete (native 18 passes, OpenSky
+14). Four native-only successes are profit, dropdown validation, strikethrough
+and freezing headers; two tasks failed on both. This is a single-run baseline,
+not a repeatability estimate. Calc, Impress, Writer and
+VS Code task setup/scoring have all been admitted and used in real agent runs.
+Some earlier pairs differ in Ubuntu point-release labels; this is a frozen
+software campaign, not proof of one identical environment throughout.
+
+After the baseline, preserve its failures and run corrections separately.
+Selection is a concrete native-only gap on Writer strikethrough: native struck
+all 387 target characters, OpenSky none after two selectText refusals. A no-model
+public SDK regression reproduces the same refusal. The isolated driver/SDK
+candidate now builds on Linux but its first real test caught missing canonical
+risk registration; correction and native acceptance are pending. The earlier
+indexed editable-field click fix has supporting real SDK evidence but has not
+yet been measured in a matched agent retry. Profit failure is extra agent edits,
+not evidence of failed input; see the retained trace and saved-cell diagnosis.
+
+GitHub-hosted paid evaluations and one-off owned Docker tests on the authorized
+exe.dev VM are working. No persistent runner registration is needed. Keep local
+macOS GUI unused during this phase. Authoritative current run, ledger and live
+page evidence supersede the historical milestones below.
+
+## Historical milestones (retained for provenance)
 
 - The deterministic Linux desktop gate passed for both backends in run
   34274308972, including the real native Node REPL screenshot transport,
