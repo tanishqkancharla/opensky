@@ -3353,3 +3353,17 @@ retained. An isolated candidate fbf0d0c632763f0daae0e326c1d2fe3a44a89f2a contain
 correction on486 (cherry-picked with provenance), excluding metadata speed
 candidates. The separate build-only workflow is pinned to it; paid baseline
 remains8c/486. Build and candidate GUI acceptance are still pending.
+
+CLICK-L03 after01 passed on isolated driverfbf0d0c (binary SHA
+3506fcdad1a21b474edbc620e8f574f9de3bde5f0b3c4b49aed4f875f31a8bb9)
+and identical SDK8c/test archiveafd3ac3c. CI34444425615 compiled and passed
+64focused Rust tests; its model-evaluation job was skipped. Fresh screenshots
+and AX show the marked field stays in the open dialog after indexed click
+and replacement typing. The original driver closed it on the first click.
+An independent openpyxl reader verifies all28saved prompt titles, unchanged
+Pass/Fail/Held lists, and every original nonempty cell value. App group103/pid128
+exited; retrieved container inventory was empty. Both before/after artifacts
+and source archives are retained under linux-office-setup/editable-click-*.
+This is real narrow X11 acceptance, not an agent-task retry or Wayland/matrix
+acceptance. Focus, indexed Calc, and multiline regressions remain pending;
+paid baseline pins and its frozen failed dropdown arm remain unchanged.
