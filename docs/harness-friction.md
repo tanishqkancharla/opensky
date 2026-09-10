@@ -3541,3 +3541,14 @@ did not restore the sibling window. No guard assertion was reached. Fixture
 setup now sends the ordinary EWMH restore request to the owned window and checks
 the reported state before arranging distinct bounds; no application behavior is
 mocked or driver input changed. Typecheck passes; remote rerun pending.
+
+
+All four SELECT-L01–L04 cases passed on624 in
+`selection-regressions-after-04`: exact contextual replacement after Unicode,
+before/after caret placement, and saved full-paragraph strikethrough after fresh
+observation. Saved text and formatting were independently inspected; all four
+apps/temp directories and the container were cleaned up. This supersedes the
+pending normal-regression status, not the frozen agent scores. Candidate
+linux-agent.yml now pins the tested624 binary from CI34517797281; its immutable
+native package and scoring profile are unchanged. No candidate agent dispatch
+has occurred yet.
