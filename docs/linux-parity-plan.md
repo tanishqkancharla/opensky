@@ -90,8 +90,12 @@ After the baseline, preserve its failures and run corrections separately.
 Selection is a concrete native-only gap on Writer strikethrough: native struck
 all 387 target characters, OpenSky none after two selectText refusals. A no-model
 public SDK regression reproduces the same refusal. The isolated driver/SDK
-candidate now builds on Linux but its first real test caught missing canonical
-risk registration; correction and native acceptance are pending. The earlier
+candidate624 now builds on Linux and passes all eight focused real SDK
+selection, caret, formatting and window/token guard behaviors. Earlier failed
+candidates and fixture failures remain retained. Coincident maximized-window
+identity and concurrent-client races remain limitations. The next measurement
+is a separate matched strikethrough comparison, followed by dropdown validation
+if the first pair is valid. The earlier
 indexed editable-field click fix has supporting real SDK evidence but has not
 yet been measured in a matched agent retry. Profit failure is extra agent edits,
 not evidence of failed input; see the retained trace and saved-cell diagnosis.

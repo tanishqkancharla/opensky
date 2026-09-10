@@ -3564,3 +3564,15 @@ once and retains optional capture errors separately, avoiding a closed-dialog
 capture turning a completed behavior test into failure. No driver behavior or
 LibreOffice settings changed. Typecheck passed; clean rerun pending. Original
 failures remain visible in retained artifacts.
+
+
+`selection-guards-after-04` passed G01–G03 on unchanged driver624: focused
+same-process sibling refusal preserves subsequent sibling typing; the active
+Find dialog and both documents remain unchanged after refusal; a superseded
+snapshot rejects selection and later target typing appends exactly once. Saved
+target/sibling files, all app/temp exits, empty container inventory and absence
+of capture errors were independently verified. Together with earlier G04 and
+L01–L04 acceptance this completes the focused sequential selection suite on624.
+Coincident maximized-window ambiguity and concurrent-client races remain explicit
+limitations. Proceed to a separate matched agent correction campaign; original
+20-task baseline and all failed attempts remain unchanged.
