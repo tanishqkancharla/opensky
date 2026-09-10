@@ -25,6 +25,7 @@ test("SELECT-L03: places the insertion point after the contextual match", async 
 
 test("SELECT-L04: strikethrough applies to the selected paragraph without changing its text", async ({ app, paragraph, strikeButton, document }) => {
   await app.selectText(paragraph, "😀 café é one needle; two needle.");
+  await app.getAXState({ disableDiffing: true });
   await app.click(strikeButton);
   await app.pressKey("CTRL+S");
   await expect.poll(() => document.readStruckText()).toEqual(["", "😀 café é one needle; two needle.", ""]);

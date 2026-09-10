@@ -3474,3 +3474,30 @@ Unknown counts and incorrect substring probes remain refusals; the actual unit
 is reported. Five pure matching/unit tests pass. Linux build and real acceptance
 remain pending. SELECT-L04 is drafted to assert saved paragraph strikethrough
 and unchanged text, rather than only a successful selection call.
+
+
+CI34515619007 built driver12c5233. Real `selection-after-03` passed the
+unchanged SELECT-L01: only the contextual second word was replaced in the saved
+ODT. `selection-format-after-01` passed both before/after caret tests, but L04
+saved no strikethrough. Independent XML inspection confirmed unchanged text and
+absence of any strike property; this was not a parser false negative. All owned
+apps exited, temporary files were removed, and container inventory was empty.
+
+Toolbar diagnostics isolated a stale target problem: selection enables Cut,
+Copy and other menu actions, changing the indexable application-wide ordinals.
+The old token still resolves to its earlier ordinal and can actuate a different
+control. A fresh AX observation before the click passes saved strikethrough
+(`selection-toolbar-diagnostic-01`, D01); an observed screenshot pointer passes
+(run02, D02); observing only after the stale click still fails (run02, D03).
+This distinguishes target freshness from waiting after the click. The first D02
+attempt used an invalid coordinate object; it failed before input and is retained
+separately from the corrected public tuple call. Both runs verified text and
+app/temp/container cleanup. No model evaluation spending was incurred.
+
+L04 now observes after selection before using the SDK's stable public toolbar
+index. This represents an agent observing its changed UI, not acceptance of the
+old silent mis-target. A separate stale-token guard must verify that the driver
+refuses old references after submitted selection mutation. Scoped PID snapshot
+invalidation is in development because index ordering spans sibling windows;
+other sessions/PIDs must remain untouched. Formatting after fresh observation is
+verified diagnostically; guard acceptance and agent improvement remain pending.
