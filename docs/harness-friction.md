@@ -3576,3 +3576,15 @@ L01–L04 acceptance this completes the focused sequential selection suite on624
 Coincident maximized-window ambiguity and concurrent-client races remain explicit
 limitations. Proceed to a separate matched agent correction campaign; original
 20-task baseline and all failed attempts remain unchanged.
+
+## LIB-009 — Indexed dialog submission can leave no saved dropdown
+
+- Symptom: candidate agent CI34521973488 on SDK e8e6b647 / driver624fc7ea entered List validation and Pass/Fail/Held visibly, called the previously observed OK index1578, and reported success. The retained XLSX is byte-identical to the input and has no validation rules. Native34521515914 passed on matching runtime and scoring fingerprints. Both completed and cleaned up correctly.
+- Layer/cause: unresolved. The modal screenshot shows the choices; an earlier out-of-image coordinate click refused before input, after which indexed OK was used. The last observed full dialog labeled index1578 as OK. Possible index/target drift or activation semantics; the agent's unsupported app query and combo selection attempts are separate friction and do not yet explain the unsaved rules.
+- Evidence: campaign-linux-selection-candidate/calc-dropdown-pair.json and each arm's dropdown-diagnostic.json, screenshots and action receipts. Original score preserved: native pass, OpenSky fail.
+- Validation: added DROPDOWN-L02 to reuse the OK index observed before changing criteria, refresh the visible dialog after Entries input, click the observed button, then require the saved rules across D2:D29 with all existing values unchanged. Typecheck passed; remote dropdown-submit-before-01 pending.
+- Scope/tradeoff: no runtime change or paid rerun yet. Existing coordinate-submission test remains separate. This is a consumer-visible saved outcome test, not an assertion of driver internals.
+
+- Follow-up evidence: dropdown-submit-before-01 never reached GUI (input asset absent). Explicitly mounted the verified original workbook in stagev2. Unchanged DROPDOWN-L02 passed in dropdown-submit-before-02; independent XLSX check verifies List choices on D2:D29, all existing values unchanged, app exit and container removal. Generic indexed OK failure is not reproduced. The paid agent typed the option name, while this control used arrow-key selection. DROPDOWN-L03 isolates that public interaction in dropdown-submit-typed-list-01; result pending.
+
+- Further controls: DROPDOWN-L03 passed in dropdown-submit-typed-list-01 (typed option name, indexed OK); independent saved check confirms all28rules and unchanged values, cleanup passed. DROPDOWN-L04 passed in dropdown-submit-rejected-point-01 (combined AX+screenshot, rejected outside-image coordinate, retained indexed OK without an intervening read); artifact retrieved; independent saved check confirms all28rules, unchanged values, app exit and container removal. These results do not reproduce the paid failure. Next discriminating route is the full observed prefix through the public CUA REPL transport, including the original combo actions and selection refusal. No runtime patch has been justified.

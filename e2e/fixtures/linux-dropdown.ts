@@ -25,7 +25,7 @@ type Values = Record<string, Record<string, unknown>>;
 type Choices = Record<string, { type: string; choices: string[]; arrowVisible: boolean }[]>;
 type Fixtures = {
   app: App;
-  dialog: { entriesPoint: Point; okPoint: Point; observe(): Promise<{ open: boolean; choices: string[] }> };
+  dialog: { entriesPoint: Point; okPoint: Point; initialOkIndex: number; observe(): Promise<{ open: boolean; choices: string[] }> };
   document: { readChoices(): Promise<Choices>; readPromptTitles(): Promise<Record<string, string[]>>; expectedChoices: Choices; readValues(): Promise<Values>; originalValues: Values };
 };
 
@@ -68,8 +68,9 @@ with zipfile.ZipFile(sys.argv[1]) as z:
 `, path], { timeout: 10_000 })).stdout);
 }
 
-export const test = base.extend<Fixtures & { fixture: Fixtures }>({
-  fixture: async ({ task }, use) => {
+export const test = base.extend<Fixtures & { fixture: Fixtures; listSelection: "keys" | "typed" }>({
+  listSelection: "keys",
+  fixture: async ({ task, listSelection }, use) => {
     assertDisposableLinuxDesktop();
     expect(createHash("sha256").update(await readFile(source)).digest("hex")).toBe(sourceHash);
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "dropdown", task.name.split(":")[0]);
@@ -123,14 +124,29 @@ export const test = base.extend<Fixtures & { fixture: Fixtures }>({
           await app.pressKey("ENTER");
           await app.pressKey("ALT+D");
           await app.pressKey("V");
-          await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('dialog = "Validity"');
+          const initialDialog = await app.getAXState({ disableDiffing: true });
+          expect(initialDialog).toContain('dialog = "Validity"');
+          const okRows = initialDialog.split("\n").filter(line => /\[\d+\] push button "OK"/.test(line));
+          expect(okRows).toHaveLength(1);
+          const initialOkIndex = Number(okRows[0]!.match(/\[(\d+)\]/)![1]);
           const validity = await capture();
           // The Allow label identifies the visible combo directly to its right.
           const allow = named(validity.words, "Allow:");
-          await app.click([allow.x + allow.width + 100, allow.y + allow.height / 2]);
-          await app.pressKey("HOME");
-          for (let index = 0; index < 6; index++) await app.pressKey("ARROWDOWN");
-          await app.pressKey("ENTER");
+          if (listSelection === "typed") {
+            // The agent opened the Allow arrow, typed the visible option name,
+            // then pressed Enter. Keep this public interaction distinct from
+            // selecting the option with arrow keys.
+            await app.click([validity.width - 33, allow.y + allow.height / 2]);
+            await app.getAXStateAndScreenshot();
+            await app.typeText("List");
+            await app.pressKey("ENTER");
+            await app.getAXStateAndScreenshot();
+          } else {
+            await app.click([allow.x + allow.width + 100, allow.y + allow.height / 2]);
+            await app.pressKey("HOME");
+            for (let index = 0; index < 6; index++) await app.pressKey("ARROWDOWN");
+            await app.pressKey("ENTER");
+          }
           const list = await capture();
           expect(list.text).toMatch(/List/);
           const entries = named(list.words, "Entries");
@@ -143,7 +159,7 @@ export const test = base.extend<Fixtures & { fixture: Fixtures }>({
           const pixel = (Math.floor(entriesPoint[1]) * list.width + Math.floor(entriesPoint[0])) * 4;
           expect([...list.data.subarray(pixel, pixel + 3)]).toEqual([255, 255, 255]);
           const expectedChoices = Object.fromEntries(Array.from({ length: 28 }, (_, index) => [`D${index + 2}`, [{ type: "list", choices: ["Pass", "Fail", "Held"], arrowVisible: true }]]));
-          await use({ app, dialog: { entriesPoint, okPoint: center(ok), async observe() {
+          await use({ app, dialog: { entriesPoint, okPoint: center(ok), initialOkIndex, async observe() {
             const screen = await capture();
             const state = await app.getAXState({ disableDiffing: true });
             // The Entries label is absent on Input Help; tab selection must
