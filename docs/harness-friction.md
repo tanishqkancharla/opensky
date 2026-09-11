@@ -3703,3 +3703,10 @@ The geometry-only candidate d3005 passed FILL-L01–L05 in calc-geometry-six-aft
 FILL-D03 keeps the same placement and two indexed edits, adding existing bounded read-only cell-identity probes after the initial AX observation and first Enter, plus screenshots before/after the first click, after the first Enter and after the second click. No intermediate AX refresh changes the retained indices. It keeps the same whole-workbook C10/C11 expectation and is a separate diagnostic; FILL-L06 and all earlier test bytes remain unchanged. Use the already retained calc-identity diagnostic image with Python GI/Gio support; the frozen full-desktop image lacks this optional probe dependency. The fixture still owns app/window and temporary cleanup.
 
 Local E2E typechecking and diff checks pass. No GUI execution or new candidate acceptance is claimed; diagnostic reads can alter timing, so the unchanged no-probe L06 result remains the outcome evidence.
+
+
+### FILL-D03 screenshot retention — Persist returned diagnostic pixels in the selected fixture
+
+The moved-window D03 after02 diagnostic returned screenshots from its public calls but the staged timing wrapper did not retain those intermediate result bytes; only readiness and final images were available. Its raw cell/frame records remain valid evidence, but the missing intermediate images prevent direct first-click visual attribution. No image or claim is reconstructed for that run.
+
+The existing optional calcCellIdentityDiagnostics proxy now exclusively writes diagnostic-screenshot-NNN.png for every returned getScreenshot result, including readiness, explicit test observations and final cleanup observations in invocation order. It uses the original returned bytes and makes no extra GUI/AX calls. This fixture-local retention is included in the existing diagnostic overlay even when app-timing.ts remains frozen. Existing test actions, expectations, product code and paid artifacts are unchanged. Local E2E typechecking and diff checks pass; actual diagnostic image capture remains pending the next remote run.

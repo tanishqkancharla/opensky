@@ -57,11 +57,16 @@ export function desktopSetupTest(input: Input) {
           let app = recordAppTiming(await createCua(sdk).getApp(launch.appName), artifacts);
           if (input.calcCellIdentityDiagnostics) {
             let observed = false, entered = false;
+            let screenshotSequence = 0;
             app = new Proxy(app, { get(target, key) {
               const value = Reflect.get(target, key, target);
               if (typeof value !== "function") return value;
               return async (...args: unknown[]) => {
                 const result = await value.apply(target, args);
+                if (key === "getScreenshot") {
+                  const sequence = String(++screenshotSequence).padStart(3, "0");
+                  await writeFile(join(artifacts, `diagnostic-screenshot-${sequence}.png`), Buffer.from(result as Uint8Array), { flag: "wx" });
+                }
                 const phase = key === "getAXState" && !observed ? "observed" :
                   key === "pressKey" && args[0] === "ENTER" && !entered ? "after-first-enter" : undefined;
                 if (phase) {
