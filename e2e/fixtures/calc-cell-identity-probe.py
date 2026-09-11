@@ -2,7 +2,11 @@
 """Read C10/C11/C12 identity/geometry in one owned Calc app; never sends input."""
 import argparse
 import json
+import math
+import os
+import re
 import signal
+import subprocess
 
 ACC = 'org.a11y.atspi.Accessible'
 TABLE = 'org.a11y.atspi.Table'
@@ -14,18 +18,34 @@ TITLE = 'Student_Level_Fill_Blank.xlsx'
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('pid', type=int)
+    parser.add_argument('xid', help='Exact owned X11 window ID')
     args = parser.parse_args()
     if args.pid <= 0:
         parser.error('PID must be positive')
+    if not re.fullmatch(r'(?:0x[0-9a-fA-F]+|[0-9]+)', args.xid):
+        parser.error('XID must be a decimal or hexadecimal window ID')
     import gi
     gi.require_version('Gio', '2.0')
     from gi.repository import Gio, GLib
 
     def timeout(_signal, _frame):
-        raise TimeoutError('Read-only cell probe exceeded 60 seconds')
+        raise TimeoutError('Read-only cell probe exceeded 20 seconds')
 
     signal.signal(signal.SIGALRM, timeout)
-    signal.alarm(60)
+    signal.alarm(20)
+    def xcommand(*args):
+        return subprocess.check_output(args, timeout=3, text=True,
+                                       env={**os.environ, 'LC_ALL': 'C'})
+
+    if int(xcommand('xdotool', 'getwindowpid', args.xid).strip()) != args.pid:
+        raise ValueError('Explicit X11 window belongs to another process')
+    window_info = xcommand('xwininfo', '-id', args.xid)
+    def absolute(axis):
+        matches = re.findall(r'Absolute upper-left ' + axis + r':\s*(-?\d+)', window_info)
+        if len(matches) != 1:
+            raise ValueError('Missing exact X11 client origin')
+        return int(matches[0])
+    client_origin = [absolute('X'), absolute('Y')]
     session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     address = session.call_sync('org.a11y.Bus', '/org/a11y/bus', 'org.a11y.Bus',
                                 'GetAddress', None, None, Gio.DBusCallFlags.NONE,
@@ -34,7 +54,8 @@ def main():
         address, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
         Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
     signatures = {'Get': '(ss)', 'GetChildAtIndex': '(i)', 'GetAccessibleAt': '(ii)',
-                  'GetExtents': '(u)', 'GetConnectionUnixProcessID': '(s)'}
+                  'GetExtents': '(u)', 'GetConnectionUnixProcessID': '(s)',
+                  'GetAccessibleAtPoint': '(iiu)'}
 
     def call(ref, interface, method, *values):
         parameters = GLib.Variant(signatures[method], values) if values else None
@@ -118,6 +139,29 @@ def main():
     if len(tables) != 1:
         raise ValueError('Expected exactly one Sheet Sheet1 table in original workbook')
     table, table_data = tables[0]
+    frame_screen = frame_data.get('screen')
+    if not isinstance(frame_screen, list) or len(frame_screen) != 4:
+        raise ValueError('Frame Screen geometry unavailable')
+    candidate = ([client_origin[0] - frame_screen[0], client_origin[1] - frame_screen[1]]
+                 if abs(frame_screen[0]) <= 2 and abs(frame_screen[1]) <= 2 else [0, 0])
+
+    def hit_test(point, expected):
+        hit = call(table, COMPONENT, 'GetAccessibleAtPoint', point[0], point[1], 0)
+        result = identity(hit)
+        if not str(hit[0]) or str(hit[1]) == '/org/a11y/atspi/null':
+            return {**result, 'null': True, 'matchesRequestedIdentity': False}
+        if owner_pid(hit) != args.pid:
+            raise ValueError('Hit test crossed owned process boundary')
+        result.update({'name': str(prop(hit, ACC, 'Name')),
+                       'role': str(call(hit, ACC, 'GetRoleName')),
+                       'position': optional(lambda: list(map(int, prop(hit, CELL, 'Position')))),
+                       'matchesRequestedIdentity': identity(hit) == identity(expected)})
+        return result
+
+    def pixel(value):
+        # Match Rust f64::round used by indexed pointer delivery (ties away from zero).
+        return int(math.copysign(math.floor(abs(value) + 0.5), value))
+
     cells = []
     for row in (9, 10, 11):
         ref = call(table, TABLE, 'GetAccessibleAt', row, 2)
@@ -136,15 +180,29 @@ def main():
 
         data['tableCellRowColumnSpan'] = optional(span)
         data['indexInParent'] = optional(lambda: int(call(ref, ACC, 'GetIndexInParent')))
+        screen = data.get('screen')
+        if isinstance(screen, list) and len(screen) == 4 and screen[2] > 1 and screen[3] > 1:
+            center = [screen[0] + screen[2] / 2, screen[1] + screen[3] / 2]
+            points = {'rawScreenCenter': [pixel(v) for v in center],
+                      'candidateRebasedCenter': [pixel(center[i] + candidate[i]) for i in (0, 1)]}
+            data['hitTests'] = {name: {'screenPoint': point,
+                                     'result': optional(lambda point=point: hit_test(point, ref))}
+                                for name, point in points.items()}
+        else:
+            data['hitTests'] = {'error': 'No usable raw Screen geometry'}
         cells.append(data)
     if owner_pid(app) != args.pid or str(prop(frame, ACC, 'Name')) != frame_data['name']:
         raise ValueError('Owned application/frame changed during probe')
-    print(json.dumps({'kind': 'read-only-calc-cell-identity', 'pid': args.pid,
+    if int(xcommand('xdotool', 'getwindowpid', args.xid).strip()) != args.pid:
+        raise ValueError('Explicit X11 window ownership changed')
+    print(json.dumps({'kind': 'read-only-calc-cell-identity', 'pid': args.pid, 'xid': args.xid,
+                      'x11ClientOrigin': client_origin, 'frameRebaseCandidate': candidate,
                       'application': identity(app), 'frame': frame_data, 'table': table_data,
                       'visitedNodes': len(seen), 'cells': cells,
                       'limitations': ['Sequential D-Bus observations are not atomic.',
                           'Separate invocations report stable external bus/path strings; no previous proxy is retained.',
-                          'Geometry is raw toolkit Screen/Window output, not driver-adjusted click coordinates.']}, indent=2))
+                          'Candidate is frame-derived; driver per-component suppression is not assumed.',
+                          'Hit testing reads toolkit spatial lookup; it does not inject a click or independently prove physical delivery.']}, indent=2))
     signal.alarm(0)
 
 

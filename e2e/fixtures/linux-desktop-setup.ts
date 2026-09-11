@@ -62,7 +62,7 @@ export function desktopSetupTest(input: Input) {
                   key === "pressKey" && args[0] === "ENTER" && !entered ? "after-first-enter" : undefined;
                 if (phase) {
                   if (phase === "observed") observed = true; else entered = true;
-                  const probe = await exec("/usr/bin/python3", [join(root, "e2e/fixtures/calc-cell-identity-probe.py"), String(owned.pid)], { timeout: 20_000 });
+                  const probe = await exec("/usr/bin/python3", [join(root, "e2e/fixtures/calc-cell-identity-probe.py"), String(owned.pid), owned.window], { timeout: 20_000 });
                   await writeFile(join(artifacts, `cell-identity-${phase}.json`), probe.stdout);
                 }
                 return result;
