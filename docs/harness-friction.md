@@ -3711,3 +3711,16 @@ Current Code09/10 paired task completed successfully: OpenSky CI34628157314 took
 Recovery completed as a valid failed task: CI34628942535,75049ms/11calls/$0.3942948, cleanup and final usage verified. Both fonts are correct60/28pt, but title text becomes “Target a\nudience”. The recorded indexed shape click1113 followed by ENTER/CTRL+A yields two paragraphs in the immediate AX response; no driver cause is claimed without a controlled comparison. Native07passed with unchanged text. All five pairs are valid and fingerprint-matched, native4/5 versus OpenSky3/5. The failed task is retained.
 
 Full20 positive adoption now passed with543 first-five evidence files and an explicit excluded original08 infrastructure record. Selection hash7b5c528298ea0aba6eee693d34ab5dcd46e96e523e01433a4e0f8ef3bb77d7fa, samefcd/ed9. Read-only tail inspection passed all15declared remaining mappings; first tail OpenSky sort CI34629639918 is active. Full20 completion and parity are unproven. LiveV2 keeps the same20task denominator and original results while coverage expands.
+
+
+### LINUX-PLAN-FRESHNESS-01 — historical pending states looked current
+
+The living Linux plan retained old active-run instructions, obsolete$100/$150
+ceilings, and pending Calc/Impress/VS Code provisioning after full20 campaigns
+already completed. This could cause duplicated setup or incorrect blocking.
+Archived the complete prior file as linux-parity-history-20260911.md with an
+explicit historical-only notice; rewrote the current plan around authoritative
+V1/V2 selections, approved$200, live-handle ownership, future-source boundaries
+and incomplete coverage/variability. No source, task selection, score or spending
+record changed. The existing full20 controller remains authoritative for active
+work; this documentation does not dispatch a run or establish completion.
