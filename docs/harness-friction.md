@@ -3747,3 +3747,24 @@ semantics characterizations, not evidence of native parity or a driver correctio
 First CI34637819897: OpenSky L02 passed; native L01 stopped in fixture before click because xdotool geometry translated app Y350 to Y388, outside native OCR title (bottom384). Retained app/native word boxes are exactly the same size and differ by (0,19), implying physical point(363,369). No native action equivalence was tested by that run.
 
 The fixture now obtains X/Y from xwininfo's explicit `Absolute upper-left` fields, retains full xwininfo and xdotool stdout/stderr before assertions, and continues checking owned PID, active XID, viewport dimensions and unchanged geometry. Exact per-word app/native OCR box sizes and shared translation must agree with the measured absolute origin. No fixed19, loose tolerance or input fallback is used; disagreement still refuses before click. Read-only OCR verification passed on the retained two TSVs; xwininfo was absent from the first artifact, so live absolute-coordinate agreement remains untested. Typecheck passes; test bodies, workflow pins and original failure artifacts unchanged.
+
+### LINUX-IMPRESS-NATIVE-CLICK-01 executed comparison — 2026-09-11
+
+[CI34638457992](https://github.com/tanishqkancharla/opensky/actions/runs/34638457992)
+completed both coordinate controls on exact source
+`f7382065b95100db72c214d41ad7ecadfd7cbdf5`. Native's physical point (363,369)
+matches OpenSky's app point (363,350) through the measured absolute origin (0,19),
+independently confirmed by both OCR word boxes and stable owned PID/XID/geometry.
+Actual native click and keyboard calls executed. Both saved presentations contain
+the same `Target a` / `udience` title paragraphs, with every other nonempty shape
+text and paragraph boundary preserved across all 22 slides. Both app groups and
+temporary directories were cleaned; native's REPL process exited cleanly.
+
+Independent saved-file/source review:
+`work/impress-native-click-absolute-independent-check.json`. CI and runtime
+receipts retain driver ed9/8b50 and native package 2caa; all 21 recorded SDK source
+hashes match the tested commit. This verifies this coordinate sequence on the
+tested desktop, not every input route or font layout. Indexed L01 and no-Enter
+L03 were not rerun here. The initial fixture failure remains retained separately.
+No OpenSky-specific click/Enter defect is supported by this control, so no driver
+patch is warranted from that symptom alone. The paid font failure stays failed.
