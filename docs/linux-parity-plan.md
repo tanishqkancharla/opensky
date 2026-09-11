@@ -89,14 +89,19 @@ The combined release candidate403572f34dfbdc83b17bda7fe4c351060be32785 adds
 preservation of the existing typed background-input refusal and visible GTK
 fixture setup. Full Linux certification34561195062 uses unchanged canonical
 scripts with no filters. Installer, capture (7 cases) and native (39 cases)
-have passed; shared interactions remain in progress. Retained source identities,
-original case/oracle sets and owned installer cleanup have been checked.
+have passed; shared interactions also passed all83cases (48delivered,35expected
+refusals). All129canonical cases preserve original IDs/contracts/oracles, with
+exact source/CI identity and recording evidence checked. Installer cleanup is
+verified. This certifies the supported X11 lane, not Wayland or agent parity.
 
 The next independent campaign, campaign-linux-release-candidate, is prepared
-on codex/linux-release-campaign with the public focus documentation. Its
-release artifact/hash and final source pin are still pending. After full Linux
-certification, replay the same nine SDK cases on the release binary and remote
-owned desktop; then run fresh paired font/dropdown smoke before five and twenty.
+on codex/linux-release-campaign with the public focus documentation. Frozen
+source2d8879fcb40861ac8f95fdcd0171642e3a19a635 pins the certified release
+binarye65549f1a2d77d168581a2c2cc84585f90b51748a1cf85c2cf43bfca7a49ba85.
+All nine unchanged SDK cases passed remotely with independently checked saved
+outcomes and owned cleanup. The new matched font pair is active: OpenSky
+CI34563990218 followed by native. Complete fresh font/dropdown smoke before
+five and twenty; retain the same source throughout each campaign.
 Do not reuse previous native arms or replace the completed20-task results.
 Real task failures may continue through a valid ramp; setup, cleanup, scoring
 or identity failures must be resolved first. Keep task failures and successful
