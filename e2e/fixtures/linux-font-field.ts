@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { createOpenSky, createCua } from "../../src/index.js";
 import type { App } from "../../src/cua.js";
 import { recordAppTiming } from "./app-timing.js";
@@ -51,7 +52,7 @@ p=Presentation(); slide=p.slides.add_slide(p.slide_layouts[6]); box=slide.shapes
       expect(await readPresentation(path)).toEqual({ texts: [originalText], distinctNonemptyRunSizesPt: [70] });
       const launch = await prepareLinuxBenchmarkApp({ category: "libreoffice_impress", document: path, temporary, artifacts });
       launchAttempted = true;
-      await withOwnedLinuxApp(launch.options, async () => {
+      await withOwnedLinuxApp(launch.options, async owned => {
         sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
           driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
         const app = recordAppTiming(await createCua(sdk).getApp(launch.appName), artifacts);
@@ -71,6 +72,8 @@ p=Presentation(); slide=p.slides.add_slide(p.slide_layouts[6]); box=slide.shapes
           await app.click(uniqueIndex(await observe(), /\[\d+\] paragraph "Target audience"/));
           await app.pressKey("CTRL+A");
           const fontField = uniqueIndex(await observe(), /\[\d+\] text "70 pt"/);
+          const bounds = await exec("/usr/bin/python3", [fileURLToPath(new URL("./font-field-bounds.py", import.meta.url)), "--pid", String(owned.pid)], { timeout: 65_000 });
+          await writeFile(join(artifacts, "font-field-bounds.json"), bounds.stdout);
           await writeFile(join(artifacts, "before.png"), await app.getScreenshot());
           await use({ app, fontField, document: { read: () => readPresentation(path) } });
         } finally {

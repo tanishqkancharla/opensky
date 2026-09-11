@@ -52,3 +52,18 @@ test("FONT-FIELD-L04: visible font-field click and typing preserve slide text", 
   await app.pressKey("ENTER");
   await expect.poll(() => document.read(), { timeout: 10_000 }).toEqual({ texts: ["Target audience"], distinctNonemptyRunSizesPt: [60] });
 });
+
+// Same observation cadence as L04; only the public click target differs.
+test("FONT-FIELD-L05: indexed field click with the same observations preserves slide text", { timeout: 180_000 }, async ({ app, fontField, document }) => {
+  await app.getScreenshot();
+  await app.click(fontField);
+  await app.pressKey("CTRL+A");
+  await app.typeText("60");
+  await app.pressKey("ENTER");
+  await app.getAXState({ disableDiffing: true });
+  await app.getScreenshot();
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState(), { timeout: 15_000 }).toMatch(/Use .*PowerPoint.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.read(), { timeout: 10_000 }).toEqual({ texts: ["Target audience"], distinctNonemptyRunSizesPt: [60] });
+});
