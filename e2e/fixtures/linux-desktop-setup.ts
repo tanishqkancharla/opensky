@@ -30,10 +30,14 @@ type Input = {
   taskId: string; file: string; mode: "--calc" | "--impress" | "--code";
   observedScreenshotSize?: { width: number; heights: number[] };
   calcCellIdentityDiagnostics?: boolean;
+  calcMotionBeforeClickDiagnostics?: boolean;
   windowPlacement?: WindowPlacement;
 };
 
 export function desktopSetupTest(input: Input) {
+  if (input.calcMotionBeforeClickDiagnostics && !input.calcCellIdentityDiagnostics) {
+    throw new Error("Motion diagnostic requires Calc identity diagnostics");
+  }
   return base.extend<Desktop & { desktop: Desktop }>({
     desktop: async ({ task }, use) => {
       assertDisposableLinuxDesktop();
@@ -73,6 +77,33 @@ export function desktopSetupTest(input: Input) {
                   if (phase === "observed") observed = true; else entered = true;
                   const probe = await exec("/usr/bin/python3", [join(root, "e2e/fixtures/calc-cell-identity-probe.py"), String(owned.pid), owned.window], { timeout: 20_000 });
                   await writeFile(join(artifacts, `cell-identity-${phase}.json`), probe.stdout);
+                  if (phase === "observed" && input.calcMotionBeforeClickDiagnostics) {
+                    const before = JSON.parse(probe.stdout);
+                    expect(before.pid).toBe(owned.pid);
+                    expect(BigInt(before.xid)).toBe(BigInt(owned.window));
+                    const matches = before.cells.filter((cell: { requestedCell: string }) => cell.requestedCell === "C10");
+                    expect(matches).toHaveLength(1);
+                    const cell = matches[0];
+                    expect(cell.name).toBe("C10");
+                    expect(cell.tableCellPosition).toEqual([9, 2]);
+                    expect(cell.screen).toHaveLength(4);
+                    expect(cell.screen.every((value: unknown) => typeof value === "number" && Number.isFinite(value))).toBe(true);
+                    expect(cell.screen[2]).toBeGreaterThan(1);
+                    expect(cell.screen[3]).toBeGreaterThan(1);
+                    const point = [Math.round(cell.screen[0] + cell.screen[2] / 2), Math.round(cell.screen[1] + cell.screen[3] / 2)];
+                    await writeFile(join(artifacts, "motion-before-click-x11-tree.txt"),
+                      (await exec("xwininfo", ["-id", owned.window, "-tree"], { timeout: 5_000 })).stdout, { flag: "wx" });
+                    expect(Number((await exec("xdotool", ["getwindowpid", owned.window], { timeout: 5_000 })).stdout.trim())).toBe(owned.pid);
+                    expect(BigInt((await exec("xdotool", ["getactivewindow"], { timeout: 5_000 })).stdout.trim())).toBe(BigInt(owned.window));
+                    await writeFile(join(artifacts, "motion-before-click-request.json"), JSON.stringify({
+                      pid: owned.pid, xid: owned.window, screenPoint: point, source: "cell-identity-observed.json C10 raw Screen center",
+                      action: "mousemove only; no button or key", synchronization: "xdotool --sync observes pointer movement, not application processing",
+                    }, null, 2), { flag: "wx" });
+                    await exec("xdotool", ["mousemove", "--sync", String(point[0]), String(point[1])], { timeout: 5_000 });
+                    expect(BigInt((await exec("xdotool", ["getactivewindow"], { timeout: 5_000 })).stdout.trim())).toBe(BigInt(owned.window));
+                    const afterMotion = await exec("/usr/bin/python3", [join(root, "e2e/fixtures/calc-cell-identity-probe.py"), String(owned.pid), owned.window], { timeout: 20_000 });
+                    await writeFile(join(artifacts, "cell-identity-after-motion.json"), afterMotion.stdout, { flag: "wx" });
+                  }
                 }
                 return result;
               };
