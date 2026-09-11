@@ -17,17 +17,41 @@ const expectedFormats = {
   "application/x-opensky-test-u16": { type: "INTEGER", width: 16, bytesHex: "0000ffff3412" },
   "application/x-opensky-test-u32": { type: "CARDINAL", width: 32, bytesHex: "00000000ffffffff78563412" },
 } as const;
-type CurrentParagraph = { app: App; paragraph: number };
+type CurrentParagraph = { paragraph: number };
+type ObserveParagraph = (app: App) => Promise<CurrentParagraph>;
 type Clipboard = {
   seed(): Promise<void>; clear(): Promise<void>;
   read(): Promise<{ owner: number; targets: string[]; formats: Record<string, { type: string | null; width: number; bytesHex: string }> }>;
-  observeCurrentParagraph(app: App): Promise<CurrentParagraph>;
-  recordSelectionFailure(app: App, error: unknown): Promise<void>;
 };
 type OwnerExit = { code: number | null; signal: NodeJS.Signals | null; error?: string };
 const selectionText = "😀 café é one needle; two needle.";
 
-export const test = selectionTest.extend<{ clipboard: Clipboard }>({
+export const test = selectionTest.extend<{ clipboard: Clipboard; observeParagraph: ObserveParagraph }>({
+  observeParagraph: async ({ task }, use) => {
+    const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "sdk-clipboard", task.name.split(":")[0]);
+    await mkdir(artifacts, { recursive: true });
+    let observedApp: App | undefined;
+    let selectionObservationCount = 0;
+    const observeParagraph: ObserveParagraph = async app => {
+      observedApp = app;
+      const state = await app.getAXState({ disableDiffing: true });
+      const lines = state.split("\n").filter(line => line.includes(selectionText) && /^\s*- \[\d+\] paragraph\b/.test(line));
+      const target = { selectionText, matches: lines, state };
+      await writeFile(join(artifacts, `exact-observed-target-${++selectionObservationCount}.json`), JSON.stringify(target, null, 2));
+      if (lines.length !== 1) throw new Error(`Expected one freshly observed paragraph for ${JSON.stringify(selectionText)}; found ${lines.length}`);
+      return { paragraph: Number(lines[0]!.match(/\[(\d+)\]/)![1]) };
+    };
+    try { await use(observeParagraph); }
+    finally {
+      let aftermath: string | undefined;
+      let observationError: string | undefined;
+      if (observedApp) {
+        try { aftermath = await observedApp.getAXState({ disableDiffing: true }); }
+        catch (error) { observationError = String(error); }
+      }
+      await writeFile(join(artifacts, "selection-final-observation.json"), JSON.stringify({ aftermath, observationError }, null, 2));
+    }
+  },
   clipboard: async ({ task }, use) => {
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "sdk-clipboard", task.name.split(":")[0]);
     await mkdir(artifacts, { recursive: true });
@@ -38,7 +62,6 @@ export const test = selectionTest.extend<{ clipboard: Clipboard }>({
     let ownerStderr = "";
     let ownerStarted = false;
     let readCount = 0;
-    let selectionObservationCount = 0;
     const read = async () => {
       const result = JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", [helper, "--read"])).stdout) as Awaited<ReturnType<Clipboard["read"]>>;
       await writeFile(join(artifacts, `external-clipboard-read-${++readCount}.json`), JSON.stringify(result, null, 2));
@@ -48,22 +71,6 @@ export const test = selectionTest.extend<{ clipboard: Clipboard }>({
       const result = JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", [helper, "--clear"])).stdout);
       await writeFile(join(artifacts, "external-clipboard-cleared.json"), JSON.stringify(result, null, 2));
       expect(result).toEqual({ owner: 0 });
-    };
-    const observeCurrentParagraph = async (app: App): Promise<CurrentParagraph> => {
-      const state = await app.getAXState({ disableDiffing: true });
-      const lines = state.split("\n").filter(line => line.includes(selectionText) && /^\s*- \[\d+\] paragraph\b/.test(line));
-      const target = { selectionText, matches: lines, state };
-      await writeFile(join(artifacts, `exact-observed-target-${++selectionObservationCount}.json`), JSON.stringify(target, null, 2));
-      if (lines.length !== 1) throw new Error(`Expected one freshly observed paragraph for ${JSON.stringify(selectionText)}; found ${lines.length}`);
-      const paragraph = Number(lines[0]!.match(/\[(\d+)\]/)![1]);
-      return { app, paragraph };
-    };
-    const recordSelectionFailure = async (app: App, error: unknown): Promise<void> => {
-      let aftermath: string | undefined;
-      let observationError: string | undefined;
-      try { aftermath = await app.getAXState({ disableDiffing: true }); }
-      catch (captureError) { observationError = String(captureError); }
-      await writeFile(join(artifacts, "selection-failure-aftermath.json"), JSON.stringify({ error: String(error), aftermath, observationError }, null, 2));
     };
     const seed = async () => {
       if (owner) throw new Error("External clipboard owner is already running");
@@ -89,7 +96,7 @@ export const test = selectionTest.extend<{ clipboard: Clipboard }>({
       if (ownerStderr) throw new Error(`External clipboard owner failed: ${ownerStderr}`);
       ownerStarted = true;
     };
-    try { await use({ seed, clear, read, observeCurrentParagraph, recordSelectionFailure }); }
+    try { await use({ seed, clear, read }); }
     finally {
       let exit: OwnerExit | null = null;
       if (owner && ownerExit) {
