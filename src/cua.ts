@@ -87,6 +87,7 @@ export interface Target {
   pressKey(key: string): Promise<void>;
   scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void>;
   selectText(elementIndex: number, text: string, options?: SelectTextOptions): Promise<void>;
+  /** Replace a value without guaranteeing keyboard focus or sending Enter. Subsequent keys go to the focused control. */
   setValue(elementIndex: number, value: string): Promise<void>;
   typeText(text: string): Promise<void>;
   performSecondaryAction(elementIndex: number, action: string): Promise<void>;
