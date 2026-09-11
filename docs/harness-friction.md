@@ -3724,3 +3724,22 @@ V1/V2 selections, approved$200, live-handle ownership, future-source boundaries
 and incomplete coverage/variability. No source, task selection, score or spending
 record changed. The existing full20 controller remains authoritative for active
 work; this documentation does not dispatch a run or establish completion.
+
+### GREEN-RUBRIC-01 — unspecified shade creates a strict-score false negative
+
+V2 native18 (CI34632772002) sets slide1 to palette Light Green1/#3FAF46; the prompt
+only says “give it a green background color.” The saved deck preserves all text,
+slide count/size and later background, and the final native screenshot shows a
+green first slide. The frozen upstream comparison defaults color_tolerance0 and
+requires reference#00A933, producing upstream0/contenttrue/formattrue in both raw
+and adapted scoring. OpenSky17 chooses#00A933 and passes. This score difference
+is not evidence of a background-editing capability gap.
+
+Retain both selected scores and source artifacts; the live task row now flags
+the limitation. Audit: work/v2-background-shade-rubric-audit.md; actual saved deck
+reports work/v2-background{17,18}-saved-check.json. Future correction must be
+predeclared and versioned: either specify solid#00A933 in the task instruction
+while retaining the exact scorer, or design/validate a semantic “green” rubric.
+Do not relax RGB tolerance after observing this result, alter V2, or quietly
+exclude the task. The ongoing20task comparison remains useful strict-benchmark
+evidence but cannot equate every strict failure with a failed user experience.

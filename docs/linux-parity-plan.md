@@ -60,6 +60,10 @@ are conservative accounting, not an invoice. Give an update after each run.
   coordinate clicks followed by Enter. Omitting Enter permits a saved bold edit
   with all22slide text unchanged. The three finalized characterization tests pass;
   they do not establish an indexed-only driver bug or change the paid score.
+- A V2 background result exposes a task/rubric mismatch: native applied green
+  but the exact reference requires a shade absent from the prompt. Its strict
+  failure remains recorded and flagged; it is not a native capability failure.
+  Any prompt/rubric correction belongs to a separately declared future version.
 - Later popup-capture driver work and the validated exact-manifest asset cache
   are separate future candidates. The cache's cold/warm setup runs verify40
   assets with32/0downloads, original input preservation, full grading checks and
