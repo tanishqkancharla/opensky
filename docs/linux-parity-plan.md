@@ -76,11 +76,31 @@ a renderer-local coordinate provider, adding17pixels to already-screen field
 bounds. Read-only geometry and two public pixel controls isolate that offset.
 Four unchanged font-field controls now save60pt with text preserved; a displaced
 Code indexed Find/Replace test passes before and after. Both use exact binaries,
-independent saved-file checks and verified app/temp/container cleanup. Calc
-indexed/scrolled-cell regressions are the remaining supporting gate before
-fresh paid smoke. A fix to indexed targeting does not establish that an agent
-will choose the correct font-editing sequence. Unfocused setValue+Enter is not
-claimed fixed. Preserve the complete20-task campaign while testing new source.
+independent saved-file checks and verified app/temp/container cleanup. The four
+Calc/focus/dropdown regressions also passed, totaling nine supporting SDK cases.
+A subsequent matched font smoke on frozen81cdcee failed both arms: OpenSky
+changed only one word per textbox, while native changed the requested full text
+sizes but also changed the original font families. Preserve both failures.
+A targeting fix does not ensure the agent selects the complete text or preserves
+other formatting. General public documentation now makes setValue focus
+semantics explicit; no task-specific hint or output repair is added.
+
+The combined release candidate403572f34dfbdc83b17bda7fe4c351060be32785 adds
+preservation of the existing typed background-input refusal and visible GTK
+fixture setup. Full Linux certification34561195062 uses unchanged canonical
+scripts with no filters. Installer, capture (7 cases) and native (39 cases)
+have passed; shared interactions remain in progress. Retained source identities,
+original case/oracle sets and owned installer cleanup have been checked.
+
+The next independent campaign, campaign-linux-release-candidate, is prepared
+on codex/linux-release-campaign with the public focus documentation. Its
+release artifact/hash and final source pin are still pending. After full Linux
+certification, replay the same nine SDK cases on the release binary and remote
+owned desktop; then run fresh paired font/dropdown smoke before five and twenty.
+Do not reuse previous native arms or replace the completed20-task results.
+Real task failures may continue through a valid ramp; setup, cleanup, scoring
+or identity failures must be resolved first. Keep task failures and successful
+input controls distinct.
 
 
 The visibility candidate is stacked on the indexed-object identity correction
