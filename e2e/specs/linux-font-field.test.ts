@@ -67,3 +67,34 @@ test("FONT-FIELD-L05: indexed field click with the same observations preserves s
   await app.pressKey("ENTER");
   await expect.poll(() => document.read(), { timeout: 10_000 }).toEqual({ texts: ["Target audience"], distinctNonemptyRunSizesPt: [60] });
 });
+
+// Exact source-derived indexed center versus raw AT-SPI center. The retained
+// before02 probe reports a 17px client-origin rebase on already-screen bounds.
+test("FONT-FIELD-L06: rebased center click preserves slide text", { timeout: 180_000 }, async ({ app, document }) => {
+  await app.getScreenshot();
+  await app.click([1227, 190]);
+  await app.pressKey("CTRL+A");
+  await app.typeText("60");
+  await app.pressKey("ENTER");
+  await app.getAXState({ disableDiffing: true });
+  await app.getScreenshot();
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState(), { timeout: 15_000 }).toMatch(/Use .*PowerPoint.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.read(), { timeout: 10_000 }).toEqual({ texts: ["Target audience"], distinctNonemptyRunSizesPt: [60] });
+});
+
+
+test("FONT-FIELD-L07: raw screen center click preserves slide text", { timeout: 180_000 }, async ({ app, document }) => {
+  await app.getScreenshot();
+  await app.click([1227, 173]);
+  await app.pressKey("CTRL+A");
+  await app.typeText("60");
+  await app.pressKey("ENTER");
+  await app.getAXState({ disableDiffing: true });
+  await app.getScreenshot();
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState(), { timeout: 15_000 }).toMatch(/Use .*PowerPoint.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.read(), { timeout: 10_000 }).toEqual({ texts: ["Target audience"], distinctNonemptyRunSizesPt: [60] });
+});
