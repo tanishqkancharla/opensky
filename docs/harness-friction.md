@@ -3662,3 +3662,73 @@ The completed release campaign at SDK2d8879f retains its first outcomes: OpenSky
 This wrapper starts from exact2d8879fcb40861ac8f95fdcd0171642e3a19a635 and changes only three driver pins in linux-agent.yml: certification run34580005558, sourceed9fd15e39a1d2acd07c4f3078440c3ab2ad44f2, and release binary SHA2568b50bfbdbd9c98aaa5d0ff9d4f2196b18115b96fe6c2d68847ddb16c21ce6692. Both arms retain the existing hash and live product/protocol/source checks before spending admission. SDK runtime, task assets, evaluator, native backend, grading profile, model and spending rules remain unchanged.
 
 Preparation validation consists of independently hashing the retained release binary, checking its identity receipt, comparing the complete wrapper diff against2d, and parsing the workflow and embedded shell scripts locally. Canonical CI reports all jobs successful; final shared-artifact inspection, merge and post-merge smoke remain parent-owned pre-dispatch gates. No paid run, reservation or new agent acceptance is implied by this preparation. After those gates, use a separate campaign-linux-calc-pointer-candidate for task01b269ae-2111-4a07-81fd-3fcd711993b0 with new OpenSky/native arms. Preserve the original full20 campaign, including its fill failure; this one-task smoke measures the correction and does not constitute a new full20 score.
+
+## IMPRESS-SHAPE-CLICK-01 — Enter after title click can alter text
+
+- Symptom/evidence: frozen fcd/ed9 recovery CI34628942535 result items5/7 show slide14 `Google Shape;306;p26` containing `Target audience`, then public indexed click, Enter, Ctrl+A produces `Target a` / `udience` paragraphs before any font-size edit. Saved first/second sizes60/28 are correct but title text differs. Native07 preserves all original text.
+- Cause/layer: unresolved. Public click defaults to one click. Driver indexed target first tries a safe advertised AX action, otherwise exact-object pointer center; ordinary coordinate path handles panels through foreground pointer delivery. No retained raw delivery receipt proves whether the indexed route actuated AX or pointer, and a title-center click may already enter text editing in ordinary Impress. Do not infer driver double-click or wrong target from the newline.
+- Prepared diagnostic: new SHAPE-CLICK-L01/L02 use original manifest-hashed45_1.pptx and identical real public click/Enter/Ctrl+A sequences, varying indexed shape versus visible title coordinate. Full observations/screenshots and saved PPTX are retained on failure, with owned app/temporary cleanup. Ctrl+B after the observed sequence forces an actual edit/save without repairing text. No size-field manipulation is included.
+- Oracle: exact paragraph text/name/order for all nonempty text shapes on22slides; ignore only wholly empty decorative text frames introduced by LibreOffice export. The actual retained native07 matches the original; recovery08 differs only at slide14 title. This is reader-method validation, not new runtime acceptance.
+- Limits/tradeoffs: positive preservation expectations are candidate contracts; both failing would support an ordinary editing-sequence explanation. Different click coordinates within the same title can have different caret behavior; L02 does not claim the same pixel as indexed Component center. OCR verifies both title words in the original screenshot region and records its point; missing/ambiguous detection fails setup. Original source/runtime untouched. Initial diagnostic expectations and first failures are retained; see executed controls below.
+
+
+### IMPRESS-SHAPE-CLICK-01 executed controls — 2026-09-11
+
+The isolated exe desktop ran exact SDK fcd01bb0 and certified driver ed9/8b50bfb,
+image01e59ba2. SHAPE-CLICK-L01 and L02 both failed the original unchanged-title
+hypothesis: indexed and visible-coordinate click followed by Enter/Ctrl+A saved
+identical `Target a` / `udience` paragraphs. Public screenshots show the split
+before the formatting edit; no other nonempty shape text changed across22slides.
+Both owned app groups exited, temporary directories were removed, and the
+container was gone after completion. Their diagnostic hypotheses were disproven;
+these are not acceptance tests establishing a product bug.
+
+The one-input control L03 omitted only Enter, preserving the same indexed click,
+Ctrl+A, Ctrl+B and save sequence. It passed on a fresh disposable desktop. The
+actual PPTX retains all22slide texts exactly and title `Target audience` changes
+from bold0 to bold1 at its original70pt. This verifies a real saved edit rather
+than unchanged-input success. Owned app/temp/container cleanup passed.
+
+Evidence: work/impress-shape-click-ed9-v1-results and -v2-results, independently
+read PPTX reports work/impress-shape-click-ed9-v1-outcomes.json and -v2-outcomes.json.
+Frozen stages retain original source/test bytes and binary/image hashes. The
+native07 successful agent used a different sequence without Enter after the title
+click; these controls are not a matched native-input test. Exact pixel/dispatch
+route remains unproven, but an indexed-only failure is not supported. No driver
+patch or task-specific agent hint is justified from this evidence. Original paid
+recovery08 remains failed. Pending: broader V2 full20 and a generic observation
+quality investigation only if further evidence warrants it.
+
+### IMPRESS-SHAPE-CLICK-01 reusable characterization — prepared, not rerun
+
+The current L01/L02 expectations now characterize the observed Enter behavior:
+the title has exactly two paragraphs `Target a` and `udience`, with every other
+nonempty shape/paragraph across22slides unchanged. The fixture derives the
+expected document from original input and changes only that title. Test names
+now describe the split, rather than promise the disproven preservation contract.
+L03 still asserts all original text preserved when formatting without Enter.
+All three public action sequences remain byte-equivalent to the frozen v2
+action sequences. Original failed stages/results are unchanged and remain failed.
+
+Validation: e2e typecheck/diff check pass; new expected documents match retained
+L01/L02/L03 actual saved-texts.json. This is an offline oracle characterization,
+not a rerun or retroactive pass. The next reviewed no-model run may exercise all
+three as readable controls. Report: work/impress-shape-characterization-checks.json.
+
+L03 additionally asserts the saved title changes from explicit bold=false to
+bold=true while both original and saved size remain70pt. The saved-file reader
+checks every nonempty title run; missing/mixed properties return unknown and
+cannot pass. Its original/after values were verified against the retained
+original and actual L03 PPTX, independently of changed bytes/text equality.
+Public API actions remain unchanged; e2e typecheck passes. No GUI rerun or commit.
+
+Final characterization validation: `impress-shape-click-ed9-v3` ran all three
+current tests on the same exact runtime/driver/image and passed3/3. L01/L02 now
+assert the observed paragraph insertion instead of the disproven preservation
+hypothesis; L03 additionally reads the actual saved run properties and requires
+regular70pt→bold70pt. No public input action changed during this conversion.
+All three saved presentations and cleanup receipts were independently inspected;
+all other text remains unchanged and all owned app/temp/container cleanup passed.
+Report: `work/impress-shape-click-ed9-v3-outcomes.json`. Original failed diagnostic
+stages and paid campaign outcomes remain unchanged. These are reusable input
+semantics characterizations, not evidence of native parity or a driver correction.
