@@ -3752,3 +3752,9 @@ Driver PR4 (codex/linux-observation-visibility) implements visibility-aware rend
 ### INSTALL-CI-ENV-01 — runner context in job environment
 
 GitHub rejected the first installer dispatch before creating a run: `runner.temp` is unavailable in job-level `env`. Resolve the same private paths in a first shell step via `RUNNER_TEMP` and `GITHUB_ENV`. No installer or product behavior changes. The rejected dispatch spent no model budget; remote execution validation remains pending.
+
+### LINUX-COMBINED-CERTIFICATION-01 — exact release candidate
+
+Combined driver source403572f34 cherry-picks the verified pixel refusal propagation ce1b and visible fixture setup4815 with source attribution. Product/test bytes independently match their respective accepted revisions. No other executable driver change. This verification branch is an integration of drafts6/7 on2e81, not a replacement implementation workstream.
+
+The isolated SDK wrapper runs the original canonical Linux script for complete shared/native/capture release lanes with no cell/harness filters, strict preflight/video checks and shared minimum80cells. It also runs the verified local-install bridge against403572f34. Prior exact2e81 full shared lane has83passing typed cases (48delivered,35expectedrefusals); Linux native/capture original failures remain retained. New whole-candidate acceptance remains pending. Linux-only executable/test differences require affected Linux recertification; prior Windows/macOS evidence remains separately scoped. No paid evaluations or frozen campaign changes. Shared lane additionally retains the exact release binary for future SDK/agent checks only after the full candidate gate is independently accepted.

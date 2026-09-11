@@ -1,4 +1,4 @@
-name: Linux installed driver smoke
+name: Full Linux candidate certification
 on:
   workflow_dispatch:
 permissions:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      CUA_DRIVER_SOURCE_SHA: 2e81b62123eda2807ff15edcf6834389dc938c45
+      CUA_DRIVER_SOURCE_SHA: 403572f34dfbdc83b17bda7fe4c351060be32785
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_RELEASE_DEBUG: '0'
     steps:
@@ -46,4 +46,77 @@ jobs:
           name: rust-linux-install-local
           path: ${{ env.OPENSKY_INSTALL_ARTIFACT }}
           if-no-files-found: error
+          retention-days: 14
+
+  desktop:
+    name: Canonical Linux / ${{ matrix.lane }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [shared, native, capture]
+    env:
+      CUA_DRIVER_SOURCE_SHA: 403572f34dfbdc83b17bda7fe4c351060be32785
+      CUA_E2E_SOURCE_SHA: 403572f34dfbdc83b17bda7fe4c351060be32785
+      CUA_E2E_INTERNAL_LANE: ${{ matrix.lane }}
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      RUST_BACKTRACE: '1'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: tanishqkancharla/cua
+          ref: ${{ env.CUA_DRIVER_SOURCE_SHA }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+        with:
+          workspaces: 'libs/cua-driver/rust -> target'
+          key: opensky-full-linux-${{ matrix.lane }}
+      - name: Install canonical desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xvfb xauth dbus-x11 at-spi2-core openbox picom python3-gi \
+            gir1.2-gtk-3.0 gir1.2-gtk-4.0 libgtk-3-dev clang pkg-config \
+            libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev libei-dev \
+            libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev \
+            libwebkit2gtk-4.1-dev libssl-dev libxdo-dev \
+            libayatana-appindicator3-dev librsvg2-dev ffmpeg gnome-keyring jq
+      - name: Run the complete unchanged canonical lane
+        run: |
+          test "$(git rev-parse HEAD)" = "$CUA_DRIVER_SOURCE_SHA"
+          unset CUA_E2E_CELL_FILTER CUA_E2E_HARNESS_FILTER
+          xvfb-run -a --server-args="-screen 0 1920x1080x24" \
+            dbus-run-session -- bash -lc \
+            "eval \"\$(printf test-password | gnome-keyring-daemon --unlock --components=secrets)\"; openbox >/tmp/opensky-openbox.log 2>&1 & picom --backend xrender --config /dev/null >/tmp/opensky-picom.log 2>&1 & sleep 2; scripts/ci/linux/run-rust-e2e.sh"
+      - name: Retain exact release binary after successful shared lane
+        if: success() && matrix.lane == 'shared'
+        run: |
+          mkdir -p artifacts/certified-driver
+          cp libs/cua-driver/rust/target/release/cua-driver artifacts/certified-driver/opensky-driver
+          artifacts/certified-driver/opensky-driver --opensky-driver-identity > artifacts/certified-driver/identity.json
+          sha256sum artifacts/certified-driver/opensky-driver > artifacts/certified-driver/binary-sha256.txt
+          python3 - <<'VERIFY'
+          import json,os
+          p=json.load(open('artifacts/certified-driver/identity.json'))
+          assert p['product']=='opensky-driver' and p['protocolVersion']==1 and p['source']==os.environ['CUA_DRIVER_SOURCE_SHA']
+          VERIFY
+      - name: Upload release binary
+        if: success() && matrix.lane == 'shared'
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: linux-candidate-release-driver
+          path: artifacts/certified-driver
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload all canonical outcome evidence
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: linux-candidate-${{ matrix.lane }}
+          path: artifacts/cua-driver
+          if-no-files-found: error
+          compression-level: 0
           retention-days: 14
