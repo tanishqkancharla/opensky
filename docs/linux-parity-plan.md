@@ -32,21 +32,21 @@ completed run and keep the status canvas current. Exclude Codex's in-app browser
 
 ## Active comparison
 
-The first fixed-software 20-task baseline is complete: native18/20 and
-OpenSky14/20. Its immutable plan and results are in
+The first fixed-software 20-task baseline is complete: native 18/20 and
+OpenSky 14/20. Its immutable plan and results are in
 `evals/runs/linux-baseline-8c818c7`; original arms remain in
 `evals/runs/campaign-linux-smoke-1`. Some pairs differ in Ubuntu point-release
 labels. This is a single-run software baseline, not strict environment identity
 throughout or a repeatability estimate.
 
 The correction campaign is `campaign-linux-visibility-candidate`, using frozen
-SDK/evaluator825b58525a8b8e7e22cbcef60a9a39e2a574595b and exact driver
+SDK/evaluator 825b58525a8b8e7e22cbcef60a9a39e2a574595b and exact driver
 2ff75ef21a5173935fd4cbd1b69fa6094299211d. Its two-task smoke passed both arms;
-its five-task ramp completed with OpenSky3/5 and native2/5. Both failed repeated
+its five-task ramp completed with OpenSky 3/5 and native 2/5. Both failed repeated
 subscripts and the required frozen-header region; native additionally left
 extra profit formulas. These failures stay in the metric.
 
-`full20-selection.json` fixes the same original20task IDs, hashes of the first
+`full20-selection.json` fixes the same original 20 task IDs, hashes of the first
 five pairs, and every remaining arm name/order. The full comparison is in
 progress. Select only those declared arms; do not substitute a later successful
 retry or mix software versions. The live scorecard derives completed matched
@@ -70,7 +70,7 @@ Both agents failing a task does not establish parity.
 ## Driver acceptance and remaining work
 
 The visibility candidate is stacked on the indexed-object identity correction
-in draft driver PR4. Seven focused real SDK cases pass on its exact binary:
+in draft driver PR #4. Seven focused real SDK cases pass on its exact binary:
 visible labelled dropdown editing, indexed/scrolled cells, wrong-window refusal,
 help-title retention, stable retained indices and rejection of removed indices.
 Saved outcomes and owned app/container cleanup are verified. This supports the
