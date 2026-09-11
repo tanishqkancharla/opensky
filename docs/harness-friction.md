@@ -144,7 +144,7 @@ See [scenario contracts and remaining fixture work](../e2e/scenarios.md).
 
 ## Evidence, metrics, and observability
 
-### RUN-013 — evaluation prompts drifted from the shipped skill
+### GENERIC-SKILL-02 — evaluation prompts drifted from the shipped skill
 
 - **Symptom/layer:** OpenSky parity arms previously supplied a short inline
   guide while the packaged `skills/opensky/SKILL.md` was not visible to the
@@ -158,7 +158,14 @@ See [scenario contracts and remaining fixture work](../e2e/scenarios.md).
 - **Evidence:** deterministic prompt/receipt test covers two distinct target
   names, identical common skill text, content hashing, and retained receipt.
   This is **contract-confirmed** only; no model, desktop, or scoring run was
-  performed.
+  performed. Targeted TypeScript checking covers both evaluation entrypoints,
+  the loader, and the fingerprint code. Receipt tests remove their owned
+  temporary directories. The preloaded-host example uses the initial state
+  emitted by `getApp` instead of requesting the same observation twice.
+- **Next evaluation identity:** the Linux agent workflow pins the release driver
+  from canonical CI34650375969 (source ae1577dd1, SHA-256
+  84e91eb18e208cf23a234ff685edd468e53aa585112937dcecfe898d9ba75d92).
+  This starts a new candidate; historical V3 prompts and outcomes are unchanged.
 
 ### CLN-008 — operator display labels are not exact session identities
 

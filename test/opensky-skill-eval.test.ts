@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,7 +9,7 @@ import { buildOpenSkyEvaluationPrompt, loadOpenSkySkill, writeOpenSkySkillReceip
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-test("OpenSky evaluations load the shipped skill, preserve it in a receipt, and vary only task context", async () => {
+test("OpenSky evaluations load the shipped skill, preserve it in a receipt, and vary only task context", async (t) => {
   const skill = await loadOpenSkySkill(repo);
   assert.equal(skill.relativePath, "skills/opensky/SKILL.md");
   const actualBytes = await readFile(join(repo, skill.relativePath));
@@ -29,6 +29,7 @@ test("OpenSky evaluations load the shipped skill, preserve it in a receipt, and 
   assert.match(second.taskContext, /cua\.getApp is "\/opt\/Target Two"; use it unchanged/);
 
   const artifacts = await mkdtemp(join(tmpdir(), "opensky-skill-receipt-"));
+  t.after(() => rm(artifacts, { recursive: true, force: true }));
   await writeOpenSkySkillReceipt(artifacts, skill);
   const receipt = JSON.parse(await readFile(join(artifacts, "opensky-skill-receipt.json"), "utf8"));
   assert.deepEqual(receipt, { relativePath: skill.relativePath, sha256: skill.sha256, content: skill.content });

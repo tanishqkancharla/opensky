@@ -19,7 +19,6 @@ element. Observations and created objects are emitted by the tool.
 
 ```js
 const app = await cua.getApp("authorized app identifier");
-await app.getAXState();
 ```
 
 ## OpenSky CLI host
