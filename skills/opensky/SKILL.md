@@ -8,10 +8,25 @@ description: Drive native desktop apps through an async Node REPL with a native-
 This skill describes the generic interaction API. Choose actions from the current
 application observations; it contains no application-specific task recipes.
 
-## Select the available transport
+## Preloaded `cua_repl` host
 
-On a host where the `opensky` CLI is available, it is an **async Node REPL**
-with native-style `cua` and legacy `opensky` objects preloaded. Do not call
+When the host provides a preloaded `cua` object through a `cua_repl`-style
+tool, use that tool and its public `cua` methods directly. The object is
+already bound in the persistent async REPL: do not invoke a CLI, import a
+package, call a driver binary, or assume shell/filesystem tools are available.
+Keep bindings in the REPL and use fresh observations before acting on an
+element. Observations and created objects are emitted by the tool.
+
+```js
+const app = await cua.getApp("authorized app identifier");
+await app.getAXState();
+```
+
+## OpenSky CLI host
+
+The following setup, console output, and legacy-API snippets apply only when
+the host provides the `opensky` CLI. It is an **async Node REPL** with
+native-style `cua` and legacy `opensky` objects preloaded. Do not call
 `opensky-driver` directly unless `opensky` is unavailable. Do not use `open`,
 `osascript`, `cliclick`, or focus-stealing GUI scripts.
 
@@ -19,17 +34,10 @@ with native-style `cua` and legacy `opensky` objects preloaded. Do not call
 opensky eval --json 'await opensky.list_apps()'
 ```
 
-`await` works. The last expression is the result. Use `return` for multi-statement snippets.
+`await` works. The last expression is the result. `return` and `console.log`
+in the examples below are CLI result handling.
 
-When a desktop evaluation instead provides a preloaded `cua` object through a
-`cua_repl`-style tool, use that tool and its public `cua` methods directly.
-The object is already bound in the persistent async REPL: do not invoke the
-CLI, import a package, call a driver binary, or assume shell/filesystem tools
-are available. Keep bindings in the REPL, use fresh observations before acting
-on an element, and rely on the tool's normal emissions for observations and
-created objects.
-
-## Setup check
+### CLI setup check
 
 ```bash
 opensky doctor
@@ -45,7 +53,7 @@ opensky doctor
 
 On macOS they must enable **Accessibility** and **Screen Recording** in System Settings for the helper app that appears (OpenSky Driver), then run `opensky doctor` again. If missing, build OpenSky Driver from the tanishqkancharla/cua fork using libs/cua-driver/scripts/install.sh (install.ps1 on Windows). Upstream Cua Driver is not supported.
 
-## Canonical loop
+## Public `cua` facade
 
 Prefer the bound native-style facade:
 
@@ -54,6 +62,10 @@ observation, including dialogs. Observe after actions that open or close windows
 subsequent actions address the exact latest observed window. An explicit legacy
 `targetHandle` keeps its original document/window identity. Use fresh indices
 after a window transition. App observations refuse ambiguous stacking evidence.
+
+The following result-printing example is CLI-only. In a preloaded `cua_repl`
+host, call the same public methods without `console.log` or `return` and let
+the tool emit results.
 
 ```js
 const app = await cua.getApp("App Name");
@@ -81,7 +93,7 @@ fresh state first. These extensions require the capable personal-fork helper;
 older helpers may omit neighborhoods/cursors, and unsupported explicit context
 fails closed. An omission without a cursor is not proof that traversal is possible.
 
-The legacy API remains available:
+### CLI-only legacy `opensky` API
 
 Refresh state after every action (or a short related group). Element indices are snapshots and go stale when the UI changes.
 
@@ -106,7 +118,7 @@ opensky eval 'state.apps = await opensky.list_apps()'
 opensky eval 'await opensky.click({ app: "App Name", element_index: 13 })'
 ```
 
-## Targeting apps
+## CLI legacy targeting
 
 `app` may be a display name (`"App Name"`), bundle id (`"com.example.app"`), or path (`"/path/to/App.app"`).
 
@@ -119,7 +131,7 @@ edit or guess a handle. Unknown and closed `tgt_…` handles fail closed.
 
 Prefer display names for actions when a bundle id looks ineffective. Always re-snapshot after an action that seems to no-op, then retry with the other identifier.
 
-## `opensky` API
+## CLI-only `opensky` API
 
 `opensky` is already in scope. Do not import `@oai/sky`.
 
@@ -145,7 +157,7 @@ await opensky.type_text({ app, text, element_index?, x?, y? })
 await opensky.close()
 ```
 
-Helpers also in scope: `sleep(ms)`, `state`, `readFile`, `pathToFileURL`.
+CLI helpers also in scope: `sleep(ms)`, `state`, `readFile`, `pathToFileURL`.
 
 ### `list_apps()`
 

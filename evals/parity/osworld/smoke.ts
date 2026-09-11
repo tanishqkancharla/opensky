@@ -100,7 +100,7 @@ try {
           const skill = await loadOpenSkySkill(repo);
           await writeOpenSkySkillReceipt(artifacts, skill);
           return buildOpenSkyEvaluationPrompt({ taskInstruction: task.instruction, platform: `macOS ${environment.osVersion}`,
-            inputFile: task.inputFile, appName, skill, completion: "Use straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker." }).prompt;
+            inputFile: task.inputFile, appName, authorizedApp: appSelector, skill, completion: "Use straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker." }).prompt;
         })();
       const result = await runCodex({ model: "gpt-5.6-terra", artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: profileLimits.timeoutMs, maxToolCalls: profileLimits.maxToolCalls, mcp, authorizedApps: { [bundleId]: appName, [appPath]: appName }, desktopProgramScope: { ...scope, appSelectors: [...scope.appSelectors] },
         prompt,

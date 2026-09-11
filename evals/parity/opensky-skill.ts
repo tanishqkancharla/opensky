@@ -42,10 +42,11 @@ export function buildOpenSkyEvaluationPrompt(options: {
   platform: string;
   inputFile: string;
   appName: string;
+  authorizedApp: string;
   skill: OpenSkySkill;
   completion: string;
 }): OpenSkyEvaluationPrompt {
-  const taskContext = `Task: ${options.taskInstruction}\nYou are using ${options.platform}. The document ${options.inputFile} is already open in ${options.appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${options.appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.`;
+  const taskContext = `Task: ${options.taskInstruction}\nYou are using ${options.platform}. The document ${options.inputFile} is already open in ${options.appName}. The exact authorized app identifier for cua.getApp is ${JSON.stringify(options.authorizedApp)}; use it unchanged. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${options.appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.`;
   const skillGuide = `Bundled OpenSky skill (${options.skill.relativePath}, SHA-256 ${options.skill.sha256}):\n${options.skill.content}`;
   return { taskContext, skillGuide, prompt: `${taskContext}\n${skillGuide}\n${options.completion}` };
 }

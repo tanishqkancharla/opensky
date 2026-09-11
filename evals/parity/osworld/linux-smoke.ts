@@ -110,7 +110,7 @@ try {
         const skill = await loadOpenSkySkill(repo);
         await writeOpenSkySkillReceipt(artifacts, skill);
         return buildOpenSkyEvaluationPrompt({ taskInstruction: task.instruction, platform: "Ubuntu Linux", inputFile: task.inputFile,
-          appName: launch.appName, skill, completion: "Finish when saved, or report the specific blocker." }).prompt;
+          appName: launch.appName, authorizedApp: launch.appName, skill, completion: "Finish when saved, or report the specific blocker." }).prompt;
       })();
     const result = await runCodex({ codex: join(nativeResources, "codex"), model: "gpt-5.6-terra", authentication: "api-key",
       budgetPath: process.env.OPENSKY_REMOTE_BUDGET, preReservedId: process.env.OPENSKY_REMOTE_RESERVATION,

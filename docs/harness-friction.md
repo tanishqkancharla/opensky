@@ -153,7 +153,7 @@ See [scenario contracts and remaining fixture work](../e2e/scenarios.md).
 - **Fix:** both OpenSky parity entrypoints load the packaged skill, prepend its
   exact contents to the task prompt, store `opensky-skill-receipt.json` with its
   path and SHA-256, and include `skills/` in the environment source fingerprint.
-  The skill distinguishes the host CLI from a preloaded `cua_repl` transport
+  The skill distinguishes the host CLI from a host-provided `cua_repl` transport
   without prescribing an application workflow.
 - **Evidence:** deterministic prompt/receipt test covers two distinct target
   names, identical common skill text, content hashing, and retained receipt.
