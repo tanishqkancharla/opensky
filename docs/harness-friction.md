@@ -3758,3 +3758,19 @@ c37b3a9bb2e886c44df7352bec20906b51b8d41c5b707a7c1cb4d0dc021e2cb4.
 No scores, frozen runtime or references changed. This speeds independent review
 of upcoming results; inherited styles and rendered layout remain unresolved,
 and retained-data checks are not new driver acceptance evidence.
+
+### POPUP-CANDIDATE-SETUP-01 — validate composed driver/cache candidate
+
+Prepared source4afcf31 on codex/linux-popup-agent-candidate combines validated
+asset cache55a2d50 with the certified040/30afe popup driver. Only three workflow
+driver pins change; SDK, scoring and native reference remain identical.
+Setup-only CI34636210562 passed: live driver identity/hash receipt,40verified
+assets (32downloads on branch-cold cache),93observed source entries, frozen
+profile, unchanged presentation, owned app exit and temporary removal. Model
+admission skipped; no agent result or score exists. The exact cache key was
+saved. Retained final screenshot shows the presentation open in LibreOffice.
+Report: work/popup-agent-candidate-setup-validation.json. The reusable read-only
+work/inspect-linux-agent-setup.py was checked on prior cold/warm receipts and
+refuses their old source under candidate defaults. Binary receipt is separate
+from the earlier independently rehashed certified binary. This clears composed
+setup only; no new agent reliability or full parity claim. Frozen V2 unchanged.
