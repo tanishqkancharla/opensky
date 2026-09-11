@@ -46,10 +46,11 @@ if [[ "${OPENSKY_LINUX_AGENT_MODE:-}" == repl ]]; then
   case "${OPENSKY_REPL_CASE:-async-typing}" in
     async-typing) repl_spec=specs/linux-repl-cell.test.ts ;;
     dropdown) repl_spec=specs/linux-dropdown-repl.test.ts ;;
+    hybrid-selection-arrows) repl_spec=specs/linux-hybrid-selection-arrows.test.ts ;;
     *) echo 'Unknown public REPL regression'; exit 2 ;;
   esac
   cd e2e
-  npm test -- "$repl_spec" --reporter=verbose --reporter=json \
+  npm test -- "$repl_spec" --bail=0 --reporter=verbose --reporter=json \
     --outputFile.json="$OPENSKY_LINUX_OFFICE_ARTIFACT/results.json"
   exit
 fi

@@ -3664,3 +3664,8 @@ Two new isolated no-model Writer cases retain the same disposable three-paragrap
 Native capability was checked against installed Linux client construction source whose SHA256 6796ec918b609b5dca153470d710ff41671360780680c51edc9553bd48a3cbbc exactly matches the retained native control environment's targets/linux/create_client.js. That public client provides click, drag, drag_handle, get_screenshot, move, press_key, scroll, type_text and optional audio; it has no native select_text/selectText API. Ordinary Find therefore remains a distinct initial-selection condition, not an equivalent native selectText call. Further native comparisons must document actual initial selection/caret state before attributing an API discrepancy.
 
 Local E2E typechecking and diff validation are required; no GUI/model execution has occurred for these two new cases. They are supplementary discriminators, not replacements for the frozen arm35 failure or its scoring mask.
+
+
+### SUBSCRIPT35-D02 — matched initial selection, native/OpenSky keys
+
+A no-model hybrid comparison holds initial Writer selection constant through public OpenSky selectText, then drives the exact arm35 four-arrow sequence with either public OpenSky keys or the frozen native keyboard API. A direct-digit native replacement is the positive control. Saved text identifies the edited character while preserving every surrounding paragraph. This isolates key delivery and intentionally does not stand in for an unavailable native Linux selectText API. Original agent scores and failures remain unchanged. Three new real-desktop cases are prepared; no result claimed yet. Native transport and app cleanup are retained, and model credentials/reservations are refused.
