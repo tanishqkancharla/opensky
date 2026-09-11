@@ -138,5 +138,6 @@ PRs cua#5–#7 merged by explicit user authorization into the fork branch
 `codex/linux-observation-visibility`, final merge
 `e25f348b3e0ca9221130e1df8e792ca857cc0505`. Its product/test/build tree matches
 certified403; only a screen-origin documentation note differs. Post-merge
-canonical release installer smoke CI34565230161 is pending. The paid campaign
+canonical release installer smoke CI34565230161 passed: installed identity,
+configuration, daemon startup/exit and temporary removal independently verified. The paid campaign
 keeps its original403 binary and2d source. This is not a main-branch release.
