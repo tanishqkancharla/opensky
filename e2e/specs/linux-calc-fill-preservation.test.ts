@@ -63,3 +63,28 @@ visibleCalc("FILL-L02: name-box edits preserve every untargeted cell", { timeout
     ],
   });
 });
+
+// Diagnostic only: screenshots preserve the retained AX indices.
+calc("FILL-D01: observe the selected cell around consecutive indexed edits", { timeout: 180_000 }, async ({ app, document }) => {
+  const sheet = await app.getAXState({ disableDiffing: true });
+  expect(sheet).toMatch(/\[(\d+)\] table cell "C10"/);
+  expect(sheet).toMatch(/\[(\d+)\] table cell "C11"/);
+  await app.click(Number(sheet.match(/\[(\d+)\] table cell "C10"/)![1]));
+  await app.typeText("Arnold Shawarma");
+  await app.pressKey("ENTER");
+  await app.getScreenshot();
+  await app.click(Number(sheet.match(/\[(\d+)\] table cell "C11"/)![1]));
+  await app.getScreenshot();
+  await app.typeText("Arnold Shawarma");
+  await app.pressKey("ENTER");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readWorkbookChanges(), { timeout: 10_000 }).toEqual({
+    sheetNamesUnchanged: true,
+    changes: [
+      { sheet: "Sheet1", cell: "C10", before: null, after: "Arnold Shawarma" },
+      { sheet: "Sheet1", cell: "C11", before: null, after: "Arnold Shawarma" },
+    ],
+  });
+});
