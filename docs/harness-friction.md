@@ -3677,3 +3677,8 @@ The existing fill replay workflow still pinned driver2ff75 while its runtime and
 CALC-SELECTION-BUILD-01 update: build34571597335 succeeded (release plus77focusedchecks), but original public-SDK FILL-L01 failed while FILL-L02 passed. The first cell was marked without moving typing focus; A1 received the text and the second request stopped with C10:C11 marked. All artifacts/owned cleanup retained. Candidate15adb87 replaces SelectChild with cell GrabFocus and exact Focused-state readback, narrows to spreadsheet ancestors, and keeps existing-range/merged-cell handling on the original pointer path before mutation. This wrapper branch is reused to preserve its warmed CI cache. New build and unchanged real replay pending.
 
 CALC-SELECTION-BUILD-01:15adb passed original two-edit/name-box controls but failed new name-box-focus and marked-range tests. The latter saved C11 instead of C10; the former stopped with namebox still focused. Candidate d3005c0 removes semantic mutations and corrects Calc cell geometry per axis when stable Screen/Window samples show translation. It keeps all other providers unchanged. All five positive SDK cases, moved-window control and canonical certification pending.
+
+
+### POPUP-CAPTURE-CI-01 — focused Linux candidate validation
+
+Pin driver3c68363c0 for a release build and focused pure/live-X11 popup capture tests. Live tests run serially on a disposable depth24 Xvfb and real Openbox, with owned WM cleanup. This build-only workflow does not run paid agent evaluations or replace final canonical certification. Build and runtime results are pending.

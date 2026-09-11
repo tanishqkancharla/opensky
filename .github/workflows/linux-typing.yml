@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: ed9fd15e39a1d2acd07c4f3078440c3ab2ad44f2
+  OPENSKY_DRIVER_REF: 3c68363c037db1beed4120886a7bf7240ed43a0c
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_RELEASE_DEBUG: '0'
 
@@ -54,6 +54,13 @@ jobs:
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml select_text
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
+          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::tests
+          xvfb-run -a -s '-screen 0 1280x900x24' dbus-run-session -- bash -euo pipefail -c '
+            openbox > /tmp/opensky-popup-openbox.log 2>&1 &
+            wm=$!
+            trap "kill -TERM $wm 2>/dev/null || true; wait $wm 2>/dev/null || true" EXIT
+            CUA_POPUP_CAPTURE_DISPOSABLE_X11=1 cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::live_tests -- --ignored --test-threads=1
+          '
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
