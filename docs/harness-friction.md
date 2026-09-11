@@ -3672,3 +3672,12 @@ A no-model hybrid comparison holds initial Writer selection constant through pub
 
 
 The first hybrid comparison CI34598325154 (dc36a25) failed before GUI input because its download step requested `sdk-test-driver`; the pinned run34561195062 actually retains `linux-candidate-release-driver`. API inspection confirms that exact artifact is available, and the expected e65549 binary hash is unchanged. The corrected workflow downloads and hash-checks both frozen packages before desktop setup, and retains an attempt-source receipt even when setup fails. The first log is preserved; apt fetched122MB in10m24s (195kB/s), while npm/build/typecheck completed in seconds. This was infrastructure failure, not a native/OpenSky result. No test body, production source, gesture or prediction changed.
+
+
+### SUBSCRIPT35-D02 — verified matching keyboard outcome
+
+Corrected CI34599558702 at75a7eb96e34a76e9c6503c8f72630afe7833d8ed passes3/3 no-model controls in2m14s. Independent actual ODT XML shows both OpenSky and native four-arrow routes replace O (H2MARK), while native typing after direct selection of2 replaces only2 (HMARKO); all surrounding text is unchanged. Both routes use the same public OpenSky initial selection and observation. Source, frozen403/e655 driver, native2caa package, full native action traces and cleanup receipts were checked. LibreOffice24.2.7.2 is recorded. Canonical evidence lives under evals/runs/linux-office-setup/hybrid-selection-arrows-403-native-01.
+
+This isolates matching keyboard delivery for the reproduced failure and supports no keyboard patch for that sequence. It does not certify native selectText, which is unavailable in the Linux client, or alter any paid task score. Writer/native-REPL/temporary exits are verified; driver/WM cleanup uses the hosted shell trap without a separate verified-exit receipt. The initial artifact-path inspector attempt failed before any report was written; using the actual downloaded artifacts/ root resolved the local inspection error without modifying evidence.
+
+Iteration friction: first apt download took10m24s for122MB, whereas corrected entire run took2m14s; mirror throughput is variable. Future package-archive caching may reduce that variance while keeping ordinary APT resolution/checksums. No cache or image change was made to this comparison.
