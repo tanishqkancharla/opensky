@@ -1196,6 +1196,34 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
+    if (this.target === "linux" && format === "text" && resolved && !resolved.browser) {
+      this.assertTargetUsable(resolved);
+      await this.requireUsableInputWindow(resolved);
+      // The compound driver operation checks exact live focus, owns the
+      // clipboard transaction and sends one paste. Never split this into
+      // clipboard writes plus a key, or replay an uncertain delivery.
+      try {
+        const result = await this.driver.call("native_paste", {
+          pid: resolved.pid,
+          window_id: resolved.windowId,
+          text: args.text,
+          format,
+        });
+        const outcome = asRecord(result.structured);
+        if (outcome?.status !== "completed" || outcome.transfer_verified !== true) {
+          throw new OpenSkyError(
+            "Native paste delivery was not verified. Observe before retrying; do not replay automatically.",
+            "native_paste_unverified",
+            outcome,
+          );
+        }
+      } finally {
+        // Errors can follow actual input; refresh the binding before the next
+        // action even when this call cannot confirm delivery.
+        this.markAction(resolved);
+      }
+      return;
+    }
     throw new OpenSkyError(
       "paste is temporarily unavailable because safe paste requires a compound desktop-helper primitive " +
         "that cannot overwrite a concurrent user clipboard change. No clipboard, app, window, tab, or input was touched. " +
