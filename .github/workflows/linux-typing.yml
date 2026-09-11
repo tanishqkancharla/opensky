@@ -1,130 +1,87 @@
-name: Linux typing regression
-
+name: Linux pixel typing refusal check
 on:
-  push:
-    branches: [codex/linux-input-parity]
-    paths: ['src/**', 'e2e/**', '.github/workflows/linux-typing.yml']
   workflow_dispatch:
-    inputs:
-      build_only:
-        description: Build a candidate for focused one-off remote tests
-        type: boolean
-        default: false
-
 permissions:
   contents: read
-  actions: read
-
 env:
-  OPENSKY_DRIVER_REF: 2e81b62123eda2807ff15edcf6834389dc938c45
+  CUA_DRIVER_SOURCE_SHA: ce1b14809a7dedffc19ae501b4b4779d1bb4e949
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
-
+  CARGO_PROFILE_TEST_DEBUG: '0'
 jobs:
-  driver:
+  verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: tanishqkancharla/cua
-          ref: ${{ env.OPENSKY_DRIVER_REF }}
+          ref: ${{ env.CUA_DRIVER_SOURCE_SHA }}
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
         with:
           workspaces: 'libs/cua-driver/rust -> target'
-      - name: Install build dependencies
+      - name: Install Linux desktop dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            clang pkg-config libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev \
-            libei-dev libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev
-      - name: Build pinned OpenSky Driver
-        env:
-          CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
+            xvfb xauth dbus-x11 at-spi2-core openbox picom python3-gi \
+            gir1.2-gtk-3.0 libgtk-3-dev clang pkg-config libdbus-1-dev \
+            libpipewire-0.3-dev libspa-0.2-dev libei-dev libxkbcommon-dev \
+            libx11-dev libxi-dev libxtst-dev libxext-dev ffmpeg jq
+      - name: Build exact candidate and canonical GTK3 fixture
         run: |
+          test "$(git rev-parse HEAD)" = "$CUA_DRIVER_SOURCE_SHA"
+          mkdir -p artifacts/refusal
+          git rev-parse HEAD > artifacts/refusal/source-sha.txt
           cargo build --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_selection::tests
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_keysyms_cover_latin1_unicode_and_control_keys
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml hotkey_alias_tests
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml virtual_table_tests
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::native::coord_tests
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml frame_correlation_tests
-          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::cache::tests
-          cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml select_text
-          cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
-          cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
-          mkdir -p driver-artifact
-          cp libs/cua-driver/rust/target/debug/cua-driver driver-artifact/opensky-driver
-          driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
-          python3 - <<'PY'
-          import json, os
-          identity = json.load(open('driver-artifact/identity.json'))
-          assert identity['product'] == 'opensky-driver' and identity['protocolVersion'] == 1
-          assert identity['source'] == os.environ['OPENSKY_DRIVER_REF']
-          PY
-      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
-        with:
-          name: sdk-test-driver
-          path: driver-artifact
-          retention-days: 14
-
-  evaluate:
-    if: ${{ !inputs.build_only }}
-    strategy:
-      fail-fast: false
-      matrix:
-        attempt: [1, 2, 3]
-    needs: driver
-    runs-on: ubuntu-24.04
-    env:
-      OPENSKY_LINUX_OFFICE_BACKEND: opensky
-      OPENSKY_LINUX_TYPING_TEST: '1'
-      OPENSKY_AGENT_TASK: 3ef2b351-8a84-4ff2-8724-d86eae9b842e
-      OPENSKY_NATIVE_PACKAGE_SHA256: 62580188d87c3d3a9369dab7c73b42a8a32518d4df8a2d5bae6466ddeac5c05e
-      OPENSKY_LINUX_OFFICE_ARTIFACT: ${{ github.workspace }}/artifacts/linux-office
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install desktop and scorer
+          bash libs/cua-driver/tests/fixtures/build/linux.sh --only gtk3
+          libs/cua-driver/rust/target/debug/cua-driver --opensky-driver-identity > artifacts/refusal/identity.json
+          sha256sum libs/cua-driver/rust/target/debug/cua-driver > artifacts/refusal/binary-sha256.txt
+          sha256sum libs/cua-driver/rust/crates/cua-driver/tests/harness_gtk3_test.rs > artifacts/refusal/test-sha256.txt
+      - name: Exercise unchanged foreground and background pixel typing
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core xdotool x11-utils x11-xserver-utils libreoffice-writer libreoffice-gtk3 fonts-liberation tesseract-ocr libpipewire-0.3-0 libei1 libxtst6
-          npm ci --ignore-scripts
-          npm run build
-          npm ci --ignore-scripts --prefix e2e
-          npm run typecheck --prefix e2e
-          python -m pip install -r evals/parity/osworld/requirements.txt
-      - name: Use the newly built driver candidate
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
-        with:
-          name: sdk-test-driver
-          path: .driver
-      - name: Verify the exact tested driver binary
+          export CUA_TEST_WORKSPACE_ROOT="$PWD/libs/cua-driver/rust"
+          export CUA_TEST_DRIVER_BIN="$CUA_TEST_WORKSPACE_ROOT/target/debug/cua-driver"
+          export CUA_TEST_APPS_ROOT="$CUA_TEST_WORKSPACE_ROOT/test-apps"
+          export CUA_TEST_REQUIRE_FIXTURES=1 CUA_TEST_DRIVER_STDERR=1
+          export CUA_E2E_FORBID_SKIPS=1 CUA_E2E_UNRESTRICTED_GUI=1 CUA_REQUIRE_GUI=1
+          export CUA_E2E_SOURCE_SHA="$CUA_DRIVER_SOURCE_SHA"
+          export CUA_E2E_DECLARATIONS_FILE="$PWD/artifacts/refusal/cases.jsonl"
+          export CUA_E2E_ENVIRONMENT_FILE="$PWD/artifacts/refusal/environment.jsonl"
+          export CUA_E2E_RESULTS_FILE="$PWD/artifacts/refusal/results.jsonl"
+          export CUA_E2E_RECORDINGS_ROOT="$PWD/artifacts/refusal/recordings"
+          export CUA_E2E_COMPOSITOR=openbox-x11 CUA_E2E_INPUT_BACKENDS=atspi,xsend-event,xtest
+          xvfb-run -a --server-args="-screen 0 1920x1080x24" dbus-run-session -- bash -c '
+            set -euo pipefail
+            openbox > artifacts/refusal/openbox.log 2>&1 & wm=$!
+            picom --backend xrender --config /dev/null > artifacts/refusal/picom.log 2>&1 & compositor=$!
+            trap "kill -TERM $wm $compositor 2>/dev/null || true; wait $wm $compositor 2>/dev/null || true" EXIT
+            sleep 2
+            cargo test --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml --test harness_gtk3_test -- --ignored harness_gtk3_type_text_px_ --nocapture --test-threads=1 2>&1 | tee artifacts/refusal/typing.log
+          '
+      - name: Require both exact typed outcomes and original oracles
         run: |
-          python3 - <<'PY'
-          import json, os
-          identity = json.load(open(".driver/identity.json"))
-          assert identity["source"] == os.environ["OPENSKY_DRIVER_REF"]
-          assert identity["product"] == "opensky-driver"
-          PY
-          sha256sum .driver/opensky-driver > .driver/sha256.txt
-          chmod +x .driver/opensky-driver
-      - name: Verify public SDK typing and saved text
-        run: bash e2e/ci/native-linux-probe.sh
-      - name: Retain outcome and cleanup evidence
+          python3 - <<'VERIFY'
+          import json,os
+          from pathlib import Path
+          p=Path('artifacts/refusal')
+          identity=json.loads((p/'identity.json').read_text())
+          assert identity['product']=='opensky-driver' and identity['source']==os.environ['CUA_DRIVER_SOURCE_SHA']
+          rows=[json.loads(l) for l in (p/'results.jsonl').read_text().splitlines()]
+          expected={'linux-gtk3-type-text-px-background','linux-gtk3-type-text-px-foreground'}
+          assert len(rows)==2 and {r['cell_id'] for r in rows}==expected
+          for r in rows:
+              assert r['test_status']=='pass', r
+              assert set(r['oracles']).issubset(set(r['passed_oracles'])), r
+              assert (p/r['evidence']['video']).stat().st_size>0
+          (p/'verified-outcomes.json').write_text(json.dumps({'source':identity['source'],'cases':sorted(expected),'allPassed':True,'scope':'Two unchanged canonical rows on development binary; not full release certification'},indent=2))
+          VERIFY
+      - name: Retain all outcomes and recording evidence
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
         with:
-          name: linux-typing-result-${{ matrix.attempt }}
-          path: |
-            artifacts/linux-office
-            artifacts/native-linux
-            .driver/identity.json
-            .driver/sha256.txt
-          retention-days: 30
+          name: linux-pixel-refusal-check
+          path: artifacts/refusal
+          if-no-files-found: error
+          retention-days: 14
