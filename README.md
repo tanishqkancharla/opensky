@@ -43,12 +43,28 @@ npm install -g opensky-cua
 opensky doctor
 ```
 
-OpenSky requires **OpenSky Driver**, built from our `tanishqkancharla/cua` fork.
-From the OpenSky Driver checkout, run `bash libs/cua-driver/scripts/install.sh`
-(macOS/Linux), or `libs/cua-driver/scripts/install.ps1` (Windows). The source
-installer requires Rust and the platform build tools. Fork release downloads are
-not available yet; `opensky doctor` reports the setup instructions if it is missing.
-It never downloads or falls back to upstream Cua Driver.
+OpenSky requires **OpenSky Driver**, built from the
+[`codex/linux-observation-visibility` branch of our fork](https://github.com/tanishqkancharla/cua/tree/codex/linux-observation-visibility).
+The verified Linux merge is `e25f348b3e0ca9221130e1df8e792ca857cc0505`.
+For a fresh Linux source installation:
+
+```sh
+git clone --branch codex/linux-observation-visibility https://github.com/tanishqkancharla/cua.git opensky-driver
+cd opensky-driver
+git checkout --detach e25f348b3e0ca9221130e1df8e792ca857cc0505
+bash libs/cua-driver/scripts/install.sh --release
+```
+
+That exact Linux revision passed the canonical release installation, startup
+and cleanup smoke. Its product/test/build files match the candidate that passed
+129 Linux X11 cases; this is separate from the ongoing paired agent evaluation.
+The source installer requires Rust and the platform build tools. Fork release
+downloads are not available yet; `opensky doctor` reports setup instructions
+if the driver is missing. It never downloads or falls back to upstream Cua Driver.
+
+From an OpenSky Driver checkout, macOS uses `bash libs/cua-driver/scripts/install.sh`
+and Windows uses `libs/cua-driver/scripts/install.ps1`. Linux validation does not
+certify those desktops.
 
 The executable is `opensky-driver` (`opensky-driver.exe` on Windows). On macOS
 it lives in `/Applications/OpenSkyDriver.app`, displayed as **OpenSky Driver**.

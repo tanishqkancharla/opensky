@@ -105,10 +105,14 @@ Independent saved-file inspection confirms full requested font sizes and
 original font families, plus dropdown choices/arrows and unchanged cell values.
 The declared five-task expansion retains these first pairs and adds Writer
 strikethrough, Code replace-all and Calc profit; retain the frozen source.
-Four paired tasks are complete: OpenSky4/4 and native3/4. Native struck only13of
+The five-task ramp completed: OpenSky5/5 and native4/5. Native struck only13of
 387required paragraph characters; both editor outputs match exact reference
-text and all10replacements. Profit remains in progress. The live page now
-shows this five-task campaign; historical20-task results remain separate.
+text and all10replacements, and both profit workbooks have the requested values
+without extra populated/formula cells. Full20selection
+`1bc34daed8bddfaf83e6efb49a0abda9ea20b3bf9969d5a51896e00715eb98ae`
+retains allfive original pairs and declares the remaining15 tasks before dispatch.
+The same frozen build is now running those tasks. The live page shows this fresh
+20-task campaign; historical20-task results remain separate.
 Do not reuse previous native arms or replace the completed20-task results.
 Real task failures may continue through a valid ramp; setup, cleanup, scoring
 or identity failures must be resolved first. Keep task failures and successful

@@ -5,7 +5,8 @@ The active objective is remote Linux parity; see
 20-task baseline is complete (native 18/20, OpenSky 14/20). A separate frozen
 correction campaign completed the same twenty tasks after its smoke/five-task
 ramp: OpenSky16/20 and native14/20, with one native-only font-editing success.
-The fresh release-build campaign is in its five-task ramp; its results stay separate.
+The fresh release-build campaign completed its five-task ramp (OpenSky5/5,
+native4/5) and is running the remaining15tasks; its results stay separate.
 Current counts come from retained campaign artifacts and the live scorecard.
 Historical mixed-revision macOS readiness results remain in
 [smoke-results.md](smoke-results.md); they are not Linux parity evidence.
