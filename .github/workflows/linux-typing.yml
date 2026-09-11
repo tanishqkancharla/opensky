@@ -35,7 +35,9 @@ jobs:
           mkdir -p artifacts/refusal
           git rev-parse HEAD > artifacts/refusal/source-sha.txt
           cargo build --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
-          bash libs/cua-driver/tests/fixtures/build/linux.sh --only gtk3
+          bash libs/cua-driver/tests/fixtures/build/linux.sh --only electron,gtk3
+          test -x libs/cua-driver/rust/test-apps/harness-electron/CuaTestHarness.Electron
+          test -x libs/cua-driver/rust/test-apps/harness-gtk3/CuaTestHarness.Gtk3
           libs/cua-driver/rust/target/debug/cua-driver --opensky-driver-identity > artifacts/refusal/identity.json
           sha256sum libs/cua-driver/rust/target/debug/cua-driver > artifacts/refusal/binary-sha256.txt
           sha256sum libs/cua-driver/rust/crates/cua-driver/tests/harness_gtk3_test.rs > artifacts/refusal/test-sha256.txt

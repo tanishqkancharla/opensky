@@ -3762,3 +3762,7 @@ Separate installer bridge source d589ee8 on codex/linux-installer-certification 
 ### INPUT-REFUSAL-CI-01 — two canonical rows without rerunning the matrix
 
 CI34558519742 retained a background typing refusal whose structured reason was discarded by focus_by_pixel. Driver candidate ce1b14809 preserves the original response. Isolated codex/linux-refusal-check workflow builds that exact source and runs the two unchanged GTK3 pixel typing rows with all original fixture/focus/z-order/cursor/no-leaked-input oracles. Frozen paid campaign81cd remains unchanged. This uses a development binary and is supporting acceptance, not full release/cross-platform certification. No model spending; runtime validation pending.
+
+### INPUT-REFUSAL-CI-02 — preserve the background sentinel dependency
+
+Focused run34559870891 built exactce1b and foreground typing passed. Background case failed before action because the Electron sentinel fixture was missing; building only GTK3 omitted its external focus/no-leaked-input observer. Preserve this failure. Build both canonical electron and gtk3 fixtures and require executable existence before either row. Same unchanged driver and test source; no runtime acceptance for background until the new result.
