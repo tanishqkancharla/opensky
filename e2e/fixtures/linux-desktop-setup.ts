@@ -27,6 +27,7 @@ type Desktop = { app: App; document: SavedDocument };
 type Input = {
   taskId: string; file: string; mode: "--calc" | "--impress" | "--code";
   observedScreenshotSize?: { width: number; heights: number[] };
+  calcCellIdentityDiagnostics?: boolean;
 };
 
 export function desktopSetupTest(input: Input) {
@@ -46,10 +47,28 @@ export function desktopSetupTest(input: Input) {
           document, temporary, artifacts, vscodePath: process.env.OPENSKY_EVAL_VSCODE ?? "/usr/share/code",
         });
         launchAttempted = true;
-        await withOwnedLinuxApp(launch.options, async () => {
+        await withOwnedLinuxApp(launch.options, async (owned) => {
           sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
             driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
-          const app = recordAppTiming(await createCua(sdk).getApp(launch.appName), artifacts);
+          let app = recordAppTiming(await createCua(sdk).getApp(launch.appName), artifacts);
+          if (input.calcCellIdentityDiagnostics) {
+            let observed = false, entered = false;
+            app = new Proxy(app, { get(target, key) {
+              const value = Reflect.get(target, key, target);
+              if (typeof value !== "function") return value;
+              return async (...args: unknown[]) => {
+                const result = await value.apply(target, args);
+                const phase = key === "getAXState" && !observed ? "observed" :
+                  key === "pressKey" && args[0] === "ENTER" && !entered ? "after-first-enter" : undefined;
+                if (phase) {
+                  if (phase === "observed") observed = true; else entered = true;
+                  const probe = await exec("/usr/bin/python3", [join(root, "e2e/fixtures/calc-cell-identity-probe.py"), String(owned.pid)], { timeout: 20_000 });
+                  await writeFile(join(artifacts, `cell-identity-${phase}.json`), probe.stdout);
+                }
+                return result;
+              };
+            } });
+          }
           try {
             await expect.poll(async () => {
               const image = join(artifacts, "ready.png");
