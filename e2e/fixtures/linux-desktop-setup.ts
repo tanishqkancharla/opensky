@@ -18,6 +18,7 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 type SavedDocument = {
   readCell(address: string): Promise<{ formula: string | null; value: string | null }>;
   readSheetNames(): Promise<string[]>;
+  readMergedRanges(): Promise<Record<string, string[]>>;
   readWorkbookChanges(): Promise<{
     sheetNamesUnchanged: boolean;
     changes: Array<{ sheet: string; cell: string; before: unknown; after: unknown }>;
@@ -88,6 +89,10 @@ export function desktopSetupTest(input: Input) {
             }, async readSheetNames() {
               return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
                 'import sys,json,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("xl/workbook.xml")); ns={"s":"http://schemas.openxmlformats.org/spreadsheetml/2006/main"}; print(json.dumps([sheet.get("name") for sheet in r.findall("s:sheets/s:sheet",ns)]))', document])).stdout);
+            }, async readMergedRanges() {
+              return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", [
+                join(root, "e2e/fixtures/workbook-changes.py"), "--merged-ranges", document,
+              ])).stdout);
             }, async readWorkbookChanges() {
               return JSON.parse((await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", [
                 join(root, "e2e/fixtures/workbook-changes.py"),

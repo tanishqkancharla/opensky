@@ -161,3 +161,27 @@ visibleCalc("FILL-L04: an indexed cell click replaces a pre-existing marked rang
     ],
   });
 });
+
+const mergedCalc = desktopSetupTest({
+  taskId: "4188d3a4-077d-46b7-9c86-23e1a036f6c1",
+  file: "Freeze_row_column.xlsx", mode: "--calc",
+});
+
+mergedCalc("FILL-L05: an indexed merged-cell edit preserves other values and all merges", { timeout: 180_000 }, async ({ app, document }) => {
+  const sheet = await app.getAXState({ disableDiffing: true });
+  expect(sheet).toMatch(/\[(\d+)\] table cell "A1"/);
+  await app.click(Number(sheet.match(/\[(\d+)\] table cell "A1"/)![1]));
+  await app.getScreenshot();
+  await app.typeText("Monthly item summary");
+  await app.pressKey("ENTER");
+  await app.pressKey("CTRL+S");
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toMatch(/Use .*Excel.* Format/);
+  await app.pressKey("ENTER");
+  await expect.poll(() => document.readWorkbookChanges(), { timeout: 10_000 }).toEqual({
+    sheetNamesUnchanged: true,
+    changes: [
+      { sheet: "Sheet1", cell: "A1", before: "                                Month\nItem                                   ", after: "Monthly item summary" },
+    ],
+  });
+  await expect(document.readMergedRanges()).resolves.toEqual({ Sheet1: ["A1:B1", "A2:A5", "A6:A9"] });
+});

@@ -10,7 +10,7 @@ S = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
 R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
 
 
-def snapshot(path):
+def snapshot(path, *, merged_ranges=False):
     with zipfile.ZipFile(path) as archive:
         shared = []
         if 'xl/sharedStrings.xml' in archive.namelist():
@@ -32,8 +32,15 @@ def snapshot(path):
                                       else posixpath.join('xl', target))
             if member.startswith('../') or '\\' in member:
                 raise ValueError('Invalid worksheet member')
+            worksheet = ET.fromstring(archive.read(member))
+            if merged_ranges:
+                ranges = [node.get('ref') for node in worksheet.iter(S + 'mergeCell')]
+                if any(not value for value in ranges) or len(ranges) != len(set(ranges)):
+                    raise ValueError('Missing or duplicate merged range')
+                sheets[name] = sorted(ranges)
+                continue
             cells = {}
-            for cell in ET.fromstring(archive.read(member)).iter(S + 'c'):
+            for cell in worksheet.iter(S + 'c'):
                 address = cell.get('r')
                 if not address or address in cells:
                     raise ValueError('Missing or duplicate cell address')
@@ -87,4 +94,5 @@ def changes(original, saved):
 
 
 if __name__ == '__main__':
-    print(json.dumps(changes(sys.argv[1], sys.argv[2]), allow_nan=False))
+    result = snapshot(sys.argv[2], merged_ranges=True) if sys.argv[1] == '--merged-ranges' else changes(sys.argv[1], sys.argv[2])
+    print(json.dumps(result, allow_nan=False))

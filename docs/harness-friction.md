@@ -3678,3 +3678,12 @@ The first table-selection candidate marked the requested cell without moving Cal
 Two positive public-SDK controls now retain C10's index from the initial observation. FILL-L03 focuses the visible name box, then clicks C10 before typing. FILL-L04 marks C10:C11 through the name box, then clicks C10 before typing. Both save and require exactly one changed cell, C10 = Arnold Shawarma, with C11 and every other cell and sheet name preserved. Screenshots retain the visible setup without refreshing AX indices between setup and the indexed action. The existing fixture owns the real Calc process, document and cleanup; no mocks, internal RPC assertions or runtime changes are added. Original FILL-L01/L02 and diagnostic cases remain byte-for-byte unchanged.
 
 Local E2E typechecking and diff checks pass. The new cases have not run on a desktop and do not establish candidate acceptance. They retain the existing 1280×881/883 screenshot constraint and do not cover merged cells; the benchmark Freeze_row_column.xlsx already contains merged ranges for a later separate control. These positive contracts must remain unchanged if a candidate fails them.
+
+
+### FILL-L05 — Preserve merged-cell structure during an indexed edit
+
+The Calc cell-focus candidate deliberately keeps merged cells on the prior pointer route. The existing freeze-header benchmark provides a real merged-cell input without generated assets or GUI setup: Freeze_row_column.xlsx has A1:B1, A2:A5 and A6:A9, with a multiline Month/Item heading in A1. A retained agent AX observation exposes the merged anchor as table cell A1.
+
+FILL-L05 observes that anchor, clicks its retained index, takes a diagnostic screenshot without refreshing AX, replaces the header with Monthly item summary and saves. It requires exactly the A1 value change, all other cell values/formulas and sheet names preserved, and exactly the original three merge ranges. The existing standard-library workbook reader now has a read-only merged-range mode, exposed through the SavedDocument fixture; it follows worksheet relationships and reports ranges for every sheet. No document, scorer or runtime is modified by this reader. Original tests are preserved.
+
+Local E2E typechecking, diff checks and reader checks on the real original/retained freeze workbooks pass. The new merged-cell workflow has not run on a desktop; it is a positive behavioral contract, not new driver acceptance. XML merge ordering is normalized because range order does not affect the saved merged-cell structure.
