@@ -17,25 +17,34 @@ def main():
     args = parser.parse_args()
     if args.pid <= 0:
         parser.error('PID must be positive')
-    import dbus
+    import gi
+    gi.require_version('Gio', '2.0')
+    from gi.repository import Gio, GLib
 
     def timeout(_signal, _frame):
         raise TimeoutError('Read-only cell probe exceeded 60 seconds')
 
     signal.signal(signal.SIGALRM, timeout)
     signal.alarm(60)
-    session = dbus.SessionBus()
-    address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'),
-                             'org.a11y.Bus').GetAddress(timeout=3)
-    bus = dbus.bus.BusConnection(str(address))
-    daemon = dbus.Interface(bus.get_object('org.freedesktop.DBus', '/org/freedesktop/DBus'),
-                            'org.freedesktop.DBus')
-
-    def obj(ref):
-        return bus.get_object(str(ref[0]), str(ref[1]), introspect=False)
+    session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    address = session.call_sync('org.a11y.Bus', '/org/a11y/bus', 'org.a11y.Bus',
+                                'GetAddress', None, None, Gio.DBusCallFlags.NONE,
+                                3000, None).unpack()[0]
+    bus = Gio.DBusConnection.new_for_address_sync(
+        address, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
+        Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
+    signatures = {'Get': '(ss)', 'GetChildAtIndex': '(i)', 'GetAccessibleAt': '(ii)',
+                  'GetExtents': '(u)', 'GetConnectionUnixProcessID': '(s)'}
 
     def call(ref, interface, method, *values):
-        return getattr(dbus.Interface(obj(ref), interface), method)(*values, timeout=3)
+        parameters = GLib.Variant(signatures[method], values) if values else None
+        reply = bus.call_sync(str(ref[0]), str(ref[1]), interface, method,
+                              parameters, None, Gio.DBusCallFlags.NONE, 3000, None)
+        # D-Bus method replies are outer tuples. Unwrap one return value only:
+        # GetAccessibleAt/GetExtents return one struct; GetRowColumnSpan has
+        # five separate returns and must retain its complete tuple.
+        result = reply.unpack()
+        return result[0] if len(result) == 1 else result
 
     def prop(ref, interface, key):
         return call(ref, 'org.freedesktop.DBus.Properties', 'Get', interface, key)
@@ -52,7 +61,8 @@ def main():
             return {'error': str(error)}
 
     def owner_pid(ref):
-        return int(daemon.GetConnectionUnixProcessID(str(ref[0]), timeout=3))
+        return int(call(('org.freedesktop.DBus', '/org/freedesktop/DBus'),
+                        'org.freedesktop.DBus', 'GetConnectionUnixProcessID', str(ref[0])))
 
     def children(ref):
         count = int(prop(ref, ACC, 'ChildCount'))
