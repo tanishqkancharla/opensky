@@ -74,12 +74,12 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: sdk-test-driver
-          run-id: 34533766015
+          run-id: 34552663384
           github-token: ${{ github.token }}
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
-          printf '%s\n' '9540f4cb078a854ae103bebd087d27688fa4dd1b7b2db9d0450c67adbf87782a  .driver/opensky-driver' | sha256sum --check -
+          printf '%s\n' 'ecdaf1129eae2cde7f9021aa743ac76e666cb4cdd10075b82b0a278c877e1904  .driver/opensky-driver' | sha256sum --check -
           chmod +x .driver/opensky-driver
       - name: Use the single frozen Linux grading profile
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
