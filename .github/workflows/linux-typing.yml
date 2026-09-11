@@ -15,6 +15,30 @@ jobs:
       OPENSKY_LINUX_OFFICE_ARTIFACT: ${{ github.workspace }}/artifacts/linux-office
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Record isolated no-model attempt
+        run: |
+          mkdir -p artifacts/linux-office
+          printf '%s\n' "$GITHUB_SHA" > artifacts/linux-office/attempt-source.txt
+
+      - name: Use exact release-arm driver
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: linux-candidate-release-driver
+          run-id: 34561195062
+          github-token: ${{ github.token }}
+          path: .driver
+      - name: Use frozen native reference
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: native-reference-linux-x64
+          run-id: 34310637093
+          github-token: ${{ github.token }}
+          path: .native-reference
+      - name: Check both frozen package hashes before desktop setup
+        run: |
+          printf '%s\n' 'e65549f1a2d77d168581a2c2cc84585f90b51748a1cf85c2cf43bfca7a49ba85  .driver/opensky-driver' | sha256sum --check -
+          printf '%s  %s\n' "$OPENSKY_NATIVE_PACKAGE_SHA256" "$OPENSKY_NATIVE_PACKAGE_FILE" | sha256sum --check -
+
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -29,13 +53,6 @@ jobs:
           npm run build
           npm ci --ignore-scripts --prefix e2e
           npm run typecheck --prefix e2e
-      - name: Use exact release-arm driver
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
-        with:
-          name: sdk-test-driver
-          run-id: 34561195062
-          github-token: ${{ github.token }}
-          path: .driver
       - name: Verify driver bytes and source
         run: |
           printf '%s\n' 'e65549f1a2d77d168581a2c2cc84585f90b51748a1cf85c2cf43bfca7a49ba85  .driver/opensky-driver' | sha256sum --check -
@@ -46,13 +63,6 @@ jobs:
           x=json.load(open('.driver/live-identity.json'))
           assert (x['product'],x['protocolVersion'],x['source']) == ('opensky-driver',1,'403572f34dfbdc83b17bda7fe4c351060be32785')
           PYTHON
-      - name: Use frozen native reference
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
-        with:
-          name: native-reference-linux-x64
-          run-id: 34310637093
-          github-token: ${{ github.token }}
-          path: .native-reference
       - name: Run real keyboard comparison without a model
         run: bash e2e/ci/native-linux-probe.sh
       - name: Retain first outcomes, identity and owned cleanup
