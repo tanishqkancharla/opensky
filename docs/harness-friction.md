@@ -3681,3 +3681,10 @@ Corrected CI34599558702 at75a7eb96e34a76e9c6503c8f72630afe7833d8ed passes3/3 no-
 This isolates matching keyboard delivery for the reproduced failure and supports no keyboard patch for that sequence. It does not certify native selectText, which is unavailable in the Linux client, or alter any paid task score. Writer/native-REPL/temporary exits are verified; driver/WM cleanup uses the hosted shell trap without a separate verified-exit receipt. The initial artifact-path inspector attempt failed before any report was written; using the actual downloaded artifacts/ root resolved the local inspection error without modifying evidence.
 
 Iteration friction: first apt download took10m24s for122MB, whereas corrected entire run took2m14s; mirror throughput is variable. Future package-archive caching may reduce that variance while keeping ordinary APT resolution/checksums. No cache or image change was made to this comparison.
+
+
+### CAMPAIGN-PROMOTION-01 — current first-five schema and safe promotion
+
+The previous release adopter/tail target SDK2d/driver403 and a different first-five schema; reusing them for current fcd/ed9 would be incorrect. New local `work/adopt-linux-full20.py` normalizes the current tasks mapping, validates exact original dispatches/settlement/saved outcomes and pair fingerprints using existing validators, checks committed driver/manifest/scoring pins, and recursively hashes all retained first-arm evidence. It preserves valid task failures and never dispatches or raises the budget.
+
+Actual inspection verifies three pairs and338evidence files/receipts. An explicit adoption attempt correctly refuses missing font07/08 and Code09/10; no selection is created. All15tail mappings match the prior draft, parent traversal is rejected, and346protected files remain byte-identical. The existing dispatcher scoring/source preflight also passes. Independent review corrected strict cap display and orphan-directory/path checks. Positive adoption awaits real completed first-five evidence; the new tail executor remains unimplemented. No score or paid budget changed.
