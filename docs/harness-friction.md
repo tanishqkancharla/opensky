@@ -3674,3 +3674,12 @@ The isolated test checkout starts at fcd01bb0a12a9004c83407bb26549e7ae7401025. P
 
 
 All consumer captures explicitly request disableDiffing:true, including postcommit error inspection. Setup verifies the normal Sort entries ascending checkbox is unselected without toggling it. Retained OS05 call20 screenshot renders the dropdown as a black rectangle and its AX says no changes; therefore no reliable visible-option assertion can be added before Home through that evidence path. Call21 Home/Enter yields D5=Pass and call22 Alt+Down/Home/Enter yields D4=Pass, supporting the first-item control for the displayed unsorted Entries order. C02 retains the live popup image/AX and strictly checks actual saved D4=Pass; it does not claim black pixels reveal option text. This observation limitation is preserved rather than bypassed with a new input backend.
+
+
+### DROPDOWN-ALLOWED-CONSUMER-02 — explicitly reject the selected AutoInput suffix
+
+The retained real run dropdown-consumer-ed9-before-01 confirms C01's typed Pass was displayed as Pass/Fail/Held with /Fail/Held selected before Enter; the actual AX paragraph also contains that completion. Enter then produced the Invalid value alert. C02's ordinary dropdown choice passed, saving only D2=Fail, D3=Fail and D4=Pass with all28 exact validation rules unchanged. The original failed C01 test and unsaved original workbook remain evidence; normal AutoInput is not changed. Independent source/hash/image/cleanup and saved-file verification is retained in linux-office-setup/dropdown-consumer-ed9-before-01/independent-consumer-check.json.
+
+C03 adds a positive public SDK consumer control: repeat the same Fail/Fail/Pass input, capture the actual full editor state, press Backspace once to reject the selected completion, capture again, and commit/save. It retains the same exact whole-workbook and three-choice assertions. This tests the visible user's completion-rejection action rather than assuming typeText defeats AutoInput. No product code, setup fixture, C01/C02 body, application preference or scorer changes. Local typecheck and immutable one-case staging are preparation only; C03 has not executed.
+
+C02's app-scoped popup image is black, whereas a separate native full-desktop observation from the earlier paired run showed list options. Those different captures are not a same-state causal proof. A proposed later diagnostic will retain app-window and root-desktop captures with no intervening input in one disposable desktop; it does not change the product capture route or this consumer test.
