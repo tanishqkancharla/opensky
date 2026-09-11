@@ -49,7 +49,7 @@ jobs:
               'opensky-driver', 1, 'ed9fd15e39a1d2acd07c4f3078440c3ab2ad44f2')
           PYTHON
           sha256sum .driver/opensky-driver > artifacts/linux-office/driver-sha256.txt
-      - name: Run both public SDK cases once on the hosted desktop
+      - name: Run the exact panel and Undo SDK replay once
         run: |
           xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
             bash e2e/ci/linux-calc-refreshed-index.sh

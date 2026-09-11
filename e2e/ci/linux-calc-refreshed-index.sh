@@ -36,7 +36,7 @@ leftovers = sorted(str(p) for p in pathlib.Path('/tmp').glob('opensky-desktop-se
 app_cleanup = [json.loads(p.read_text()) for p in sorted((out/'setup').glob('*/cleanup.json'))]
 report = {'exitCode': result, 'ownedPidsRemaining': alive, 'runtimeRemoved': not runtime.exists(),
           'fixtureTemporaryPathsRemaining': leftovers, 'appCleanup': app_cleanup,
-          'status': 'passed' if not alive and not runtime.exists() and not leftovers and len(app_cleanup)==2 and all(x.get('verifiedExited') and x.get('status')=='passed' for x in app_cleanup) else 'failed'}
+          'status': 'passed' if not alive and not runtime.exists() and not leftovers and len(app_cleanup)==1 and all(x.get('verifiedExited') and x.get('status')=='passed' for x in app_cleanup) else 'failed'}
 (out/'runner-cleanup.json').write_text(json.dumps(report, indent=2)+'\n')
 if report['status'] != 'passed': raise SystemExit(1)
 PYTHON
@@ -75,6 +75,6 @@ env={'sdkSource':os.environ['GITHUB_SHA'],'runId':os.environ['GITHUB_RUN_ID'], '
 (out/'environment.json').write_text(json.dumps(env,indent=2)+'\n')
 PYTHON
 cd e2e
-npm test -- specs/linux-calc-refreshed-index.test.ts --testNamePattern '^REFRESH-L0[12]:' \
+npm test -- specs/linux-calc-refreshed-index.test.ts --testNamePattern '^REFRESH-L03:' \
   --bail=0 --retry=0 --maxWorkers=1 --reporter=verbose --reporter=json \
   --outputFile.json="$OPENSKY_LINUX_OFFICE_ARTIFACT/results.json"
