@@ -9,7 +9,7 @@ const calc = desktopSetupTest({
 // Preserve the agent's actual formula-toolbar panel click before the edit/Undo
 // sequence. REFRESH-L02 instead uses Ctrl+Home to isolate workbook state.
 calc("REFRESH-L03: edits a fresh blank-cell index after the agent's panel and undo sequence", { timeout: 180_000 }, async ({ app, document }) => {
-  const initial = await app.getAXStateAndScreenshot();
+  const initial = await app.getAXStateAndScreenshot({ disableDiffing: true });
   expect(initial.state).toMatch(/tool bar = "Formula Tool Bar"\n\s+- \[(\d+)\] panel/);
   await app.click(Number(initial.state.match(/tool bar = "Formula Tool Bar"\n\s+- \[(\d+)\] panel/)![1]));
   await app.typeText("B2:B6");
