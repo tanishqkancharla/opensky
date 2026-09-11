@@ -3768,3 +3768,8 @@ This isolated workflow follow-up adds `linux-candidate-{shared,native,capture}-m
 Driver source403572f34, canonical scripts/selections, build steps, release binary and original artifact names/content/retention are unchanged. Local YAML, every shell block and embedded Python parse successfully; original desktop steps and installer job compare unchanged. Retained current native metadata totals54,910bytes and capture10,678bytes, all below the per-file limit; source files were read only. Actual CI upload behavior remains untested. No dispatch or new driver acceptance is claimed; run34561195062 and its source remain frozen.
 
 CALC-MOTION-01 certification staging: wrapper pins exact driver ed9fd15e39a1d2acd07c4f3078440c3ab2ad44f2. The original six SDK workbook contracts pass with independently decoded saved files and owned cleanup. This workflow retains all canonical shared/native/capture lanes and installer unchanged; no certification result exists until dispatch and evidence inspection. Paid campaign remains frozen.
+
+
+### POPUP-CAPTURE-CERTIFICATION-01 — pin final Linux capture source
+
+Prepare unchanged canonical shared/native/capture lanes and installer smoke for driver040d0cacfcaf32e6051b372e2e1e38c2e9c4a22f. Only source pins differ from prior ed9 certification wrapper. Dispatch only after focused real X11 and public SDK popup acceptance pass; preparation alone is not acceptance. Preserve first failures and publish the exact certified binary hash for public SDK replay. Other platforms are unaffected by this Linux-only source diff and are not newly claimed tested.
