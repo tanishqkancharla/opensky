@@ -3752,3 +3752,7 @@ Driver PR4 (codex/linux-observation-visibility) implements visibility-aware rend
 ### INSTALL-CI-ENV-01 — runner context in job environment
 
 GitHub rejected the first installer dispatch before creating a run: `runner.temp` is unavailable in job-level `env`. Resolve the same private paths in a first shell step via `RUNNER_TEMP` and `GITHUB_ENV`. No installer or product behavior changes. The rejected dispatch spent no model budget; remote execution validation remains pending.
+
+### INSTALL-MERGE-01 — verify the merged Linux source
+
+PRs cua#5–#7 were explicitly authorized and merged into codex/linux-observation-visibility. Final merge e25f348b3e0ca9221130e1df8e792ca857cc0505 matches certified403572f34 in all product, test, script and build files; only the screen-origin acceptance note differs. Pin this existing private-path canonical release installer smoke to the merge commit, preserving the installer, evidence and cleanup checks. Full prior certification remains129 cases on403, with9 saved-outcome SDK cases; this post-merge run is pending and does not replace those receipts or imply a main-branch release. YAML/bash/diff checks cover the wrapper before dispatch. No paid model calls or local GUI use.

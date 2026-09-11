@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      CUA_DRIVER_SOURCE_SHA: 2e81b62123eda2807ff15edcf6834389dc938c45
+      CUA_DRIVER_SOURCE_SHA: e25f348b3e0ca9221130e1df8e792ca857cc0505
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_RELEASE_DEBUG: '0'
     steps:
