@@ -95,6 +95,13 @@ export const test = base.extend<Fixture & { fixture: FixtureState }>({
     const sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
       driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
     try {
+      if (task.name.startsWith("PASTE-")) {
+        const profileUser = join(temporary, "profile", "user");
+        await mkdir(profileUser, { recursive: true });
+        const preferences = '<?xml version="1.0" encoding="UTF-8"?><oor:items xmlns:oor="http://openoffice.org/2001/registry"><item oor:path="/org.openoffice.Office.Common/Misc"><prop oor:name="ShowTipOfTheDay" oor:op="fuse"><value>false</value></prop></item></oor:items>';
+        await writeFile(join(profileUser, "registrymodifications.xcu"), preferences);
+        await writeFile(join(artifacts, "initial-profile-preferences.xcu"), preferences);
+      }
       // G04 isolates token invalidation in one window. Coincident maximized
       // sibling bounds currently cause a separate unresolved frame-identity
       // refusal before selection; before01 did not reach its stale assertion.
