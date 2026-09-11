@@ -1,7 +1,7 @@
 import { expect } from "vitest";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { appendFile, writeFile } from "node:fs/promises";
+import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { test as shapeTest } from "./linux-impress-shape-click.js";
 import { withNativeSky, type NativeSky } from "./native-keyboard-control.js";
@@ -13,16 +13,31 @@ type Fixtures = { nativeSession: Session; native: NativeSky; nativeTitlePoint: {
 export const test = shapeTest.extend<Fixtures>({
   nativeSession: async ({ task, ownedWindow, titlePoint }, use) => {
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "shape-click", task.name.split(":")[0]);
+    let geometrySequence = 0;
     const geometry = async () => {
-      const [pid, active, raw] = await Promise.all([
+      const [pid, active, raw, absolute] = await Promise.all([
         exec("xdotool", ["getwindowpid", ownedWindow.xid]),
         exec("xdotool", ["getactivewindow"]),
         exec("xdotool", ["getwindowgeometry", "--shell", ownedWindow.xid]),
+        exec("xwininfo", ["-id", ownedWindow.xid]),
       ]);
+      // Preserve both independent measurements before any geometry assertion.
+      await writeFile(join(artifacts, `window-geometry-${String(++geometrySequence).padStart(2, "0")}.json`), JSON.stringify({
+        observedAt: new Date().toISOString(), expectedOwnedWindow: ownedWindow,
+        pid, active, xdotool: raw, xwininfo: absolute,
+      }, null, 2));
       expect(Number(pid.stdout.trim())).toBe(ownedWindow.pid);
       expect(BigInt(active.stdout.trim())).toBe(BigInt(ownedWindow.xid));
       const fields = Object.fromEntries(raw.stdout.trim().split("\n").map(line => line.split("=")));
-      const bounds = { x: Number(fields.X), y: Number(fields.Y), width: Number(fields.WIDTH), height: Number(fields.HEIGHT) };
+      const exactInteger = (label: string) => {
+        const matches = [...absolute.stdout.matchAll(new RegExp(`^\\s*${label}:\\s*(-?\\d+)\\s*$`, "gm"))];
+        expect(matches).toHaveLength(1);
+        return Number(matches[0]![1]);
+      };
+      const bounds = { x: exactInteger("Absolute upper-left X"), y: exactInteger("Absolute upper-left Y"),
+        width: exactInteger("Width"), height: exactInteger("Height") };
+      expect(Number(fields.WIDTH)).toBe(bounds.width);
+      expect(Number(fields.HEIGHT)).toBe(bounds.height);
       expect(Object.values(bounds).every(Number.isFinite)).toBe(true);
       expect(bounds.width).toBe(ownedWindow.screenshotWidth);
       expect(bounds.height).toBe(ownedWindow.screenshotHeight);
@@ -44,6 +59,21 @@ export const test = shapeTest.extend<Fixtures>({
           expect(matches).toHaveLength(1);
           return matches[0]!;
         });
+        const appTsv = await readFile(join(artifacts, "slide14.tsv"), "utf8");
+        const appRows = appTsv.trim().split("\n").slice(1).map(line => line.split("\t"));
+        const correspondence = words.map(nativeWord => {
+          const matches = appRows.filter(row => row[11] === nativeWord[11] && Number(row[6]) > 200 &&
+            Number(row[6]) < 520 && Number(row[7]) > 290 && Number(row[7]) < 390);
+          expect(matches).toHaveLength(1);
+          const appWord = matches[0]!;
+          return { word: nativeWord[11], app: appWord.slice(6, 10).map(Number), native: nativeWord.slice(6, 10).map(Number),
+            offset: [Number(nativeWord[6]) - Number(appWord[6]), Number(nativeWord[7]) - Number(appWord[7])] };
+        });
+        await writeFile(join(artifacts, "native-word-correspondence.json"), JSON.stringify({ before, correspondence }, null, 2));
+        for (const word of correspondence) {
+          expect(word.native.slice(2)).toEqual(word.app.slice(2));
+          expect(word.offset).toEqual([before.bounds.x, before.bounds.y]);
+        }
         const textBounds = {
           left: Math.min(...words.map(row => Number(row[6]))), top: Math.min(...words.map(row => Number(row[7]))),
           right: Math.max(...words.map(row => Number(row[6]) + Number(row[8]))),
@@ -57,8 +87,8 @@ export const test = shapeTest.extend<Fixtures>({
         const after = await geometry();
         expect(after).toEqual(before);
         await writeFile(join(artifacts, "native-point-verification.json"), JSON.stringify({
-          before, after, appScreenshotPoint: titlePoint, nativePoint: point, nativeTextBounds: textBounds,
-          nativeScreenshot: nativeImage, method: "Owned X11 client origin plus app screenshot point, independently inside native screenshot OCR title; no assumed equal coordinates", verified: true,
+          before, after, correspondence, appScreenshotPoint: titlePoint, nativePoint: point, nativeTextBounds: textBounds,
+          nativeScreenshot: nativeImage, method: "xwininfo absolute owned-client origin plus app screenshot point, verified against exact same-word OCR box sizes and translation; xdotool geometry retained only as a diagnostic", verified: true,
         }, null, 2));
         const screenshotText = async () => {
           const image = await sky.get_screenshot();
