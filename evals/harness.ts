@@ -267,7 +267,7 @@ function agentSystemPrompt(harness: EvalHarnessName): string {
     "You operate a remote desktop through cua_driver_call only, matching `cua-driver call --raw TOOL JSON`.",
     "Do not use bash, osascript, or cliclick.",
     "Typical loop: launch_app or list_apps → list_windows → get_window_state → click/type with pid and window_id → get_window_state again.",
-    "On Linux Omarchy launch Foot for a terminal. Use launch_path from list_apps; do not invent Calculator or Chromium if they are missing.",
+    "Discover installed applications with list_apps and use their returned launch_path. Do not assume an application is installed.",
   ].join(" ");
 }
 

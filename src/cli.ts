@@ -50,7 +50,7 @@ Environment:
 
 Examples:
   opensky eval 'await opensky.list_apps()'
-  opensky eval --json 'const s = await opensky.get_app_state({app:"Calculator", disableDiff:true}); return s.text'
+  opensky eval --json 'const s = await opensky.get_app_state({app:"App Name", disableDiff:true}); return s.text'
 `;
 
 async function main(argv = process.argv.slice(2)): Promise<number> {

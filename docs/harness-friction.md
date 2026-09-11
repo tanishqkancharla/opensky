@@ -3707,3 +3707,15 @@ The frozen evaluation build refuses native paste. This candidate routes Linux pl
 ### PASTE-G01 — preserve sibling focus and document contents on paste refusal
 
 The positive PASTE-L01 case verifies an actual saved paste. The distinct PASTE-G01 consumer check binds an App to the target Writer document, brings its same-process sibling forward, attempts public App.paste, then verifies focus and a subsequent normal sibling edit. Both saved documents are the external outcome: no unexpected paste in either document and the later sibling typing appears exactly once. It reuses the existing owned two-window fixture and ordinary Tip of the Day preference; the original selection cases keep their existing setup. TypeScript no-emit and whitespace checks pass. Remote PASTE-G01 passed in49.78seconds at SDK aad608b0fee3296749b2dababe50dca390ce5c57 with driver445884192 and binary e9cfd5cd24d9fc2ae1df2bdc443924cbdb7174dd16c6a8dd0af41a91ebcbd770. The expected exact-focus rejection, retained sibling focus and independent saved ODT texts all passed; owned process, temporary directory and container cleanup passed. Evidence: work/native-paste-focus-445-independent-check.json. This test is not a substitute for successful paste, active modal handling or clipboard-owner race coverage.
+
+
+### GENERIC-SKILL-01 — remove named-app hints and refresh the bundled skill
+
+The alternate driver evaluation prompt carried a named terminal recommendation,
+and distribution examples named one calculator. Removed the recommendation and
+made samples neutral. The runtime's native paste remains PID/window based with
+no app-name selection. Updated the bundled skill's Linux X11 plaintext paste
+contract and uncertainty limits. Package dry-run includes the skill; a temporary
+Codex skill installation matched its bytes and was cleaned up. Frozen V3 is
+unchanged. Its agents used inline API docs; loading the packaged skill into the
+next evaluation version remains to be implemented and validated.

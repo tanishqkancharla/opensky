@@ -153,3 +153,15 @@ desirable contracts, not executable OpenSky APIs.
 
 Update a principle only when a finding generalizes beyond one task or tool.
 Prefer fixing the interface over teaching the model another exception.
+
+
+## Application-neutral interaction
+
+The shipped runtime, model-facing tool descriptions and skill describe generic
+interaction capabilities. They must not contain named-app workarounds, task
+recipes, benchmark-specific solving hints or app-name branches that alter input
+behavior. OS, accessibility-toolkit and browser-protocol adapters implement
+those general capabilities. Task names, initial app/document state and outcome
+oracles belong to evaluation fixtures; solving recipes from those fixtures must
+not enter the evaluated model's context. Ship a readable skill with the package
+and keep its capability descriptions aligned with the public API.

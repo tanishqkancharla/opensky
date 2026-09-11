@@ -1,9 +1,12 @@
 ---
 name: opensky
-description: Drive native desktop apps through an async Node REPL with a native-style cua facade and a backward-compatible opensky API, implemented on Cua Driver. Use when the user asks to operate, click, type, or automate a GUI application on macOS, Windows, or Linux.
+description: Drive native desktop apps through an async Node REPL with a native-style cua facade and a backward-compatible opensky API, implemented on OpenSky Driver. Use when the user asks to operate, click, type, or automate a GUI application on macOS, Windows, or Linux.
 ---
 
 # opensky
+
+This skill describes the generic interaction API. Choose actions from the current
+application observations; it contains no application-specific task recipes.
 
 Use the `opensky` CLI. It is an **async Node REPL** with native-style `cua` and legacy `opensky` objects preloaded. Do not call `opensky-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
 
@@ -40,13 +43,13 @@ subsequent actions address the exact latest observed window. An explicit legacy
 after a window transition. App observations refuse ambiguous stacking evidence.
 
 ```js
-const app = await cua.getApp("Calculator");
+const app = await cua.getApp("App Name");
 console.log(await app.getAXState());
 await app.click(13);
 return app.getAXState();
 ```
 
-The facade exposes bound app and exact tab objects with camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Exact browser tabs support clipboard paste in text, HTML, and literal Markdown formats. Native paste, hidden tabs, the in-app browser, optional browser capabilities, and host marks remain unsupported or unavailable.
+The facade exposes bound app and exact tab objects with camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Exact browser tabs support clipboard paste in text, HTML, and literal Markdown formats. Native plaintext paste is available on Linux X11 with a supporting OpenSky Driver; see `paste` for its limits. Hidden tabs, the in-app browser, optional browser capabilities, and host marks remain unsupported or unavailable.
 
 Browser queries include bounded source-ordered evidence neighborhoods when the
 helper supports them, retaining unmatched labels beside matches. These are local
@@ -71,14 +74,14 @@ Refresh state after every action (or a short related group). Element indices are
 
 ```js
 const before = await opensky.get_app_state({
-  app: "Calculator",
+  app: "App Name",
   disableDiff: true,
 });
 console.log(before.text);
 
-await opensky.click({ app: "Calculator", element_index: 13 });
+await opensky.click({ app: "App Name", element_index: 13 });
 
-const after = await opensky.get_app_state({ app: "Calculator" });
+const after = await opensky.get_app_state({ app: "App Name" });
 return after.text;
 ```
 
@@ -87,12 +90,12 @@ Prefer putting a whole loop in one `opensky eval` so the snapshot stays in-proce
 ```bash
 opensky serve
 opensky eval 'state.apps = await opensky.list_apps()'
-opensky eval 'await opensky.click({ app: "Calculator", element_index: 13 })'
+opensky eval 'await opensky.click({ app: "App Name", element_index: 13 })'
 ```
 
 ## Targeting apps
 
-`app` may be a display name (`"Calculator"`), bundle id (`"com.apple.calculator"`), or path (`"/System/Applications/Calculator.app"`).
+`app` may be a display name (`"App Name"`), bundle id (`"com.example.app"`), or path (`"/path/to/App.app"`).
 
 Every returned state has a short opaque `targetHandle`. Pass it as `app` to
 keep addressing that exact window or tab. This matters when multiple targets of
@@ -229,9 +232,20 @@ fails closed and never falls through to native input.
 Exact browser paste uses the currently focused editable element from fresh state.
 It delivers a real paste event with text, HTML, or literal Markdown source and
 leaves the supplied content on the clipboard. Establish editor focus through a
-current type-capable ref first. Native paste remains unavailable pending a
-compound clipboard transaction with safe restoration. Never substitute typing
-without considering the different event and newline semantics.
+current type-capable ref first.
+
+On Linux X11 with a supporting OpenSky Driver, native `paste` accepts plaintext
+up to 16 KiB into the exact observed and focused window. It preserves supported
+prior clipboard formats and restores them only if no newer clipboard owner has
+taken over. Direct transfers are supported; INCR, rich-text input, clipboard
+managers, and apps that negotiate clipboard formats only after input remain
+unsupported. Other native platforms still refuse this operation.
+
+A transfer failure may follow actual input. Observe before retrying and never
+replay an uncertain paste automatically. A newer external copy may be what the
+app consumed; inspect the resulting content. Transfer verification does not
+prove an arbitrary application saved the edit. Never substitute typing without
+considering the different event and newline semantics.
 
 ### `drag`
 
@@ -283,15 +297,15 @@ Do not click through OS permission prompts, password dialogs, or "are you sure" 
 - Always derive indices from fresh state.
 - Treat action failures as ambiguous until state is refreshed. An action may take effect even if the promise rejects.
 - Prefer `set_value()` for exact multiline replacement.
-- Browser `paste()` leaves the supplied content on the clipboard; native paste remains unavailable. Do not substitute typing unless its semantics are acceptable.
+- Browser `paste()` leaves the supplied content on the clipboard. Supported native paste conditionally restores prior contents; preserve newer external copies and observe after uncertain delivery. Do not substitute typing unless its semantics are acceptable.
 - Avoid newlines in `type_text()` when Return could submit.
-- Do not target the agent/IDE itself (Cursor, Codex, Terminal hosting the agent) for safety.
+- Do not target the host agent, its IDE, or the terminal hosting it for safety.
 
 ## CLI cheat sheet
 
 ```bash
 opensky eval --json 'await opensky.list_apps()'
-opensky eval --json 'return await opensky.get_app_state({app:"Calculator", disableDiff:true})'
+opensky eval --json 'return await opensky.get_app_state({app:"App Name", disableDiff:true})'
 opensky run script.js
 opensky serve          # persist JS + opensky snapshot cache across evals (token in ~/.opensky/repl.json)
 opensky stop
