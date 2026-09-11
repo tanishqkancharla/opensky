@@ -47,8 +47,10 @@ subscripts and the required frozen-header region; native additionally left
 extra profit formulas. These failures stay in the metric.
 
 `full20-selection.json` fixes the same original 20 task IDs, hashes of the first
-five pairs, and every remaining arm name/order. The full comparison is in
-progress. Select only those declared arms; do not substitute a later successful
+five pairs, and every remaining arm name/order. The full comparison is complete: OpenSky16/20 and native14/20,
+with13shared successes,3OpenSky-only successes,1native-only success and3shared
+failures. The native-only task is presentation font sizing: OpenSky reached
+the requested sizes but inserted two unwanted line breaks. Select only those declared arms; do not substitute a later successful
 retry or mix software versions. The live scorecard derives completed matched
 tasks, per-arm outcome metrics and the active receipt from retained artifacts.
 Use those artifacts for current counts, not historical prose.
@@ -63,11 +65,23 @@ because an observation timed out. Do not start a second queue while one is live.
 After every completed arm, inspect the actual saved output or external app
 outcome, confirm cleanup and final usage, and report progress. Preserve raw and
 adapted Impress grades; diagnostics cannot repair or regrade agent files.
-Finish the declared set before choosing the next correction from native-only
-failures. Report both/neither/one-sided outcomes and infrastructure exclusions.
+The declared set is finished; prioritize the remaining native-only font gap. Report both/neither/one-sided outcomes and infrastructure exclusions.
 Both agents failing a task does not establish parity.
 
 ## Driver acceptance and remaining work
+
+The separate screen-origin correction2e81b62123eda2807ff15edcf6834389dc938c45
+is in draft driver PR#5. A maximized LibreOffice frame at0,0 was mistaken for
+a renderer-local coordinate provider, adding17pixels to already-screen field
+bounds. Read-only geometry and two public pixel controls isolate that offset.
+Four unchanged font-field controls now save60pt with text preserved; a displaced
+Code indexed Find/Replace test passes before and after. Both use exact binaries,
+independent saved-file checks and verified app/temp/container cleanup. Calc
+indexed/scrolled-cell regressions are the remaining supporting gate before
+fresh paid smoke. A fix to indexed targeting does not establish that an agent
+will choose the correct font-editing sequence. Unfocused setValue+Enter is not
+claimed fixed. Preserve the complete20-task campaign while testing new source.
+
 
 The visibility candidate is stacked on the indexed-object identity correction
 in draft driver PR #4. Seven focused real SDK cases pass on its exact binary:
