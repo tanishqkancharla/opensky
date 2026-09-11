@@ -1,22 +1,19 @@
 # Paired parity evaluations
 
-Status: the two-task smoke campaign completed, followed by a verified five-task
-readiness checkpoint. Native succeeded on 2/5 tasks and OpenSky on 1/5. The
-checkpoint preserves eight valid attempts from `campaign-five-4` and the two
-separately completed strikethrough arms, with all three evaluator revisions
-recorded. It is **not one frozen campaign**. Guard-rejected attempts remain
-invalid; the [results](smoke-results.md) retain their evidence and the observed
-OpenSky paragraph-selection timeout.
+The active objective is remote Linux parity; see
+[the Linux plan](../../docs/linux-parity-plan.md). The first fixed-software
+20-task baseline is complete (native18/20, OpenSky14/20). A separate frozen
+correction campaign has passed its two-task smoke and completed the five-task
+ramp; it is continuing through the same20tasks with first outcomes preserved.
+Current counts come from retained campaign artifacts and the live scorecard.
+Historical mixed-revision macOS readiness results remain in
+[smoke-results.md](smoke-results.md); they are not Linux parity evidence.
 
-The frozen full set has 20 OSWorld tasks: five Writer, eight Calc, five
-Impress and two VS Code tasks. The original upstream scorers are preserved;
-separate content/format checks reject partial edits, changed chart data and
-wrong chart grouping. All 75 spending, policy, admission and saved-file checks
-pass locally. All 15 added task files opened successfully in isolated app
-instances, which stayed alive until normal cleanup; all scratch profiles were
-removed. `fullTaskIds` now freezes the selected 20 IDs. No frozen 20-task score
-exists yet. Setup evidence is retained in
-`evals/runs/expanded-setup-validation.json`.
+The set contains five Writer, eight Calc, five Impress and two VS Code tasks.
+Upstream scores are retained alongside stricter saved-content/format checks and
+the frozen Impress export profile. Setup, deterministic SDK behavior and agent
+task success remain separate kinds of evidence. The local macOS commands below
+are reference documentation; do not run them during the Linux-first phase.
 
 ## Run a gated campaign
 
