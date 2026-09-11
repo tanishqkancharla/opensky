@@ -3743,3 +3743,18 @@ while retaining the exact scorer, or design/validate a semantic “green” rubr
 Do not relax RGB tolerance after observing this result, alter V2, or quietly
 exclude the task. The ongoing20task comparison remains useful strict-benchmark
 evidence but cannot equate every strict failure with a failed user experience.
+
+### WRITER-SAVED-DIAGNOSTIC-01 — fragmented formatting readers
+
+Subscript and strike saved-output checks used separate readers with inconsistent
+reference and terminal-task verification. The local read-only adapter
+work/diagnose-final-desktop.py now supports both kinds through its existing
+pinned manifest/asset and completed task receipt checks. It inspects body/table
+characters and direct formatting, and suppresses positional comparisons when
+text changes. Four retained V1 outcomes and gold/original controls distinguish
+subscript0/8 versus1/8 and strike387/387 versus13/387. Validation report:
+work/writer-diagnostic-adapter-validation.json; reader SHA256
+c37b3a9bb2e886c44df7352bec20906b51b8d41c5b707a7c1cb4d0dc021e2cb4.
+No scores, frozen runtime or references changed. This speeds independent review
+of upcoming results; inherited styles and rendered layout remain unresolved,
+and retained-data checks are not new driver acceptance evidence.
