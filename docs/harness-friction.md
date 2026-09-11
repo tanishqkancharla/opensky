@@ -3690,3 +3690,11 @@ The local checker initially assumed HEAD was the old workflow; committing the
 change exposed that moving-baseline bug. It now compares against exact fcd for
 both original steps and runtime/fetcher/scorer files. Strict checks pass without
 weakening their comparison. This is tooling verification, not agent acceptance.
+
+## LINUX-POPUP-AGENT-CANDIDATE-01 — Pin the certified popup build for a future campaign
+
+- Symptom/layer: V2 intentionally uses the earlier ed9 Calc correction; the standalone merged-popup installer workflow does not supply a paid-agent campaign pin. Starting from the hybrid diagnostic branch would also restore an older driver403 pin.
+- Implemented preparation: isolated candidate from exact55a2d50 (validated manifest asset cache); only linux-agent.yml artifact run/source/hash pins change to canonical run34594188537, artifact `linux-candidate-release-driver`, source040d0cacfcaf32e6051b372e2e1e38c2e9c4a22f and binary SHA25630afe80f94d32b2e53b6df6950eba6bb74c31b0382462822109fc4b70bdb001d.
+- Evidence: retained certified binary and independent build check under work/popup-capture-certified-driver-040; canonical129 and public popup replay in work/popup-capture-merge-acceptance.json. Certified040 full tree equals merged3a8b719e728914adaa27e22852948a4197274e39. Merged driver contains ed9; intervening diff changes capture and popup documentation only, preserving Calc targeting.
+- Identity/tradeoff: retain actual040 build identity rather than relabel the binary as merged3a8. Postmerge installer acceptance is separate evidence, not a replacement binary identity. Artifact availability/retention must be checked before future dispatch.
+- Validation: local binary hash/retained identity, exact three-pin-only workflow comparison, YAML/shell syntax and unchanged SDK/evaluator/native/cache checks. No new GUI/agent acceptance, CI dispatch, push, score change or V2 adoption. A future evaluation must use a newly frozen source/version; the completed/active V2 artifacts remain unchanged.
