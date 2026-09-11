@@ -1,10 +1,10 @@
-name: Linux pixel typing refusal check
+name: Linux visible fixture check
 on:
   workflow_dispatch:
 permissions:
   contents: read
 env:
-  CUA_DRIVER_SOURCE_SHA: ce1b14809a7dedffc19ae501b4b4779d1bb4e949
+  CUA_DRIVER_SOURCE_SHA: 4815d903077a48f9db505b06b6ebf741630b222f
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
   CARGO_PROFILE_TEST_DEBUG: '0'
@@ -32,16 +32,16 @@ jobs:
       - name: Build exact candidate and canonical GTK3 fixture
         run: |
           test "$(git rev-parse HEAD)" = "$CUA_DRIVER_SOURCE_SHA"
-          mkdir -p artifacts/refusal
-          git rev-parse HEAD > artifacts/refusal/source-sha.txt
+          mkdir -p artifacts/visible-fixture
+          git rev-parse HEAD > artifacts/visible-fixture/source-sha.txt
           cargo build --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
           bash libs/cua-driver/tests/fixtures/build/linux.sh --only electron,gtk3
           test -x libs/cua-driver/rust/test-apps/harness-electron/CuaTestHarness.Electron
           test -x libs/cua-driver/rust/test-apps/harness-gtk3/CuaTestHarness.Gtk3
-          libs/cua-driver/rust/target/debug/cua-driver --opensky-driver-identity > artifacts/refusal/identity.json
-          sha256sum libs/cua-driver/rust/target/debug/cua-driver > artifacts/refusal/binary-sha256.txt
-          sha256sum libs/cua-driver/rust/crates/cua-driver/tests/harness_gtk3_test.rs > artifacts/refusal/test-sha256.txt
-      - name: Exercise unchanged foreground and background pixel typing
+          libs/cua-driver/rust/target/debug/cua-driver --opensky-driver-identity > artifacts/visible-fixture/identity.json
+          sha256sum libs/cua-driver/rust/target/debug/cua-driver > artifacts/visible-fixture/binary-sha256.txt
+          sha256sum libs/cua-driver/rust/crates/cua-driver/tests/harness_gtk3_test.rs > artifacts/visible-fixture/test-sha256.txt
+      - name: Exercise visible scroll, popover and AX roster outcomes
         run: |
           export CUA_TEST_WORKSPACE_ROOT="$PWD/libs/cua-driver/rust"
           export CUA_TEST_DRIVER_BIN="$CUA_TEST_WORKSPACE_ROOT/target/debug/cua-driver"
@@ -49,41 +49,46 @@ jobs:
           export CUA_TEST_REQUIRE_FIXTURES=1 CUA_TEST_DRIVER_STDERR=1
           export CUA_E2E_FORBID_SKIPS=1 CUA_E2E_UNRESTRICTED_GUI=1 CUA_REQUIRE_GUI=1
           export CUA_E2E_SOURCE_SHA="$CUA_DRIVER_SOURCE_SHA"
-          export CUA_E2E_DECLARATIONS_FILE="$PWD/artifacts/refusal/cases.jsonl"
-          export CUA_E2E_ENVIRONMENT_FILE="$PWD/artifacts/refusal/environment.jsonl"
-          export CUA_E2E_RESULTS_FILE="$PWD/artifacts/refusal/results.jsonl"
-          export CUA_E2E_RECORDINGS_ROOT="$PWD/artifacts/refusal/recordings"
+          export CUA_E2E_DECLARATIONS_FILE="$PWD/artifacts/visible-fixture/cases.jsonl"
+          export CUA_E2E_ENVIRONMENT_FILE="$PWD/artifacts/visible-fixture/environment.jsonl"
+          export CUA_E2E_RESULTS_FILE="$PWD/artifacts/visible-fixture/results.jsonl"
+          export CUA_E2E_RECORDINGS_ROOT="$PWD/artifacts/visible-fixture/recordings"
           export CUA_E2E_COMPOSITOR=openbox-x11 CUA_E2E_INPUT_BACKENDS=atspi,xsend-event,xtest
           xvfb-run -a --server-args="-screen 0 1920x1080x24" dbus-run-session -- bash -c '
             set -euo pipefail
-            openbox > artifacts/refusal/openbox.log 2>&1 & wm=$!
-            picom --backend xrender --config /dev/null > artifacts/refusal/picom.log 2>&1 & compositor=$!
+            openbox > artifacts/visible-fixture/openbox.log 2>&1 & wm=$!
+            picom --backend xrender --config /dev/null > artifacts/visible-fixture/picom.log 2>&1 & compositor=$!
             trap "kill -TERM $wm $compositor 2>/dev/null || true; wait $wm $compositor 2>/dev/null || true" EXIT
             sleep 2
-            cargo test --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml --test harness_gtk3_test -- --ignored harness_gtk3_type_text_px_ --nocapture --test-threads=1 2>&1 | tee artifacts/refusal/typing.log
+            failures=0
+            for filter in harness_gtk3_ax_tree harness_gtk3_scroll_ harness_gtk3_child_window_; do
+              cargo test --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml --test harness_gtk3_test -- --ignored "$filter" --nocapture --test-threads=1 2>&1 | tee "artifacts/visible-fixture/$filter.log" || failures=$((failures+1))
+            done
+            cargo test --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml --test desktop_scope_linux_test -- --ignored --exact desktop_scope_windowless_scroll_lands_on_control --nocapture --test-threads=1 2>&1 | tee artifacts/visible-fixture/desktop-scroll.log || failures=$((failures+1))
+            test "$failures" = 0
           '
-      - name: Require both exact typed outcomes and original oracles
+      - name: Require all eight typed outcomes and original oracles
         run: |
           python3 - <<'VERIFY'
           import json,os
           from pathlib import Path
-          p=Path('artifacts/refusal')
+          p=Path('artifacts/visible-fixture')
           identity=json.loads((p/'identity.json').read_text())
           assert identity['product']=='opensky-driver' and identity['source']==os.environ['CUA_DRIVER_SOURCE_SHA']
           rows=[json.loads(l) for l in (p/'results.jsonl').read_text().splitlines()]
-          expected={'linux-gtk3-type-text-px-background','linux-gtk3-type-text-px-foreground'}
-          assert len(rows)==2 and {r['cell_id'] for r in rows}==expected
+          expected={'linux-gtk3-ax-tree-ax-not-applicable','linux-gtk3-desktop-scroll-px-foreground'} | {f'linux-gtk3-scroll-{target}-{delivery}' for target in ['ax','px'] for delivery in ['background','foreground']} | {f'linux-gtk3-child-window-ax-{delivery}' for delivery in ['background','foreground']}
+          assert len(rows)==8 and {r['cell_id'] for r in rows}==expected
           for r in rows:
               assert r['test_status']=='pass', r
               assert set(r['oracles']).issubset(set(r['passed_oracles'])), r
               assert (p/r['evidence']['video']).stat().st_size>0
-          (p/'verified-outcomes.json').write_text(json.dumps({'source':identity['source'],'cases':sorted(expected),'allPassed':True,'scope':'Two unchanged canonical rows on development binary; not full release certification'},indent=2))
+          (p/'verified-outcomes.json').write_text(json.dumps({'source':identity['source'],'cases':sorted(expected),'allPassed':True,'scope':'Eight canonical outcomes with public visible setup on development binary; not full release certification'},indent=2))
           VERIFY
       - name: Retain all outcomes and recording evidence
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
         with:
-          name: linux-pixel-refusal-check
-          path: artifacts/refusal
+          name: linux-visible-fixture-check
+          path: artifacts/visible-fixture
           if-no-files-found: error
           retention-days: 14

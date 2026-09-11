@@ -3766,3 +3766,7 @@ CI34558519742 retained a background typing refusal whose structured reason was d
 ### INPUT-REFUSAL-CI-02 — preserve the background sentinel dependency
 
 Focused run34559870891 built exactce1b and foreground typing passed. Background case failed before action because the Electron sentinel fixture was missing; building only GTK3 omitted its external focus/no-leaked-input observer. Preserve this failure. Build both canonical electron and gtk3 fixtures and require executable existence before either row. Same unchanged driver and test source; no runtime acceptance for background until the new result.
+
+### VISIBLE-FIXTURE-CI-01 — verify setup without changing behavioral assertions
+
+Exact driver/test source4815d9030 adds ordinary X11 window resizing and verified visible controls before actions. The isolated workflow exercises all eight affected AX-roster, native-scroll, popover and desktop-scroll outcomes with original oracles. It runs all four groups even if an earlier group fails and retains results/recordings. Scope remains development-binary support, not a substitute for full exact-candidate certification. The product code matches2e81b; pixel refusal fixce1b is intentionally separate. No model spending.
