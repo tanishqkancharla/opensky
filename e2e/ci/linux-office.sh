@@ -46,6 +46,7 @@ if [[ "${OPENSKY_LINUX_AGENT_MODE:-}" == repl ]]; then
   case "${OPENSKY_REPL_CASE:-async-typing}" in
     async-typing) repl_spec=specs/linux-repl-cell.test.ts ;;
     dropdown) repl_spec=specs/linux-dropdown-repl.test.ts ;;
+    native-selection-arrows) repl_spec=specs/linux-native-selection-arrows.test.ts ;;
     *) echo 'Unknown public REPL regression'; exit 2 ;;
   esac
   cd e2e

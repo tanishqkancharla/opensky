@@ -14,7 +14,7 @@ on:
       repl_case:
         description: 'Deterministic public-interface regression; used only in repl mode'
         type: choice
-        options: [async-typing, dropdown]
+        options: [async-typing, dropdown, native-selection-arrows]
         default: async-typing
       setup_task:
         description: 'Benchmark task to validate without a model in setup mode'

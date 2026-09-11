@@ -3633,3 +3633,34 @@ VISIBLE-L01 uses a real Calc List dialog and ordinary public SDK actions. It req
 Driver PR4 (codex/linux-observation-visibility) implements visibility-aware rendering while consuming every original actionable ordinal, retains unknown state, reads actual label relationships without screen-proximity inference, and clears stale sibling ancestry even for passive/hidden containers. It is stacked on the existing identity correction. Build/after acceptance are pending; closed menu descendants and Wayland observations require explicit regression/coverage accounting. No new paid run or agent score is claimed.
 
 - Candidate2ff75 CI34533766015 builds and passes focused Rust checks. visible-controls-after-01 passes hidden-field filtering, labelled Entries editing, and tab visibility/text retention, then fails immediate CTRL+S after OK: the exact bound dialog has closed and the SDK refuses implicit keyboard retargeting. Final public observation shows the original workbook; app exit and empty container inventory verified. Saved choices remain unverified. The test now explicitly asserts returning to the original workbook before saving, matching the observation step in existing dropdown/CLICK-L03 workflows. This adds a visible outcome assertion; it does not remove the guard or alter saved-file expectations. The first failure is retained; no new agent score or acceptance yet.
+
+
+## LIB-011 — Separate Writer arrow semantics from backend key delivery
+
+- Symptom: retained OpenSky SELECT-ARROW-L02/L03 replace the O in H2O instead of
+  the intended 2, through both native Text selection and ordinary Find. A saved
+  wrong character alone does not identify a driver defect.
+- Cause/layer: unresolved. The same logical Find/arrow sequence needs a native
+  Linux screenshot/keyboard control before changing key delivery or selection.
+- Implemented diagnostic: SELECT-ARROW-NATIVE-L03 uses the real pinned native
+  node_repl / @oai/sky, a fresh owned Writer profile and the unchanged three-
+  paragraph ODT fixture. It replays public Find, Right, Left, Shift+Right, Left,
+  Shift+Left and MARK/save, retaining the original digit-intent assertion.
+  Screenshots replace the two observation points; no OpenSky runtime or AT-SPI
+  action is used by the test. Shared setup still verifies the unchanged driver.
+- Evidence: native-rpc.jsonl, initial/intermediate/final screenshots, actual saved
+  ODT, digit-versus-O diagnostic and separate native/app/temporary cleanup
+  receipts are retained even on assertion failure. RPC errors or unresolved
+  cells stop immediately without replay. No model credentials/reservation are
+  accepted by the fixture. Existing CI gains one explicit repl-only case.
+- Validation: local e2e TypeScript, focused Vitest collection, shell syntax and
+  diff checks pass. Original ODT creation/read functions are byte-identical to
+  the retained OpenSky control. Explicitly completed cell handles are accepted;
+  unconfirmed/running handles and errors stop without replay. All six retained
+  native subscript06 js responses have structuredContent=null with execution
+  duration metadata; the client accepts that existing terminal schema. No Linux desktop
+  run, model evaluation or behavioral acceptance has occurred.
+- Tradeoff: native screenshots do not expose OpenSky AX text. A native O result
+  supports common Writer arrow semantics; differing outcomes still require
+  inspection of actual focus, selection and timing before driver attribution.
+  Existing frozen source, package/driver pins and paid scores stay unchanged.
