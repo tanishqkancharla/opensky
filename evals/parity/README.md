@@ -108,9 +108,12 @@ back. Native reference, SDK and driver versions belong in every result.
 - macOS adaptations: report separately, with source task ID and every changed
   setup/action/evaluator assumption. Linux success does not certify macOS.
 
-The installed native Computer Use service advertises macOS app control. Its
-availability in the OSWorld guest remains unverified. No cross-OS comparison is
-an equivalent native-versus-OpenSky pair. In-app browser is excluded.
+The Linux workflow now runs the pinned genuine native Linux runtime and the
+OpenSky SDK on separate disposable Ubuntu desktops. The native screenshot and
+keyboard interface differs from the macOS app interface; its usage guide is
+[`native-linux-guide.md`](native-linux-guide.md). Matched Linux pairs retain the
+native package hash, driver hash, application versions and task/scorer hashes.
+No cross-OS comparison counts as an equivalent pair. In-app browser is excluded.
 
 The first two smoke tasks use the original LibreOffice application, DOCX
 inputs and upstream metrics: heading alignment (`3ef2b351…`) and lowercasing
@@ -127,10 +130,14 @@ omits LibreOffice's separate format-confirmation dialog. That attempt also
 failed automatic cleanup; manual recovery is retained separately. See SET-023
 and SET-024 in `docs/harness-friction.md`.
 
-LibreOffice and the saved-file scorers also run on Linux/Windows. The added
-Linux CI job validates spending, program scope and grading using real DOCX
-specimens; it does not yet run LibreOffice GUI agent tasks. Those can use the
-same task files and graders under Xvfb, following the existing SDK desktop CI.
+LibreOffice and the saved-file scorers also run on Linux/Windows. The current
+[`linux-agent.yml`](../../.github/workflows/linux-agent.yml) workflow runs real
+LibreOffice and VS Code GUI agent tasks on Ubuntu under Xvfb. Its `setup`,
+`repl` and `agent` modes separate environment readiness, deterministic public
+interface controls and paid task completion. Agent mode requires an existing
+cumulative-budget reservation bound to the source revision; setup and repl
+results do not count as agent passes. The frozen campaign workflow pins the
+exact driver binary, native package and adapted scoring profile artifacts.
 
 Agents receive only their assigned desktop interface. Setup files, evaluators,
 expected answers and direct filesystem/HTTP shortcuts are not agent tools.
@@ -144,9 +151,9 @@ real LibreOffice Writer/Calc/Impress and a separate stable VS Code installation.
 VS Code uses an empty user-data directory, no installed extensions, and disabled
 updates/telemetry in that disposable profile. See the [official CLI isolation
 options](https://code.visualstudio.com/docs/configure/command-line#_isolating-vs-code-instances).
-The agent sees the actual macOS version and saves its own file in the original
-format. Original upstream global setup, process killing and save post-actions
-are not executed. This local profile excludes clipboard workflows; the proposed
+Each agent sees its actual operating system and saves its own file in the
+original format. Original upstream global setup, process killing and save
+post-actions are not executed. These profiles exclude clipboard workflows; the proposed
 transpose task is deferred to a future isolated-desktop profile, and was
 replaced before expanded agent results by the split-field task.
 
