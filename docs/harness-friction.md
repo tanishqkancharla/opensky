@@ -3673,3 +3673,20 @@ Preparation validation consists of independently hashing the retained release bi
 - Official action metadata: https://github.com/actions/cache/commit/0057852bfaa89a56745cba8c7296529d2fc39830 and its restore/action.yml, save/action.yml (node20; exact-hit output and explicit paths/key supported).
 
 Remote cache restore/save behavior remains untested. Any future evaluation using this cache must pin the source commit containing this workflow change; it must not be adopted into frozen V2.
+
+Remote validation on exact source2fcd207 completed without a model:
+CI34631602968 was a cold miss, verified40assets/downloaded32, then saved the exact
+manifest cache. CI34632098391 restored the exact key, verified40/downloaded0 and
+skipped cache save. Both passed the unchanged named-sheet control and frozen
+b273feec grading-profile verification, opened the original presentation in the
+isolated desktop, retained an unchanged input file, skipped model admission, and
+verified owned app exit plus temporary removal. Native final screenshot confirms
+the presentation/editor rendered. Reports: work/asset-cache-{cold,warm}-validation.json.
+No agent result or score was produced. Cache storage is subject to GitHub branch
+visibility/eviction; other branches may still start cold. This workflow is ready
+for a future pinned source; frozen V2 remains fcd and cannot adopt it mid-run.
+
+The local checker initially assumed HEAD was the old workflow; committing the
+change exposed that moving-baseline bug. It now compares against exact fcd for
+both original steps and runtime/fetcher/scorer files. Strict checks pass without
+weakening their comparison. This is tooling verification, not agent acceptance.
