@@ -250,7 +250,7 @@ On Linux, this requires the updated driver’s native Text selection operation a
 
 ### `set_value` vs `type_text`
 
-- `set_value` replaces the whole AX value (multiline safe, does not send Return) and is the preferred exact path for sliders, steppers, and date pickers.
+- `set_value` replaces the whole AX value (multiline safe, does not send Return) and is the preferred exact path for sliders, steppers, and date pickers. It does not guarantee keyboard focus. If a later key must reach that control, establish focus with a supported action first; otherwise the key goes to the currently focused control.
 - `type_text` types into a fresh `element_index`, an `x`/`y` field, or the already-verified focused field. Newlines may submit/send.
 
 ### `perform_secondary_action`

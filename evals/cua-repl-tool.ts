@@ -75,6 +75,7 @@ export function createCuaReplToolRuntime(
       "Target methods: getAXState({disableDiffing?, query?, context?, continuation?, emit?}), getScreenshot({emit?}), getAXStateAndScreenshot({disableDiffing?, query?, emit?}), " +
       "click(index | [x, y]), typeText(text), pressKey(key), scroll(index | [x, y], direction, pages?), " +
       "setValue(index, value), selectText(index, text, options?), drag([fromX, fromY], [toX, toY]), performSecondaryAction(index, action). " +
+      "setValue replaces a value without guaranteeing keyboard focus or sending Enter. Later keys go to the focused control; establish focus through a supported action before sending keys intended for that field. " +
       "Coordinates are screenshot-pixel [x, y] tuples, not objects. Browser coordinate input requires a fresh exact-tab screenshot from getScreenshot() or getAXStateAndScreenshot(); actions, navigation, and AX-only observations invalidate that mapping. " +
       "Tabs additionally expose goto(url), back(), forward(), reload(), close(). Use numeric indices from fresh AX state; there are no Playwright locators. " +
       "For a browser field that exposes type but not click, use setValue(index, text) to replace its contents directly; do not click a non-clickable field. " +
