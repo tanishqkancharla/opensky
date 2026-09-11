@@ -39,13 +39,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             clang pkg-config libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev \
-            libei-dev libwayland-dev libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev
-      - name: Build pinned OpenSky Driver
+            libei-dev libwayland-dev libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev \
+            xvfb xauth dbus-x11 openbox x11-utils
+      - name: Compile and test Linux libraries
         env:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
         run: |
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup --no-run
-          cargo build --release --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_selection::tests
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_keysyms_cover_latin1_unicode_and_control_keys
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml hotkey_alias_tests
@@ -57,12 +57,33 @@ jobs:
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
           cargo test --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::tests
-          xvfb-run -a -s '-screen 0 1280x900x24' dbus-run-session -- bash -euo pipefail -c '
-            openbox > /tmp/opensky-popup-openbox.log 2>&1 &
-            wm=$!
-            trap "kill -TERM $wm 2>/dev/null || true; wait $wm 2>/dev/null || true" EXIT
-            CUA_POPUP_CAPTURE_DISPOSABLE_X11=1 cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::live_tests -- --ignored --test-threads=1
-          '
+      - name: Exercise real X11 popup captures
+        env:
+          CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
+          POPUP_ARTIFACT: ${{ runner.temp }}/opensky-popup-x11
+        run: |
+          mkdir -p "$POPUP_ARTIFACT"
+          command -v xvfb-run openbox xprop dbus-run-session > "$POPUP_ARTIFACT/executables.txt"
+          xvfb-run -a -s '-screen 0 1280x900x24' dbus-run-session -- bash -euo pipefail <<'X11'
+          openbox > "$POPUP_ARTIFACT/openbox.log" 2>&1 &
+          wm=$!
+          trap 'kill -TERM "$wm" 2>/dev/null || true; wait "$wm" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 50); do
+            kill -0 "$wm" || { cat "$POPUP_ARTIFACT/openbox.log"; exit 1; }
+            xprop -root _NET_SUPPORTING_WM_CHECK > "$POPUP_ARTIFACT/wm-ready.txt"
+            if grep -Eq 'window id # 0x[1-9a-fA-F]' "$POPUP_ARTIFACT/wm-ready.txt"; then ready=1; break; fi
+            sleep 0.1
+          done
+          test "$ready" = 1
+          CUA_POPUP_CAPTURE_DISPOSABLE_X11=1 cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::live_tests -- --ignored --test-threads=1 2>&1 | tee "$POPUP_ARTIFACT/live-tests.log"
+          X11
+      - name: Build pinned release driver
+        env:
+          CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$CUA_DRIVER_SOURCE_SHA"
+          cargo build --release --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
@@ -76,4 +97,12 @@ jobs:
         with:
           name: sdk-test-driver
           path: driver-artifact
+          retention-days: 14
+      - name: Retain X11 setup and test evidence
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: popup-x11-controls
+          path: ${{ runner.temp }}/opensky-popup-x11
+          if-no-files-found: warn
           retention-days: 14
