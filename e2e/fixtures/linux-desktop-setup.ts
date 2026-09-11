@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { createOpenSky, createCua } from "../../src/index.js";
 import type { App } from "../../src/cua.js";
 import { recordAppTiming } from "./app-timing.js";
+import { placeOwnedWindow, type WindowPlacement } from "./linux-window-placement.js";
 import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 
 import { prepareLinuxBenchmarkApp } from "../../evals/parity/linux-benchmark-app.js";
@@ -29,6 +30,7 @@ type Input = {
   taskId: string; file: string; mode: "--calc" | "--impress" | "--code";
   observedScreenshotSize?: { width: number; heights: number[] };
   calcCellIdentityDiagnostics?: boolean;
+  windowPlacement?: WindowPlacement;
 };
 
 export function desktopSetupTest(input: Input) {
@@ -49,6 +51,7 @@ export function desktopSetupTest(input: Input) {
         });
         launchAttempted = true;
         await withOwnedLinuxApp(launch.options, async (owned) => {
+          if (input.windowPlacement) await placeOwnedWindow(owned, input.windowPlacement, artifacts);
           sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
             driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
           let app = recordAppTiming(await createCua(sdk).getApp(launch.appName), artifacts);
