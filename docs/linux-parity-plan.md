@@ -70,8 +70,8 @@ Both agents failing a task does not establish parity.
 
 ## Driver acceptance and remaining work
 
-The separate screen-origin correction2e81b62123eda2807ff15edcf6834389dc938c45
-is in draft driver PR#5. A maximized LibreOffice frame at0,0 was mistaken for
+The screen-origin correction2e81b62123eda2807ff15edcf6834389dc938c45
+landed through driver PR#5; the final combined merge is recorded below. A maximized LibreOffice frame at0,0 was mistaken for
 a renderer-local coordinate provider, adding17pixels to already-screen field
 bounds. Read-only geometry and two public pixel controls isolate that offset.
 Four unchanged font-field controls now save60pt with text preserved; a displaced
@@ -105,6 +105,10 @@ Independent saved-file inspection confirms full requested font sizes and
 original font families, plus dropdown choices/arrows and unchanged cell values.
 The declared five-task expansion retains these first pairs and adds Writer
 strikethrough, Code replace-all and Calc profit; retain the frozen source.
+Four paired tasks are complete: OpenSky4/4 and native3/4. Native struck only13of
+387required paragraph characters; both editor outputs match exact reference
+text and all10replacements. Profit remains in progress. The live page now
+shows this five-task campaign; historical20-task results remain separate.
 Do not reuse previous native arms or replace the completed20-task results.
 Real task failures may continue through a valid ramp; setup, cleanup, scoring
 or identity failures must be resolved first. Keep task failures and successful
