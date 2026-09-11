@@ -43,6 +43,10 @@ export async function recordEnvironment(options: { repo: string; appPath: string
   }
   await walk(join(options.repo, "src"));
   await walk(join(options.repo, "dist"));
+  // The evaluation injects the shipped OpenSky skill into OpenSky agent prompts.
+  // Include it in the source identity so a changed instruction cannot share a
+  // fingerprint with an earlier candidate.
+  await walk(join(options.repo, "skills"));
   await walk(join(options.repo, "evals/parity"));
   // The real OpenSky REPL imports top-level evaluation adapters as well as
   // src/. Changes there must not escape the campaign drift check.

@@ -13,6 +13,7 @@ import { prepareLinuxBenchmarkApp } from "../linux-benchmark-app.js";
 import { verifyScoringProfile } from "../scoring-profile.js";
 import { runProfile } from "../run-profile.js";
 import { captureLinuxFinalObservation } from "../linux-final-observation.js";
+import { buildOpenSkyEvaluationPrompt, loadOpenSkySkill, writeOpenSkySkillReceipt } from "../opensky-skill.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -103,13 +104,19 @@ try {
       },
       enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
     };
-    const guide = backend === "native" ? await readFile(join(root, "../native-linux-guide.md"), "utf8") :
-      `Use desktop.cua_repl. Bind let app = await cua.getApp(${JSON.stringify(launch.appName)}); then use its public methods and fresh observations. Creation and observations emit automatically.`;
+    const prompt = backend === "native"
+      ? `Task: ${task.instruction}\nYou are using Ubuntu Linux. The document ${task.inputFile} is already open in ${launch.appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${launch.appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${await readFile(join(root, "../native-linux-guide.md"), "utf8")}\nFinish when saved, or report the specific blocker.`
+      : await (async () => {
+        const skill = await loadOpenSkySkill(repo);
+        await writeOpenSkySkillReceipt(artifacts, skill);
+        return buildOpenSkyEvaluationPrompt({ taskInstruction: task.instruction, platform: "Ubuntu Linux", inputFile: task.inputFile,
+          appName: launch.appName, skill, completion: "Finish when saved, or report the specific blocker." }).prompt;
+      })();
     const result = await runCodex({ codex: join(nativeResources, "codex"), model: "gpt-5.6-terra", authentication: "api-key",
       budgetPath: process.env.OPENSKY_REMOTE_BUDGET, preReservedId: process.env.OPENSKY_REMOTE_RESERVATION,
       artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: profile.timeoutMs, maxToolCalls: profile.maxToolCalls,
       mcp, authorizedApps: { [launch.appName]: launch.appName }, desktopProgramScope: scope,
-      prompt: `Task: ${task.instruction}\nYou are using Ubuntu Linux. The document ${task.inputFile} is already open in ${launch.appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${launch.appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nFinish when saved, or report the specific blocker.`,
+      prompt,
     });
     await captureLinuxFinalObservation(artifacts, process.env.OPENSKY_NATIVE_PROBE_PACKAGE);
     const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), taskId, document,

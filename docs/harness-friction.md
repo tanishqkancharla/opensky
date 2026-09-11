@@ -144,6 +144,22 @@ See [scenario contracts and remaining fixture work](../e2e/scenarios.md).
 
 ## Evidence, metrics, and observability
 
+### RUN-013 — evaluation prompts drifted from the shipped skill
+
+- **Symptom/layer:** OpenSky parity arms previously supplied a short inline
+  guide while the packaged `skills/opensky/SKILL.md` was not visible to the
+  evaluated model. The guide could diverge from the installable interface and
+  its bytes were not retained as an evaluation input.
+- **Fix:** both OpenSky parity entrypoints load the packaged skill, prepend its
+  exact contents to the task prompt, store `opensky-skill-receipt.json` with its
+  path and SHA-256, and include `skills/` in the environment source fingerprint.
+  The skill distinguishes the host CLI from a preloaded `cua_repl` transport
+  without prescribing an application workflow.
+- **Evidence:** deterministic prompt/receipt test covers two distinct target
+  names, identical common skill text, content hashing, and retained receipt.
+  This is **contract-confirmed** only; no model, desktop, or scoring run was
+  performed.
+
 ### CLN-008 — operator display labels are not exact session identities
 
 - **Symptom/layer:** e36 retained an ending session whose operator label was

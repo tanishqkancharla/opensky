@@ -8,13 +8,26 @@ description: Drive native desktop apps through an async Node REPL with a native-
 This skill describes the generic interaction API. Choose actions from the current
 application observations; it contains no application-specific task recipes.
 
-Use the `opensky` CLI. It is an **async Node REPL** with native-style `cua` and legacy `opensky` objects preloaded. Do not call `opensky-driver` directly unless `opensky` is unavailable. Do not use `open`, `osascript`, `cliclick`, or focus-stealing GUI scripts.
+## Select the available transport
+
+On a host where the `opensky` CLI is available, it is an **async Node REPL**
+with native-style `cua` and legacy `opensky` objects preloaded. Do not call
+`opensky-driver` directly unless `opensky` is unavailable. Do not use `open`,
+`osascript`, `cliclick`, or focus-stealing GUI scripts.
 
 ```bash
 opensky eval --json 'await opensky.list_apps()'
 ```
 
 `await` works. The last expression is the result. Use `return` for multi-statement snippets.
+
+When a desktop evaluation instead provides a preloaded `cua` object through a
+`cua_repl`-style tool, use that tool and its public `cua` methods directly.
+The object is already bound in the persistent async REPL: do not invoke the
+CLI, import a package, call a driver binary, or assume shell/filesystem tools
+are available. Keep bindings in the REPL, use fresh observations before acting
+on an element, and rely on the tool's normal emissions for observations and
+created objects.
 
 ## Setup check
 

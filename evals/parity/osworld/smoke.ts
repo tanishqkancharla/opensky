@@ -12,6 +12,7 @@ import { recordEnvironment } from "../fingerprint.js";
 import { runProfile } from "../run-profile.js";
 import { verifyDriverRuntime } from "../driver-runtime.js";
 import { verifyScoringProfile } from "../scoring-profile.js";
+import { buildOpenSkyEvaluationPrompt, loadOpenSkySkill, writeOpenSkySkillReceipt } from "../opensky-skill.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -93,11 +94,16 @@ try {
         env: { PARITY_DESKTOP_SCOPE: JSON.stringify(scope), OPENSKY_HOME: join(artifacts, "agent-sdk"), OPENSKY_DRIVER_BINARY: driver, ...(driverSocket ? { OPENSKY_DRIVER_SOCKET: driverSocket } : {}), ...(nativeConfig ? { OPENSKY_NATIVE_REPL_CONFIG: nativeConfig } : {}) },
         enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
       };
-      const guide = backend === "native"
-        ? (await readFile(join(root, "../native-guide.md"), "utf8")).replaceAll('"org.libreoffice.script"', JSON.stringify(appSelector))
-        : `Use desktop.cua_repl. Bind let app = await cua.getApp(${JSON.stringify(appSelector)}); then use the public app methods and fresh observations. Creation and observations emit automatically.`;
+      const prompt = backend === "native"
+        ? `Task: ${task.instruction}\nYou are using macOS ${environment.osVersion}. The document ${task.inputFile} is already open in ${appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${(await readFile(join(root, "../native-guide.md"), "utf8")).replaceAll('"org.libreoffice.script"', JSON.stringify(appSelector))}\nUse straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker.`
+        : await (async () => {
+          const skill = await loadOpenSkySkill(repo);
+          await writeOpenSkySkillReceipt(artifacts, skill);
+          return buildOpenSkyEvaluationPrompt({ taskInstruction: task.instruction, platform: `macOS ${environment.osVersion}`,
+            inputFile: task.inputFile, appName, skill, completion: "Use straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker." }).prompt;
+        })();
       const result = await runCodex({ model: "gpt-5.6-terra", artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: profileLimits.timeoutMs, maxToolCalls: profileLimits.maxToolCalls, mcp, authorizedApps: { [bundleId]: appName, [appPath]: appName }, desktopProgramScope: { ...scope, appSelectors: [...scope.appSelectors] },
-        prompt: `Task: ${task.instruction}\nYou are using macOS ${environment.osVersion}. The document ${task.inputFile} is already open in ${appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${guide}\nUse straight-line public UI calls and simple variable bindings, without helper functions, loops or other imports. Use fresh observed indices or screenshots; never invent element indices. Finish when saved, or report the specific blocker.`,
+        prompt,
       });
       const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), task.id, document,
         ...(scoringProfilePath ? ["--profile", scoringProfilePath, "--expected-profile-sha256", scoringProfile.sha256!] : []),
