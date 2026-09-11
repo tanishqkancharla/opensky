@@ -83,6 +83,14 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
     const sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
       driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
     try {
+      // Ordinary user preference: a fresh profile should not interrupt the
+      // edit with startup tips. No document or input behavior is configured.
+      // LibreOffice 24.2 Common.xcs: /Office.Common/Misc/ShowTipOfTheDay.
+      const profileUser = join(temporary, "profile", "user");
+      await mkdir(profileUser, { recursive: true });
+      const preferences = '<?xml version="1.0" encoding="UTF-8"?><oor:items xmlns:oor="http://openoffice.org/2001/registry"><item oor:path="/org.openoffice.Office.Common/Misc"><prop oor:name="ShowTipOfTheDay" oor:op="fuse"><value>false</value></prop></item></oor:items>';
+      await writeFile(join(profileUser, "registrymodifications.xcu"), preferences);
+      await writeFile(join(artifacts, "initial-profile-preferences.xcu"), preferences);
       await withOwnedLinuxApp({ executable: "/usr/bin/libreoffice", documentTitle: "selection.odt", artifacts,
         args: [`-env:UserInstallation=${pathToFileURL(join(temporary, "profile")).href}`, "--norestore", "--nologo", "--nofirststartwizard", "--writer", document],
         env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
