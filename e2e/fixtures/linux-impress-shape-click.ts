@@ -20,6 +20,7 @@ const inputName = "45_1.pptx";
 type Texts = { slides: { name: string; paragraphs: string[] }[][] };
 type TitleFormatting = { bold: boolean | null; sizePt: number | null };
 type Fixture = { app: App; shapeIndex: number; titlePoint: [number, number]; originalTexts: Texts; splitTitleTexts: Texts;
+  ownedWindow: { pid: number; xid: string; screenshotWidth: number; screenshotHeight: number };
   document: { readTexts(): Promise<Texts>; changed(): Promise<boolean>; readTitleFormatChange(): Promise<{ before: TitleFormatting; after: TitleFormatting }> } };
 const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
@@ -97,7 +98,7 @@ export const test = base.extend<Fixture & { owned: Fixture }>({
       await writeFile(join(artifacts, "input-sha256.txt"), pin.sha256 + "\n");
       const launch = await prepareLinuxBenchmarkApp({ category: "libreoffice_impress", document: path, temporary, artifacts });
       launchAttempted = true;
-      await withOwnedLinuxApp(launch.options, async () => {
+      await withOwnedLinuxApp(launch.options, async (owned) => {
         sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
           driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
         const timed = recordAppTiming(await createCua(sdk).getApp(launch.appName), artifacts);
@@ -144,7 +145,7 @@ export const test = base.extend<Fixture & { owned: Fixture }>({
           const bottom = Math.max(...titleWords.map(w => Number(w[7]) + Number(w[9])));
           const titlePoint: [number, number] = [Math.round((left + right) / 2), Math.round((top + bottom) / 2)];
           await writeFile(join(artifacts, "target.json"), JSON.stringify({ shapeIndex: Number(shapes[0]!.match(/\[(\d+)\]/)![1]), titlePoint, coordinateBasis: "visible title words in same public screenshot; not assumed equal to AT-SPI shape center" }));
-          await use({ app, shapeIndex: Number(shapes[0]!.match(/\[(\d+)\]/)![1]), titlePoint, originalTexts, splitTitleTexts,
+          await use({ app, ownedWindow: { pid: owned.pid, xid: owned.window, screenshotWidth: ready.width, screenshotHeight: ready.height }, shapeIndex: Number(shapes[0]!.match(/\[(\d+)\]/)![1]), titlePoint, originalTexts, splitTitleTexts,
             document: { readTexts: () => readTexts(path), changed: async () => digest(await readFile(path)) !== pin.sha256,
               readTitleFormatChange: async () => ({ before: await readTitleFormatting(source), after: await readTitleFormatting(path) }) } });
         } finally {
@@ -163,6 +164,7 @@ export const test = base.extend<Fixture & { owned: Fixture }>({
       }
     }
   },
+  ownedWindow: async ({ owned }, use) => use(owned.ownedWindow),
   app: async ({ owned }, use) => use(owned.app),
   shapeIndex: async ({ owned }, use) => use(owned.shapeIndex),
   titlePoint: async ({ owned }, use) => use(owned.titlePoint),
