@@ -3682,3 +3682,5 @@ CALC-SELECTION-BUILD-01:15adb passed original two-edit/name-box controls but fai
 ### POPUP-CAPTURE-CI-01 — focused Linux candidate validation
 
 Pin driver3c68363c0 for a release build and focused pure/live-X11 popup capture tests. Live tests run serially on a disposable depth24 Xvfb and real Openbox, with owned WM cleanup. This build-only workflow does not run paid agent evaluations or replace final canonical certification. Build and runtime results are pending.
+
+First build34591610618 failed at driver property-reader E0597 before runtime. Driver040d0cacf fixes the borrow lifetime. Compile Linux test code before release optimization to catch platform-gated errors earlier. The exact pinned rust-cache action supports cache-on-failure:true; enable it so future failed builds retain dependency compilation. This does not recover the first discarded cache or alter runtime test behavior.

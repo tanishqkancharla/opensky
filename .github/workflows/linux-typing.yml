@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 3c68363c037db1beed4120886a7bf7240ed43a0c
+  OPENSKY_DRIVER_REF: 040d0cacfcaf32e6051b372e2e1e38c2e9c4a22f
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_RELEASE_DEBUG: '0'
 
@@ -33,6 +33,7 @@ jobs:
       - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
         with:
           workspaces: 'libs/cua-driver/rust -> target'
+          cache-on-failure: true
       - name: Install build dependencies
         run: |
           sudo apt-get update
@@ -43,6 +44,7 @@ jobs:
         env:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
         run: |
+          cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup --no-run
           cargo build --release --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_selection::tests
           cargo test --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_keysyms_cover_latin1_unicode_and_control_keys
