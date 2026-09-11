@@ -86,11 +86,11 @@ def request(d, w, clipboard, target):
 def owner(state, report):
     d = display(); w = window(d); clipboard = atom(d, "CLIPBOARD"); targets = atom(d, "TARGETS")
     values = [(atom(d,t), atom(d,ty), width, raw) for t,ty,width,raw in FORMATS]
+    stopped = [False]
+    signal.signal(signal.SIGTERM, lambda *_: stopped.__setitem__(0, True))
     X.XSetSelectionOwner(d, clipboard, w, 0); X.XFlush(d)
     if X.XGetSelectionOwner(d, clipboard) != w: raise RuntimeError("external owner did not acquire CLIPBOARD")
     with open(state, "w") as f: json.dump({"owner": w, "formats": [{"target":t,"type":ty,"width":width,"bytesHex":raw.hex()} for t,ty,width,raw in FORMATS]}, f)
-    stopped = [False]
-    signal.signal(signal.SIGTERM, lambda *_: stopped.__setitem__(0, True))
     requests = []
     try:
         while not stopped[0]:
@@ -115,21 +115,23 @@ def owner(state, report):
             X.XSendEvent(d, r.requestor, False, 0, C.byref(reply)); X.XFlush(d)
             requests.append({"target": atom_name(d, r.target), "property": prop})
     finally:
-        with open(report, "w") as f: json.dump({"requests": requests, "released": True}, f)
         X.XDestroyWindow(d, w); X.XCloseDisplay(d)
+        with open(report, "w") as f: json.dump({"requests": requests, "released": True}, f)
 def read_all():
     d = display(); w = window(d); clipboard = atom(d, "CLIPBOARD")
-    owner_id = int(X.XGetSelectionOwner(d, clipboard))
-    if not owner_id: return {"owner": 0, "targets": [] , "formats": {}}
-    target_type, target_width, target_raw = request(d, w, clipboard, atom(d, "TARGETS"))
-    if target_width != 32: raise RuntimeError("TARGETS was not ATOM/32")
-    targets = [atom_name(d, int.from_bytes(target_raw[i:i+4], sys.byteorder)) for i in range(0, len(target_raw), 4)]
-    result = {}
-    for target, _, _, _ in FORMATS:
-        type_, width, raw = request(d, w, clipboard, atom(d, target))
-        result[target] = {"type": atom_name(d, type_), "width": width, "bytesHex": raw.hex()}
-    X.XDestroyWindow(d, w); X.XCloseDisplay(d)
-    return {"owner": owner_id, "targets": targets, "formats": result}
+    try:
+        owner_id = int(X.XGetSelectionOwner(d, clipboard))
+        if not owner_id: return {"owner": 0, "targets": [] , "formats": {}}
+        target_type, target_width, target_raw = request(d, w, clipboard, atom(d, "TARGETS"))
+        if target_type != atom(d, "ATOM") or target_width != 32: raise RuntimeError("TARGETS was not ATOM/32")
+        targets = [atom_name(d, int.from_bytes(target_raw[i:i+4], sys.byteorder)) for i in range(0, len(target_raw), 4)]
+        result = {}
+        for target, _, _, _ in FORMATS:
+            type_, width, raw = request(d, w, clipboard, atom(d, target))
+            result[target] = {"type": atom_name(d, type_), "width": width, "bytesHex": raw.hex()}
+        return {"owner": owner_id, "targets": targets, "formats": result}
+    finally:
+        X.XDestroyWindow(d, w); X.XCloseDisplay(d)
 def clear():
     d = display(); clipboard = atom(d, "CLIPBOARD"); X.XSetSelectionOwner(d, clipboard, 0, 0); X.XFlush(d)
     result = {"owner": int(X.XGetSelectionOwner(d, clipboard))}; X.XCloseDisplay(d); return result
