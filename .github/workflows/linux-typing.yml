@@ -111,6 +111,52 @@ jobs:
           path: artifacts/certified-driver
           if-no-files-found: error
           retention-days: 14
+      - name: Prepare small canonical metadata
+        if: always()
+        run: |
+          python3 - <<'METADATA'
+          import hashlib,json,os,pathlib,shutil,subprocess
+          root=pathlib.Path('artifacts/cua-driver/linux')
+          out=pathlib.Path('artifacts/canonical-metadata')
+          out.mkdir(parents=True,exist_ok=False)
+          files={}
+          for name in ('cases.jsonl','results.jsonl','environment.jsonl','summary.md'):
+              source=root/name
+              if source.is_symlink() or not source.is_file():
+                  files[name]={'status':'missing_or_nonregular'}
+              elif source.stat().st_size > 2*1024*1024:
+                  files[name]={'status':'omitted_oversize','bytes':source.stat().st_size}
+              else:
+                  data=source.read_bytes()
+                  shutil.copyfile(source,out/name)
+                  files[name]={'status':'copied','bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+          head=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True)
+          actual=head.stdout.strip() if head.returncode==0 else None
+          receipt={
+              'schema':'opensky-canonical-metadata/v1',
+              'expectedDriverSource':os.environ['CUA_DRIVER_SOURCE_SHA'],
+              'observedCheckoutSource':actual,
+              'sourceMatches':actual==os.environ['CUA_DRIVER_SOURCE_SHA'],
+              'workflowSource':os.environ['GITHUB_SHA'],
+              'workflowRef':os.environ['GITHUB_WORKFLOW_REF'],
+              'repository':os.environ['GITHUB_REPOSITORY'],
+              'runId':int(os.environ['GITHUB_RUN_ID']),
+              'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'runUrl':os.environ['GITHUB_SERVER_URL']+'/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['GITHUB_RUN_ID'],
+              'jobKey':os.environ['GITHUB_JOB'],
+              'lane':os.environ['CUA_E2E_INTERNAL_LANE'],
+              'files':files,
+              'scope':'Early inspection metadata only; not authoritative CI completion or recording acceptance. Missing/oversize files remain in the original full artifact when present.'}
+          (out/'source-pin-receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          METADATA
+      - name: Upload small canonical metadata
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: linux-candidate-${{ matrix.lane }}-metadata
+          path: artifacts/canonical-metadata
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload all canonical outcome evidence
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
