@@ -3664,3 +3664,5 @@ Driver PR4 (codex/linux-observation-visibility) implements visibility-aware rend
   supports common Writer arrow semantics; differing outcomes still require
   inspection of actual focus, selection and timing before driver attribution.
   Existing frozen source, package/driver pins and paid scores stay unchanged.
+
+- Native arrow control CI34548153115 on c441caf completed its exact input sequence and saved H2MARK, replacing O just like both retained OpenSky cases. Independently parsed ODT, verified all request/response IDs with no RPC errors/replays, exact frozen native package/source, and native/app/temp cleanup. Its original digit-intent assertion fails and remains retained at linux-office-setup/native-selection-arrows-before-01. This supports native/OpenSky equivalence for this sequence, not a key-delivery defect. Corrected the new native assertion and OpenSky L02/L03 assertions to expect the independently observed O; L01 still requires direct selection of2. No product input logic or paid score changes. Assertion-only correction is checked against retained real outputs; it is not a new live pass or a retroactive green CI result.

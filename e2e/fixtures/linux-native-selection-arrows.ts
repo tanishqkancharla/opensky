@@ -193,7 +193,7 @@ export const test = base.extend<Fixture & { owned: Fixture }>({
           await writeFile(join(artifacts, "saved-selection-diagnostic.json"), JSON.stringify({
             saved, expectedDigit, expectedO,
             replacement: saved === expectedDigit ? "digit-2" : saved === expectedO ? "letter-O" : "other-or-unsaved",
-            note: "Native screenshot/keyboard control with no model. Retain a failed digit assertion when Writer selects O; do not infer a driver defect from this result alone.",
+            note: "Native screenshot/keyboard control with no model. CI34548153115 established O for this sequence; the original digit-intent failure is retained separately.",
           }, null, 2));
         }
       });

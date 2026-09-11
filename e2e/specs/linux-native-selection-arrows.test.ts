@@ -1,9 +1,9 @@
 import { expect } from "vitest";
 import { test } from "../fixtures/linux-native-selection-arrows.js";
 
-// Preserve the original digit-intent assertion. If native also replaces O,
-// retained saved output is evidence about the common Writer arrow sequence.
-test("SELECT-ARROW-NATIVE-L03: native Find and arrows replace the intended digit", { timeout: 180_000 }, async ({ sky, document }) => {
+// CI34548153115 independently saved H2MARK with this exact native sequence.
+// Preserve its observed selection behavior; retain the original failed hypothesis.
+test("SELECT-ARROW-NATIVE-L03: native Find and arrows replace the selected O", { timeout: 180_000 }, async ({ sky, document }) => {
   await sky.press_key({ key: "CTRL+Home" });
   await sky.press_key({ key: "CTRL+f" });
   await sky.type_text({ text: "H2O" });
@@ -18,5 +18,5 @@ test("SELECT-ARROW-NATIVE-L03: native Find and arrows replace the intended digit
   await sky.get_screenshot();
   await sky.type_text({ text: "MARK" });
   await sky.press_key({ key: "CTRL+s" });
-  await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe("First paragraph must stay unchanged.\nHMARKO—Soak up the Science.\nLast paragraph must stay unchanged.");
+  await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe("First paragraph must stay unchanged.\nH2MARK—Soak up the Science.\nLast paragraph must stay unchanged.");
 });
