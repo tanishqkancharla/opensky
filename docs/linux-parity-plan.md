@@ -99,9 +99,12 @@ on codex/linux-release-campaign with the public focus documentation. Frozen
 source2d8879fcb40861ac8f95fdcd0171642e3a19a635 pins the certified release
 binarye65549f1a2d77d168581a2c2cc84585f90b51748a1cf85c2cf43bfca7a49ba85.
 All nine unchanged SDK cases passed remotely with independently checked saved
-outcomes and owned cleanup. The new matched font pair is active: OpenSky
-CI34563990218 followed by native. Complete fresh font/dropdown smoke before
-five and twenty; retain the same source throughout each campaign.
+outcomes and owned cleanup. Both fresh smoke pairs passed for both agents:
+font CI34563990218/34564322051 and dropdown CI34564774404/34564983546.
+Independent saved-file inspection confirms full requested font sizes and
+original font families, plus dropdown choices/arrows and unchanged cell values.
+The declared five-task expansion retains these first pairs and adds Writer
+strikethrough, Code replace-all and Calc profit; retain the frozen source.
 Do not reuse previous native arms or replace the completed20-task results.
 Real task failures may continue through a valid ramp; setup, cleanup, scoring
 or identity failures must be resolved first. Keep task failures and successful
@@ -130,3 +133,10 @@ iteration problems without changing frozen task expectations.
 See [harness-friction.md](harness-friction.md) for per-fix evidence and
 [linux-parity-history.md](linux-parity-history.md) for retained earlier
 milestones. Historical macOS results do not count as Linux evidence.
+
+PRs cua#5–#7 merged by explicit user authorization into the fork branch
+`codex/linux-observation-visibility`, final merge
+`e25f348b3e0ca9221130e1df8e792ca857cc0505`. Its product/test/build tree matches
+certified403; only a screen-origin documentation note differs. Post-merge
+canonical release installer smoke CI34565230161 is pending. The paid campaign
+keeps its original403 binary and2d source. This is not a main-branch release.
