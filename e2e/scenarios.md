@@ -8,15 +8,20 @@ the prerequisite says so instead of inventing a method.
 
 ## Clipboard and native editing
 
-**CLIP-N01 — restore the user's clipboard** (LIB-009).
+**PASTE-L02 — restore the user's clipboard formats** (LIB-009).
 Given a native editor with a selected insertion point and a real OS pasteboard
-containing unique text, HTML and image payloads, call
+containing text, HTML, opaque 8-bit, 16-bit and 32-bit payloads, call
 `sdk.paste({app: handle, text: "Inserted", format: "text"})`.
 Verify the saved document contains `Inserted` and the OS pasteboard client reads
 the original formats and bytes afterward. These observations jointly establish
 paste-with-restoration. Prerequisite: a real pasteboard reader/writer with ownership
-and cleanup; no equivalent public OpenSky clipboard API currently exists. Preserve
-the runner's initial clipboard only if this test still owns the last change.
+and cleanup; no equivalent public OpenSky clipboard API currently exists.
+
+**PASTE-L03 — paste with an empty clipboard** (LIB-009).
+Given the same native editor and an independently cleared real OS clipboard, call
+`sdk.paste({app: handle, text: "Inserted", format: "text"})`, save, and read the
+ODT through an external document reader. Verify the inserted and surrounding text,
+then verify a separate clipboard requestor still finds no selection owner.
 
 **CLIP-N02 — preserve a concurrent clipboard update** (LIB-009).
 Given the same real clipboard fixture, use a real editor that writes a distinct
@@ -134,7 +139,7 @@ driver results. This is distinct from a stale-element rejection before dispatch.
 
 | Deferred issue | Implemented test bodies | Pending contracts |
 | --- | --- | --- |
-| Native/browser paste (LIB-009/014) | PASTE-B01/02/03, PASTE-N01 | CLIP-N01/02, PASTE-N02 |
+| Native/browser paste (LIB-009/014) | PASTE-B01/02/03, PASTE-L01/02/03 | CLIP-N02, PASTE-N02 |
 | Trusted coordinate scroll (DRV-002) | SCROLL-B01 | Background focus/Space isolation needs the real focus fixture |
 | Semantic context/text/freshness (LIB-015/021/022/023/024) | CONTEXT-B-list/article/table, TEXT-B01, FRESH-B01 | Whole-group continuation, virtualization and general readiness need separately declared source/order cases; these tests make no completeness claim |
 | Existing tabs and identity (LIB-014) | — | TABS-B01/02/03, IDENTITY-B01 |
