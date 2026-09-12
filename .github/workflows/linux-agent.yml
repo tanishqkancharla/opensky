@@ -116,13 +116,13 @@ jobs:
       - name: Use the pinned candidate driver
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
-          name: sdk-test-driver
-          run-id: 34705788499
+          name: linux-candidate-release-driver
+          run-id: 34709344083
           github-token: ${{ github.token }}
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
-          printf '%s\n' '867bbbcea46e8624681cca8fe8ae039cc5cc13007caea2cef48ccd7d8ce62ad3  .driver/opensky-driver' | sha256sum --check -
+          printf '%s\n' '6af15f02dae0bcb0781084d42378da047313aca3a463d63a4580c157606ce566  .driver/opensky-driver' | sha256sum --check -
           chmod +x .driver/opensky-driver
           .driver/opensky-driver --opensky-driver-identity > artifacts/linux-office/driver-identity.json
           python - <<'PYTHON'

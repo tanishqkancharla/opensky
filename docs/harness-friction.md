@@ -3792,3 +3792,8 @@ PROGRAM-REPL-01 hold-timing candidate: passive traces show OpenSky shortcut key 
 
 
 PROGRAM-REPL-01 key-hold build: CI34705788499 succeeded, release binary source57d1b03e046021dbdaca459602c5734170295693 and SHA256867bbbcea46e8624681cca8fe8ae039cc5cc13007caea2cef48ccd7d8ce62ad3. This is a build and focused Rust-check result, not GUI acceptance or full canonical certification. The candidate Linux agent workflow now references that exact build artifact/hash/source for the unchanged program reproduction. Native reference, SDK runtime, input program and saved-file assertions remain unchanged.
+
+
+### Canonical X11 key-hold binary adoption (2026-09-12)
+
+The same driver source `57d1b03e046021dbdaca459602c5734170295693` produced different bytes in the focused and canonical build environments. Canonical CI `34709344083` passed 83 shared, 39 native and 7 capture declarations, plus the installed-product check and cleanup. Pin its retained release artifact and SHA256 `6af15f02dae0bcb0781084d42378da047313aca3a463d63a4580c157606ce566` in the agent workflow. The previous three paired program passes used SHA256 `867bbbcea46e8624681cca8fe8ae039cc5cc13007caea2cef48ccd7d8ce62ad3`; they remain historical evidence. A public paired program smoke on the canonical bytes is pending. No test assertions, runtime logic, model guidance, or agent budget is changed by this pin update.
