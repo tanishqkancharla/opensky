@@ -54,6 +54,74 @@ opensky("a failed cell clears numeric loop evidence", ({ policy }) => {
   expect(policy.accepts('while (i < 2) { await app.click([100 + i, 200]); i++; }')).toBe(false);
 });
 
+native("native for-of var headers keep ordinary values across cells and empty iterables", ({ policy }) => {
+  expect(policy.accepts(`
+    var rows = [["Benedict", "Cucumberbatch", "Manager"], ["Parin", "", "Accountant"]];
+    for (var row of rows) {
+      await sky.type_text({text: row[0]});
+      await sky.press_key({key: "Tab"});
+      if (row[1]) await sky.type_text({text: row[1]});
+      await sky.press_key({key: "Tab"});
+      await sky.type_text({text: row[2]});
+    }
+  `)).toBe(true);
+  expect(policy.accepts('for (var row of []) { await sky.type_text({text:"Unexpected"}); } await sky.type_text({text:row[0]});')).toBe(true);
+});
+
+native("var for-of headers persist through branches and enclosing lexical loops", ({ policy }) => {
+  expect(policy.accepts('if (true) { for (var row of [["A"]]) {} }')).toBe(true);
+  expect(policy.accepts('nodeRepl.write(row[0]);')).toBe(true);
+  expect(policy.accepts('if (false) { for (var emptyRow of [["B"]]) {} }')).toBe(true);
+  expect(policy.accepts('nodeRepl.write(emptyRow);')).toBe(true);
+  expect(policy.accepts('for (let i = 0; i < 1; i++) { for (var nestedRow of [["C"]]) {} }')).toBe(true);
+  expect(policy.accepts('nodeRepl.write(nestedRow[0]);')).toBe(true);
+});
+
+opensky("OpenSky for-of headers admit ordinary fixed array destructuring", ({ policy }) => {
+  expect(policy.accepts(`
+    const app = await cua.getApp("Fixture");
+    const rowsA = [[1079, "Bey", "Twice", "Director"]];
+    for (const [cell, first, last, rank] of rowsA) {
+      await app.click(cell);
+      await app.typeText(first);
+      await app.pressKey("Tab");
+      await app.typeText(last);
+      await app.pressKey("Tab");
+      await app.typeText(rank);
+      await app.pressKey("Return");
+    }
+    await app.getAXState({disableDiffing:true});
+  `)).toBe(true);
+});
+
+nativeApp("var loop headers clear overwritten screenshot and import authority", ({ policy }) => {
+  expect(policy.accepts('var fs = await import("node:fs/promises"); const shot = await sky.get_app_state({app:"Fixture"}); var imagePath = shot.screenshot.url;')).toBe(true);
+  expect(policy.accepts('for (var imagePath of ["file:///etc/passwd"]) {}')).toBe(true);
+  expect(policy.accepts('await fs.readFile(imagePath);')).toBe(false);
+  expect(policy.accepts('for (var fs of ["not an import"]) {}')).toBe(true);
+  expect(policy.accepts('await fs.readFile(shot.screenshot.url);')).toBe(false);
+});
+
+nativeApp("a skipped branch still exports an untrusted var loop binding", ({ policy }) => {
+  expect(policy.accepts('const fs = await import("node:fs/promises"); if (false) { for (var path of ["/etc/passwd"]) {} }')).toBe(true);
+  expect(policy.accepts('await fs.readFile(path);')).toBe(false);
+});
+
+opensky("lexical loop headers restore an outer app and var headers clear app and numeric authority", ({ policy }) => {
+  expect(policy.accepts('const app = await cua.getApp("Fixture"); let i = 0; const rows = [["local"]]; for (const [app] of rows) {} await app.pressKey("ENTER");')).toBe(true);
+  expect(policy.accepts('var app = await cua.getApp("Fixture"); var i = 0; for (var app of []) {}')).toBe(true);
+  expect(policy.accepts('await app.pressKey("ENTER");')).toBe(false);
+  expect(policy.accepts('for (var i of []) {}')).toBe(true);
+  expect(policy.accepts('while (i < 2) { i++; }')).toBe(false);
+});
+
+opensky("for-of headers reject unsupported destructuring forms", ({ policy }) => {
+  expect(policy.accepts('const rows = [["x"]]; for (const {row} of rows) {}')).toBe(false);
+  expect(policy.accepts('const rows = [["x"]]; for (const [row = "fallback"] of rows) {}')).toBe(false);
+  expect(policy.accepts('const rows = [["x"]]; for (const [...row] of rows) {}')).toBe(false);
+  expect(policy.accepts('const rows = [["x"]]; for (const [[row]] of rows) {}')).toBe(false);
+});
+
 nativeApp("branch and loop joins do not export screenshot authority", ({ policy }) => {
   expect(policy.accepts('const fs = await import("node:fs/promises"); let shot; if (true) { shot = await sky.get_app_state({app:"Fixture"}); }')).toBe(true);
   expect(policy.accepts('await fs.readFile(shot.screenshot.url);')).toBe(false);

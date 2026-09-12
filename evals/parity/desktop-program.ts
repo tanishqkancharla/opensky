@@ -15,6 +15,7 @@ export class DesktopProgramPolicy {
   private screenshotImports = new Map<string, "fs" | "url" | "fileURLToPath" | "readFile">();
   private screenshotPaths = new Set<string>();
   private numericBindings = new Set<string>();
+  private varBindings = new Set<string>();
   constructor(readonly scope: DesktopProgramScope) {}
   executionFailed(): void {
     // A failed assignment may leave an older value in the real REPL. Require
@@ -32,18 +33,23 @@ export class DesktopProgramPolicy {
       let imports = new Map(this.screenshotImports);
       let paths = new Set(this.screenshotPaths);
       let numeric = new Set(this.numericBindings);
+      let vars = new Set(this.varBindings);
       const scopes: Set<string>[] = [];
-      type Environment = { bindings: Set<string>; apps: Set<string>; states: Set<string>; imports: Map<string, "fs" | "url" | "fileURLToPath" | "readFile">; paths: Set<string>; numeric: Set<string> };
-      const snapshot = (): Environment => ({ bindings: new Set(bindings), apps: new Set(apps), states: new Set(states), imports: new Map(imports), paths: new Set(paths), numeric: new Set(numeric) });
+      type Environment = { bindings: Set<string>; apps: Set<string>; states: Set<string>; imports: Map<string, "fs" | "url" | "fileURLToPath" | "readFile">; paths: Set<string>; numeric: Set<string>; vars: Set<string> };
+      const snapshot = (): Environment => ({ bindings: new Set(bindings), apps: new Set(apps), states: new Set(states), imports: new Map(imports), paths: new Set(paths), numeric: new Set(numeric), vars: new Set(vars) });
       const restore = (environment: Environment): void => {
         bindings = new Set(environment.bindings); apps = new Set(environment.apps); states = new Set(environment.states);
-        imports = new Map(environment.imports); paths = new Set(environment.paths); numeric = new Set(environment.numeric);
+        imports = new Map(environment.imports); paths = new Set(environment.paths); numeric = new Set(environment.numeric); vars = new Set(environment.vars);
       };
       const intersect = <T>(base: Set<T>, left: Set<T>, right: Set<T>) => new Set([...base].filter(value => left.has(value) && right.has(value)));
       // An if branch or a loop may not run. Only authority held before it and
       // retained by every checked path can survive after it.
       const join = (base: Environment, left: Environment, right: Environment): void => {
-        bindings = new Set(base.bindings);
+        // `var` declarations are function/global scoped, including when the
+        // declaring branch or loop body does not run. Keep only their bare
+        // value binding across a join; all authority still uses intersection.
+        vars = new Set([...base.vars, ...left.vars, ...right.vars]);
+        bindings = new Set([...base.bindings, ...vars]);
         apps = intersect(base.apps, left.apps, right.apps);
         states = intersect(base.states, left.states, right.states);
         paths = intersect(base.paths, left.paths, right.paths);
@@ -202,6 +208,36 @@ export class DesktopProgramPolicy {
         }
         return true;
       };
+      const loopBindingNames = (pattern: any): string[] | null => {
+        if (pattern?.type === "Identifier") return forbidden.has(pattern.name) ? null : [pattern.name];
+        if (pattern?.type !== "ArrayPattern") return null;
+        const names: string[] = [];
+        for (const element of pattern.elements) {
+          // Holes are inert. Defaults, rest bindings, nested patterns and
+          // object patterns can execute or introduce shapes this boundary does
+          // not model, so they stay outside the admitted subset.
+          if (element === null) continue;
+          if (element.type !== "Identifier" || forbidden.has(element.name) || names.includes(element.name)) return null;
+          names.push(element.name);
+        }
+        return names.length ? names : null;
+      };
+      const forOfDeclaration = (left: any): { kind: "var" | "let" | "const"; names: string[] } | null => {
+        if (left?.type !== "VariableDeclaration" || !["var", "let", "const"].includes(left.kind) || left.declarations.length !== 1) return null;
+        const entry = left.declarations[0];
+        if (entry.init !== null) return null;
+        const names = loopBindingNames(entry.id);
+        return names ? { kind: left.kind, names } : null;
+      };
+      const bindIterableValues = (names: string[], lexical: boolean): void => {
+        for (const name of names) {
+          // An iterable element is ordinary data. If it replaces a prior
+          // binding, it must not retain screenshot, import, app or numeric
+          // provenance from that prior value.
+          bindings.add(name); apps.delete(name); states.delete(name); imports.delete(name); paths.delete(name); numeric.delete(name);
+          if (lexical) declare(name); else vars.add(name);
+        }
+      };
       const expression = (node: any): boolean => {
         if (this.scope.backend === "native" && node.type === "AssignmentExpression" && node.operator === "=" && member(node.left, "globalThis", "sky") && importedSky(node.right)) return true;
         if (node.type === "UpdateExpression") return update(node);
@@ -221,13 +257,7 @@ export class DesktopProgramPolicy {
         }
         return value(node);
       };
-      const block = (statement: any): boolean => {
-        const before = snapshot();
-        scopes.push(new Set());
-        const accepted = statements(statement.body);
-        const locals = scopes.pop()!;
-        if (!accepted) return false;
-        const after = snapshot();
+      const restoreLocals = (before: Environment, after: Environment, locals: Set<string>): void => {
         for (const name of locals) {
           const restoreBinding = <T>(set: Set<T>, prior: Set<T>, value: T) => prior.has(value) ? set.add(value) : set.delete(value);
           restoreBinding(after.bindings, before.bindings, name);
@@ -238,6 +268,15 @@ export class DesktopProgramPolicy {
           const priorImport = before.imports.get(name);
           if (priorImport) after.imports.set(name, priorImport); else after.imports.delete(name);
         }
+      };
+      const block = (statement: any): boolean => {
+        const before = snapshot();
+        scopes.push(new Set());
+        const accepted = statements(statement.body);
+        const locals = scopes.pop()!;
+        if (!accepted) return false;
+        const after = snapshot();
+        restoreLocals(before, after, locals);
         restore(after);
         return true;
       };
@@ -249,7 +288,7 @@ export class DesktopProgramPolicy {
       const sameMap = <K, V>(left: Map<K, V>, right: Map<K, V>) => left.size === right.size && [...left].every(([key, value]) => right.get(key) === value);
       const sameEnvironment = (left: Environment, right: Environment) =>
         sameSet(left.bindings, right.bindings) && sameSet(left.apps, right.apps) && sameSet(left.states, right.states) &&
-        sameMap(left.imports, right.imports) && sameSet(left.paths, right.paths) && sameSet(left.numeric, right.numeric);
+        sameMap(left.imports, right.imports) && sameSet(left.paths, right.paths) && sameSet(left.numeric, right.numeric) && sameSet(left.vars, right.vars);
       // Re-run each loop transfer from a descending invariant until it reaches
       // a fixed point. This abstracts every later iteration without imposing a
       // runtime iteration limit: each capability set can only lose members.
@@ -298,14 +337,30 @@ export class DesktopProgramPolicy {
           return true;
         }
         if (statement.type === "ForOfStatement") {
-          if (!value(statement.right)) return false;
-          const base = snapshot(); scopes.push(new Set());
-          const initialized = statement.left?.type === "VariableDeclaration" && statement.left.declarations.length === 1 && declaration(statement.left, true);
-          if (!initialized) return false;
+          if (statement.await || !value(statement.right)) return false;
+          const loop = forOfDeclaration(statement.left); if (!loop) return false;
+          const base = snapshot();
+          if (loop.kind === "var") {
+            // `var` is function/global scoped and exists as undefined even
+            // when the iterable has no elements. Keep the binding across REPL
+            // cells, but clear any authority held by an overwritten value.
+            bindIterableValues(loop.names, false);
+            const entry = snapshot();
+            const fixed = loopFixedPoint(entry, () => branch(statement.body) !== null);
+            if (!fixed) return false;
+            join(entry, fixed, entry);
+            return true;
+          }
+          scopes.push(new Set());
+          bindIterableValues(loop.names, true);
           const entry = snapshot();
           const fixed = loopFixedPoint(entry, () => branch(statement.body) !== null);
           if (!fixed) return false;
-          scopes.pop(); join(base, fixed, base);
+          const locals = scopes.pop()!;
+          restore(fixed);
+          const after = snapshot();
+          restoreLocals(base, after, locals);
+          join(base, after, base);
           return true;
         }
         return false;
@@ -318,6 +373,7 @@ export class DesktopProgramPolicy {
       this.screenshotImports = imports;
       this.screenshotPaths = paths;
       this.numericBindings = numeric;
+      this.varBindings = vars;
       return ast.body.length > 0;
     } catch { return false; }
   }
