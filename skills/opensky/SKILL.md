@@ -75,6 +75,12 @@ return app.getAXState();
 
 The facade exposes bound app and exact tab objects with camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Exact browser tabs support clipboard paste in text, HTML, and literal Markdown formats. Native plaintext paste is available on Linux X11 with a supporting OpenSky Driver; see `paste` for its limits. Hidden tabs, the in-app browser, optional browser capabilities, and host marks remain unsupported or unavailable.
 
+Native AX state can omit the visible text selection and caret. A control’s
+`selected` flag does not describe a character range; clicking text alone does
+not establish which range is selected. When an action depends on that range, use
+`app.selectText(elementIndex, text)` where supported, or inspect a screenshot
+to verify the visible selection before continuing.
+
 Browser queries include bounded source-ordered evidence neighborhoods when the
 helper supports them, retaining unmatched labels beside matches. These are local
 groups, not proof of page-wide order or completeness. For more context, use
