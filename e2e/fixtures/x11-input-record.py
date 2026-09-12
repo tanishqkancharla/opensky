@@ -2,7 +2,8 @@
 
 Uses the RECORD interface documented by python-xlib's record_demo.py. No input
 injection, window activation, clipboard access, or changes to event selection.
-A delivered event proves server routing, not application processing.
+Device key events and client-delivered focus events do not prove application
+processing. XI2 clients need not receive corresponding core keyboard events.
 """
 import json
 import sys
@@ -21,7 +22,7 @@ if not data.has_extension("RECORD"):
 context = control.record_create_context(0, [record.AllClients], [{
     "core_requests": (0, 0), "core_replies": (0, 0),
     "ext_requests": (0, 0, 0, 0), "ext_replies": (0, 0, 0, 0),
-    "delivered_events": (X.KeyPress, X.FocusOut), "device_events": (0, 0),
+    "delivered_events": (X.FocusIn, X.FocusOut), "device_events": (X.KeyPress, X.KeyRelease),
     "errors": (0, 0), "client_started": False, "client_died": False,
 }])
 control.sync()
@@ -44,7 +45,8 @@ def receive(reply):
         event, pending = rq.EventField(None).parse_binary_value(pending, data.display, None, None)
         if event.type not in (X.KeyPress, X.KeyRelease, X.FocusIn, X.FocusOut):
             continue
-        value = {"kind": "event", "clientIdBase": reply.id_base, "type": event.type}
+        value = {"kind": "event", "clientIdBase": reply.id_base, "type": event.type,
+                 "scope": "device" if event.type in (X.KeyPress, X.KeyRelease) else "client"}
         for name in ("detail", "time", "state", "mode", "sequence_number", "send_event", "window", "event", "root", "child"):
             if hasattr(event, name):
                 field = getattr(event, name)

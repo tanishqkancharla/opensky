@@ -56,5 +56,9 @@ export async function withX11InputRecord(directory: string, use: () => Promise<v
     if (!groupExited || child.exitCode !== 0 || !output.split("\n").some(line => line && JSON.parse(line).kind === "stopped")) {
       throw new Error("X11 observer did not finish cleanly; inspect its retained trace and cleanup receipt");
     }
+    const events = output.split("\n").filter(Boolean).map(line => JSON.parse(line));
+    if (!events.some(event => event.type === 2) || !events.some(event => event.type === 3)) {
+      throw new Error("X11 diagnostic has no keyboard press/release coverage for the real program");
+    }
   }
 }
