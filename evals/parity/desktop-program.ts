@@ -45,9 +45,9 @@ export class DesktopProgramPolicy {
       // An if branch or a loop may not run. Only authority held before it and
       // retained by every checked path can survive after it.
       const join = (base: Environment, left: Environment, right: Environment): void => {
-        // `var` declarations are function/global scoped, including when the
-        // declaring branch or loop body does not run. Keep only their bare
-        // value binding across a join; all authority still uses intersection.
+        // Header `var` declarations are function scoped, even in a skipped
+        // branch. Retain bare names for admission; the real REPL decides
+        // their lifetime across cells. Authority still uses intersection.
         vars = new Set([...base.vars, ...left.vars, ...right.vars]);
         bindings = new Set([...base.bindings, ...vars]);
         apps = intersect(base.apps, left.apps, right.apps);
@@ -341,9 +341,9 @@ export class DesktopProgramPolicy {
           const loop = forOfDeclaration(statement.left); if (!loop) return false;
           const base = snapshot();
           if (loop.kind === "var") {
-            // `var` is function/global scoped and exists as undefined even
-            // when the iterable has no elements. Keep the binding across REPL
-            // cells, but clear any authority held by an overwritten value.
+            // A header `var` is function scoped, including empty iteration.
+            // Admit ordinary references without promising cross-cell runtime
+            // persistence, and clear authority from any overwritten value.
             bindIterableValues(loop.names, false);
             const entry = snapshot();
             const fixed = loopFixedPoint(entry, () => branch(statement.body) !== null);
