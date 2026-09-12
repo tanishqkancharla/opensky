@@ -3797,3 +3797,13 @@ PROGRAM-REPL-01 key-hold build: CI34705788499 succeeded, release binary source57
 ### Canonical X11 key-hold binary adoption (2026-09-12)
 
 The same driver source `57d1b03e046021dbdaca459602c5734170295693` produced different bytes in the focused and canonical build environments. Canonical CI `34709344083` passed 83 shared, 39 native and 7 capture declarations, plus the installed-product check and cleanup. Pin its retained release artifact and SHA256 `6af15f02dae0bcb0781084d42378da047313aca3a463d63a4580c157606ce566` in the agent workflow. The previous three paired program passes used SHA256 `867bbbcea46e8624681cca8fe8ae039cc5cc13007caea2cef48ccd7d8ce62ad3`; they remain historical evidence. A public paired program smoke on the canonical bytes is pending. No test assertions, runtime logic, model guidance, or agent budget is changed by this pin update.
+
+
+### LINUX-OCR-READINESS-01 — setup OCR exceeds its process timeout
+
+- Symptom: native CI34680133899 and earlier OpenSky CI34657062131 stopped in readiness OCR before any model process. Both attempts remain unscored with verified cleanup and zero inference settlement.
+- Change: limit only the Tesseract child to one OpenMP thread for both backends. Preserve the screenshot, OCR mode, visible-menu readiness assertion and setup timeout. No agent prompt, product runtime, app routing, task hint or scorer changes.
+- Evidence: the exact native failure frame (SHA256 ad41ae592baab41ca60b4231225ce5e56b97d60bd81b0a2dde9821c689919ebe) on the isolated two-CPU exe.dev image with Tesseract5.3.4 took2.322/2.252seconds by default and0.606/0.592seconds with OMP_THREAD_LIMIT=1. All four outputs have identical SHA256 4767fc294fc490efe1e445e7bdd7af5caabdaf7ecfbaaa148883edc4441d1211. Reports: work/v5-ocr-repro-direct.jsonl and work/v5-ocr-cleanup.txt.
+- Limits: the10-second CI timeout was not reproduced on exe.dev; this verifies lower CPU overhead on one retained frame, not a proven complete fix or general timing guarantee. Exact-source CI setup acceptance remains pending. Frozen V5 stays unchanged.
+
+Integrated after the V6 pre-agent failure CI34718756462 exposed that the previously prepared change was absent from source242a986. Original V6 remains unscored, cleanup verified, $0 model usage. Driver and grading pins remain unchanged; setup-only acceptance on this combined source is pending.
