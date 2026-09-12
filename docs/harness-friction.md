@@ -3742,3 +3742,11 @@ contract and uncertainty limits. Package dry-run includes the skill; a temporary
 Codex skill installation matched its bytes and was cleaned up. Frozen V3 is
 unchanged. Its agents used inline API docs; loading the packaged skill into the
 next evaluation version remains to be implemented and validated.
+
+
+### LINUX-OCR-READINESS-01 — setup OCR exceeds its process timeout
+
+- Symptom: native CI34680133899 and earlier OpenSky CI34657062131 stopped in readiness OCR before any model process. Both attempts remain unscored with verified cleanup and zero inference settlement.
+- Change: limit only the Tesseract child to one OpenMP thread for both backends. Preserve the screenshot, OCR mode, visible-menu readiness assertion and setup timeout. No agent prompt, product runtime, app routing, task hint or scorer changes.
+- Evidence: the exact native failure frame (SHA256 ad41ae592baab41ca60b4231225ce5e56b97d60bd81b0a2dde9821c689919ebe) on the isolated two-CPU exe.dev image with Tesseract5.3.4 took2.322/2.252seconds by default and0.606/0.592seconds with OMP_THREAD_LIMIT=1. All four outputs have identical SHA256 4767fc294fc490efe1e445e7bdd7af5caabdaf7ecfbaaa148883edc4441d1211. Reports: work/v5-ocr-repro-direct.jsonl and work/v5-ocr-cleanup.txt.
+- Limits: the10-second CI timeout was not reproduced on exe.dev; this verifies lower CPU overhead on one retained frame, not a proven complete fix or general timing guarantee. Exact-source CI setup acceptance remains pending. Frozen V5 stays unchanged.

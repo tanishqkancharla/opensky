@@ -81,7 +81,10 @@ try {
       for (let sequence = 1; Date.now() < deadline; sequence++) {
         const path = join(artifacts, `readiness-${sequence}.${backend === "opensky" ? "png" : "jpg"}`);
         await writeFile(path, await screenshot());
-        const text = (await exec("tesseract", [path, "stdout", "--psm", "11"], { timeout: 10_000 })).stdout;
+        const text = (await exec("tesseract", [path, "stdout", "--psm", "11"], {
+          timeout: 10_000,
+          env: { ...process.env, OMP_THREAD_LIMIT: "1" },
+        })).stdout;
         await writeFile(`${path}.txt`, text);
         if (launch.menus.every(menu => new RegExp(`\\b${menu}\\b`).test(text))) { ready = true; break; }
         await delay(250);
