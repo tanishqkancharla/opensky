@@ -61,6 +61,13 @@ export class DesktopProgramPolicy {
         if (node.type === "Identifier") return bindings.has(node.name) || node.name === "undefined";
         if (node.type === "AwaitExpression") return value(node.argument);
         if (node.type === "UnaryExpression") return ["-", "+", "!"].includes(node.operator) && value(node.argument);
+        // Agents calculate coordinates and derive text from observations in
+        // their real REPL. Expressions do not introduce a new capability:
+        // inspect every operand, including branches JavaScript may skip.
+        if (node.type === "BinaryExpression") return ["+", "-", "*", "/", "%", "**", "<", "<=", ">", ">=", "==", "!=", "===", "!==", "&", "|", "^", "<<", ">>", ">>>"].includes(node.operator) && value(node.left) && value(node.right);
+        if (node.type === "LogicalExpression") return ["&&", "||", "??"].includes(node.operator) && value(node.left) && value(node.right);
+        if (node.type === "ConditionalExpression") return value(node.test) && value(node.consequent) && value(node.alternate);
+        if (node.type === "TemplateLiteral") return node.expressions.every(value);
         if (node.type === "ArrayExpression") return node.elements.every(value);
         if (node.type === "ObjectExpression") return node.properties.every((p: any) => p.type === "Property" && p.kind === "init" && !p.computed && !p.method && !forbidden.has(p.key.name ?? p.key.value) && value(p.value));
         if (node.type === "MemberExpression") {

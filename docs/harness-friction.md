@@ -3742,3 +3742,12 @@ contract and uncertainty limits. Package dry-run includes the skill; a temporary
 Codex skill installation matched its bytes and was cleaned up. Frozen V3 is
 unchanged. Its agents used inline API docs; loading the packaged skill into the
 next evaluation version remains to be implemented and validated.
+
+
+### PROGRAM-EXPRESSION-01 — Admit ordinary expressions in desktop programs
+
+- Symptom/layer: V5’s evaluation admission policy rejected coordinate arithmetic, conditional values and templates before either real REPL could execute them. Retained native split-fields evidence also contains a rejected loop; that larger control-flow gap remains open. This is an evaluator limitation, not a driver defect.
+- Implemented candidate: arithmetic/comparison/bitwise expressions, logical expressions, ternary expressions and string templates are admitted when every operand already satisfies the existing capability checks. Both branches are inspected even if JavaScript would skip one. There is no code rewriting, app recipe, new import, dynamic method call or document-read authority.
+- Evidence: parent workspace `work/v5-program-fidelity-reproduction.json` executes the frozen V5 policy and confirms the rejected expression; `e2e/specs/desktop-expression-policy.test.ts` exercises the candidate’s real admission API.
+- Validation: six new policy cases plus24 existing desktop policy cases pass. These establish admission behavior only, not GUI execution or improved task success. SDK/skill/scorer/driver are unchanged; V5 remains frozen at b1d68bb.
+- Remaining work: loops, statement branching, helpers and ordinary data operations still need faithful support with scope checks, followed by a newly pinned two-task real-desktop comparison. Do not claim unrestricted JavaScript parity or adopt this partial candidate in V5.

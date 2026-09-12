@@ -168,6 +168,10 @@ permission requests automatically. Record all decisions. New authorization
 needs stay visible to the user.
 
 Scored document runs admit straight-line public UI calls for the owned app.
+Arguments and bindings may use ordinary arithmetic, comparisons, logical and
+conditional expressions, and string templates over admitted values. Every
+branch remains subject to the same access checks. Loops and helper functions
+remain unsupported; this profile does not measure unrestricted JavaScript parity.
 The transport validates these before execution. Both arms retain their real
 REPL and public SDK. Native documentation is supplied explicitly because a
 standalone MCP connection does not load the plugin skill automatically.
