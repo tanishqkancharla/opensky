@@ -17,7 +17,7 @@ export async function withOwnedCuaRepl<T>(artifacts: string, use: (repl: CuaRepl
 }
 
 /** Both transports keep their installed REPL and execute the caller's code unchanged. */
-export async function withOwnedDesktopRepl<T>(backend: "native" | "opensky", artifacts: string, use: (repl: CuaReplClient) => Promise<T>): Promise<T> {
+export async function withOwnedDesktopRepl<T>(backend: "native" | "opensky", artifacts: string, use: (repl: CuaReplClient) => Promise<T>, options: { recordInputResults?: boolean } = {}): Promise<T> {
   if (process.env.PARITY_DISPATCH_POLICY || process.env.PARITY_DISPATCH_RECEIPT) {
     throw new Error("Deterministic REPL reproduction cannot inherit a paid evaluation admission; use a clean test environment");
   }
@@ -30,6 +30,7 @@ export async function withOwnedDesktopRepl<T>(backend: "native" | "opensky", art
   const child = spawn(process.execPath, ["--import", resolve(root, "node_modules/tsx/dist/loader.mjs"), resolve(root, `evals/parity/${backend}-mcp.ts`)], {
     cwd: root,
     env: { ...process.env, OPENSKY_HOME: directory,
+      OPENSKY_RECORD_INPUT_RESULTS: options.recordInputResults ? "1" : "0",
       PARITY_DESKTOP_SCOPE: JSON.stringify({ backend, appSelectors: ["LibreOffice"], isolatedDesktop: "linux" }) },
     detached: true, stdio: ["pipe", "pipe", "pipe"],
   });

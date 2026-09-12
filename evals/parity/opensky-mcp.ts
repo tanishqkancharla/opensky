@@ -1,5 +1,5 @@
 import { createInterface } from "node:readline";
-import { appendFile, mkdir } from "node:fs/promises";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createCuaReplToolRuntime } from "../cua-repl-tool.js";
 import { OpenSkyDriverClient } from "../../src/driver.js";
@@ -17,7 +17,29 @@ await mkdir(homeDir, { recursive: true });
 const socket = process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET;
 await verifyDriverRuntime({ binaryPath, socket, artifacts: homeDir,
   ...(process.platform === "linux" ? { ownedLinuxPid: Number(process.env.OPENSKY_OWNED_DRIVER_PID) } : {}) });
-const driver = new OpenSkyDriverClient({ binaryPath, socket, autoInstall: false, autoStart: false });
+// Optional passive diagnostics for deterministic reproductions. Retain the
+// actual driver's result before the public facade reduces it. Buffer in memory
+// so recording adds no filesystem wait between consecutive input calls.
+const inputResults: unknown[] = [];
+class InputReceiptDriver extends OpenSkyDriverClient {
+  override async call(tool: string, args: Record<string, unknown> = {}) {
+    if (tool !== "type_text" && tool !== "press_key") return super.call(tool, args);
+    const startedAt = new Date().toISOString();
+    const started = performance.now();
+    try {
+      const result = await super.call(tool, args);
+      inputResults.push({ tool, args, startedAt, elapsedMs: performance.now() - started, result });
+      return result;
+    } catch (error) {
+      inputResults.push({ tool, args, startedAt, elapsedMs: performance.now() - started,
+        error: error instanceof Error ? { name: error.name, message: error.message } : String(error) });
+      throw error;
+    }
+  }
+}
+const recordInputResults = process.env.OPENSKY_RECORD_INPUT_RESULTS === "1";
+const Driver = recordInputResults ? InputReceiptDriver : OpenSkyDriverClient;
+const driver = new Driver({ binaryPath, socket, autoInstall: false, autoStart: false });
 const runtime = createCuaReplToolRuntime(driver, detectTarget(), { homeDir });
 const policy = process.env.PARITY_DESKTOP_SCOPE && new DesktopProgramPolicy(JSON.parse(process.env.PARITY_DESKTOP_SCOPE));
 const admission = configuredAdmission();
@@ -62,4 +84,11 @@ input.on("line", line => {
     }
   });
 });
-input.on("close", () => { void queue.finally(() => runtime.close()); });
+input.on("close", () => {
+  void queue.finally(async () => {
+    try { await runtime.close(); }
+    finally {
+      if (recordInputResults) await writeFile(join(homeDir, "driver-input-results.json"), JSON.stringify(inputResults, null, 2));
+    }
+  }).catch(error => { console.error(error); process.exitCode = 1; });
+});
