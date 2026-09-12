@@ -37,7 +37,7 @@ input.on("line", line => {
         case "tools/list": result = { tools: runtime.tools.map(tool => ({ name: tool.name, description: tool.description, inputSchema: tool.parameters })) }; break;
         case "tools/call": {
           if (policy && request.params?.name !== "cua_repl_wait" && !policy.accepts(request.params?.arguments?.code)) {
-            result = { isError: true, content: [{ type: "text", text: "Evaluation scope: use straight-line public cua calls for the fixture app only. No helper functions or other apps." }] };
+            result = { isError: true, content: [{ type: "text", text: "Evaluation scope: use public cua calls for the fixture app only. Expressions, if statements and for/for-of/while loops are supported. No helper functions or other apps." }] };
             break;
           }
           const tool = runtime.tools.find(tool => tool.name === request.params?.name);

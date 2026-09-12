@@ -167,11 +167,14 @@ accept arbitrary forms, URL authentication, shell escalation or persistent
 permission requests automatically. Record all decisions. New authorization
 needs stay visible to the user.
 
-Scored document runs admit straight-line public UI calls for the owned app.
-Arguments and bindings may use ordinary arithmetic, comparisons, logical and
-conditional expressions, and string templates over admitted values. Every
-branch remains subject to the same access checks. Loops and helper functions
-remain unsupported; this profile does not measure unrestricted JavaScript parity.
+Scored document runs admit scoped public UI calls for the owned app. Arguments
+and bindings may use ordinary arithmetic, comparisons, logical and conditional
+expressions, string templates, numeric data indexing, `if` blocks, and ordinary
+`for`, `for...of`, and `while` loops over admitted values. Every branch and loop
+body remains subject to the same access checks. Bindings and screenshot authority
+created only in a conditional path, loop, or lexical shadow do not escape that
+scope. Function declarations, callbacks and unrestricted JavaScript remain
+unsupported; this profile does not measure unrestricted JavaScript parity.
 The transport validates these before execution. Both arms retain their real
 REPL and public SDK. Native documentation is supplied explicitly because a
 standalone MCP connection does not load the plugin skill automatically.

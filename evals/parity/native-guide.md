@@ -26,4 +26,5 @@ await nodeRepl.emitImage({bytes: await fs.readFile(fileURLToPath(shot.screenshot
 
 Only the screenshot URL returned by get_app_state may be read from disk.
 Do not use filesystem APIs for documents, expected outputs, or anything else.
-Use straight-line UI calls and variable bindings; no helper functions or loops.
+Use public UI calls and variable bindings. Arithmetic, if statements, and
+for/for-of/while loops are supported; helper functions remain unavailable.

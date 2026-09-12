@@ -13,16 +13,24 @@ export type CuaReplClient = { cell(code: string): Promise<CuaReplResult> };
 
 /** Actual evaluation MCP transport; no model, synthetic driver, or alternate CUA bridge. */
 export async function withOwnedCuaRepl<T>(artifacts: string, use: (repl: CuaReplClient) => Promise<T>): Promise<T> {
+  return withOwnedDesktopRepl("opensky", artifacts, use);
+}
+
+/** Both transports keep their installed REPL and execute the caller's code unchanged. */
+export async function withOwnedDesktopRepl<T>(backend: "native" | "opensky", artifacts: string, use: (repl: CuaReplClient) => Promise<T>): Promise<T> {
   if (process.env.PARITY_DISPATCH_POLICY || process.env.PARITY_DISPATCH_RECEIPT) {
     throw new Error("Deterministic REPL reproduction cannot inherit a paid evaluation admission; use a clean test environment");
+  }
+  if (backend === "native" && !process.env.OPENSKY_NATIVE_REPL_CONFIG) {
+    throw new Error("Native REPL acceptance needs the installed native launcher configuration; no substitute backend was started");
   }
   const root = fileURLToPath(new URL("../../", import.meta.url));
   const directory = resolve(artifacts);
   await mkdir(directory, { recursive: true });
-  const child = spawn(process.execPath, ["--import", resolve(root, "node_modules/tsx/dist/loader.mjs"), resolve(root, "evals/parity/opensky-mcp.ts")], {
+  const child = spawn(process.execPath, ["--import", resolve(root, "node_modules/tsx/dist/loader.mjs"), resolve(root, `evals/parity/${backend}-mcp.ts`)], {
     cwd: root,
     env: { ...process.env, OPENSKY_HOME: directory,
-      PARITY_DESKTOP_SCOPE: JSON.stringify({ backend: "opensky", appSelectors: ["LibreOffice"], isolatedDesktop: "linux" }) },
+      PARITY_DESKTOP_SCOPE: JSON.stringify({ backend, appSelectors: ["LibreOffice"], isolatedDesktop: "linux" }) },
     detached: true, stdio: ["pipe", "pipe", "pipe"],
   });
   const closed = new Promise<void>(done => child.once("close", () => done()));
@@ -47,6 +55,16 @@ export async function withOwnedCuaRepl<T>(artifacts: string, use: (repl: CuaRepl
   lines.on("line", line => {
     try {
       const message = JSON.parse(line);
+      if (message.method) {
+        // These deterministic Linux calls must not silently grant a new
+        // permission. Retain and reject any unexpected reverse request.
+        if (message.id !== undefined) {
+          void retain({ direction: "server-request", message });
+          child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: message.id,
+            error: { code: -32601, message: "Unexpected server request during deterministic desktop regression" } }) + "\n");
+        }
+        return;
+      }
       const request = pending.get(message.id);
       pending.delete(message.id);
       if (message.error) request?.reject(new Error(JSON.stringify(message.error)));
@@ -87,11 +105,14 @@ export async function withOwnedCuaRepl<T>(artifacts: string, use: (repl: CuaRepl
   };
   try {
     await request("initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "opensky-public-repl-test", version: "1" } });
+    child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
     return await use({ async cell(code) {
       if (inFlight) throw new Error("A REPL cell is already pending; concurrent submission refused");
       inFlight = true;
       try {
-        let result = await call("cua_repl", { code, yield_time_ms: 0 });
+        let result = backend === "native"
+          ? await call("js", { code, title: "Drive the test document through native desktop calls" })
+          : await call("cua_repl", { code, yield_time_ms: 0 });
         const id = result.structuredContent?.cellId;
         while (result.structuredContent?.cellStatus === "running") {
           if (!id || result.structuredContent.cellId !== id || result.isError) throw new Error("Invalid pending cell receipt; no code replayed");

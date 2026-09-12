@@ -22,8 +22,8 @@ Use the visible fixture document and fresh screenshots.
 - `sky.get_screenshot()` — returns screenshot objects with `data_url` and bytes.
 
 Actions do not display a new observation automatically. Observe afterward when
-needed to verify the result. Use straight-line public calls and variable
-bindings. The desktop is disposable, but stay within the assigned app and
+needed to verify the result. Use public calls and variable bindings. Arithmetic, if statements, and
+for/for-of/while loops are supported; helper functions remain unavailable. The desktop is disposable, but stay within the assigned app and
 document. Do not open other apps, access the filesystem, execute commands,
 use macros or the clipboard, or modify evaluation setup. Save the requested
 result yourself; the evaluator will only inspect the file you saved.
