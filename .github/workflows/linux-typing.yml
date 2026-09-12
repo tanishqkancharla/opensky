@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      CUA_DRIVER_SOURCE_SHA: ae1577dd1faebd55385b16fe1a9c5453dceec4ee
+      CUA_DRIVER_SOURCE_SHA: dd6d742430cc9bffe177100fee43d0adc65a7ca1
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_RELEASE_DEBUG: '0'
     steps:
@@ -57,8 +57,8 @@ jobs:
       matrix:
         lane: [shared, native, capture]
     env:
-      CUA_DRIVER_SOURCE_SHA: ae1577dd1faebd55385b16fe1a9c5453dceec4ee
-      CUA_E2E_SOURCE_SHA: ae1577dd1faebd55385b16fe1a9c5453dceec4ee
+      CUA_DRIVER_SOURCE_SHA: dd6d742430cc9bffe177100fee43d0adc65a7ca1
+      CUA_E2E_SOURCE_SHA: dd6d742430cc9bffe177100fee43d0adc65a7ca1
       CUA_E2E_INTERNAL_LANE: ${{ matrix.lane }}
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_DEV_DEBUG: '0'
