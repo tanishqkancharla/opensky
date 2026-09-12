@@ -23,7 +23,7 @@ await verifyDriverRuntime({ binaryPath, socket, artifacts: homeDir,
 const inputResults: unknown[] = [];
 class InputReceiptDriver extends OpenSkyDriverClient {
   override async call(tool: string, args: Record<string, unknown> = {}) {
-    if (tool !== "type_text" && tool !== "press_key") return super.call(tool, args);
+    if (tool !== "type_text" && tool !== "press_key" && tool !== "hotkey") return super.call(tool, args);
     const startedAt = new Date().toISOString();
     const started = performance.now();
     try {
