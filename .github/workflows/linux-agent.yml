@@ -100,6 +100,7 @@ jobs:
           npm ci --ignore-scripts
           npm run build
           if [[ "$OPENSKY_LINUX_AGENT_MODE" == repl ]]; then npm ci --ignore-scripts --prefix e2e; fi
+          if [[ "$OPENSKY_LINUX_AGENT_MODE" == repl && "$OPENSKY_REPL_CASE" == program ]]; then python -m pip install python-xlib==0.33; fi
           python -m pip install -r evals/parity/osworld/requirements.txt
           python evals/parity/osworld/fetch-assets.py
       - name: Cache all hash-verified benchmark assets
