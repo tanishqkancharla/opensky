@@ -3742,3 +3742,35 @@ contract and uncertainty limits. Package dry-run includes the skill; a temporary
 Codex skill installation matched its bytes and was cleaned up. Frozen V3 is
 unchanged. Its agents used inline API docs; loading the packaged skill into the
 next evaluation version remains to be implemented and validated.
+
+
+### SELECT-IDENTITY-L01/L02 — retain a selected control across tree insertion
+
+An indexed selection could resolve a newly inserted same-text control after its
+original snapshot, even though the caller still held the original target. The
+driver fix binds selection to the resolved accessible identity rather than a
+fresh ordinal lookup. Public SDK coverage now drives a real GTK application
+through two independent SDK/driver sessions: one observes the original, while
+the other clicks a visible insertion button. The original session then selects
+the observed target without refreshing away the drift. The fixture's visible
+status derives from actual GTK selection ranges; explicit no-selection checks
+prevent startup focus from producing a false pass. The second case checks
+ordinary selection with no insertion.
+
+Both cases passed in remote run `sdk-selection-identity-v7-01` using SDK base
+90614b7bbd8898de0ae9ea89291f9a6ea6548e9c plus the retained test files, driver
+b69124b595a7b8869a9b1470533853bdcfdf7f22, executable SHA256
+4d6ffab22820ce37d369f4ad8ea1c5b8dd9402c49ff1fb8f77712dd5f95bfe2a, and
+GTK image f27dccaaec6c969cd4d6e3e82fcbc95178eb5c69a71fbfe231cc20465c19898b.
+The drift case selected the original full range0:31 after the inserted duplicate
+took its old ordinal. The control selected the same full range. Owned app,
+temporary-directory and disposable-container cleanup passed. SDK/E2E typechecks
+and test collection passed. Evidence: `work/sdk-selection-v7-outcome-review.json`;
+immutable staged source archive SHA256
+8ecd01e075cc8573107a43f4498d9f4aa7426967329f26ad5d614559c960b2a3.
+
+Earlier setup/fixture failures remain retained, including missing GTK bindings,
+app discovery by window title, startup preselection, and the obsolete control
+status assertion. This is focused GTK/X11 acceptance; wider canonical regression
+and other desktop-platform behavior remain separate gates. No app-specific
+guidance or behavior was added to the runtime or packaged skill.
