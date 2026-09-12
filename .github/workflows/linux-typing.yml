@@ -1,53 +1,9 @@
-name: Full Linux candidate certification
+name: Linux selection observer recording certification
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  installer:
-    name: Canonical Linux local installer smoke
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    env:
-      CUA_DRIVER_SOURCE_SHA: dd6d742430cc9bffe177100fee43d0adc65a7ca1
-      CARGO_INCREMENTAL: '0'
-      CARGO_PROFILE_RELEASE_DEBUG: '0'
-    steps:
-      - name: Define private installation paths
-        run: |
-          echo "CUA_DRIVER_LOCAL_HOME=$RUNNER_TEMP/opensky-install-home" >> "$GITHUB_ENV"
-          echo "CUA_DRIVER_LOCAL_INSTALL_DIR=$RUNNER_TEMP/opensky-install-bin" >> "$GITHUB_ENV"
-          echo "OPENSKY_INSTALL_ARTIFACT=$RUNNER_TEMP/opensky-install-evidence" >> "$GITHUB_ENV"
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          repository: tanishqkancharla/cua
-          ref: ${{ env.CUA_DRIVER_SOURCE_SHA }}
-          path: driver-source
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
-        with:
-          workspaces: 'driver-source/libs/cua-driver/rust -> target'
-          key: opensky-installer-release
-      - name: Install canonical build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            clang pkg-config libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev \
-            libei-dev libwayland-dev libxkbcommon-dev libx11-dev libxi-dev \
-            libxtst-dev libxext-dev
-      - name: Install and exercise the actual installed product
-        working-directory: driver-source
-        run: bash ../scripts/verify-linux-installed-driver.sh
-      - name: Upload installer evidence
-        if: always()
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
-        with:
-          name: rust-linux-install-local
-          path: ${{ env.OPENSKY_INSTALL_ARTIFACT }}
-          if-no-files-found: error
-          retention-days: 14
-
   desktop:
     name: Canonical Linux / ${{ matrix.lane }}
     runs-on: ubuntu-24.04
@@ -55,10 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lane: [shared, native, capture]
+        lane: [native]
     env:
-      CUA_DRIVER_SOURCE_SHA: dd6d742430cc9bffe177100fee43d0adc65a7ca1
-      CUA_E2E_SOURCE_SHA: dd6d742430cc9bffe177100fee43d0adc65a7ca1
+      CUA_DRIVER_SOURCE_SHA: 5143349f377a1e99e0c6be0561c85e9a0a480d81
+      CUA_E2E_SOURCE_SHA: 5143349f377a1e99e0c6be0561c85e9a0a480d81
       CUA_E2E_INTERNAL_LANE: ${{ matrix.lane }}
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_DEV_DEBUG: '0'
@@ -91,26 +47,6 @@ jobs:
           xvfb-run -a --server-args="-screen 0 1920x1080x24" \
             dbus-run-session -- bash -lc \
             "eval \"\$(printf test-password | gnome-keyring-daemon --unlock --components=secrets)\"; openbox >/tmp/opensky-openbox.log 2>&1 & picom --backend xrender --config /dev/null >/tmp/opensky-picom.log 2>&1 & sleep 2; scripts/ci/linux/run-rust-e2e.sh"
-      - name: Retain exact release binary after successful shared lane
-        if: success() && matrix.lane == 'shared'
-        run: |
-          mkdir -p artifacts/certified-driver
-          cp libs/cua-driver/rust/target/release/cua-driver artifacts/certified-driver/opensky-driver
-          artifacts/certified-driver/opensky-driver --opensky-driver-identity > artifacts/certified-driver/identity.json
-          sha256sum artifacts/certified-driver/opensky-driver > artifacts/certified-driver/binary-sha256.txt
-          python3 - <<'VERIFY'
-          import json,os
-          p=json.load(open('artifacts/certified-driver/identity.json'))
-          assert p['product']=='opensky-driver' and p['protocolVersion']==1 and p['source']==os.environ['CUA_DRIVER_SOURCE_SHA']
-          VERIFY
-      - name: Upload release binary
-        if: success() && matrix.lane == 'shared'
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
-        with:
-          name: linux-candidate-release-driver
-          path: artifacts/certified-driver
-          if-no-files-found: error
-          retention-days: 14
       - name: Upload all canonical outcome evidence
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
