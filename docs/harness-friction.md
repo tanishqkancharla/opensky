@@ -2210,6 +2210,25 @@ still an unverified timing hypothesis, and costs 50 ms only for remapped keys.
 The same three-desktop matrix now also exercises CLICK-L01; a save-token
 failure must remain distinct from text or shortcut outcomes.
 
+The passive X11 RECORD overlay now retains core `ChangeKeyboardMapping`
+requests and delivered `MappingNotify` events separately from its `kind:event`
+key/focus rows. Request rows include client base, RECORD server time and
+sequence, first keycode, width, and keysyms; notification rows retain their
+range and sequence. RECORD supplies those time and sequence values per data
+packet, not as evidence that an application consumed an individual request.
+This adds evidence for the temporary keycode-248 path
+without changing input, focus, keyboard maps, the SDK action, or application
+event selection. It can show X server delivery only and cannot establish how
+Writer consumes a mapping or key event.
+
+Warm run `v14-sdk-mapping-01` saved the exact TYPE-L01 Unicode payload in
+10.58 seconds (40.72 seconds from the prepared patch to its first result).
+The trace retained 76 key events and ten valid mapping requests: five Unicode
+setup/restore pairs. The keymap was restored and the observer, app, and
+container exited. No MappingNotify delivery appeared, so that capture branch
+remains unvalidated on a live event. This passing diagnostic run does not fix
+or close the original intermittent typing corruption.
+
 SDK-L03 reproduced in run 34286718903: CLICK-L01 failed with the identical
 stale-token error; cleanup passed. The SDK now projects only when reported
 total elements exceed returned elements, keeping conservative completeness
