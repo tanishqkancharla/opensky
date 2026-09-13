@@ -50,10 +50,15 @@ Both backends saved the expected document after same-cell and later-cell helper
 calls; existing loop controls and owned cleanup also passed. This changes shared
 evaluator admission only and does not revise the frozen agent scores.
 
-Next, verify public SDK paste during an external clipboard ownership change,
-then the existing five-format and empty-clipboard preservation controls. Earlier
-concurrency evidence exercises the real X11 actor, not the full public SDK.
-Use the pinned release driver source `57d1b03e046021dbdaca459602c5734170295693`,
+Public SDK clipboard acceptance now passes all three cases in
+[CI 34731261852](https://github.com/tanishqkancharla/opensky/actions/runs/34731261852)
+on SDK `ceaf2d52a37bf5821f203847e73e2f1bc9615578`: paste refuses a clipboard
+ownership change during snapshot while preserving the newer five-format payload
+and unchanged live/saved document; ordinary five-format preservation and empty
+clipboard restoration also pass. All owned apps and clipboard clients exited.
+This closes the snapshot-race coverage gap without a driver change; after-input
+races and INCR/large transfers remain outside this public acceptance.
+The pinned release driver source is `57d1b03e046021dbdaca459602c5734170295693`,
 SHA256 `6af15f02dae0bcb0781084d42378da047313aca3a463d63a4580c157606ce566`.
 No app-specific product guidance or additional paid campaign is warranted by
 this coverage check. The authoritative evaluation ledger currently has
