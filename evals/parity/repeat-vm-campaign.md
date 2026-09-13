@@ -50,3 +50,8 @@ OpenSky 2/2, native 1/2, and 18 tasks unrun. All pair/cleanup/usage checks passe
 Evaluation inference was $1.3717876, excluding coding and infrastructure. The
 count-5 plan subsequently revalidated its predecessor from raw artifacts; no
 five-task repeat was dispatched as part of this acceptance.
+
+The subsequent count-5 execution completed ten valid arms (OpenSky 5/5, native
+4/5; 15 tasks unrun) for $2.772508 evaluation inference. The full20 repeat was
+admitted only after that completed stage passed raw-evidence revalidation.
+Its result is pending and must not be combined with the original V14 score.

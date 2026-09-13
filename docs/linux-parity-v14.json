@@ -265,7 +265,7 @@
   },
   "rerun": {
     "campaignPortableEntrypoint": null,
-    "statement": "Provisioned-stage two-task repeat accepted; 5-task predecessor validated plan-only. New-host provisioning and fresh full 5/20 repeats not validated.",
+    "statement": "Real provisioned-stage two- and five-task repeats accepted. Full20 repeat admitted and running; new-host provisioning and full20 repeat acceptance not established.",
     "repositoryParityDocumentation": "evals/parity/README.md",
     "provisionedStageEntrypoint": "evals/parity/repeat-vm-campaign.py",
     "smoke": {
@@ -275,6 +275,21 @@
       "tasksUnrun": 18,
       "validArms": 4,
       "evaluationEstimateUsd": 1.3717876
+    },
+    "backgroundScoringCaveat": {
+      "instruction": "Move to slide 1 and give it a green background color.",
+      "referenceRgb": "00a933",
+      "smokeNativeRgb": "81d41a",
+      "fiveRepeatNativeRgb": "5eb91e",
+      "interpretation": "Other green shades fail exact-reference scoring. Retain raw failures; do not interpret them as inability to set a green background."
+    },
+    "five": {
+      "openskySuccesses": 5,
+      "nativeSuccesses": 4,
+      "tasksRun": 5,
+      "tasksUnrun": 15,
+      "validArms": 10,
+      "evaluationEstimateUsd": 2.772508
     }
   }
 }

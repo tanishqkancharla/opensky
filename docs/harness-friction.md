@@ -3898,3 +3898,12 @@ Tesseract readiness timeout instead of the no-events assertion; its owned app,
 observer, and container exited. Earlier two-CPU and one-CPU public TYPE-L01
 probes passed with 76 keyboard events each and exact saved Unicode text. Those
 passes do not resolve the original intermittent CI truncation.
+
+### LINUX-V14-COLOR-SCORING-01 — broad instruction, specific reference color
+
+The repeated native background task saved green shades `81d41a` and `5eb91e`;
+the frozen reference uses `00a933`. The task instruction only says “green”.
+All scores remain unchanged, but the repeat report discloses this ambiguity:
+a strict reference failure is not proof of inability to perform the requested
+edit. Source document and reference RGB values and hashes are retained in the
+local repeat diagnosis. No prompt, scorer, SDK, or driver behavior was changed.
