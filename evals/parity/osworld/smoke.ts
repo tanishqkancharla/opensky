@@ -106,7 +106,8 @@ try {
         prompt,
       });
       const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), task.id, document,
-        ...(scoringProfilePath ? ["--profile", scoringProfilePath, "--expected-profile-sha256", scoringProfile.sha256!] : []),
+        ...(scoringProfilePath ? ["--profile", scoringProfilePath, "--libreoffice", join(libreOfficePath, "Contents/MacOS/soffice"),
+          "--expected-profile-sha256", scoringProfile.sha256!] : []),
       ], { timeout: 30_000 })).stdout);
       // Never award success for edits completed after an interrupted deadline.
       // Preserve the actual file grader independently from the task allowance.

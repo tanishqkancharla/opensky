@@ -68,11 +68,14 @@ if __name__ == "__main__":
     parser.add_argument("task")
     parser.add_argument("output", type=Path)
     parser.add_argument("--profile", type=Path)
+    parser.add_argument("--libreoffice", type=Path)
     parser.add_argument("--expected-profile-sha256")
     args = parser.parse_args()
     if args.profile:
         from scoring_profile import verify
-        descriptor = verify(args.profile)
+        if not args.libreoffice:
+            raise ValueError("An actual LibreOffice executable is required with an admitted scoring profile")
+        descriptor = verify(args.profile, args.libreoffice)
         if args.expected_profile_sha256 and descriptor["sha256"] != args.expected_profile_sha256:
             raise ValueError("Scoring profile changed after admission")
         raw = score(args.task, args.output)

@@ -45,6 +45,7 @@ export const test = base.extend<{
       await cp(join(controls, imageTask, "completed/completed.pptx"), imagePath);
       const score = async (taskId: string, artifact: string, expectedSha256?: string): Promise<Result> => JSON.parse((await exec(python, [
         join(root, "score.py"), taskId, artifact, "--profile", profilePath,
+        "--libreoffice", office,
         ...(expectedSha256 ? ["--expected-profile-sha256", expectedSha256] : []),
       ], { env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" } })).stdout);
       const saveMetadata = () => writeFile(profilePath, JSON.stringify(metadata));

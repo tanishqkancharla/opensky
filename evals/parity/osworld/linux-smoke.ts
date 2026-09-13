@@ -141,7 +141,8 @@ try {
     });
     await captureLinuxFinalObservation(artifacts, process.env.OPENSKY_NATIVE_PROBE_PACKAGE);
     const savedFileOutcome = JSON.parse((await exec(python, [join(root, "score.py"), taskId, document,
-      ...(scoringProfilePath ? ["--profile", scoringProfilePath, "--expected-profile-sha256", scoringProfile.sha256!] : []),
+      ...(scoringProfilePath ? ["--profile", scoringProfilePath, "--libreoffice", "/usr/lib/libreoffice/program/soffice",
+        "--expected-profile-sha256", scoringProfile.sha256!] : []),
     ], { timeout: 30_000 })).stdout);
     score = { taskId, backend, suite: "osworld-verified-linux-desktop", upstreamCommit: manifest.upstreamCommit,
       profile, scoringProfile,
