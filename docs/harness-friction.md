@@ -3881,4 +3881,6 @@ TYPE-L01 when `OPENSKY_X11_INPUT_RECORD=1`; Linux typing CI enables it and
 installs pinned observer dependencies. Public actions, expected saved text, and
 driver source remain unchanged. Traces and observer cleanup accompany the saved
 DOCX on both success and failure. This records server events, not proof that an
-application consumed them. CI validation of this diagnostic is pending.
+application consumed them. CI 34784123429 passed all 27 cases. Retained evidence confirms three exact
+Unicode saved texts, 27 app exits, and three clean observers, each with 76
+keyboard events. This does not resolve the original truncation.

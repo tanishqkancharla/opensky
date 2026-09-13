@@ -5,9 +5,11 @@ arms): OpenSky passed 18/20 and native passed 16/20, with OpenSky passing all
 16 native-success tasks. See the publishable [V14 report](../../docs/linux-parity-v14.md).
 This is Linux-first evidence for the current direction, one trial per
 task/backend under adapted saved-outcome scoring, not a general parity or
-repeatability certificate. CI 34782011989 is not a passed result: its driver
-build passed, while all three evaluate jobs failed at the frozen native `.deb`
-checksum before public SDK tests.
+repeatability certificate. The repaired SDK CI gate 34784123429 passed 27/27
+cases; the earlier intermittent Unicode truncation remains unexplained.
+The [bounded repeat entrypoint](repeat-vm-campaign.md) has completed a real
+two-task acceptance on the provisioned V14 stage (OpenSky 2/2, native 1/2).
+It retains all 20 rows and requires a validated predecessor for the 5/20 ramp.
 
 The setup and milestone prose below is retained as historical context for the
 evaluator and its generic commands. It does not supersede the frozen V14

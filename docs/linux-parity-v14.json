@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "campaign": "Linux V14 fixed 20-task paired measurement",
-  "status": "measurement verified; CI setup failed before SDK tests at frozen native package checksum",
+  "status": "measurement verified; repaired SDK CI 27/27 passed; earlier intermittent Unicode failure unresolved",
   "verifiedAt": "2026-09-13T20:51:16.391842+00:00",
   "sourceEvidence": {
     "publishedReceipt": "linux-parity-v14.json",
@@ -250,18 +250,31 @@
     "claimBoundary": "This is a fixed Linux measurement, not a repeatability or general API-parity certificate."
   },
   "ciIntegration": {
-    "status": "failed; input reliability investigation active",
+    "status": "latest gate passed; earlier intermittent Unicode failure unresolved",
     "buildRun": 34782011989,
-    "sdkRun": 34782566739,
-    "sdkCasesPassed": 20,
-    "sdkCasesFailed": 7,
+    "sdkRun": 34784123429,
+    "sdkCasesPassed": 27,
+    "sdkCasesFailed": 0,
     "setupRepair": "Frozen native reference and exact driver binary reuse implemented at4f87493.",
     "dialogTestRepair": "Warm v14-sdk-repro-03 passed4selectedcases after openingthemenu and asserting the observed labeled font value;5othercases skipped.",
-    "remaining": "One of3TYPE-L01 CI runs saved truncatedUnicode. Passive eventtrace pending; laterpasses do not supersede it."
+    "remaining": "Original Unicode truncation not reproduced in six subsequent traced attempts; no causal product fix claimed.",
+    "previousSdkRun": 34782566739,
+    "previousSdkCasesPassed": 20,
+    "previousSdkCasesFailed": 7,
+    "artifactValidation": "Three exact Unicode DOCX results, three restored keyboard maps, 27 verified app exits and three clean passive observers."
   },
   "rerun": {
     "campaignPortableEntrypoint": null,
-    "statement": "V14 controller packaging remains incomplete. Do not substitute a nonpaired generic evaluator for reproduction.",
-    "repositoryParityDocumentation": "evals/parity/README.md"
+    "statement": "Provisioned-stage two-task repeat accepted; 5-task predecessor validated plan-only. New-host provisioning and fresh full 5/20 repeats not validated.",
+    "repositoryParityDocumentation": "evals/parity/README.md",
+    "provisionedStageEntrypoint": "evals/parity/repeat-vm-campaign.py",
+    "smoke": {
+      "openskySuccesses": 2,
+      "nativeSuccesses": 1,
+      "tasksRun": 2,
+      "tasksUnrun": 18,
+      "validArms": 4,
+      "evaluationEstimateUsd": 1.3717876
+    }
   }
 }

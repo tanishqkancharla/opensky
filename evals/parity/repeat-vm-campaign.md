@@ -44,3 +44,9 @@ frozen source, image, code/assets, driver, scorer, Terra-medium invocation,
 null task budgets, and code-host runtime evidence. Provider stdout/stderr is
 retained per arm under the new output, while the CLI prints only compact
 completion outcome/call/time rows.
+
+The first real count-2 acceptance completed all four arms on the frozen stage:
+OpenSky 2/2, native 1/2, and 18 tasks unrun. All pair/cleanup/usage checks passed.
+Evaluation inference was $1.3717876, excluding coding and infrastructure. The
+count-5 plan subsequently revalidated its predecessor from raw artifacts; no
+five-task repeat was dispatched as part of this acceptance.
