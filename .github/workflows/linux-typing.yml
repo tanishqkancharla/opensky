@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 57d1b03e046021dbdaca459602c5734170295693
+  OPENSKY_DRIVER_REF: 0849dd7094a258864d2d8ca78c60f5acdb681242
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -38,7 +38,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             clang pkg-config libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev \
-            libei-dev libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev
+            libei-dev libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev xvfb xauth openbox
       - name: Build pinned OpenSky Driver
         env:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
@@ -54,6 +54,12 @@ jobs:
           cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml select_text
           cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
           cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
+          CUA_POPUP_CAPTURE_DISPOSABLE_X11=1 xvfb-run -a --server-args="-screen 0 1280x900x24" bash -euo pipefail -c '
+            openbox >/tmp/popup-openbox.log 2>&1 & wm=$!
+            trap "kill $wm 2>/dev/null || true" EXIT
+            cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::live_tests -- --ignored --nocapture --test-threads=1
+          '
+          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::tests
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
