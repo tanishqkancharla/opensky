@@ -1,13 +1,14 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, mkdir, mkdtemp, copyFile, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { createCua, createOpenSky } from "../../../src/index.js";
-import { withOwnedLinuxApp } from "../linux-app.js";
+import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../linux-app.js";
 import { runCodex } from "../codex.js";
 import { prepareLinuxBenchmarkApp } from "../linux-benchmark-app.js";
 import { verifyScoringProfile } from "../scoring-profile.js";
@@ -19,7 +20,14 @@ const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
 const repo = resolve(root, "../../..");
 const [taskId, backend, output] = process.argv.slice(2);
-if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true" || !output || !["native", "opensky", "setup"].includes(backend)) throw new Error("Use linux-smoke.ts TASK_ID native|opensky|setup ARTIFACTS on disposable Linux CI");
+assertDisposableLinuxDesktop();
+if (!output || !["native", "opensky", "setup"].includes(backend)) throw new Error("Use linux-smoke.ts TASK_ID native|opensky|setup ARTIFACTS on a disposable Linux desktop");
+const authentication = process.env.OPENSKY_EVAL_AUTHENTICATION ?? "api-key";
+if (authentication !== "api-key" && authentication !== "chatgpt-subscription") throw new Error("OPENSKY_EVAL_AUTHENTICATION must be api-key or chatgpt-subscription");
+const explicitDockerDesktop = process.env.OPENSKY_DISPOSABLE_DESKTOP === "1" && existsSync("/.dockerenv");
+if (authentication === "chatgpt-subscription" && (process.env.GITHUB_ACTIONS === "true" || !explicitDockerDesktop)) {
+  throw new Error("ChatGPT subscription evaluation requires an explicit disposable Docker desktop outside CI");
+}
 const artifacts = resolve(output);
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const task = manifest.tasks.find((task: { id: string }) => task.id === taskId);
@@ -34,6 +42,9 @@ if (environment.platform !== "linux" || !runtime.ready || !nativeTransport.passe
 const nativeConfig = join(artifacts, "native-repl-config.json");
 const nativeConfiguration = JSON.parse(await readFile(nativeConfig, "utf8"));
 const nativeResources = resolve(nativeConfiguration.command, "../../..");
+const codex = process.env.OPENSKY_EVAL_CODEX ?? join(nativeResources, "codex");
+const codexSha256 = createHash("sha256").update(await readFile(codex)).digest("hex");
+if (environment.codex?.sha256 !== codexSha256) throw new Error("The Codex binary differs from the setup environment fingerprint");
 const driver = process.env.OPENSKY_DRIVER_BINARY!;
 const python = process.env.OPENSKY_EVAL_PYTHON!;
 const profile = runProfile();
@@ -96,13 +107,20 @@ try {
       return;
     }
     const scope = { backend: backend as "native" | "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" as const };
+    // The agent transport receives only the live desktop/runtime values it
+    // needs; in particular, it never inherits or fabricates a CI identity.
+    const runtimeEnvironment = Object.fromEntries(
+      ["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS", "OPENSKY_DISPOSABLE_DESKTOP"]
+        .flatMap(key => process.env[key] === undefined ? [] : [[key, process.env[key]!]]),
+    );
     const mcp = {
       command: process.execPath,
       args: ["--import", join(repo, "node_modules/tsx/dist/loader.mjs"), join(root, `../${backend}-mcp.ts`)],
       env: {
+        ...runtimeEnvironment,
         PARITY_DESKTOP_SCOPE: JSON.stringify(scope), OPENSKY_HOME: join(artifacts, "agent-sdk"),
         OPENSKY_DRIVER_BINARY: driver, OPENSKY_DRIVER_SOCKET: process.env.OPENSKY_DRIVER_SOCKET!,
-        OPENSKY_OWNED_DRIVER_PID: process.env.OPENSKY_OWNED_DRIVER_PID!, GITHUB_ACTIONS: "true",
+        OPENSKY_OWNED_DRIVER_PID: process.env.OPENSKY_OWNED_DRIVER_PID!,
         OPENSKY_NATIVE_REPL_CONFIG: nativeConfig,
       },
       enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
@@ -115,7 +133,7 @@ try {
         return buildOpenSkyEvaluationPrompt({ taskInstruction: task.instruction, platform: "Ubuntu Linux", inputFile: task.inputFile,
           appName: launch.appName, authorizedApp: launch.appName, skill, completion: "Finish when saved, or report the specific blocker." }).prompt;
       })();
-    const result = await runCodex({ codex: join(nativeResources, "codex"), model: "gpt-5.6-terra", authentication: "api-key",
+    const result = await runCodex({ codex, model: "gpt-5.6-terra", authentication,
       budgetPath: process.env.OPENSKY_REMOTE_BUDGET, preReservedId: process.env.OPENSKY_REMOTE_RESERVATION,
       artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: profile.timeoutMs, maxToolCalls: profile.maxToolCalls,
       mcp, authorizedApps: { [launch.appName]: launch.appName }, desktopProgramScope: scope,

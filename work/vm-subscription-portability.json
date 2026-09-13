@@ -1,0 +1,24 @@
+{
+  "recordedAt": "2026-09-12T00:00:00-07:00",
+  "baseSource": "72057ed03caa6d7e5276eedb8a4f343e48811d0b",
+  "baseline": {
+    "sdk": "923ed7b89492a726ff9d50687f7c379d751ed6ea",
+    "driver": "57d1b03e046021dbdaca459602c5734170295693",
+    "driverBinarySha256": "6af15f02dae0bcb0781084d42378da047313aca3a463d63a4580c157606ce566"
+  },
+  "environmentContract": {
+    "desktopGuard": "Linux and either GitHub Actions or OPENSKY_DISPOSABLE_DESKTOP=1 with /.dockerenv",
+    "authentication": {
+      "default": "api-key",
+      "apiKey": "Existing runCodex CI, GitHub run ID, reservation, and budget requirements remain in force.",
+      "subscription": "OPENSKY_EVAL_AUTHENTICATION=chatgpt-subscription is admitted only for an explicit disposable Docker desktop outside CI."
+    },
+    "codex": "OPENSKY_EVAL_CODEX may select the pinned VM binary. Setup fingerprints that selected binary; smoke dispatch hashes it again and rejects a mismatch.",
+    "mcpEnvironment": "Only current DISPLAY, XAUTHORITY, DBUS_SESSION_BUS_ADDRESS, OPENSKY_DISPOSABLE_DESKTOP, and required real driver/runtime configuration are passed. GITHUB_ACTIONS is never fabricated."
+  },
+  "verification": {
+    "build": "npm run build",
+    "sourceReview": "Verified the three Linux entry points use assertDisposableLinuxDesktop and the smoke MCP environment contains no GITHUB_ACTIONS injection.",
+    "runtimeEvaluation": "Not run by this implementation task; parent owns the disposable Docker setup and matched agent pair."
+  }
+}

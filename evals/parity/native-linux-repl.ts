@@ -3,10 +3,11 @@ import { createInterface } from "node:readline";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { evaluationEnvironment } from "./codex.js";
+import { assertDisposableLinuxDesktop } from "./linux-app.js";
 
 /** Exercise the real agent-facing native MCP transport without a model call. */
 export async function verifyNativeLinuxRepl(config: { command: string; args: string[]; env: Record<string, string> }, artifacts: string) {
-  if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true") throw new Error("Disposable Linux CI required");
+  assertDisposableLinuxDesktop();
   const child = spawn(config.command, config.args, { env: { ...evaluationEnvironment(), ...config.env }, detached: true, stdio: ["pipe", "pipe", "pipe"] });
   const closed = new Promise<void>(resolve => child.once("close", () => resolve()));
   const pending = new Map<number, { resolve(value: any): void; reject(error: Error): void }>();

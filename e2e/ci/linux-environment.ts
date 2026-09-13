@@ -4,13 +4,15 @@ import { verifyDriverRuntime } from "../../evals/parity/driver-runtime.js";
 import { verifyScoringProfile } from "../../evals/parity/scoring-profile.js";
 import { recordEnvironment } from "../../evals/parity/fingerprint.js";
 import { verifyNativeLinuxRepl } from "../../evals/parity/native-linux-repl.js";
+import { assertDisposableLinuxDesktop } from "../../evals/parity/linux-app.js";
 
-if (process.platform !== "linux" || process.env.GITHUB_ACTIONS !== "true") throw new Error("Disposable Linux CI required");
+assertDisposableLinuxDesktop();
 const artifacts = process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!;
 const driver = process.env.OPENSKY_DRIVER_BINARY!;
 const packageRoot = process.env.OPENSKY_NATIVE_PROBE_PACKAGE!;
 // Paths observed in the official distribution's availability artifact.
 const resources = resolve(packageRoot, "../../../../..");
+const codex = process.env.OPENSKY_EVAL_CODEX ?? join(resources, "codex");
 const nativeConfig = join(artifacts, "native-repl-config.json");
 const configuration = {
   command: join(resources, "cua_node/bin/node_repl"), args: [],
@@ -35,5 +37,5 @@ const scoringProfile = scoringProfilePath ? await verifyScoringProfile({
 }) : { name: "upstream-pinned-v1", sha256: null };
 await recordEnvironment({ repo: process.cwd(), appPath: "/usr/lib/libreoffice", driver,
   vscodePath: process.env.OPENSKY_EVAL_VSCODE, scoringProfile,
-  codex: join(resources, "codex"), python: process.env.OPENSKY_EVAL_PYTHON!, nativeConfig, artifacts });
+  codex, python: process.env.OPENSKY_EVAL_PYTHON!, nativeConfig, artifacts });
 await verifyNativeLinuxRepl(configuration, artifacts);
