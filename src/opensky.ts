@@ -1488,7 +1488,15 @@ export class OpenSky implements OpenSkyApi {
     }
     if (typeof args.x === "number") payload.x = args.x;
     if (typeof args.y === "number") payload.y = args.y;
-    await this.driver.call("scroll", payload);
+    try {
+      await this.driver.call("scroll", payload);
+    } catch (error) {
+      // This refusal is emitted before the driver has an input route, so one
+      // replay against this already-bound window is safe. Other scroll errors
+      // can follow partial delivery and must remain observable to the caller.
+      if (!(error instanceof OpenSkyError) || error.code !== "background_unavailable" || !resolved.windowId) throw error;
+      await this.driver.call("scroll", { ...payload, delivery_mode: "foreground" });
+    }
     this.markAction(resolved);
   }
 

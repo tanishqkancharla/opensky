@@ -667,6 +667,43 @@ describe("OpenSky against cua-driver", () => {
     await assert.rejects(() => opensky.click({ app: "TextEdit", x: -4, y: -4 }), /windowNotFoundAtPosition/);
   });
 
+  it("replays a pre-input scroll refusal once in foreground for the bound window", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.get_app_state({ app: "TextEdit", disableDiff: true, includeScreenshot: false });
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.scrollRefusalCode = "background_unavailable";
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    await opensky.scroll({ app: "TextEdit", x: 100, y: 200, direction: "down", pages: 6 });
+
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const scrolls = after.calls.filter((call: { tool: string }) => call.tool === "scroll");
+    assert.equal(scrolls.length, 2);
+    assert.deepEqual(scrolls[0].args, {
+      pid: 900, window_id: 2001, direction: "down", by: "page", amount: 6, x: 100, y: 200, session: "opensky",
+    });
+    assert.deepEqual(scrolls[1].args, {
+      pid: 900, window_id: 2001, direction: "down", by: "page", amount: 6, x: 100, y: 200,
+      delivery_mode: "foreground", session: "opensky",
+    });
+  });
+
+  it("does not replay a scroll error whose delivery is not proven absent", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.get_app_state({ app: "TextEdit", disableDiff: true, includeScreenshot: false });
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.scrollRefusalCode = "delivery_unknown";
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    await assert.rejects(
+      () => opensky.scroll({ app: "TextEdit", x: 100, y: 200, direction: "down" }),
+      /scroll refused before delivery: delivery_unknown/,
+    );
+
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "scroll").length, 1);
+  });
+
   it("refuses paste before resolving a target or touching the global clipboard", async () => {
     const { opensky, logPath } = await makeHarness();
 

@@ -363,6 +363,14 @@ function scroll(state, args) {
   if (!["up", "down", "left", "right"].includes(direction)) {
     throw new Error("direction must be up, down, left, or right");
   }
+  if (state.scrollRefusalCode) {
+    const code = state.scrollRefusalCode;
+    state.scrollRefusalCode = undefined;
+    return {
+      status: "refused",
+      refusal: { code, message: `scroll refused before delivery: ${code}` },
+    };
+  }
   byPid(state, args.pid).actions.push({ tool: "scroll", args });
   return { effect: "confirmed", route: "synthetic_events" };
 }
