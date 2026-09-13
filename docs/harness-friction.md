@@ -3867,3 +3867,18 @@ CI34782011989 built the exact V14 binary, but all three SDK jobs stopped before 
 CI34782566739 then ran all27 SDK cases:20passed and7failed. Six failures were obsolete dialog test setup: Character was sought while its menu was closed; after opening Format through the public ALT+O shortcut, the font field is correctly labeled Family: with a separate value. Updating these setup actions and visible-value assertions passed COORD-L01, SHOT-L02, TYPE-L01 and KEY-L01 on the warm disposable desktop (v14-sdk-repro-03), with four owned-app exits and container removal verified. Earlier failures remain retained.
 
 The seventh failure is unresolved: one of three TYPE-L01 CI runs saved a truncated Unicode prefix, despite no public action error. Later passing warm runs do not erase that failure. A passive X11 diagnostic is being prepared with the same public typing action; do not promote this build as integration-passed until the input failure is understood and the gate is rerun. No application-specific guidance was added to the SDK, harness or skill.
+
+### LINUX-V14-UNICODE-TRACE-01 — retain input evidence on CI
+
+One of three pinned-driver CI runs saved `É near Dublin Zoo — 中文 😀.`
+instead of `A café near Dublin Zoo — 中文 😀.` (run 34782566739).
+Three subsequent passive warm-worker traces passed; they do not resolve the
+original failure. Exact driver-source review identifies temporary Unicode
+keycode remapping as a candidate, with no demonstrated cause yet.
+
+The typing fixture can now attach the existing passive X11 RECORD observer to
+TYPE-L01 when `OPENSKY_X11_INPUT_RECORD=1`; Linux typing CI enables it and
+installs pinned observer dependencies. Public actions, expected saved text, and
+driver source remain unchanged. Traces and observer cleanup accompany the saved
+DOCX on both success and failure. This records server events, not proof that an
+application consumed them. CI validation of this diagnostic is pending.

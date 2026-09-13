@@ -9,6 +9,7 @@ import { createOpenSky, createCua } from "../../src/index.js";
 import type { App } from "../../src/cua.js";
 import { recordAppTiming } from "./app-timing.js";
 import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
+import { withX11InputRecord } from "./x11-input-record.js";
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -42,7 +43,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
             await writeFile(join(artifacts, "ready.txt"), text);
             return text;
           }, { timeout: 20_000 }).toMatch(/File\s+Edit\s+View\s+Insert/);
-          await use({ app, document: { async readText() {
+          const drive = async () => use({ app, document: { async readText() {
             return (await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
               'import sys,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("word/document.xml")); n={"w":"http://schemas.openxmlformats.org/wordprocessingml/2006/main"}; print("\\n".join("".join(p.itertext()) for p in r.findall(".//w:body/w:p",n)),end="")', document])).stdout;
           } }, keyboard: { async unchanged() {
@@ -51,6 +52,11 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
             await writeFile(join(artifacts, "keyboard-after.txt"), current);
             return current === originalKeyboard;
           } } });
+          if (process.env.OPENSKY_X11_INPUT_RECORD === "1" && task.name.startsWith("TYPE-L01:")) {
+            await withX11InputRecord(join(artifacts, "x11-input"), drive);
+          } else {
+            await drive();
+          }
         } finally {
           await writeFile(join(artifacts, "keyboard-after.txt"), (await exec("xmodmap", ["-pke"])).stdout);
           await writeFile(join(artifacts, "final.png"), await app.getScreenshot()).catch(() => undefined);
