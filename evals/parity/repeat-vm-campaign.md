@@ -6,8 +6,11 @@ remote host, build a driver, admit spending, or replace the stage controller.
 
 The stage must contain the frozen selection, setup and code-host receipts,
 launcher, source bundle, full file manifest, original accepted pair gates, and
-the existing `run-arm-recovered.py` plus `review-pair-recovered.py` provider
-scripts. Planning verifies their hashes and the fixed source, driver, image,
+the existing office and editor provider scripts plus `review-pair-recovered.py`.
+The controller selects a provider solely from each frozen task row's `fixture`:
+`office` uses `run-arm-recovered.py`; `editor` uses the additive recovered editor
+provider and its separately reviewed VS Code setup/preflight receipts. It verifies
+their hashes and the fixed source, driver, image,
 code/assets, scorer, model, and task-order contract before writing any new
 index. The output directory must be new and outside the stage.
 
@@ -55,3 +58,26 @@ The subsequent count-5 execution completed ten valid arms (OpenSky 5/5, native
 4/5; 15 tasks unrun) for $2.772508 evaluation inference. The full20 repeat was
 admitted only after that completed stage passed raw-evidence revalidation.
 Its result is pending and must not be combined with the original V14 score.
+
+## Interrupted full20 recovery
+
+Use `--resume` to inspect an existing halted count-20 campaign. Without `--run`
+it is strictly read-only. `--resume --run` first performs the same admission,
+snapshots the old index and arm receipt/log in `attempt-history/`, then records
+the failed attempt in the row's `attemptHistory` before dispatching the admitted
+fresh ID through the serialized provider.
+
+```sh
+python3 evals/parity/repeat-vm-campaign.py \
+  --stage /absolute/path/to/immutable-stage \
+  --resume /absolute/path/to/halted-repeat-20
+```
+
+The admission report revalidates every retained completed pair from its raw arm
+evidence and retained gate, preserves all 20 index rows, and hashes the original
+receipt/index before reporting a replacement. It admits exactly one new provider
+run name only when the original attempt is terminal, settled, unscored, and
+proves the pre-agent editor setup failure (`OPENSKY_EVAL_VSCODE` missing). Scored,
+unknown, live, nonterminal, or other failed attempts are rejected. The original
+run directory, receipt, and index history remain evidence; a future dispatch
+must use the reported fresh run ID after review.

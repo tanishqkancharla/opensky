@@ -9,6 +9,7 @@ campaign index and its pair-gate receipts under --output.
 from __future__ import annotations
 
 import argparse
+import shutil
 import fcntl
 import hashlib
 import json
@@ -282,6 +283,129 @@ def require_unique_provider_names(stage: Path, rows: list[dict[str, Any]]) -> No
     require(not collisions, f"provider run name already exists and cannot be retried: {', '.join(collisions)}")
 
 
+def provider_for_task(stage: Path, task: dict[str, Any]) -> dict[str, Any]:
+    """Select a frozen provider from the task's frozen fixture, never task name."""
+    fixture = task["fixture"]
+    if fixture == "office":
+        runner = stage / "run-arm-recovered.py"
+        launcher = stage / "run-arm-v3.sh"
+        setup = read_json(stage / "setup-parent-review.json")
+        preflight = read_json(stage / "code-host-preflight.json")
+        require(setup.get("accepted") is True and setup.get("agentDispatched") is False, "office setup receipt is not pre-dispatch accepted")
+        require(setup.get("source") == PINS["source"] and setup.get("imageId") == PINS["imageId"], "office setup pin mismatch")
+        require(preflight.get("accepted") is True and preflight.get("imageId") == PINS["imageId"], "office preflight pin mismatch")
+        require(preflight.get("launcherSha256") == sha256(launcher), "office launcher/preflight mismatch")
+    elif fixture == "editor":
+        runner = stage / "run-editor-arm-recovered.py"
+        launcher = stage / "run-editor-arm-v1.sh"
+        fixture_path = stage / "editor-fixture-v1.json"
+        setup = read_json(stage / "editor-setup-parent-review.json")
+        preflight = read_json(stage / "editor-code-host-preflight.json")
+        editor_fixture = read_json(fixture_path)
+        require(task["taskId"] in editor_fixture.get("taskIds", []), f"editor fixture does not admit {task['taskId']}")
+        provenance = editor_fixture.get("sourceProvenance")
+        require(isinstance(provenance, dict) and provenance.get("sdkCommit") == PINS["source"] and provenance.get("driverSource") == PINS["driverSource"] and provenance.get("driverSha256") == PINS["driverSha256"] and provenance.get("imageId") == PINS["imageId"] and provenance.get("profileSha256") == PINS["scorerSha256"] and provenance.get("codeAndAssetsSha256") == PINS["codeAndAssetsSha256"], "editor fixture pin mismatch")
+        require(setup.get("accepted") is True and setup.get("agentDispatched") is False, "editor setup receipt is not pre-dispatch accepted")
+        require(setup.get("source") == PINS["source"] and setup.get("imageId") == PINS["imageId"] and setup.get("editorFixtureSha256") == sha256(fixture_path), "editor setup pin mismatch")
+        fingerprint = setup.get("editorFingerprint")
+        require(fingerprint is not None and preflight.get("editorFingerprint") == fingerprint, "editor setup/preflight fingerprint mismatch")
+        require(preflight.get("accepted") is True and preflight.get("imageId") == PINS["imageId"], "editor preflight pin mismatch")
+        require(preflight.get("launcherSha256") == sha256(launcher), "editor launcher/preflight mismatch")
+        require(provenance.get("codeModeHostSha256") == preflight.get("codeModeHostSha256"), "editor code-host pin mismatch")
+    else:
+        raise ContractError(f"unsupported frozen fixture provider: {fixture}")
+    require(runner.is_file() and launcher.is_file(), f"missing frozen {fixture} provider")
+    setup_path = stage / ("editor-setup-parent-review.json" if fixture == "editor" else "setup-parent-review.json")
+    preflight_path = stage / ("editor-code-host-preflight.json" if fixture == "editor" else "code-host-preflight.json")
+    return {"fixture": fixture, "armRunner": str(runner), "armRunnerSha256": sha256(runner), "launcher": str(launcher), "launcherSha256": sha256(launcher), "setupReceipt": str(setup_path), "setupReceiptSha256": sha256(setup_path), "preflightReceipt": str(preflight_path), "preflightReceiptSha256": sha256(preflight_path)}
+
+
+def terminal_preagent_setup_failure(stage: Path, task: dict[str, Any], arm: dict[str, Any]) -> dict[str, Any]:
+    """The only failure class which can receive a fresh replacement attempt."""
+    run, backend = arm.get("run"), arm.get("backend")
+    require(isinstance(run, str) and backend in {"opensky", "native"}, "failed arm identity is invalid")
+    run_dir = stage / "runs" / run
+    dispatch = read_json(run_dir / "dispatch.json")
+    completion = read_json(run_dir / "completion.json")
+    settlement = read_json(run_dir / "settlement.json")
+    budget = read_json(run_dir / "budget-after.json")
+    cleanup = read_json(run_dir / "artifacts" / "container-cleanup.json")
+    remote_exit = read_json(run_dir / "remote-exit.json")
+    require(dispatch.get("run") == run and dispatch.get("taskId") == task["taskId"] and dispatch.get("backend") == backend, f"failed dispatch identity mismatch: {run}")
+    reservation = dispatch.get("reservationId")
+    require(isinstance(reservation, str) and settlement.get("reservationId") == reservation and settlement.get("containerRemoved") is True, f"failed settlement mismatch: {run}")
+    require(cleanup.get("reservationId") == reservation and cleanup.get("containerRemoved") is True and isinstance(cleanup.get("exitCode"), int) and cleanup["exitCode"] != 0 and remote_exit.get("exitCode") == cleanup.get("exitCode"), f"failed cleanup/remote-exit mismatch: {run}")
+    entries = budget.get("entries")
+    require(isinstance(entries, list) and any(isinstance(entry, dict) and entry.get("id") == reservation and entry.get("status") == "settled" for entry in entries), f"failed attempt is not settled: {run}")
+    require(completion.get("run") == run and completion.get("taskId") == task["taskId"] and completion.get("backend") == backend and completion.get("terminal") is True, f"failed completion identity/terminal mismatch: {run}")
+    # The legacy provider records no run-status object when setup aborts before
+    # the agent process. `null` is therefore the expected explicit absence, not
+    # an unknown post-agent outcome; require all score-bearing artifacts absent.
+    require(completion.get("validEvaluation") in {False, None} and completion.get("score") is None and completion.get("remoteExitCode") == cleanup.get("exitCode") and not any((run_dir / "artifacts" / name).exists() for name in ("result.json", "score.json", "run-status.json")), f"failed arm is scored, unknown, or nonterminal: {run}")
+    console = (run_dir / "remote-console.log").read_text(encoding="utf-8")
+    marker = "Provide OPENSKY_EVAL_VSCODE for editor tasks"
+    require(marker in console, f"failed arm is not the verified pre-agent editor setup failure: {run}")
+    require(not any((run_dir / "artifacts" / name).exists() for name in ("invocation.json", "events.json", "events.jsonl", "transcript.json", "transcript.jsonl")), f"failed arm contains agent evidence: {run}")
+    return {"run": run, "backend": backend, "reservationId": reservation, "completionSha256": sha256(run_dir / "completion.json"), "dispatchSha256": sha256(run_dir / "dispatch.json"), "settlementSha256": sha256(run_dir / "settlement.json"), "budgetAfterSha256": sha256(run_dir / "budget-after.json"), "failure": "terminal-pre-agent-editor-setup", "marker": marker}
+
+
+def resume_attempt_name(stage: Path, old_run: str) -> str:
+    # A new directory is required: original evidence and its receipt stay immutable.
+    suffix = hashlib.sha256((str(stage) + old_run).encode()).hexdigest()[:12]
+    candidate = f"{old_run}-resume-{suffix}"
+    require(RUN_RE.fullmatch(candidate) is not None and not (stage / "runs" / candidate).exists(), f"replacement provider run already exists: {candidate}")
+    return candidate
+
+
+def validate_retained_completed_pair(stage: Path, task: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
+    """Read-only predecessor validation for an interrupted campaign."""
+    arms = {arm.get("backend"): arm for arm in row.get("runs", []) if isinstance(arm, dict)}
+    require(set(arms) == {"opensky", "native"}, f"completed row arms invalid: {task['name']}")
+    gate_path = Path(row.get("gate", ""))
+    validation_path = Path(row.get("validation", ""))
+    require(gate_path.is_file() and validation_path.is_file(), f"completed row evidence missing: {task['name']}")
+    gate = read_json(gate_path)
+    validation = read_json(validation_path)
+    require(gate.get("accepted") is True and gate.get("taskId") == task["taskId"], f"retained gate invalid: {task['name']}")
+    require(validation.get("accepted") is True and validation.get("taskId") == task["taskId"] and validation.get("gateSha256") == sha256(gate_path) and validation.get("pins") == PINS, f"retained validation/pin mismatch: {task['name']}")
+    code_host_sha = read_json(stage / "code-host-preflight.json").get("codeModeHostSha256")
+    require(isinstance(code_host_sha, str), "missing office code-host pin")
+    raw = [validate_raw_arm(stage, task, arms[backend]["run"], backend, code_host_sha) for backend in ("opensky", "native")]
+    return {"taskId": task["taskId"], "gate": str(gate_path), "gateSha256": sha256(gate_path), "validation": str(validation_path), "validationSha256": sha256(validation_path), "arms": raw}
+
+
+def resume_plan(stage: Path, output: Path) -> dict[str, Any]:
+    """Read-only admission check for a halted count-20 campaign."""
+    receipt = read_json(output / "repeat-vm-campaign-receipt.json")
+    index = read_json(output / "campaign-index.json")
+    require(receipt.get("count") == 20 and index.get("count") == 20 and index.get("status") == "incomplete", "--resume requires an incomplete count-20 campaign")
+    require(receipt.get("stageContract") == index.get("stageContract") and receipt.get("stageContract", {}).get("stage") == str(stage), "resume campaign/stage receipt mismatch")
+    current_contract, tasks = stage_contract(stage)
+    require(receipt.get("stageContract") == current_contract, "resume frozen stage contract changed")
+    rows = index.get("tasks")
+    require(isinstance(rows, list) and len(rows) == 20, "resume index must retain all 20 rows")
+    completed: list[dict[str, Any]] = []
+    failing: tuple[dict[str, Any], dict[str, Any]] | None = None
+    for task, row in zip(tasks, rows):
+        require(isinstance(row, dict) and all(row.get(key) == task[key] for key in ("name", "taskId", "order", "fixture")) and row.get("selected") is True, f"resume index task mismatch: {task['name']}")
+        if row.get("state") == "completed":
+            require(failing is None, "completed rows after an interrupted row are unsafe")
+            completed.append(validate_retained_completed_pair(stage, task, row))
+            continue
+        if failing is None:
+            require(row.get("state") == "incomplete", f"first unfinished row must retain terminal failure: {task['name']}")
+            arm_rows = [arm for arm in row.get("runs", []) if isinstance(arm, dict) and (stage / "runs" / str(arm.get("run"))).is_dir()]
+            require(len(arm_rows) == 1, f"interrupted row must retain exactly one existing attempt: {task['name']}")
+            failure = terminal_preagent_setup_failure(stage, task, arm_rows[0])
+            provider = provider_for_task(stage, task)
+            failing = (task, {"ordinal": row.get("ordinal"), "failedAttempt": failure, "replacementRun": resume_attempt_name(stage, failure["run"]), "provider": provider, "originalRow": row})
+        else:
+            require(row.get("state") == "planned" and row.get("gate") is None and row.get("validation") is None, f"unrun row mutated after interruption: {task['name']}")
+    require(failing is not None, "resume campaign has no verified retryable terminal pre-agent failure")
+    providers = {task["fixture"]: provider_for_task(stage, task) for task in tasks}
+    return {"providers": providers, "ready": True, "mode": "resume-plan-only", "campaign": str(output), "retainedCompletedPairs": completed, "replacement": failing[1], "negativeInvariants": {"originalReceiptUnchanged": sha256(output / "repeat-vm-campaign-receipt.json"), "originalIndexUnchanged": sha256(output / "campaign-index.json"), "onlyTerminalPreAgentFailureIsRetryable": True, "noScoredUnknownOrLiveAttemptAdmitted": True, "visibleRows": 20}}
+
+
 def verify_receipt(output: Path, stage: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     receipt = read_json(output / "repeat-vm-campaign-receipt.json")
     current, tasks = stage_contract(stage)
@@ -378,21 +502,56 @@ def validate_index(index: dict[str, Any], receipt: dict[str, Any], tasks: list[d
     require(sum(row.get("selected") is True for row in rows) == receipt["count"], "campaign index selected count mismatch")
     return rows
 
-def execute(output: Path, stage: Path, count: int) -> None:
-    receipt, tasks = verify_receipt(output, stage)
-    index_path = output / "campaign-index.json"
-    index = read_json(index_path)
-    rows = validate_index(index, receipt, tasks, before_run=True)
-    require_idle_provider(stage)
+def execute(output: Path, stage: Path, count: int, *, resume: bool = False) -> None:
     with controller_lock(stage):
+        require_idle_provider(stage)
+        if resume:
+            admission = resume_plan(stage, output)
+            index_path = output / "campaign-index.json"
+            index = read_json(index_path)
+            tasks = task_rows(read_json(stage / "full20-selection.json"))
+            replacement = admission["replacement"]
+            ordinal = replacement["ordinal"]
+            require(isinstance(ordinal, int) and 1 <= ordinal <= 20, "resume replacement ordinal invalid")
+            history_dir = output / "attempt-history" / replacement["failedAttempt"]["run"]
+            require(not history_dir.exists(), "resume history already exists; do not replay a resume mutation")
+            history_dir.mkdir(parents=True)
+            shutil.copy2(index_path, history_dir / "campaign-index-before-resume.json")
+            old_run = replacement["failedAttempt"]["run"]
+            for suffix in (".json", ".log"):
+                source = output / "arms" / f"{tasks[ordinal - 1]['taskId']}-{replacement['failedAttempt']['backend']}{suffix}"
+                if source.exists():
+                    shutil.copy2(source, history_dir / source.name)
+            row = index["tasks"][ordinal - 1]
+            arm = next(item for item in row["runs"] if item["backend"] == replacement["failedAttempt"]["backend"])
+            row.setdefault("attemptHistory", []).append({"backend": arm["backend"], "run": old_run, "reason": replacement["failedAttempt"]["failure"], "state": "not-scored", "failedAttempt": replacement["failedAttempt"]})
+            arm["run"] = replacement["replacementRun"]
+            arm["state"] = "planned"
+            row["state"] = "planned"
+            row["gate"] = None
+            row["validation"] = None
+            index["status"] = "planned"
+            index["resumeAdmission"] = {"at": now(), "replacement": replacement, "history": str(history_dir), "providers": admission["providers"]}
+            write_json(index_path, index)
+        else:
+            receipt, tasks = verify_receipt(output, stage)
+            index_path = output / "campaign-index.json"
+            index = read_json(index_path)
+            rows = validate_index(index, receipt, tasks, before_run=True)
+        if resume:
+            receipt = read_json(output / "repeat-vm-campaign-receipt.json")
+            rows = index["tasks"]
+        require_idle_provider(stage)
         # Re-check the immutable receipt and idle evidence under the local lock.
         verify_receipt(output, stage)
         require_idle_provider(stage)
         index["status"] = "running"
-        index["startedAt"] = now()
+        index.setdefault("startedAt", now())
         write_json(index_path, index)
         for row, task in zip(rows, tasks):
             if not row.get("selected"):
+                continue
+            if row.get("state") == "completed":
                 continue
             for arm in row["runs"]:
                 run, backend = arm["run"], arm["backend"]
@@ -400,10 +559,13 @@ def execute(output: Path, stage: Path, count: int) -> None:
                 log_path = output / "arms" / f"{task['taskId']}-{backend}.log"
                 try:
                     require((stage / "runs" / run).exists() is False, f"existing provider run cannot be retried: {run}")
+                    provider_contract = provider_for_task(stage, task)
+                    pinned_providers = (index.get("resumeAdmission") or {}).get("providers") or receipt.get("provider", {}).get("armsByFixture")
+                    require(isinstance(pinned_providers, dict) and pinned_providers.get(task["fixture"]) == provider_contract, "fixture provider changed after admission")
                     write_json(arm_path, {"run": run, "backend": backend, "taskId": task["taskId"], "stage": str(stage), "state": "dispatching", "log": str(log_path), "receipt": receipt["campaignId"]})
                     verify_receipt(output, stage)
                     with log_path.open("w", encoding="utf-8") as log:
-                        provider = subprocess.run([sys.executable, str(stage / "run-arm-recovered.py"), run, backend, "--task", task["taskId"]], cwd=stage, stdout=log, stderr=subprocess.STDOUT)
+                        provider = subprocess.run([sys.executable, provider_contract["armRunner"], run, backend, "--task", task["taskId"]], cwd=stage, stdout=log, stderr=subprocess.STDOUT)
                     require(provider.returncode == 0, f"stage provider failed for {run}; retained log: {log_path}")
                     summary = completion_summary(stage, run, task, backend)
                 except Exception as exc:
@@ -418,7 +580,8 @@ def execute(output: Path, stage: Path, count: int) -> None:
                 print(json.dumps({"completedRun": run, "backend": backend, "taskSuccess": summary["taskSuccess"], "toolCalls": summary["toolCalls"], "elapsedMs": summary["elapsedMs"]}), flush=True)
             gate_path = output / "gates" / f"{task['name']}-pair-gate.json"
             try:
-                validation = validate_completed_pair(stage, task, run_name(receipt["campaignId"], row["ordinal"], "opensky"), run_name(receipt["campaignId"], row["ordinal"], "native"), gate_path, output / "pair-validations" / f"{task['name']}.json")
+                arm_names = {arm["backend"]: arm["run"] for arm in row["runs"]}
+                validation = validate_completed_pair(stage, task, arm_names["opensky"], arm_names["native"], gate_path, output / "pair-validations" / f"{task['name']}.json")
             except Exception:
                 row["state"] = "incomplete"
                 index["status"] = "incomplete"
@@ -431,19 +594,31 @@ def execute(output: Path, stage: Path, count: int) -> None:
         index["status"] = "completed"
         index["completedAt"] = now()
         write_json(index_path, index)
-    write_json(output / "stage-result.json", {"accepted": True, "completedAt": now(), "count": count, "campaignId": receipt["campaignId"], "stageContract": receipt["stageContract"], "index": str(index_path), "gates": [row.get("gate") for row in rows if row.get("selected")], "validations": [row.get("validation") for row in rows if row.get("selected")]})
+        write_json(output / "stage-result.json", {"accepted": True, "completedAt": now(), "count": count, "campaignId": receipt["campaignId"], "stageContract": receipt["stageContract"], "index": str(index_path), "gates": [row.get("gate") for row in rows if row.get("selected")], "validations": [row.get("validation") for row in rows if row.get("selected")]})
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stage", required=True, type=Path, help="absolute immutable stage directory")
-    parser.add_argument("--output", required=True, type=Path, help="new campaign index directory")
-    parser.add_argument("--count", required=True, type=int, choices=COUNTS)
+    parser.add_argument("--output", type=Path, help="new campaign index directory")
+    parser.add_argument("--count", type=int, choices=COUNTS)
     parser.add_argument("--previous", type=Path, help="accepted preceding repeat stage (required for 5/20)")
     parser.add_argument("--run", action="store_true", help="dispatch through the stage's existing serialized provider")
+    parser.add_argument("--resume", type=Path, help="inspect an existing incomplete count-20 campaign; --run dispatches only after admission")
     args = parser.parse_args()
     require(args.stage.is_absolute(), "--stage must be absolute")
     stage = args.stage.resolve()
+    if args.resume is not None:
+        require(args.output is None and args.count is None and args.previous is None, "--resume cannot be combined with --output, --count, or --previous")
+        require(args.resume.is_absolute(), "--resume must name an existing absolute campaign directory")
+        plan = resume_plan(stage, args.resume.resolve())
+        if args.run:
+            execute(args.resume.resolve(), stage, 20, resume=True)
+            print(json.dumps({"ready": True, "mode": "resume-run", "campaign": str(args.resume.resolve())}))
+            return 0
+        print(json.dumps(plan, indent=2, sort_keys=True))
+        return 0
+    require(args.output is not None and args.count is not None, "--output and --count are required unless --resume is used")
     output = args.output.resolve()
     require(not output.exists(), "--output must be a new directory")
     require(not under(output, stage), "--output must not be inside the immutable stage")
@@ -455,6 +630,9 @@ def main() -> int:
     campaign_id = hashlib.sha256((str(output) + contract["taskSetSha256"]).encode()).hexdigest()[:20]
     rows = build_index(tasks, args.count, campaign_id)
     require_unique_provider_names(stage, rows)
+    # Verify each selected fixture provider before any campaign receipt exists;
+    # this catches a missing editor setup/pin in plan-only mode as well.
+    providers = {task["fixture"]: provider_for_task(stage, task) for task in tasks[:args.count]}
     output.mkdir(parents=True)
     (output / "arms").mkdir()
     (output / "gates").mkdir()
@@ -465,7 +643,7 @@ def main() -> int:
         review_dir = output / "previous-review"
         review_dir.mkdir()
         previous_validation = load_previous(previous, 2 if args.count == 5 else 5, contract, tasks, review_dir)
-    receipt = {"createdAt": now(), "campaignId": campaign_id, "count": args.count, "mode": "run" if args.run else "plan-only", "stageContract": contract, "previous": str(args.previous.resolve()) if args.previous else None, "previousValidation": previous_validation, "provider": {"armRunner": str(stage / "run-arm-recovered.py"), "pairVerifier": str(stage / "review-pair-recovered.py"), "remoteContract": "immutable stage provider; its worker lock remains authoritative"}}
+    receipt = {"createdAt": now(), "campaignId": campaign_id, "count": args.count, "mode": "run" if args.run else "plan-only", "stageContract": contract, "previous": str(args.previous.resolve()) if args.previous else None, "previousValidation": previous_validation, "provider": {"armsByFixture": providers, "pairVerifier": str(stage / "review-pair-recovered.py"), "remoteContract": "immutable stage provider; its worker lock remains authoritative"}}
     write_json(output / "repeat-vm-campaign-receipt.json", receipt)
     index = {"campaignId": campaign_id, "count": args.count, "stage": str(stage), "stageContract": contract, "tasks": rows, "status": "planned"}
     write_json(output / "campaign-index.json", index)

@@ -146,6 +146,30 @@ See [scenario contracts and remaining fixture work](../e2e/scenarios.md).
 
 ## Evidence, metrics, and observability
 
+### RUN-013 — editor fixture used the office provider
+
+- **Symptom/layer:** the bounded repeat controller always invoked the office arm
+  provider. The frozen full20 row for the editor fixture therefore reached the
+  evaluator without the editor setup environment and stopped before agent work
+  with `OPENSKY_EVAL_VSCODE` absent.
+- **Fix:** provider selection now comes only from the frozen row's `fixture`.
+  Editor rows require the frozen editor fixture, the reviewed no-agent editor
+  setup and code-host receipts, a matching VS Code fingerprint, and the editor
+  launcher/provider hashes. Office rows retain their original provider contract.
+- **Recovery boundary:** `--resume` without `--run` is read-only. It revalidates retained pairs
+  and admits a replacement ID only for a terminal, settled, unscored attempt
+  carrying the explicit pre-agent editor marker. It retains the original
+  receipt/index/run evidence and rejects scored, live, unknown, and nonterminal
+  attempts. No product-specific workflow guidance was added.
+- **Validation:** the fresh remote editor setup matched the original environment
+  except capture time. The resumed text-replacement pair passed for both backends:
+  OpenSky 5 calls / 39,884 ms; native 3 calls / 19,901 ms. Its saved outcomes,
+  cleanup, usage and pair gate were verified. The original setup attempt and five
+  preceding pairs remain unchanged. Ready-to-first-result time was 92.664 seconds.
+  Six controller guard checks also rejected live, missing-cleanup, mismatched-exit,
+  scored, agent-event and unsettled evidence; these are controller checks, not SDK
+  behavior evidence. Full 20-task repeat acceptance remains pending.
+
 ### GENERIC-SKILL-02 — evaluation prompts drifted from the shipped skill
 
 - **Symptom/layer:** OpenSky parity arms previously supplied a short inline
