@@ -50,6 +50,14 @@ installer requires Rust and the platform build tools. Fork release downloads are
 not available yet; `opensky doctor` reports the setup instructions if it is missing.
 It never downloads or falls back to upstream Cua Driver.
 
+For the validated Linux build, use SDK commit
+`c69d3b8533ffc860759707737e45dc5578466b23` and driver commit
+[`bd7c5a52253b20a8169d0a9a10437b8a14c68f6a`](https://github.com/tanishqkancharla/cua/tree/bd7c5a52253b20a8169d0a9a10437b8a14c68f6a).
+Check out that driver commit before running its source installer; the fork's
+default branch is not the validated Linux source. The
+[V14 comparison](docs/linux-parity-v14.md) records the tested binary, runtime,
+results and limitations. These Linux results do not certify macOS or Windows.
+
 The executable is `opensky-driver` (`opensky-driver.exe` on Windows). On macOS
 it lives in `/Applications/OpenSkyDriver.app`, displayed as **OpenSky Driver**.
 Grant Accessibility and Screen Recording to that app, then run `opensky doctor`.

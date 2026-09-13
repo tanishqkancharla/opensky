@@ -3851,3 +3851,19 @@ The running V9 source and skill remain frozen on their original commit.
 The native-style facade now accepts `pressKey(key, elementIndex?)` and forwards the current element target to the SDK. Previously JavaScript silently ignored the second argument and sent an ambient key. The targeted SDK path now retries only the driver’s explicit pre-input `background_unavailable` refusal in foreground mode, preserving the window and element target. The public skill distinguishes targeted keys from ambient keys and value replacement; it includes no app-specific procedure.
 
 On a fresh remote Impress fixture, the previous SDK deleted the selected headline for the facade call and refused the lower-level targeted call. Both candidate paths saved60pt with unchanged single-paragraph text; two real cases passed, along with19 existing facade contract checks, build/typecheck and skill validation. The driver binary is unchanged. These are SDK behavior results; agent benchmark scores remain unchanged pending a matched rerun.
+
+## LINUX-V14-DELIVERY-01 — Identify the measured driver for fresh installations
+
+- Symptom/layer: source-install instructions linked to the fork without selecting the Linux driver tested by the completed V14 campaign. The fork default branch and the frozen driver source differ, so following the repository link alone does not reproduce the measured build.
+- Change: README names the exact V14 SDK and Linux driver commits and links to the complete comparison. The Linux typing workflow adopts the already tested bd7c5a5 driver pin and its owned-popup checks; this changes CI configuration, not agent guidance or frozen task results.
+- Evidence: V14 retained all twenty matched pairs and forty saved outputs, with OpenSky18/20 and native16/20. OpenSky passed all sixteen native-success tasks. Driver CI34749589458 passed its build, focused Rust tests and four live X11 popup capture checks. The complete comparison and recovery/scoring limits are in docs/linux-parity-v14.md.
+- Validation: deterministic three-desktop public SDK gate34782011989 is pending. The measured VM campaign does not substitute for this integration gate. The source installer and Linux measurement do not certify macOS or Windows.
+- Remaining limits: one trial per backend/task; both agents failed subscript scope and freeze boundaries. Preserve these failures. No application-specific instructions were added to the product SDK, harness or skill.
+
+### LINUX-V14-DELIVERY-01 setup repair and remaining input failure
+
+CI34782011989 built the exact V14 binary, but all three SDK jobs stopped before tests because a dynamic native-package download no longer matched its old checksum. Delivery commit4f87493 uses the retained native-reference artifact, verifies its fixed SHA, and optionally reuses the successful driver artifact with fixed binary hash and live identity checks. This preserves the frozen source/model/scoring inputs and avoids another driver build.
+
+CI34782566739 then ran all27 SDK cases:20passed and7failed. Six failures were obsolete dialog test setup: Character was sought while its menu was closed; after opening Format through the public ALT+O shortcut, the font field is correctly labeled Family: with a separate value. Updating these setup actions and visible-value assertions passed COORD-L01, SHOT-L02, TYPE-L01 and KEY-L01 on the warm disposable desktop (v14-sdk-repro-03), with four owned-app exits and container removal verified. Earlier failures remain retained.
+
+The seventh failure is unresolved: one of three TYPE-L01 CI runs saved a truncated Unicode prefix, despite no public action error. Later passing warm runs do not erase that failure. A passive X11 diagnostic is being prepared with the same public typing action; do not promote this build as integration-passed until the input failure is understood and the gate is rerun. No application-specific guidance was added to the SDK, harness or skill.

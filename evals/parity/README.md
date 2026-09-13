@@ -1,22 +1,18 @@
 # Paired parity evaluations
 
-Status: the two-task smoke campaign completed, followed by a verified five-task
-readiness checkpoint. Native succeeded on 2/5 tasks and OpenSky on 1/5. The
-checkpoint preserves eight valid attempts from `campaign-five-4` and the two
-separately completed strikethrough arms, with all three evaluator revisions
-recorded. It is **not one frozen campaign**. Guard-rejected attempts remain
-invalid; the [results](smoke-results.md) retain their evidence and the observed
-OpenSky paragraph-selection timeout.
+Status: the frozen Linux V14 measurement completed all 20 matched tasks (40
+arms): OpenSky passed 18/20 and native passed 16/20, with OpenSky passing all
+16 native-success tasks. See the publishable [V14 report](../../docs/linux-parity-v14.md).
+This is Linux-first evidence for the current direction, one trial per
+task/backend under adapted saved-outcome scoring, not a general parity or
+repeatability certificate. CI 34782011989 is not a passed result: its driver
+build passed, while all three evaluate jobs failed at the frozen native `.deb`
+checksum before public SDK tests.
 
-The frozen full set has 20 OSWorld tasks: five Writer, eight Calc, five
-Impress and two VS Code tasks. The original upstream scorers are preserved;
-separate content/format checks reject partial edits, changed chart data and
-wrong chart grouping. All 75 spending, policy, admission and saved-file checks
-pass locally. All 15 added task files opened successfully in isolated app
-instances, which stayed alive until normal cleanup; all scratch profiles were
-removed. `fullTaskIds` now freezes the selected 20 IDs. No frozen 20-task score
-exists yet. Setup evidence is retained in
-`evals/runs/expanded-setup-validation.json`.
+The setup and milestone prose below is retained as historical context for the
+evaluator and its generic commands. It does not supersede the frozen V14
+results, pins, or receipt limits. The current session has no periodic $50
+approval gates; retain the existing ledger, reservation, and safety mechanisms.
 
 ## Run a gated campaign
 
@@ -66,18 +62,18 @@ paths, evidence hashes, compatibility audits and all valid failures. It cannot
 be relabeled a frozen baseline. The subsequent 20-task campaign still enforces
 a single code/assets/desktop fingerprint.
 
-The operator reports progress after every native/OpenSky attempt, including
+Historically, the operator reported progress after every native/OpenSky attempt, including
 interruptions: task/backend, outcome, admitted calls and elapsed time, cleanup,
-and cumulative conservative spending. Stop before each $50 checkpoint for the
-user's review.
+and cumulative conservative spending. The current session does not require
+periodic $50 review checkpoints.
 
 The default `native-compaction-v1` profile has **no whole-task deadline and no
 tool-call cap**, as requested by the user. Both arms run through the real Codex
 app-server with its normal native context compaction; the harness does not
 summarize context, restart the agent, or override compaction thresholds. Calls
-and elapsed time are observations, not completion gates. Spending reservations,
-the existing per-run estimate safety threshold, and each $50 review checkpoint
-still apply. Startup and process teardown retain separate transport timeouts;
+and elapsed time are observations, not completion gates. Spending reservations
+and the existing per-run estimate safety threshold still apply; the current
+session has no periodic $50 review checkpoint. Startup and process teardown retain separate transport timeouts;
 these do not limit the working agent's task duration.
 
 Historical `fixed-v1` results used 20 calls / 240 seconds and must remain
@@ -184,19 +180,19 @@ infrastructure errors, not task failures.
 
 ## Spending
 
-The user requires review before crossing each cumulative $50 increment, across
-all evaluation runs and infrastructure. The current runner reserves $5 of
-conservative Terra API-equivalent estimated cost and interrupts at $2.50 of
-reported usage, leaving headroom for in-flight work. This is an estimate-based
-admission guard, not a provider-enforced billing cap. Interrupted runs retain
-their reservation until reconciled. Approval advances one checkpoint only.
+The current session has no periodic $50 review gates across evaluation runs or
+infrastructure. The existing runner still reserves $5 of conservative Terra
+API-equivalent estimated cost and interrupts at $2.50 of reported usage,
+leaving headroom for in-flight work. This is an estimate-based admission guard,
+not a provider-enforced billing cap. Interrupted runs retain their reservation
+until reconciled.
 
-Initial preflights use the existing ChatGPT login, with API-key environment
+Historical preflights use the existing ChatGPT login, with API-key environment
 variables excluded. Record actual token usage and subscription authentication
 separately from cash expenditure; do not call subscription usage free or invent
 an API dollar charge. Rates and official sources are recorded in `pricing.json`;
 the ledger uses the higher long-context standard rates. API-billed and paid
-infrastructure dispatch remain disabled. The first checkpoint is $50.
+infrastructure dispatch remain disabled. The historical first checkpoint was $50.
 
 ## Local cleanup
 

@@ -33,6 +33,7 @@ test("CLICK-L01: a freshly observed save button saves the document", async ({ ap
 });
 
 test("COORD-L01: a screenshot click edits the font dialog rather than the document behind it", { timeout: 120_000 }, async ({ app }) => {
+  await app.pressKey("ALT+O");
   const documentState = await app.getAXState({ disableDiffing: true });
   expect(documentState).toMatch(/\[(\d+)\] menu item "Character\.\.\."/);
   await app.click(Number(documentState.match(/\[(\d+)\] menu item "Character\.\.\."/)![1]));
@@ -43,7 +44,7 @@ test("COORD-L01: a screenshot click edits the font dialog rather than the docume
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('dialog = "Character"');
   await app.pressKey("CTRL+A");
   await app.typeText("Liberation Serif");
-  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Liberation Serif"');
+  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Family:" value="Liberation Serif"');
 });
 
 test("SHOT-L01: a screenshot preserves the observed save button target", { timeout: 120_000 }, async ({ app, document }) => {
@@ -58,6 +59,7 @@ test("SHOT-L01: a screenshot preserves the observed save button target", { timeo
 });
 
 test("SHOT-L02: a screenshot of the new dialog targets its font field", { timeout: 120_000 }, async ({ app }) => {
+  await app.pressKey("ALT+O");
   const state = await app.getAXState({ disableDiffing: true });
   expect(state).toMatch(/\[(\d+)\] menu item "Character\.\.\."/);
   await app.click(Number(state.match(/\[(\d+)\] menu item "Character\.\.\."/)![1]));
@@ -67,7 +69,7 @@ test("SHOT-L02: a screenshot of the new dialog targets its font field", { timeou
   await app.pressKey("CTRL+A");
   await app.typeText("Liberation Serif");
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('dialog = "Character"');
-  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Liberation Serif"');
+  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Family:" value="Liberation Serif"');
 });
 
 test("COORD-L02: rejects a point outside the observed dialog and accepts a corrected save click", { timeout: 120_000 }, async ({ app, document }) => {
