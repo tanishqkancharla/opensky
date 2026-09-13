@@ -21,6 +21,12 @@ element. Observations and created objects are emitted by the tool.
 const app = await cua.getApp("authorized app identifier");
 ```
 
+`app.pressKey(key)` sends a key to the focused control in the bound window.
+`app.pressKey(key, elementIndex)` targets an element from the latest observation.
+`app.setValue(elementIndex, value)` replaces a control's value without guaranteeing
+keyboard focus or committing it. When a control requires a key to commit its
+value, target that control explicitly or click it before sending an untargeted key.
+
 ## OpenSky CLI host
 
 The following setup, console output, and legacy-API snippets apply only when

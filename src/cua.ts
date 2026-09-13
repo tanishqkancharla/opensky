@@ -84,10 +84,10 @@ export interface Target {
   paste(text: string, options?: PasteOptions): Promise<void>;
   click(target: number | Vec2, options?: ClickOptions): Promise<void>;
   drag(from: Vec2, to: Vec2): Promise<void>;
-  pressKey(key: string): Promise<void>;
+  pressKey(key: string, elementIndex?: number): Promise<void>;
   scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void>;
   selectText(elementIndex: number, text: string, options?: SelectTextOptions): Promise<void>;
-  /** Replace a value without guaranteeing keyboard focus or sending Enter. Subsequent keys go to the focused control. */
+  /** Replace a value without guaranteeing keyboard focus or sending Enter. Untargeted keys go to the focused control. */
   setValue(elementIndex: number, value: string): Promise<void>;
   typeText(text: string): Promise<void>;
   performSecondaryAction(elementIndex: number, action: string): Promise<void>;
@@ -500,9 +500,12 @@ abstract class BoundTarget implements Target {
     });
   }
 
-  async pressKey(key: string): Promise<void> {
+  async pressKey(key: string, elementIndex?: number): Promise<void> {
+    if (arguments.length > 2 || (elementIndex !== undefined && (!Number.isSafeInteger(elementIndex) || elementIndex < 0))) {
+      throw new OpenSkyError("Invalid params: use pressKey(key, elementIndex?) with an index from the latest observation", "invalid_params");
+    }
     this.facade.prepareAction(this.targetHandle);
-    await this.facade.opensky.press_key({ app: this.targetHandle, key });
+    await this.facade.opensky.press_key({ app: this.targetHandle, key, ...(elementIndex !== undefined ? { element_index: elementIndex } : {}) });
   }
 
   async scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void> {

@@ -2466,6 +2466,12 @@ export class OpenSky implements OpenSkyApi {
       await this.driver.call("press_key", { ...payload, delivery_mode: "background" });
       return;
     } catch (error) {
+      if (error instanceof OpenSkyError && error.code === "background_unavailable" && resolved.windowId) {
+        // The driver refused before input. Preserve the exact element target
+        // while letting its foreground route focus the control and send once.
+        await this.driver.call("press_key", { ...payload, delivery_mode: "foreground" });
+        return;
+      }
       if (!isFocusRoutingError(error)) throw error;
     }
     const snapshot = this.memory.trees[windowKey(resolved)];
