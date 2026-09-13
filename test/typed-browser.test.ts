@@ -1434,7 +1434,8 @@ describe("OpenSky typed-browser contract", () => {
     await restarted.close();
     assert.equal((await browserLeaseRecords(home)).length, 0);
     assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === session).length, 2);
-    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === `${SESSION}-restarted`).length, 1);
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === `${SESSION}-restarted`).length, 0,
+      "reclaiming the orphan must not invent an unused restarted base session");
   });
 
   it("retains a failed setup rollback session so close can retry it", async () => {
@@ -1463,6 +1464,8 @@ describe("OpenSky typed-browser contract", () => {
     const first = createOpenSky({ driver, homeDir: firstHome, settleDelayMs: 0, degradedRetryMs: 0 });
     const second = createOpenSky({ driver, homeDir: secondHome, settleDelayMs: 0, degradedRetryMs: 0 });
 
+    await first.list_apps();
+    await second.list_apps();
     await first.close();
     await second.close();
 
