@@ -65,15 +65,14 @@ validated reference files. It does not run an agent or re-export any artifact.
 python evals/parity/osworld/scoring_profile.py freeze \
   --controls /path/to/control-artifacts \
   --output /path/to/new-scoring-profile \
-  --libreoffice /path/to/LibreOffice.app/Contents/MacOS/soffice
+  --libreoffice /usr/lib/libreoffice/program/soffice
 ```
 
 Set `OPENSKY_EVAL_SCORING_PROFILE` to its `profile.json` when starting a new
 campaign. The controller retains its own reference copies in `scoring/`, records
 individual reference hashes and the profile identity in the plan, and verifies
 them again before each arm. The runner verifies the profile and actual Linux
-rendering runtime
-before app setup and spending admission. Scoring rechecks references and sources
+rendering runtime before app setup and spending admission. Scoring rechecks references and sources
 after the agent finishes, rejecting a changed profile as an infrastructure error.
 Stages 5 and 20 require the same scoring and task-limit profiles as their prior
 stage. A scoring-source or original-asset change requires a newly validated
@@ -102,3 +101,9 @@ its instruction just says green; this policy does not silently relax that rule.
 Fresh paired smoke runs are still required to establish actual agent outcomes
 under this scoring profile. Do not reinterpret the constructed controls or
 historical raw scores as new agent successes.
+
+## Linux runtime validation, 2026-09-13
+
+Source `0ee82d64b98a0d32f436519c123e89839da5fc83` passed the TypeScript build and 25 real LibreOffice grading controls (five task cases, five specimens each) in a fresh Linux container. Same-runtime admission and the production scoring CLI passed; changed locale and the old incomplete profile were rejected. Exporter profiles and the container were cleaned up.
+
+The resulting profile hash is `985cb748fefedc3958bd1791288bfe51d83f0f7a700ddfae8fd941907b5b553b`. This verifies grading admission, not a new agent outcome or CI release. Prior campaign artifacts and scores remain unchanged.
