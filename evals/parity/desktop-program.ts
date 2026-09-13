@@ -1,4 +1,5 @@
 import { parse } from "acorn";
+import { LexicalState, type LexicalSnapshot, type BindingAuthority, type ImportKind } from "./lexical-state.js";
 
 export type DesktopProgramScope = { backend: "native" | "opensky"; appSelectors: string[]; isolatedDesktop?: "linux" };
 export const nativeMethods = new Set(["get_app_state", "click", "drag", "press_key", "type_text", "select_text", "paste", "scroll", "set_value", "perform_secondary_action"]);
@@ -9,54 +10,61 @@ const forbidden = new Set(["constructor", "prototype", "__proto__", "process", "
  * This is an evaluation boundary, not an alternative SDK or action planner.
  * Both agents keep their real REPL; no filesystem/import/network shortcuts. */
 export class DesktopProgramPolicy {
-  private bindings = new Set<string>();
-  private appBindings = new Set<string>();
-  private stateBindings = new Set<string>();
-  private screenshotImports = new Map<string, "fs" | "url" | "fileURLToPath" | "readFile">();
-  private screenshotPaths = new Set<string>();
-  private numericBindings = new Set<string>();
-  private varBindings = new Set<string>();
+  private lexical = new LexicalState();
   constructor(readonly scope: DesktopProgramScope) {}
-  executionFailed(): void {
-    // A failed assignment may leave an older value in the real REPL. Require
-    // a fresh successful observation or numeric binding before relying on it.
-    this.stateBindings.clear();
-    this.screenshotPaths.clear();
-    this.numericBindings.clear();
-  }
+  executionFailed(): void { this.lexical.invalidateAfterFailure(); }
   accepts(code: string): boolean {
     try {
       const ast = parse(code, { ecmaVersion: "latest", sourceType: "module", allowAwaitOutsideFunction: true }) as any;
-      let bindings = new Set(this.bindings);
-      let apps = new Set(this.appBindings);
-      let states = new Set(this.stateBindings);
-      let imports = new Map(this.screenshotImports);
-      let paths = new Set(this.screenshotPaths);
-      let numeric = new Set(this.numericBindings);
-      let vars = new Set(this.varBindings);
-      const scopes: Set<string>[] = [];
-      type Environment = { bindings: Set<string>; apps: Set<string>; states: Set<string>; imports: Map<string, "fs" | "url" | "fileURLToPath" | "readFile">; paths: Set<string>; numeric: Set<string>; vars: Set<string> };
-      const snapshot = (): Environment => ({ bindings: new Set(bindings), apps: new Set(apps), states: new Set(states), imports: new Map(imports), paths: new Set(paths), numeric: new Set(numeric), vars: new Set(vars) });
-      const restore = (environment: Environment): void => {
-        bindings = new Set(environment.bindings); apps = new Set(environment.apps); states = new Set(environment.states);
-        imports = new Map(environment.imports); paths = new Set(environment.paths); numeric = new Set(environment.numeric); vars = new Set(environment.vars);
+      // One transaction owns all authority. Name views below resolve through
+      // the active lexical frame and never retain independent provenance.
+      let lexical = this.lexical.clone();
+      type Environment = LexicalSnapshot;
+      const snapshot = () => lexical.snapshot();
+      const restore = (saved: Environment) => { lexical = new LexicalState(saved); };
+      const join = (base: Environment, left: Environment, right: Environment) => { lexical = LexicalState.join(base, left, right); };
+      const ensure = (name: string) => lexical.resolve(name) ?? lexical.reserve(name);
+      const flag = (key: "ordinaryDefined" | "app" | "state" | "screenshotPath" | "numeric") => ({
+        has: (name: string) => lexical.read(name)?.[key] === true,
+        add: (name: string) => lexical.writeById(ensure(name), { [key]: true }),
+        delete: (name: string) => { const id = lexical.resolve(name); if (id !== undefined) lexical.writeById(id, { [key]: false }); },
+      });
+      const bindings = flag("ordinaryDefined"), apps = flag("app"), states = flag("state"), paths = flag("screenshotPath"), numeric = flag("numeric");
+      const imports = {
+        get: (name: string) => lexical.read(name)?.importKind,
+        has: (name: string) => lexical.read(name)?.importKind !== undefined,
+        set: (name: string, kind: ImportKind) => lexical.writeById(ensure(name), { importKind: kind }),
+        delete: (name: string) => { const id = lexical.resolve(name); if (id !== undefined) lexical.writeById(id, { importKind: undefined }); },
       };
-      const intersect = <T>(base: Set<T>, left: Set<T>, right: Set<T>) => new Set([...base].filter(value => left.has(value) && right.has(value)));
-      // An if branch or a loop may not run. Only authority held before it and
-      // retained by every checked path can survive after it.
-      const join = (base: Environment, left: Environment, right: Environment): void => {
-        // Header `var` declarations are function scoped, even in a skipped
-        // branch. Retain bare names for admission; the real REPL decides
-        // their lifetime across cells. Authority still uses intersection.
-        vars = new Set([...base.vars, ...left.vars, ...right.vars]);
-        bindings = new Set([...base.bindings, ...vars]);
-        apps = intersect(base.apps, left.apps, right.apps);
-        states = intersect(base.states, left.states, right.states);
-        paths = intersect(base.paths, left.paths, right.paths);
-        numeric = intersect(base.numeric, left.numeric, right.numeric);
-        imports = new Map([...base.imports].filter(([name, kind]) => left.imports.get(name) === kind && right.imports.get(name) === kind));
+      const clearHelper = (name: string) => { const id = lexical.resolve(name); if (id !== undefined) lexical.writeById(id, { helper: undefined }); };
+      const activeHelpers = new Set<unknown>();
+      const topLevelStatements = new Set(ast.body);
+      const functionScope = (): number => {
+        const saved = snapshot(); let frame = saved.scopes.get(saved.currentScopeId)!;
+        while (frame.kind === "block") frame = saved.scopes.get(frame.parentId!)!;
+        return frame.id;
       };
-      const declare = (name: string) => scopes.at(-1)?.add(name);
+      // Reserve lexical names before any initializer, and hoist header vars to
+      // their function frame even through branches that may never execute.
+      const prepareScope = (body: any[]): void => {
+        for (const statement of body) if (statement.type === "VariableDeclaration" && statement.kind !== "var") {
+          for (const entry of statement.declarations) {
+            const names = entry.id.type === "Identifier" ? [entry.id.name] : entry.id.type === "ObjectPattern" ? entry.id.properties.map((p: any) => p.value?.name).filter(Boolean) : [];
+            for (const name of names) if (!lexical.currentScope.names.has(name)) lexical.reserve(name);
+          }
+        }
+        const hoist = (node: any): void => {
+          if (!node || typeof node !== "object" || node.type === "FunctionDeclaration") return;
+          if (node.type === "ForOfStatement" && node.left?.type === "VariableDeclaration" && node.left.kind === "var") {
+            const pattern = node.left.declarations[0]?.id;
+            const names = pattern?.type === "Identifier" ? [pattern.name] : pattern?.type === "ArrayPattern" ? pattern.elements.filter((v: any) => v?.type === "Identifier").map((v: any) => v.name) : [];
+            const scopeId = functionScope();
+            for (const name of names) if (!snapshot().scopes.get(scopeId)!.names.has(name)) lexical.declare(name, {}, scopeId);
+          }
+          for (const child of Object.values(node)) if (Array.isArray(child)) child.forEach(hoist); else if (child && typeof child === "object") hoist(child);
+        };
+        body.forEach(hoist);
+      };
       const member = (node: any, object: string, method?: string) => node?.type === "MemberExpression" && !node.computed && node.object?.type === "Identifier" && node.object.name === object && (method === undefined || node.property?.name === method);
       const imported = (node: any, source: string) => node?.type === "AwaitExpression" && node.argument?.type === "ImportExpression" && !node.argument.options && node.argument.source?.value === source;
       const importedSky = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "sky" && imported(node.object, "@oai/sky");
@@ -171,27 +179,27 @@ export class DesktopProgramPolicy {
         return true;
       };
       const declaration = (statement: any, allowUninitializedConst = false): boolean => {
-        if (scopes.length && statement.kind === "var") return false;
+        if (lexical.currentScope.kind !== "global" && statement.kind === "var") return false;
         for (const entry of statement.declarations) {
           const name = entry.id?.name;
           if (this.scope.backend === "native") {
             const kind = imported(entry.init, "node:fs/promises") ? "fs" : imported(entry.init, "node:url") ? "url" : null;
             if (kind) {
               if (entry.id.type === "Identifier" && name && !forbidden.has(name) && name !== "app") {
-                imports.set(name, kind); bindings.add(name); states.delete(name); paths.delete(name); numeric.delete(name); declare(name); continue;
+                imports.set(name, kind); bindings.add(name); states.delete(name); paths.delete(name); numeric.delete(name); clearHelper(name); continue;
               }
               if (entry.id.type !== "ObjectPattern" || entry.id.properties.length !== 1) return false;
               const property = entry.id.properties[0];
               const exported = kind === "fs" ? "readFile" : "fileURLToPath";
               const alias = property.value?.name;
               if (property.type !== "Property" || property.computed || property.key?.name !== exported || property.value?.type !== "Identifier" || !alias || forbidden.has(alias) || alias === "app") return false;
-              imports.set(alias, exported); bindings.add(alias); states.delete(alias); paths.delete(alias); numeric.delete(alias); declare(alias); continue;
+              imports.set(alias, exported); bindings.add(alias); states.delete(alias); paths.delete(alias); numeric.delete(alias); clearHelper(alias); continue;
             }
           }
           if (entry.id?.type !== "Identifier" || !name || forbidden.has(name) || imports.has(name)) return false;
           if (entry.init === null) {
             if (statement.kind === "const" && !allowUninitializedConst) return false;
-            bindings.add(name); apps.delete(name); states.delete(name); paths.delete(name); numeric.delete(name); declare(name); continue;
+            bindings.add(name); apps.delete(name); states.delete(name); paths.delete(name); numeric.delete(name); clearHelper(name); continue;
           }
           if (!value(entry.init)) return false;
           const appInit = scopedApp(entry.init);
@@ -204,7 +212,7 @@ export class DesktopProgramPolicy {
           bindings.add(name); paths.delete(name); if (isPath) paths.add(name);
           states.delete(name); if (member(entry.init?.argument?.callee, "sky", "get_app_state")) states.add(name);
           if (numberValue(entry.init)) numeric.add(name); else numeric.delete(name);
-          declare(name);
+          clearHelper(name);
         }
         return true;
       };
@@ -229,16 +237,20 @@ export class DesktopProgramPolicy {
         const names = loopBindingNames(entry.id);
         return names ? { kind: left.kind, names } : null;
       };
-      const bindIterableValues = (names: string[], lexical: boolean): void => {
+      const bindIterableValues = (names: string[], isLexical: boolean): void => {
         for (const name of names) {
+          const scopeId = isLexical ? lexical.currentScope.id : functionScope();
+          if (!snapshot().scopes.get(scopeId)!.names.has(name)) lexical.reserve(name, scopeId);
           // An iterable element is ordinary data. If it replaces a prior
           // binding, it must not retain screenshot, import, app or numeric
           // provenance from that prior value.
           bindings.add(name); apps.delete(name); states.delete(name); imports.delete(name); paths.delete(name); numeric.delete(name);
-          if (lexical) declare(name); else vars.add(name);
+          clearHelper(name);
         }
       };
+      let helperCall: (node: any) => boolean;
       const expression = (node: any): boolean => {
+        if (node?.type === "AwaitExpression" && node.argument?.type === "CallExpression" && node.argument.callee?.type === "Identifier" && lexical.read(node.argument.callee.name)?.helper) return helperCall(node);
         if (this.scope.backend === "native" && node.type === "AssignmentExpression" && node.operator === "=" && member(node.left, "globalThis", "sky") && importedSky(node.right)) return true;
         if (node.type === "UpdateExpression") return update(node);
         if (node.type === "AssignmentExpression" && node.operator === "=" && node.left.type === "Identifier") {
@@ -249,6 +261,7 @@ export class DesktopProgramPolicy {
           // already-scoped app behind. Never promote an older data binding.
           if (apps.has(name)) return scopedApp(node.right);
           if (name === "app" || scopedApp(node.right)) return false;
+          clearHelper(name);
           const isPath = screenshotPath(node.right);
           paths.delete(name); if (isPath) paths.add(name);
           states.delete(name); if (member(node.right?.argument?.callee, "sky", "get_app_state")) states.add(name);
@@ -257,38 +270,23 @@ export class DesktopProgramPolicy {
         }
         return value(node);
       };
-      const restoreLocals = (before: Environment, after: Environment, locals: Set<string>): void => {
-        for (const name of locals) {
-          const restoreBinding = <T>(set: Set<T>, prior: Set<T>, value: T) => prior.has(value) ? set.add(value) : set.delete(value);
-          restoreBinding(after.bindings, before.bindings, name);
-          restoreBinding(after.apps, before.apps, name);
-          restoreBinding(after.states, before.states, name);
-          restoreBinding(after.paths, before.paths, name);
-          restoreBinding(after.numeric, before.numeric, name);
-          const priorImport = before.imports.get(name);
-          if (priorImport) after.imports.set(name, priorImport); else after.imports.delete(name);
-        }
-      };
       const block = (statement: any): boolean => {
-        const before = snapshot();
-        scopes.push(new Set());
+        const caller = lexical.enterBlock();
+        prepareScope(statement.body);
         const accepted = statements(statement.body);
-        const locals = scopes.pop()!;
-        if (!accepted) return false;
-        const after = snapshot();
-        restoreLocals(before, after, locals);
-        restore(after);
-        return true;
+        lexical.leaveScope(caller);
+        return accepted;
       };
       const branch = (statement: any): Environment | null => {
         if (statement.type === "BlockStatement") return block(statement) ? snapshot() : null;
         return statementNode(statement) ? snapshot() : null;
       };
-      const sameSet = <T>(left: Set<T>, right: Set<T>) => left.size === right.size && [...left].every(value => right.has(value));
-      const sameMap = <K, V>(left: Map<K, V>, right: Map<K, V>) => left.size === right.size && [...left].every(([key, value]) => right.get(key) === value);
-      const sameEnvironment = (left: Environment, right: Environment) =>
-        sameSet(left.bindings, right.bindings) && sameSet(left.apps, right.apps) && sameSet(left.states, right.states) &&
-        sameMap(left.imports, right.imports) && sameSet(left.paths, right.paths) && sameSet(left.numeric, right.numeric) && sameSet(left.vars, right.vars);
+      const sameEnvironment = (left: Environment, right: Environment): boolean => {
+        if (left.currentScopeId !== right.currentScopeId || left.bindings.size !== right.bindings.size) return false;
+        return [...left.bindings].every(([id, a]) => { const b = right.bindings.get(id); return b !== undefined &&
+          a.ordinaryDefined === b.ordinaryDefined && a.app === b.app && a.state === b.state &&
+          a.screenshotPath === b.screenshotPath && a.numeric === b.numeric && a.importKind === b.importKind && a.helper === b.helper; });
+      };
       // Re-run each loop transfer from a descending invariant until it reaches
       // a fixed point. This abstracts every later iteration without imposing a
       // runtime iteration limit: each capability set can only lose members.
@@ -306,6 +304,7 @@ export class DesktopProgramPolicy {
       };
       const statementNode = (statement: any): boolean => {
         if (statement.type === "EmptyStatement") return true;
+        if (statement.type === "FunctionDeclaration") return topLevelStatements.has(statement);
         if (statement.type === "VariableDeclaration") return declaration(statement);
         if (statement.type === "ExpressionStatement") return expression(statement.expression);
         if (statement.type === "BlockStatement") return block(statement);
@@ -327,13 +326,14 @@ export class DesktopProgramPolicy {
         }
         if (statement.type === "ForStatement") {
           if (!statement.init || !statement.test || !statement.update) return false;
-          const base = snapshot(); scopes.push(new Set());
+          const base = snapshot(); const caller = lexical.enterBlock();
+          if (statement.init.type === "VariableDeclaration") prepareScope([statement.init]);
           const initialized = statement.init.type === "VariableDeclaration" ? declaration(statement.init) : expression(statement.init);
           if (!initialized) return false;
           const entry = snapshot();
           const fixed = loopFixedPoint(entry, () => value(statement.test) && branch(statement.body) !== null && expression(statement.update));
           if (!fixed) return false;
-          scopes.pop(); join(base, fixed, base);
+          restore(fixed); lexical.leaveScope(caller); join(base, snapshot(), base);
           return true;
         }
         if (statement.type === "ForOfStatement") {
@@ -351,29 +351,47 @@ export class DesktopProgramPolicy {
             join(entry, fixed, entry);
             return true;
           }
-          scopes.push(new Set());
+          const caller = lexical.enterBlock();
           bindIterableValues(loop.names, true);
           const entry = snapshot();
           const fixed = loopFixedPoint(entry, () => branch(statement.body) !== null);
           if (!fixed) return false;
-          const locals = scopes.pop()!;
           restore(fixed);
-          const after = snapshot();
-          restoreLocals(base, after, locals);
-          join(base, after, base);
+          lexical.leaveScope(caller);
+          join(base, snapshot(), base);
           return true;
         }
         return false;
       };
+      helperCall = (node: any): boolean => {
+        const call = node.argument;
+        const helper = lexical.read(call.callee.name)?.helper;
+        const definition = helper?.ast as any;
+        if (!helper || call.optional || activeHelpers.has(definition) || definition.params.length !== call.arguments.length || !call.arguments.every(value)) return false;
+        const parameters = call.arguments.map((argument: any): Partial<BindingAuthority> => ({ ordinaryDefined: true, app: scopedApp(argument), numeric: numberValue(argument) }));
+        const caller = lexical.enterFunction(helper.declarationScopeId);
+        definition.params.forEach((parameter: any, index: number) => lexical.declare(parameter.name, parameters[index]));
+        prepareScope(definition.body.body);
+        activeHelpers.add(definition);
+        const accepted = statements(definition.body.body);
+        activeHelpers.delete(definition);
+        lexical.leaveScope(caller);
+        return accepted;
+      };
       const statements = (body: any[]): boolean => body.every(statementNode);
+      prepareScope(ast.body);
+      // Hoisted bodies replace previous-cell helpers before any call is read.
+      for (const statement of ast.body) {
+        if (statement.type !== "FunctionDeclaration") continue;
+        const name = statement.id?.name;
+        if (!statement.async || statement.generator || !name || name === "app" || forbidden.has(name) ||
+            statement.params.some((p: any) => p.type !== "Identifier" || forbidden.has(p.name)) ||
+            new Set(statement.params.map((p: any) => p.name)).size !== statement.params.length) return false;
+        lexical.writeById(ensure(name), { ordinaryDefined: true, app: false, state: false, screenshotPath: false, numeric: false, importKind: undefined,
+          helper: { ast: statement, declarationScopeId: lexical.globalScopeId } });
+      }
       if (!statements(ast.body)) return false;
-      this.bindings = bindings;
-      this.appBindings = apps;
-      this.stateBindings = states;
-      this.screenshotImports = imports;
-      this.screenshotPaths = paths;
-      this.numericBindings = numeric;
-      this.varBindings = vars;
+      this.lexical = lexical;
       return ast.body.length > 0;
     } catch { return false; }
   }

@@ -48,6 +48,137 @@ opensky("numeric loop bindings persist across real REPL cells", ({ policy }) => 
   expect(policy.accepts('while (i < 2) { await app.click([100 + i, 200]); i++; }')).toBe(true);
 });
 
+opensky("OpenSky admits the retained named async fill helper with captured app authority", ({ policy }) => {
+  expect(policy.accepts(`
+    const app = await cua.getApp("Fixture");
+    async function fillDown(anchor, blanks) {
+      await app.click(anchor);
+      for (let i = 0; i < blanks; i++) await app.pressKey("shift+Down");
+      await app.pressKey("ctrl+d");
+    }
+    await fillDown(1115, 11);
+    await fillDown(1271, 5);
+    await app.getAXState({disableDiffing:true});
+  `)).toBe(true);
+});
+
+native("native admits the equivalent named async helper with a captured public desktop API", ({ policy }) => {
+  expect(policy.accepts(`
+    async function fillDown(anchor, blanks) {
+      await sky.click({x: anchor, y: 200});
+      for (let i = 0; i < blanks; i++) await sky.press_key({key: "SHIFT+ARROWDOWN"});
+      await sky.press_key({key: "CTRL+d"});
+    }
+    await fillDown(1115, 11);
+  `)).toBe(true);
+});
+
+opensky("named async helper parameters derive app authority at the call site and persist across cells", ({ policy }) => {
+  expect(policy.accepts(`
+    const app = await cua.getApp("Fixture");
+    async function pressMany(target, count) {
+      for (let i = 0; i < count; i++) await target.pressKey("ENTER");
+    }
+  `)).toBe(true);
+  expect(policy.accepts('await pressMany(app, 2);')).toBe(true);
+});
+
+opensky("named async helpers reject fabricated parameter authority and rebinding", ({ policy }) => {
+  expect(policy.accepts(`
+    const app = await cua.getApp("Fixture");
+    const fabricated = {pressKey: "not callable"};
+    async function press(target) { await target.pressKey("ENTER"); }
+  `)).toBe(true);
+  expect(policy.accepts('await press(fabricated);')).toBe(false);
+  expect(policy.accepts('await press(app);')).toBe(true);
+  expect(policy.accepts('press = 0;')).toBe(true);
+  expect(policy.accepts('await press(app);')).toBe(false);
+});
+
+opensky("helper-local parameter shadows cannot retain captured app authority", ({ policy }) => {
+  expect(policy.accepts(`
+    const app = await cua.getApp("Fixture");
+    async function shadow(app) { await app.pressKey("ENTER"); }
+    const fabricated = {};
+    await shadow(fabricated);
+  `)).toBe(false);
+});
+
+native("a hoisted helper declaration replaces an earlier safe body before the call", ({ policy }) => {
+  expect(policy.accepts('async function act(){ await sky.press_key({key:"Return"}); }')).toBe(true);
+  expect(policy.accepts('await act(); async function act(){ await import("node:child_process"); }')).toBe(false);
+});
+
+nativeApp("a helper resolves its declaration capture instead of a caller-local shadow", ({ policy }) => {
+  expect(policy.accepts(`
+    const fs = await import("node:fs/promises");
+    const path = "/not-an-observed-screenshot";
+    async function show() { await nodeRepl.emitImage(await fs.readFile(path)); }
+  `)).toBe(true);
+  expect(policy.accepts(`
+    {
+      const state = await sky.get_app_state({app:"Fixture"});
+      const path = state.screenshot.url;
+      await show();
+    }
+  `)).toBe(false);
+});
+
+nativeApp("a helper keeps a declaration-scoped screenshot capture when no caller shadow exists", ({ policy }) => {
+  expect(policy.accepts(`
+    const fs = await import("node:fs/promises");
+    const state = await sky.get_app_state({app:"Fixture"});
+    const path = state.screenshot.url;
+    async function show() { await nodeRepl.emitImage(await fs.readFile(path)); }
+  `)).toBe(true);
+  expect(policy.accepts('await show();')).toBe(true);
+});
+
+opensky("a failed cell invalidates stored helper bodies", ({ policy }) => {
+  expect(policy.accepts('const app = await cua.getApp("Fixture"); async function press() { await app.pressKey("ENTER"); }')).toBe(true);
+  policy.executionFailed();
+  expect(policy.accepts('await press();')).toBe(false);
+});
+
+nativeApp("a forward global capture cannot borrow a caller-local screenshot path", ({ policy }) => {
+  expect(policy.accepts('const fs = await import("node:fs/promises"); async function show() { await nodeRepl.emitImage(await fs.readFile(path)); }')).toBe(true);
+  expect(policy.accepts('const path = "/not-an-observed-screenshot";')).toBe(true);
+  expect(policy.accepts('{ const state = await sky.get_app_state({app:"Fixture"}); const path = state.screenshot.url; await show(); }')).toBe(false);
+});
+
+opensky("a helper retains an authorized outer capture through a caller-local shadow", ({ policy }) => {
+  expect(policy.accepts('const target = await cua.getApp("Fixture"); async function press() { await target.pressKey("ENTER"); }')).toBe(true);
+  expect(policy.accepts('{ const target = "ordinary local text"; await press(); }')).toBe(true);
+});
+
+opensky("a helper observes reassignment of its captured global binding", ({ policy }) => {
+  expect(policy.accepts('let target = await cua.getApp("Fixture"); async function press() { await target.pressKey("ENTER"); }')).toBe(true);
+  expect(policy.accepts('target = await cua.getApp("Fixture"); await press();')).toBe(true);
+});
+
+nativeApp("returning from a helper restores the caller's local path authority", ({ policy }) => {
+  expect(policy.accepts('const fs = await import("node:fs/promises"); const state = await sky.get_app_state({app:"Fixture"}); const path = state.screenshot.url; async function noop() { await sky.press_key({app:"Fixture", key:"Return"}); }')).toBe(true);
+  expect(policy.accepts('{ const path = "/not-an-observed-screenshot"; await noop(); await nodeRepl.emitImage(await fs.readFile(path)); }')).toBe(false);
+});
+
+nativeApp("a helper updates its captured path without overwriting a caller shadow", ({ policy }) => {
+  expect(policy.accepts('const fs = await import("node:fs/promises"); const state = await sky.get_app_state({app:"Fixture"}); let path = state.screenshot.url; async function clearPath() { path = "/not-an-observed-screenshot"; }')).toBe(true);
+  expect(policy.accepts('{ const path = state.screenshot.url; await clearPath(); await nodeRepl.emitImage(await fs.readFile(path)); }')).toBe(true);
+  expect(policy.accepts('await nodeRepl.emitImage(await fs.readFile(path));')).toBe(false);
+});
+
+nativeApp("a rejected cell cannot promote a helper's captured path", ({ policy }) => {
+  expect(policy.accepts('const fs = await import("node:fs/promises"); const state = await sky.get_app_state({app:"Fixture"}); let path = "/not-an-observed-screenshot"; async function show() { await nodeRepl.emitImage(await fs.readFile(path)); }')).toBe(true);
+  expect(policy.accepts('path = state.screenshot.url; await import("node:child_process");')).toBe(false);
+  expect(policy.accepts('await show();')).toBe(false);
+});
+
+opensky("a helper's skipped var header shadows an outer app in its own function scope", ({ policy }) => {
+  expect(policy.accepts('const target = await cua.getApp("Fixture"); async function press() { if (false) { for (var target of []) {} } await target.pressKey("ENTER"); }')).toBe(true);
+  expect(policy.accepts('await press();')).toBe(false);
+  expect(policy.accepts('await target.pressKey("ENTER");')).toBe(true);
+});
+
 opensky("a failed cell clears numeric loop evidence", ({ policy }) => {
   expect(policy.accepts('const app = await cua.getApp("Fixture"); let i = 0;')).toBe(true);
   policy.executionFailed();

@@ -1,6 +1,28 @@
 import { expect } from "vitest";
 import { test } from "../fixtures/linux-program-repl.js";
 
+test("PROGRAM-L05: an OpenSky helper edits the document across cells", { timeout: 180_000 }, async ({ openskyRepl, app, document }) => {
+  await expect(openskyRepl.cell('var app = await cua.getApp("LibreOffice"); await app.pressKey("CTRL+A");')).resolves.toMatchObject({ isError: false });
+  await expect(openskyRepl.cell('async function typeRepeated(text, count) { for (let i = 0; i < count; i++) await app.typeText(text); } await typeRepeated("A", 2);')).resolves.toMatchObject({ isError: false });
+  await expect(openskyRepl.cell('await typeRepeated("B", 1);')).resolves.toMatchObject({ isError: false });
+  await expect(openskyRepl.cell('await app.typeText(".Saved."); await app.pressKey("CTRL+S");')).resolves.toMatchObject({ isError: false });
+  await expect.poll(() => openskyRepl.cell('await app.getAXState();'), { timeout: 15_000 }).toMatchObject({ content: expect.arrayContaining([expect.objectContaining({ type: "text", text: expect.stringContaining("Use Word 2007 Format") })]) });
+  await expect(openskyRepl.cell('await app.pressKey("ENTER");')).resolves.toMatchObject({ isError: false });
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).not.toContain("Use Word 2007 Format");
+  await expect.poll(() => document.readText()).toBe("AAB.Saved.");
+});
+
+test("PROGRAM-L06: a native helper edits the document across cells", { timeout: 180_000 }, async ({ nativeRepl, app, document }) => {
+  await expect(nativeRepl.cell('globalThis.sky = (await import("@oai/sky")).sky; await sky.press_key({key:"CTRL+a"});')).resolves.not.toMatchObject({ isError: true });
+  await expect(nativeRepl.cell('async function typeRepeated(text, count) { for (let i = 0; i < count; i++) await sky.type_text({text:text}); } await typeRepeated("A", 2);')).resolves.not.toMatchObject({ isError: true });
+  await expect(nativeRepl.cell('await typeRepeated("B", 1);')).resolves.not.toMatchObject({ isError: true });
+  await expect(nativeRepl.cell('await sky.type_text({text:".Saved."}); await sky.press_key({key:"CTRL+s"});')).resolves.not.toMatchObject({ isError: true });
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).toContain("Use Word 2007 Format");
+  await expect(nativeRepl.cell('await sky.press_key({key:"Return"});')).resolves.not.toMatchObject({ isError: true });
+  await expect.poll(() => app.getAXState({ disableDiffing: true }), { timeout: 15_000 }).not.toContain("Use Word 2007 Format");
+  await expect.poll(() => document.readText()).toBe("AAB.Saved.");
+});
+
 test("PROGRAM-L03: OpenSky accepts row loops and uses cell-local var values", { timeout: 180_000 }, async ({ openskyRepl, app, document }) => {
   await expect(openskyRepl.cell('var app = await cua.getApp("LibreOffice"); await app.pressKey("CTRL+A");')).resolves.toMatchObject({ isError: false });
   await expect(openskyRepl.cell('var rows = [["First", "A"], ["", "B"], ["Third", "C"]]; for (var row of rows) { if (row[0]) await app.typeText(row[0]); } for (var row of []) { await app.typeText("Unexpected"); } await app.typeText(row[0]);')).resolves.toMatchObject({ isError: false });
