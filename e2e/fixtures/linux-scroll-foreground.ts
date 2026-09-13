@@ -9,7 +9,7 @@ import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/par
 type Status = { target: number; nearby: number };
 type Fixture = {
   target: { scroll(): Promise<void>; status(): Promise<Status> };
-  sibling: { status(): Promise<string> };
+  sibling: { offset(): Promise<number> };
 };
 
 const script = fileURLToPath(new URL("./gtk-scroll-foreground.py", import.meta.url));
@@ -55,10 +55,10 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
               },
             },
             sibling: {
-              status: async () => {
+              offset: async () => {
                 const state = String(((await sdk.invoke("get_window_state", { ...siblingWindow, include_screenshot: false })).structured as { tree_markdown?: string })?.tree_markdown ?? "");
                 await writeFile(join(siblingArtifacts, "final-state.txt"), state);
-                return state;
+                return offset(state, "Sibling");
               },
             },
           });
