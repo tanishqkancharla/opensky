@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 0849dd7094a258864d2d8ca78c60f5acdb681242
+  OPENSKY_DRIVER_REF: bd7c5a52253b20a8169d0a9a10437b8a14c68f6a
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -66,6 +66,7 @@ jobs:
             cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::live_tests -- --ignored --nocapture --test-threads=1
           '
           cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::tests
+          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml input::path_tests
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
