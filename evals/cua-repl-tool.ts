@@ -1,5 +1,5 @@
 import { Type } from "typebox";
-import { defineTool } from "@earendil-works/pi-coding-agent";
+import { defineTool, type AgentToolResult } from "@earendil-works/pi-coding-agent";
 
 import { AsyncLifecycle } from "./async-lifecycle.js";
 import { AsyncToolCell } from "./async-tool-cell.js";
@@ -94,7 +94,7 @@ export function createCuaReplToolRuntime(
       title: Type.Optional(Type.String({ description: "Short human-readable action label" })),
       yield_time_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 30000, description: "Wait for output before yielding a pending cell ID; does not stop execution. Default 30000." })),
     }),
-    execute(_id, params) {
+    execute(_id, params): Promise<AgentToolResult<unknown>> {
       return cells.start(() => lifecycle.run("tool execution", () => {
         const execution = executionQueue.then(async () => {
           activeEmissions = [];
@@ -149,7 +149,7 @@ export function createCuaReplToolRuntime(
           () => undefined,
         );
         return execution;
-      }), params.yield_time_ms);
+      }), params.yield_time_ms) as Promise<AgentToolResult<unknown>>;
     },
   }), defineTool({
     name: "cua_repl_wait",
@@ -160,7 +160,7 @@ export function createCuaReplToolRuntime(
       cell_id: Type.String({ description: "Cell ID returned by cua_repl" }),
       yield_time_ms: Type.Optional(Type.Integer({ minimum: 0, maximum: 30000 })),
     }),
-    execute(_id, params) { return cells.wait(params.cell_id, params.yield_time_ms); },
+    execute(_id, params): Promise<AgentToolResult<unknown>> { return cells.wait(params.cell_id, params.yield_time_ms) as Promise<AgentToolResult<unknown>>; },
   })];
 
   return { tools, close: () => lifecycle.close() };
