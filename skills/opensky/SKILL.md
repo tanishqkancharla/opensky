@@ -186,7 +186,7 @@ the proven group/frame only; virtualized extent remains unknown.
 - `app` is the launch path when known, otherwise the display name.
 - `text` is the accessibility view for the **main document window**, including menu-bar elements exposed by the helper. `disableDiff: true` disables diffing, not collection/rendering limits or query/context scope. Repeated fresh calls without that flag return a compact native-style diff with stable public element indices.
 - `screenshot` is `{ url, width?, height?, scale?, format? }` using a `file:` URL, or `null`. Pass `includeScreenshot: false` when AX alone is sufficient. `scale` is `2` for typical Retina captures when the window frame is known.
-- Read PNG bytes with `await readFile(pathToFileURL(state.screenshot.url))`.
+- Read PNG bytes with `await readFile(new URL(state.screenshot.url))`.
 - OpenSky automatically waits briefly after actions, rechecks typed browser semantics with a bounded stability budget, revives expired helper sessions, and retries temporary degraded AX snapshots. If AX remains unavailable, use coordinates from the returned screenshot or bring the window onto the current desktop and call `get_app_state` again.
 
 ### `open_target({ app, targets, includeScreenshot?, query? })`

@@ -3829,3 +3829,17 @@ PROGRAM-LOOP-BINDINGS-01 second real attempt: CI34721274659 on569a93d passed nat
 
 
 PROGRAM-HELPERS-01 public acceptance: CI34729223727 on b00d8a047658e5b994a09b109c523430d9e379ad passed all six real Linux REPL cases. PROGRAM-L05/L06 both saved AAB.Saved. after same-cell and later-cell named async helper calls; L01–L04 loop controls passed. All owned app/REPL groups exited and keyboard maps matched before/after. The driver is the canonical 57d1b03 release, binary6af15f02dae0bcb0781084d42378da047313aca3a463d63a4580c157606ce566. This accepts the bounded shared evaluator syntax, not unrestricted JavaScript or a new agent benchmark score. Evidence: work/scoped-helper-public-acceptance.json; V8 remains frozen.
+
+
+**CLI-URL-001 — read a returned screenshot file URL (2026-09-13):** The CLI
+skill passed a returned `file:` URL through `pathToFileURL`, which expects a
+filesystem path and therefore points at a different, nonexistent file. The
+example now passes `new URL(state.screenshot.url)` to the existing `readFile`
+helper. This is generic CLI documentation only; the preloaded CUA host does
+not use this file-reading recipe. The corrected expression read the retained screenshot byte-for-byte through
+the public CLI; full invocation acceptance remains false because CLI cleanup
+tries to end a driver session even when no driver was installed or used. Both
+original and corrected invocations exit1 at that later boundary. Results and
+errors are recorded in `work/cli-screenshot-url-review.json`; no new GUI or
+agent acceptance is claimed.
+The running V9 source and skill remain frozen on their original commit.
