@@ -30,6 +30,36 @@ Use `evals/runs/parity-budget.json` as the authoritative cumulative ledger;
 conservative full-reservation charges are estimates, not invoices. Report each
 completed run and keep the status canvas current. Exclude Codex's in-app browser.
 
+## Current accepted evidence — 2026-09-12
+
+This section supersedes the dated next-step and budget notes below. The frozen
+V8 campaign on SDK `64b1eff49542f2181a39c63fc2adc6c52bd37c7f` completed all
+20 matched tasks: OpenSky 18/20 and native 16/20, with no unrun tasks. OpenSky
+passed 15 of the 16 native-success tasks. This is one trial per task/backend,
+not a repeatability or general API-parity certificate. The sole native-only
+failure was an agent choosing whole-word replacement; no SDK defect has been
+established from that choice. Preserve the exact-color, ambiguous subscript
+scope, and image-overlap limitations in `work/v8-full-baseline-review.json`.
+The previously requested strikethrough and dropdown retries both passed on V8;
+do not dispatch them again based on the historical plan below.
+
+Shared scoped-helper candidate `b00d8a047658e5b994a09b109c523430d9e379ad`
+passed all six real public REPL cases in
+[CI 34729223727](https://github.com/tanishqkancharla/opensky/actions/runs/34729223727).
+Both backends saved the expected document after same-cell and later-cell helper
+calls; existing loop controls and owned cleanup also passed. This changes shared
+evaluator admission only and does not revise the frozen agent scores.
+
+Next, verify public SDK paste during an external clipboard ownership change,
+then the existing five-format and empty-clipboard preservation controls. Earlier
+concurrency evidence exercises the real X11 actor, not the full public SDK.
+Use the pinned release driver source `57d1b03e046021dbdaca459602c5734170295693`,
+SHA256 `6af15f02dae0bcb0781084d42378da047313aca3a463d63a4580c157606ce566`.
+No app-specific product guidance or additional paid campaign is warranted by
+this coverage check. The authoritative evaluation ledger currently has
+$217.32473 charged, no outstanding reservations, and approval through $250;
+coding inference and infrastructure are separate.
+
 ## Priority update — 2026-09-09
 
 Behavioral parity takes precedence over speed differences. Continue to report

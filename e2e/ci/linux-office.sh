@@ -49,6 +49,7 @@ if [[ "${OPENSKY_LINUX_AGENT_MODE:-}" == repl ]]; then
     async-typing) repl_spec=specs/linux-repl-cell.test.ts ;;
     dropdown) repl_spec=specs/linux-dropdown-repl.test.ts ;;
     program) repl_spec=specs/linux-program-repl.test.ts; repl_args+=(--bail=0) ;;
+    clipboard) repl_spec=specs/linux-sdk-clipboard.test.ts; repl_args+=(--bail=0) ;;
     *) echo 'Unknown public REPL regression'; exit 2 ;;
   esac
   cd e2e
