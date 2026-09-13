@@ -10,18 +10,24 @@ on:
         description: Build a candidate for focused one-off remote tests
         type: boolean
         default: false
+      driver_artifact_run:
+        description: Existing driver build run; binary must match the pinned V14 SHA-256
+        type: string
+        default: ''
 
 permissions:
   contents: read
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 57d1b03e046021dbdaca459602c5734170295693
+  OPENSKY_DRIVER_REF: bd7c5a52253b20a8169d0a9a10437b8a14c68f6a
+  OPENSKY_DRIVER_SHA256: ba8b7c854f05f15be028ceee7ea0fbdf3266bd6f616309d5e78f0014c00c6e7d
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
 jobs:
   driver:
+    if: ${{ inputs.driver_artifact_run == '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -38,7 +44,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             clang pkg-config libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev \
-            libei-dev libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev
+            libei-dev libxkbcommon-dev libx11-dev libxi-dev libxtst-dev libxext-dev xvfb xauth openbox x11-utils
       - name: Build pinned OpenSky Driver
         env:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
@@ -54,6 +60,19 @@ jobs:
           cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml select_text
           cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
           cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
+          CUA_POPUP_CAPTURE_DISPOSABLE_X11=1 xvfb-run -a --server-args="-screen 0 1280x900x24" bash -euo pipefail -c '
+            openbox >/tmp/popup-openbox.log 2>&1 & wm=$!
+            trap "kill $wm 2>/dev/null || true" EXIT
+            wm_ready=0
+            for attempt in $(seq 1 100); do
+              if xprop -root _NET_SUPPORTING_WM_CHECK | grep -q "window id #"; then wm_ready=1; break; fi
+              sleep 0.1
+            done
+            test "$wm_ready" = 1
+            cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::live_tests -- --ignored --nocapture --test-threads=1
+          '
+          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::tests
+          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml input::path_tests
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
@@ -70,7 +89,7 @@ jobs:
           retention-days: 14
 
   evaluate:
-    if: ${{ !inputs.build_only }}
+    if: ${{ always() && !cancelled() && !inputs.build_only && (needs.driver.result == 'success' || (needs.driver.result == 'skipped' && inputs.driver_artifact_run != '')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -81,7 +100,9 @@ jobs:
       OPENSKY_LINUX_OFFICE_BACKEND: opensky
       OPENSKY_LINUX_TYPING_TEST: '1'
       OPENSKY_AGENT_TASK: 3ef2b351-8a84-4ff2-8724-d86eae9b842e
-      OPENSKY_NATIVE_PACKAGE_SHA256: 62580188d87c3d3a9369dab7c73b42a8a32518d4df8a2d5bae6466ddeac5c05e
+      OPENSKY_NATIVE_PACKAGE_SHA256: 2caa7df314ce37e9048359d8e6a4a78e24574a3b54d6bf510f17754b66dda775
+      OPENSKY_NATIVE_PACKAGE_FILE: ${{ github.workspace }}/.native-reference/chatgpt.deb
+      OPENSKY_REUSED_DRIVER_RUN: ${{ inputs.driver_artifact_run }}
       OPENSKY_LINUX_OFFICE_ARTIFACT: ${{ github.workspace }}/artifacts/linux-office
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -100,18 +121,35 @@ jobs:
           npm ci --ignore-scripts --prefix e2e
           npm run typecheck --prefix e2e
           python -m pip install -r evals/parity/osworld/requirements.txt
-      - name: Use the newly built driver candidate
+      - name: Use the frozen native reference package
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: native-reference-linux-x64
+          run-id: 34310637093
+          github-token: ${{ github.token }}
+          path: .native-reference
+      - name: Validate reuse inputs
+        if: inputs.driver_artifact_run != ''
+        run: |
+          [[ "$OPENSKY_REUSED_DRIVER_RUN" =~ ^[0-9]+$ ]]
+      - name: Use the verified driver candidate
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: sdk-test-driver
+          run-id: ${{ inputs.driver_artifact_run || github.run_id }}
+          github-token: ${{ github.token }}
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
+          printf '%s  %s\n' "$OPENSKY_DRIVER_SHA256" .driver/opensky-driver | sha256sum --check -
           python3 - <<'PY'
-          import json, os
+          import json, os, subprocess
           identity = json.load(open(".driver/identity.json"))
           assert identity["source"] == os.environ["OPENSKY_DRIVER_REF"]
-          assert identity["product"] == "opensky-driver"
+          assert identity["product"] == "opensky-driver" and identity["protocolVersion"] == 1
+          os.chmod(".driver/opensky-driver", 0o755)
+          actual = json.loads(subprocess.check_output([".driver/opensky-driver", "--opensky-driver-identity"]))
+          assert actual == identity
           PY
           sha256sum .driver/opensky-driver > .driver/sha256.txt
           chmod +x .driver/opensky-driver
