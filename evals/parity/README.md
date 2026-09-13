@@ -184,12 +184,16 @@ reported usage, leaving headroom for in-flight work. This is an estimate-based
 admission guard, not a provider-enforced billing cap. Interrupted runs retain
 their reservation until reconciled. Approval advances one checkpoint only.
 
-Initial preflights use the existing ChatGPT login, with API-key environment
-variables excluded. Record actual token usage and subscription authentication
-separately from cash expenditure; do not call subscription usage free or invent
-an API dollar charge. Rates and official sources are recorded in `pricing.json`;
-the ledger uses the higher long-context standard rates. API-billed and paid
-infrastructure dispatch remain disabled. The first checkpoint is $50.
+Initial preflights use the existing ChatGPT login, with credential environment
+variables excluded. Remote Linux agent runs use a ChatGPT Business Codex access
+token supplied as `CODEX_ACCESS_TOKEN`. The disposable runner persists it only
+inside its ephemeral `CODEX_HOME`, unsets the environment variable before agent
+dispatch, and records `chatgpt-workspace-credits` in the invocation receipt.
+Record actual token usage and workspace authentication separately from cash
+expenditure; do not call workspace usage free or invent a provider dollar charge.
+Rates and official sources are recorded in `pricing.json`; the local ledger uses
+the higher long-context standard API rates only as a conservative admission guard.
+Platform API-billed agent dispatch is disabled. The first checkpoint is $50.
 
 ## Local cleanup
 

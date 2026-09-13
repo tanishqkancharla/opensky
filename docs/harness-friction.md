@@ -3051,3 +3051,21 @@ compares exact committed scorer/manifest source hashes (including added/deleted
 files) with the pinned immutable profile before reserving funds. Its negative
 check catches the old profile in under one second; remote admission stays
 mandatory. This is grading validation, not a task evaluation or parity gain.
+
+**SET-076 — Linux agent evaluations used Platform API billing instead of workspace credits (2026-09-12):**
+
+Retained invocation receipts identified the remote Linux agent as `api-key` with
+`apiBillingEnabled: true`; the live Saffron Health Platform dashboard confirmed
+real organization spend. ChatGPT Business exposes Codex access tokens for trusted
+programmatic runs, but workspace token creation is currently disabled by its
+administrator permission.
+
+The prepared migration changes the Linux agent workflow to require
+`CODEX_ACCESS_TOKEN`, logs the frozen Codex CLI into an ephemeral `CODEX_HOME`
+with `--with-access-token`, and records `chatgpt-workspace-credits` in invocation
+evidence. The legacy daily API-key evaluation schedule is removed; its manual Pi
+workflow remains explicit because Codex workspace tokens are not general OpenAI
+API credentials. Existing cumulative reservations and conservative estimates
+remain admission controls. **Prepared, not live-confirmed:** enable the workspace
+permission, create/store the token, then require a one-task receipt showing the
+workspace billing source before any wider campaign.

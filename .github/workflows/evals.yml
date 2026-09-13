@@ -4,8 +4,6 @@ on:
   pull_request:
   push:
   workflow_dispatch:
-  schedule:
-    - cron: '23 9 * * *'
 
 permissions:
   contents: read
@@ -30,8 +28,8 @@ jobs:
       - run: npm test
 
   real-driver:
-    # Never expose model credentials to pull-request code. Scheduled runs use default branch.
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    # Never expose model credentials to pull-request or push-triggered code.
+    if: github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: macos-15
     timeout-minutes: 60

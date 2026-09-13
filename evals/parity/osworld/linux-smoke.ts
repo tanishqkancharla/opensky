@@ -105,7 +105,7 @@ try {
     };
     const guide = backend === "native" ? await readFile(join(root, "../native-linux-guide.md"), "utf8") :
       `Use desktop.cua_repl. Bind let app = await cua.getApp(${JSON.stringify(launch.appName)}); then use its public methods and fresh observations. Creation and observations emit automatically.`;
-    const result = await runCodex({ codex: join(nativeResources, "codex"), model: "gpt-5.6-terra", authentication: "api-key",
+    const result = await runCodex({ codex: join(nativeResources, "codex"), model: "gpt-5.6-terra", authentication: "chatgpt-workspace-access-token",
       budgetPath: process.env.OPENSKY_REMOTE_BUDGET, preReservedId: process.env.OPENSKY_REMOTE_RESERVATION,
       artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: profile.timeoutMs, maxToolCalls: profile.maxToolCalls,
       mcp, authorizedApps: { [launch.appName]: launch.appName }, desktopProgramScope: scope,

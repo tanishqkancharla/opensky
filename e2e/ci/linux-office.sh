@@ -52,8 +52,9 @@ if [[ -n "${OPENSKY_LINUX_AGENT_MODE:-}" ]]; then
   if [[ "$OPENSKY_LINUX_AGENT_MODE" == agent ]]; then
     export CODEX_HOME="$runtime/codex"
     mkdir -p "$CODEX_HOME"
-    printf '%s\n' "$OPENAI_API_KEY" | "$OPENSKY_NATIVE_PROBE_PACKAGE/../../../../../codex" login --with-api-key
-    unset OPENAI_API_KEY
+    [[ -n "${CODEX_ACCESS_TOKEN:-}" ]] || { echo 'Missing CODEX_ACCESS_TOKEN' >&2; exit 2; }
+    printf '%s' "$CODEX_ACCESS_TOKEN" | "$OPENSKY_NATIVE_PROBE_PACKAGE/../../../../../codex" login --with-access-token
+    unset CODEX_ACCESS_TOKEN
   else
     export OPENSKY_AGENT_BACKEND=setup
   fi

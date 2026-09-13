@@ -16,9 +16,10 @@ acceptance score was earned. The cleanup attempt also hit the permission gate;
 the disposable hosted worker is torn down by GitHub after the job.
 
 The workflow records JSON and Markdown summaries and uploads run artifacts for
-30 days. It runs validation on pushes/PRs, and real-driver probes/evals on manual
-dispatch and daily schedules. GitHub schedules require the workflow on the
-default branch. `OPENAI_API_KEY` is required only by the agent step. Set
+30 days. It runs validation on pushes/PRs and the legacy real-driver probe only
+on manual dispatch. Its former daily schedule is disabled so it cannot create
+unattended Platform API charges. `OPENAI_API_KEY` is required only by that legacy
+Pi agent step. Set
 `CUA_DRIVER_RS_VERSION` as a repository variable to pin the driver under test.
 The current branch does not enable scheduled runs until merged.
 

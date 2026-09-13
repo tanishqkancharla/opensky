@@ -28,8 +28,8 @@ export type CodexRunOptions = {
   authorizedReplCodes?: string[];
   desktopProgramScope?: DesktopProgramScope;
   budgetPath?: string;
-  authentication?: "chatgpt-subscription" | "api-key";
-  /** Existing cumulative controller reservation; mandatory for remote API use. */
+  authentication?: "chatgpt-subscription" | "chatgpt-workspace-access-token" | "api-key";
+  /** Existing cumulative controller reservation; mandatory for remote billed use. */
   preReservedId?: string;
 };
 
@@ -49,8 +49,9 @@ export async function runCodex(options: CodexRunOptions) {
   }
   const env = evaluationEnvironment();
   const authentication = options.authentication ?? "chatgpt-subscription";
-  if (authentication === "api-key" && (process.env.GITHUB_ACTIONS !== "true" || !process.env.GITHUB_RUN_ID || !options.preReservedId || !options.budgetPath)) {
-    throw new Error("API evaluations require a disposable CI run and an existing controller budget reservation");
+  const remotelyBilled = authentication === "api-key" || authentication === "chatgpt-workspace-access-token";
+  if (remotelyBilled && (process.env.GITHUB_ACTIONS !== "true" || !process.env.GITHUB_RUN_ID || !options.preReservedId || !options.budgetPath)) {
+    throw new Error("Remote evaluations require a disposable CI run and an existing controller budget reservation");
   }
   if (options.model !== "gpt-5.6-terra") throw new Error("Only the user-selected Terra model has a configured evaluation rate card");
   const budget = new EvaluationBudget(options.budgetPath ?? fileURLToPath(new URL("../runs/parity-budget.json", import.meta.url)));
@@ -104,7 +105,9 @@ export async function runCodex(options: CodexRunOptions) {
   // standalone transport, even when enabled=false. No user config is mutated.
   args.push("-c", `mcp_servers=${toml({ desktop: { ...mcp, enabled: true, required: true } })}`);
   const version = (await exec(codex, ["--version"], { env })).stdout.trim();
-  await writeFile(join(options.artifacts, "invocation.json"), JSON.stringify({ ...options, mcp: { ...options.mcp, env: undefined, envKeys: Object.keys(options.mcp.env ?? {}) }, configuration, codexVersion: version, authentication, apiBillingEnabled: authentication === "api-key" }, null, 2));
+  const billingSource = authentication === "api-key" ? "openai-platform-api" :
+    authentication === "chatgpt-workspace-access-token" ? "chatgpt-workspace-credits" : "chatgpt-subscription";
+  await writeFile(join(options.artifacts, "invocation.json"), JSON.stringify({ ...options, mcp: { ...options.mcp, env: undefined, envKeys: Object.keys(options.mcp.env ?? {}) }, configuration, codexVersion: version, authentication, billingSource, apiBillingEnabled: authentication === "api-key", workspaceCreditsEnabled: authentication === "chatgpt-workspace-access-token" }, null, 2));
   const events = createWriteStream(join(options.artifacts, "events.jsonl"));
   const errors = createWriteStream(join(options.artifacts, "stderr.log"));
   const child = spawn(codex, args, { cwd: options.cwd, env, detached: true, stdio: ["pipe", "pipe", "pipe"] });
@@ -273,13 +276,13 @@ export async function runCodex(options: CodexRunOptions) {
     const classification = classifyRun(interruption, turn.status, admission, options.maxToolCalls);
     if (guarded && !admission) classification.infrastructureError = "missing_dispatch_receipt";
     const contextCompactions = items.filter(item => item.type === "contextCompaction").length;
-    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, toolCallsByName, contextCompactions, items, finalText, decisions, programRejections: [...rejectedPrograms], authentication, workspaceBillUsd: null };
+    const result = { startedAt: taskStartedAt ?? startedAt, runnerStartedAt: startedAt, finishedAt: new Date().toISOString(), threadId, turn, interruption, ...classification, admission, usage, toolCalls, toolCallsByName, contextCompactions, items, finalText, decisions, programRejections: [...rejectedPrograms], authentication, billingSource, workspaceBillUsd: null };
     await writeFile(join(options.artifacts, "result.json"), JSON.stringify(result, null, 2));
     const finalInterruptedUsage = classification.taskLimit && turn.status === "interrupted" && activeCalls.size === 0 && lastUsageEvent > lastItemEvent;
     if (((turn.status === "completed" && !interruption) || finalInterruptedUsage) && usage) {
       await budget.settle(reservation, (usage as { total: Usage }).total, finalInterruptedUsage
-        ? "Interrupted task limit: terminal turn, no active tool calls, usage received after final completed item. Conservative API-equivalent estimate; workspace bill unavailable"
-        : "Conservative long-context standard API-equivalent estimate; workspace bill unavailable");
+        ? "Interrupted task limit: terminal turn, no active tool calls, usage received after final completed item. Conservative API-equivalent estimate; provider billing receipt unavailable"
+        : "Conservative long-context standard API-equivalent estimate; provider billing receipt unavailable");
     }
     return result;
   } catch (error) {
