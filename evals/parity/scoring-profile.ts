@@ -9,6 +9,7 @@ export type ScoringProfile = {
   name: string;
   sha256: string;
   office: { sha256: string; version: string; executable: string };
+  runtime: Record<string, unknown>;
   referenceCount: number;
   references: Record<string, string>;
   adaptedTaskIds: string[];

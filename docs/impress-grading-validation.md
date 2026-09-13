@@ -48,7 +48,10 @@ npm run test --prefix e2e -- specs/impress-export-score.test.ts --bail=0
 
 The suite is opt-in because it needs the real installed exporter. Every export
 uses a private temporary profile and records process exit, profile removal,
-exporter identity and file hashes. Artifact directories must be fresh. Omit
+exporter identity, Linux rendering-runtime identity and file hashes. The runtime
+identity captures the executable, installed font files and fontconfig inputs,
+VCL rendering plugin files and selectors, and the effective locale. Artifact
+directories must be fresh. Omit
 `OPENSKY_EVAL_CONTROL_ARTIFACTS` to use disposable output storage.
 
 ## Freeze and use a campaign profile
@@ -68,7 +71,8 @@ python evals/parity/osworld/scoring_profile.py freeze \
 Set `OPENSKY_EVAL_SCORING_PROFILE` to its `profile.json` when starting a new
 campaign. The controller retains its own reference copies in `scoring/`, records
 individual reference hashes and the profile identity in the plan, and verifies
-them again before each arm. The runner verifies the profile and actual exporter
+them again before each arm. The runner verifies the profile and actual Linux
+rendering runtime
 before app setup and spending admission. Scoring rechecks references and sources
 after the agent finishes, rejecting a changed profile as an infrastructure error.
 Stages 5 and 20 require the same scoring and task-limit profiles as their prior

@@ -10,9 +10,11 @@ import shutil
 from pathlib import Path
 
 from score_extended import score_extended
+from impress_runtime_identity import runtime_identity
 
 ROOT = Path(__file__).resolve().parent
 POLICY = "task-preserving-export-v1"
+SCHEMA = 2
 
 
 def digest(path):
@@ -55,7 +57,7 @@ def confined(root, name):
 def verify(profile_path, office=None):
     profile_path = Path(profile_path).resolve()
     profile = json.loads(profile_path.read_text())
-    if profile.get("schema") != 1 or profile.get("policy") != POLICY:
+    if profile.get("schema") != SCHEMA or profile.get("policy") != POLICY:
         raise ValueError("Unsupported scoring profile")
     if profile["sources"] != source_pins():
         raise ValueError("Scoring sources or original assets changed; prepare a new validated profile")
@@ -65,9 +67,14 @@ def verify(profile_path, office=None):
     for name, sha in profile["references"].items():
         if digest(confined(profile_path.parent / "references", name)) != sha:
             raise ValueError(f"Frozen scoring reference changed: {name}")
-    if office and digest(office) != profile["office"]["sha256"]:
+    if not office:
+        raise ValueError("Linux LibreOffice runtime identity is required for scoring-profile admission")
+    if digest(office) != profile["office"]["sha256"]:
         raise ValueError("LibreOffice exporter differs from the validated scoring profile")
-    return {"name": POLICY, "sha256": digest(profile_path), "office": profile["office"],
+    runtime = runtime_identity(office)
+    if runtime != profile.get("runtime"):
+        raise ValueError("LibreOffice runtime differs from the validated scoring profile")
+    return {"name": POLICY, "sha256": digest(profile_path), "office": profile["office"], "runtime": runtime,
             "references": profile["references"],
             "referenceCount": len(expected_files), "adaptedTaskIds": [task["id"] for task in impress_tasks()]}
 
@@ -93,6 +100,9 @@ def freeze(controls_root, output, office):
         office_identity = audit["office"]
         if digest(office) != office_identity["sha256"]:
             raise ValueError("LibreOffice exporter differs from the control run")
+        runtime = runtime_identity(office)
+        if audit.get("runtime") != runtime or controls.get("runtime") != runtime:
+            raise ValueError("Control runs used a different or incomplete LibreOffice runtime")
         for receipt_path in directory.rglob("*.export.json"):
             receipt = json.loads(receipt_path.read_text())
             if not receipt.get("ownedProcessGroupExited") or not receipt.get("temporaryProfileRemoved"):
@@ -119,7 +129,7 @@ def freeze(controls_root, output, office):
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
     (output / "profile.json").write_text(json.dumps({
-        "schema": 1, "policy": POLICY, "office": office_identity,
+        "schema": SCHEMA, "policy": POLICY, "office": office_identity, "runtime": runtime_identity(office),
         "sources": originals, "references": {name: digest(path) for name, path in references.items()},
         "validation": evidence,
         "adaptation": "Export Impress references using the same LibreOffice build; derive duplicate-slide reference from preserved input plus final A,B copies. Other task categories retain raw scoring.",

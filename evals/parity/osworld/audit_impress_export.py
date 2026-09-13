@@ -18,6 +18,7 @@ from pathlib import Path
 from desktop_env.evaluators.metrics.slides import compare_pptx_files
 from score_extended import score_extended
 from impress_reference import DUPLICATE_SLIDES_TASK, duplicate_slide_reference
+from impress_runtime_identity import runtime_identity
 
 ROOT = Path(__file__).resolve().parent
 
@@ -106,6 +107,7 @@ def audit(task_id, office, destination, actual=None, *, reference_policy="upstre
             shutil.copyfile(derived / "requested-duplicate-slides.pptx", reference)
         export_copy(office, reference, reference_root / task_id)
     unchanged = export_copy(office, source, destination / "unchanged-input")
+    runtime = runtime_identity(office)
     result = {
         "taskId": task_id, "diagnosticOnly": True, "modelSpend": 0,
         "referencePolicy": reference_policy,
@@ -114,8 +116,7 @@ def audit(task_id, office, destination, actual=None, *, reference_policy="upstre
                                  "inputSha256": digest(source),
                                  "derivedSha256": digest(derived / "requested-duplicate-slides.pptx")}
                                 if adapted else None),
-        "office": {"executable": str(office), "sha256": digest(office),
-                   "version": subprocess.check_output([str(office), "--version"], text=True, timeout=10).strip()},
+        "office": runtime["executable"], "runtime": runtime,
         "neutralSourceSelfComparison": compare_pptx_files(str(source), str(source), enable_debug=False),
         "neutralNoEditExportComparison": compare_pptx_files(str(unchanged), str(source), enable_debug=False),
         "unchangedTaskOriginalReference": score_extended(task, unchanged),

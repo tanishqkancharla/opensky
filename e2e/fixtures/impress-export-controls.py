@@ -17,6 +17,7 @@ from pptx.util import Pt
 ROOT = Path(__file__).resolve().parents[2] / "evals/parity/osworld"
 sys.path.insert(0, str(ROOT))
 from audit_impress_export import audit, digest, export_copy
+from impress_runtime_identity import runtime_identity
 from score_extended import score_extended
 
 
@@ -146,9 +147,12 @@ def run(task_id, office, output):
         results[kind] = score_extended(task, exported, reference_root=output / "exported-references")
         if digest(exported) != before:
             raise RuntimeError("Read-only grader changed a specimen")
+    runtime = runtime_identity(office)
+    if baseline["runtime"] != runtime:
+        raise RuntimeError("Control exporter runtime changed during specimen preparation")
     result = {"taskId": task_id, "diagnosticOnly": True, "modelSpend": 0,
               "referencePolicy": baseline["referencePolicy"],
-              "office": baseline["office"], "controls": results,
+              "office": baseline["office"], "runtime": runtime, "controls": results,
               "cleanupVerified": all(json.loads(path.read_text())["temporaryProfileRemoved"] and
                                      json.loads(path.read_text())["ownedProcessGroupExited"]
                                      for path in output.rglob("*.export.json"))}
