@@ -3845,3 +3845,9 @@ original and corrected invocations exit1 at that later boundary. Results and
 errors are recorded in `work/cli-screenshot-url-review.json`; no new GUI or
 agent acceptance is claimed.
 The running V9 source and skill remain frozen on their original commit.
+
+### TARGETED-KEY-FACADE-01 — preserve the requested control
+
+The native-style facade now accepts `pressKey(key, elementIndex?)` and forwards the current element target to the SDK. Previously JavaScript silently ignored the second argument and sent an ambient key. The targeted SDK path now retries only the driver’s explicit pre-input `background_unavailable` refusal in foreground mode, preserving the window and element target. The public skill distinguishes targeted keys from ambient keys and value replacement; it includes no app-specific procedure.
+
+On a fresh remote Impress fixture, the previous SDK deleted the selected headline for the facade call and refused the lower-level targeted call. Both candidate paths saved60pt with unchanged single-paragraph text; two real cases passed, along with19 existing facade contract checks, build/typecheck and skill validation. The driver binary is unchanged. These are SDK behavior results; agent benchmark scores remain unchanged pending a matched rerun.
