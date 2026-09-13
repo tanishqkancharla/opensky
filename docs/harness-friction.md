@@ -168,7 +168,9 @@ See [scenario contracts and remaining fixture work](../e2e/scenarios.md).
   preceding pairs remain unchanged. Ready-to-first-result time was 92.664 seconds.
   Six controller guard checks also rejected live, missing-cleanup, mismatched-exit,
   scored, agent-event and unsettled evidence; these are controller checks, not SDK
-  behavior evidence. Full 20-task repeat acceptance remains pending.
+  behavior evidence. The resumed full repeat subsequently passed its 20-pair /
+  40-arm evidence audit: OpenSky 16/20, native 14/20. Its original setup failure
+  remains separately retained and unscored; all test containers were removed.
 
 ### GENERIC-SKILL-02 — evaluation prompts drifted from the shipped skill
 

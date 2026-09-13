@@ -265,7 +265,7 @@
   },
   "rerun": {
     "campaignPortableEntrypoint": null,
-    "statement": "Real provisioned-stage two- and five-task repeats accepted. Full20 repeat admitted and running; new-host provisioning and full20 repeat acceptance not established.",
+    "statement": "Real provisioned-stage 2, 5 and full20 repeats accepted. Original V14 results remain unchanged; new-host provisioning and general statistical parity are not established.",
     "repositoryParityDocumentation": "evals/parity/README.md",
     "provisionedStageEntrypoint": "evals/parity/repeat-vm-campaign.py",
     "smoke": {
@@ -290,6 +290,192 @@
       "tasksUnrun": 15,
       "validArms": 10,
       "evaluationEstimateUsd": 2.772508
+    },
+    "full20": {
+      "accepted": true,
+      "verifiedAt": "2026-09-13T23:31:32.577772+00:00",
+      "openskySuccesses": 16,
+      "nativeSuccesses": 14,
+      "tasksRun": 20,
+      "tasksUnrun": 0,
+      "validArms": 40,
+      "historicalUnscoredAttempts": 1,
+      "evaluationEstimateUsd": 12.310552,
+      "setupFailureConservativeEstimateUsd": 5,
+      "accountingNote": "The scored-arm estimate uses retained token receipts. A separate $5 conservative charge remains for the pre-agent setup failure; it is not evidence of model usage. Coding inference and infrastructure are excluded.",
+      "perBackend": {
+        "native": {
+          "elapsedMs": 1320869,
+          "estimatedEvaluationUsd": 3.675736,
+          "failed": 6,
+          "passed": 14,
+          "toolCalls": 184
+        },
+        "opensky": {
+          "elapsedMs": 1750066,
+          "estimatedEvaluationUsd": 8.634816,
+          "failed": 4,
+          "passed": 16,
+          "toolCalls": 212
+        }
+      },
+      "openskyOnly": [
+        "duplicate",
+        "split",
+        "freeze"
+      ],
+      "nativeOnly": [
+        "dropdown"
+      ],
+      "bothFailed": [
+        "background",
+        "subscript",
+        "font"
+      ],
+      "results": [
+        {
+          "ordinal": 1,
+          "task": "background",
+          "taskId": "9cf05d24-6bd9-4dae-8967-f67d88f5d38a",
+          "opensky": false,
+          "native": false
+        },
+        {
+          "ordinal": 2,
+          "task": "duplicate",
+          "taskId": "9ec204e4-f0a3-42f8-8458-b772a6797cab",
+          "opensky": true,
+          "native": false
+        },
+        {
+          "ordinal": 3,
+          "task": "dropdown",
+          "taskId": "ecb0df7a-4e8d-4a03-b162-053391d3afaf",
+          "opensky": false,
+          "native": true
+        },
+        {
+          "ordinal": 4,
+          "task": "strike",
+          "taskId": "72b810ef-4156-4d09-8f08-a0cf57e7cefe",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 5,
+          "task": "profit",
+          "taskId": "035f41ba-6653-43ab-aa63-c86d449d62e5",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 6,
+          "task": "replace",
+          "taskId": "0ed39f63-6049-43d4-ba4d-5fa2fe04a951",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 7,
+          "task": "indent",
+          "taskId": "ec71221e-ac43-46f9-89b8-ee7d80f7e1c5",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 8,
+          "task": "subscript",
+          "taskId": "0b17a146-2934-46c7-8727-73ff6b6483e8",
+          "opensky": false,
+          "native": false
+        },
+        {
+          "ordinal": 9,
+          "task": "split",
+          "taskId": "37608790-6147-45d0-9f20-1137bb35703d",
+          "opensky": true,
+          "native": false
+        },
+        {
+          "ordinal": 10,
+          "task": "fill",
+          "taskId": "01b269ae-2111-4a07-81fd-3fcd711993b0",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 11,
+          "task": "sort",
+          "taskId": "51b11269-2ca8-4b2a-9163-f21758420e78",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 12,
+          "task": "chart",
+          "taskId": "12382c62-0cd1-4bf2-bdc8-1d20bf9b2371",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 13,
+          "task": "sheets",
+          "taskId": "0cecd4f3-74de-457b-ba94-29ad6b5dafb6",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 14,
+          "task": "freeze",
+          "taskId": "4188d3a4-077d-46b7-9c86-23e1a036f6c1",
+          "opensky": true,
+          "native": false
+        },
+        {
+          "ordinal": 15,
+          "task": "table",
+          "taskId": "5cfb9197-e72b-454b-900e-c06b0c802b40",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 16,
+          "task": "image",
+          "taskId": "2b94c692-6abb-48ae-ab0b-b3e8a19cb340",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 17,
+          "task": "font",
+          "taskId": "3161d64e-3120-47b4-aaad-6a764a92493b",
+          "opensky": false,
+          "native": false
+        },
+        {
+          "ordinal": 18,
+          "task": "center",
+          "taskId": "3ef2b351-8a84-4ff2-8724-d86eae9b842e",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 19,
+          "task": "lowercase",
+          "taskId": "d53ff5ee-3b1a-431e-b2be-30ed2673079b",
+          "opensky": true,
+          "native": true
+        },
+        {
+          "ordinal": 20,
+          "task": "document-font",
+          "taskId": "0e763496-b6bb-4508-a427-fad0b6c3e195",
+          "opensky": true,
+          "native": true
+        }
+      ],
+      "verificationSummarySha256": "a611a61402d030b51ac8fd0bbc20fc30c0014e41e6839879273bf8bc37b9716b",
+      "verificationScope": "All 20 raw pairs revalidated: source, driver, model/configuration, task and authorization, environment, saved outcomes, cleanup, usage and retained setup recovery. Raw artifacts are retained separately, not published by this receipt."
     }
   }
 }
