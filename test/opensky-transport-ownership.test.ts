@@ -146,5 +146,5 @@ test("whole-method close waits for ledger persistence after the last completed d
   assert.equal(closed, false);
   assert.deepEqual(driver.calls, []);
   release(); await rejected; await closing;
-  assert.deepEqual(driver.calls.map(call => call.tool), ["end_session"]);
+  assert.deepEqual(driver.calls, [], "a rejected operation that never dispatched must not create a base cleanup call");
 });

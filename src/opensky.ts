@@ -98,6 +98,10 @@ export class OpenSky implements OpenSkyApi {
   private readonly degradedRetryMs: number;
   private readonly browserStabilityTimeoutMs: number;
   private readonly session: string;
+  // A close receipt is required after a base-session call might have reached
+  // the driver. Constructing a facade or evaluating pure JavaScript creates no
+  // such session and must not resolve or start a driver during finalization.
+  private baseSessionDispatchAttempted = false;
   private readonly runtimeId: string;
   private readonly browserLeases: BrowserSessionLeaseStore;
   private readonly preferTypedBrowser: boolean;
@@ -150,6 +154,10 @@ export class OpenSky implements OpenSkyApi {
           this.browserMutationsPending.set(target.handle, (this.browserMutationsPending.get(target.handle) ?? 0) + 1);
           this.markAction(target);
         }
+        // Set this before invoking the transport: a timeout, malformed reply,
+        // or retryable error can still leave the base session active. Explicit
+        // foreign labels remain caller-controlled escape hatches.
+        if (effectiveArgs.session === this.session) this.baseSessionDispatchAttempted = true;
         try { return await this.rawDriver.call(tool, effectiveArgs); }
         finally {
           for (const target of affected) {
@@ -763,7 +771,7 @@ export class OpenSky implements OpenSkyApi {
     const hadManagedBrowserSessions = this.managedBrowserSessions.size > 0;
     if (hadManagedBrowserSessions) this.cleanupPersistencePending = true;
     const sessions = [...this.managedBrowserSessions];
-    if (!this.baseSessionEnded) sessions.push(this.session);
+    if (!this.baseSessionEnded && this.baseSessionDispatchAttempted) sessions.push(this.session);
     const failures: Array<{ session: string; error: unknown }> = [];
     const endedManagedSessions = new Set<string>();
     await Promise.all(sessions.map(async (session) => {

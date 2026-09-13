@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
@@ -33,6 +34,21 @@ describe("opensky CLI", () => {
     const payload = JSON.parse(result.stdout) as { ok: boolean; value: Array<{ displayName?: string }> };
     assert.equal(payload.ok, true);
     assert.ok(payload.value.some((app) => app.displayName === "Calculator"));
+  });
+
+  it("evaluates pure JavaScript without resolving an unused explicit driver", async () => {
+    const home = await mkdtemp(join(tmpdir(), "opensky-cli-unused-driver-"));
+    try {
+      const result = await runCli([
+        "eval", "--no-serve", "--json", "--home", home,
+        "--driver", join(home, "missing-opensky-driver"), "return 1",
+      ]);
+      assert.equal(result.code, 0, `${result.stderr}\n${result.stdout}`);
+      assert.equal(result.stderr, "");
+      assert.deepEqual(JSON.parse(result.stdout), { ok: true, value: 1, logs: [] });
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
   });
 
   it("runs a full calculator click loop in one eval", async () => {
