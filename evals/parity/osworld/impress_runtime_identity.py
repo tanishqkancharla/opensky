@@ -13,7 +13,7 @@ from pathlib import Path
 
 SCHEMA = "libreoffice-impress-runtime-v1"
 RENDERING_ENV = ("SAL_USE_VCLPLUGIN", "SAL_DISABLE_OPENGL", "SAL_FORCEGL",
-                 "DISPLAY", "WAYLAND_DISPLAY", "GDK_BACKEND", "QT_QPA_PLATFORM")
+                 "GDK_BACKEND", "QT_QPA_PLATFORM")
 LOCALE_ENV = ("LANG", "LANGUAGE", "LC_ALL", "LC_CTYPE", "LC_NUMERIC", "LC_TIME")
 
 
@@ -43,7 +43,8 @@ def font_files():
 
 
 def font_config_files():
-    roots = [Path("/etc/fonts"), Path("/usr/share/fontconfig")]
+    roots = [Path("/etc/fonts"), Path("/usr/share/fontconfig"),
+             Path.home() / ".config/fontconfig", Path.home() / ".fonts.conf"]
     if os.environ.get("FONTCONFIG_FILE"):
         roots.append(Path(os.environ["FONTCONFIG_FILE"]))
     if os.environ.get("FONTCONFIG_PATH"):
@@ -63,6 +64,10 @@ def runtime_identity(office):
     if os.name != "posix" or not Path("/etc/os-release").is_file():
         raise ValueError("Linux runtime identity is required for an Impress scoring profile")
     if not office.is_file(): raise ValueError("LibreOffice executable is unavailable")
+    soffice_bin = office.parent / "soffice.bin"
+    if not soffice_bin.is_file():
+        raise ValueError("Required Linux runtime evidence is unavailable: soffice.bin")
+    merged = office.parent / "libmergedlo.so"
     plugins = file_hashes(office.parent.glob("libvclplug_*lo.so"))
     if not plugins:
         raise ValueError("Required Linux runtime evidence is unavailable: LibreOffice rendering backends")
@@ -71,9 +76,15 @@ def runtime_identity(office):
     return {
         "schema": SCHEMA,
         "executable": {"path": str(office), "sha256": digest(office),
-                       "version": subprocess.check_output([str(office), "--version"], text=True, timeout=10).strip()},
+                       "version": subprocess.check_output([str(office), "--version"], text=True, timeout=10).strip(),
+                       "sofficeBin": {"path": str(soffice_bin.resolve()), "sha256": digest(soffice_bin)},
+                       "libmergedlo": ({"path": str(merged.resolve()), "sha256": digest(merged)}
+                                       if merged.is_file() else None)},
         "fonts": {"files": font_files(), "configFiles": font_config_files(),
                   "environment": {key: os.environ.get(key) for key in ("FONTCONFIG_FILE", "FONTCONFIG_PATH")}},
-        "rendering": {"environment": {key: os.environ.get(key) for key in RENDERING_ENV}, "vclPlugins": plugins},
+        "rendering": {"environment": {key: os.environ.get(key) for key in RENDERING_ENV},
+                      "display": {"x11Present": bool(os.environ.get("DISPLAY")),
+                                  "waylandPresent": bool(os.environ.get("WAYLAND_DISPLAY"))},
+                      "vclPlugins": plugins},
         "locale": {"environment": {key: os.environ.get(key) for key in LOCALE_ENV}, "effective": command("locale")},
     }
