@@ -28,9 +28,11 @@ export async function withX11InputRecord(directory: string, use: () => Promise<v
     });
   });
   child.stdin.on("error", () => { /* exit and cleanup receipt expose failure */ });
+  let programCompleted = false;
   try {
     await ready;
     await use();
+    programCompleted = true;
   } finally {
     child.stdin.end();
     const signals: string[] = [];
@@ -57,7 +59,7 @@ export async function withX11InputRecord(directory: string, use: () => Promise<v
       throw new Error("X11 observer did not finish cleanly; inspect its retained trace and cleanup receipt");
     }
     const events = output.split("\n").filter(Boolean).map(line => JSON.parse(line));
-    if (!events.some(event => event.type === 2) || !events.some(event => event.type === 3)) {
+    if (programCompleted && (!events.some(event => event.type === 2) || !events.some(event => event.type === 3))) {
       throw new Error("X11 diagnostic has no keyboard press/release coverage for the real program");
     }
   }

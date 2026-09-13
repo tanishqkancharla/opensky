@@ -3884,3 +3884,17 @@ DOCX on both success and failure. This records server events, not proof that an
 application consumed them. CI 34784123429 passed all 27 cases. Retained evidence confirms three exact
 Unicode saved texts, 27 app exits, and three clean observers, each with 76
 keyboard events. This does not resolve the original truncation.
+
+### LINUX-V14-OBSERVER-ERROR-01 — preserve a failed program's original error
+
+An observer attached before app startup reported missing keyboard events when
+the app readiness fixture failed before taking any input action. Its final
+coverage assertion replaced the actionable setup error. The observer now checks
+keyboard coverage only after the observed program completes successfully.
+Cleanup verification still runs on both paths.
+
+Real remote acceptance: at half a CPU, `v14-sdk-startup-error-01` retained the
+Tesseract readiness timeout instead of the no-events assertion; its owned app,
+observer, and container exited. Earlier two-CPU and one-CPU public TYPE-L01
+probes passed with 76 keyboard events each and exact saved Unicode text. Those
+passes do not resolve the original intermittent CI truncation.
