@@ -28,6 +28,21 @@ function offset(state: string, label: string): number {
   return Number(value);
 }
 
+async function discoverOwnedApp(sdk: ReturnType<typeof createOpenSky>, pid: number, artifacts: string): Promise<string> {
+  const publicApps = await sdk.list_apps();
+  let selector: string | undefined;
+  await expect.poll(async () => {
+    const listed = (await sdk.invoke("list_apps", {})).structured as {
+      apps?: Array<{ pid?: number; bundle_id?: string; name?: string; launch_path?: string }>;
+    };
+    const match = listed.apps?.find(app => Number(app.pid) === pid);
+    selector = match?.bundle_id || match?.name || match?.launch_path;
+    await writeFile(join(artifacts, "apps.json"), JSON.stringify({ publicApps, raw: listed, selectedPid: pid, selector }, null, 2));
+    return Boolean(selector);
+  }, { timeout: 15_000 }).toBe(true);
+  return selector!;
+}
+
 export const test = base.extend<Fixture & { fixture: Fixture }>({
   fixture: async ({ task }, use) => {
     assertDisposableLinuxDesktop();
@@ -39,9 +54,9 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
     const sdk = createOpenSky({ homeDir: join(temporary, "sdk"), autoLaunch: false,
       driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
     try {
-      await withOwnedLinuxApp(scrollLab("--target", targetArtifacts), async () => {
-        const bound = await sdk.get_app_state({ app: "OpenSky Scroll Target", scope: "window", includeScreenshot: false });
-        const target = await createCua(sdk).getApp(bound.targetHandle);
+      await withOwnedLinuxApp(scrollLab("--target", targetArtifacts), async targetOwned => {
+        const targetSelector = await discoverOwnedApp(sdk, targetOwned.pid, targetArtifacts);
+        const target = await createCua(sdk).getApp(targetSelector);
         await withOwnedLinuxApp(scrollLab("--sibling", siblingArtifacts), async siblingOwned => {
           const siblingWindow = { pid: siblingOwned.pid, window_id: Number(siblingOwned.window) };
           await sdk.invoke("bring_to_front", siblingWindow);
