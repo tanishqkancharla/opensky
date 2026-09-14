@@ -122,3 +122,10 @@ This narrow fix does not complete the other capabilities in the table.
 - macOS `38c05be79d0bfc7ae03d57ccb82ca6319998c736` adds exact focused/main AX window
   candidates when AppKit omits them from AXWindows. The three-OS build/unit matrix
   passed; real SDK validation awaits reauthorization of the rebuilt Mac app.
+
+
+## Current macOS native range and paste evidence (2026-09-13)
+
+SDK `595250e3a61624ffef8bf7a07d886fb392ec0f01` with driver `03d6078ff0f29acbdd1a1417d7fd34b7b110ffd0` passed five real native-selection cases and a multiline-paste regression. Selection matches live AX text, rejects ambiguity including overlapping candidates, writes one UTF-16 range/caret, and verifies exact focused-target readback. The real long-document case selected beyond a2,000-character Unicode prefix without per-character keyboard input. All six workflows verified saved files and owned-process/document cleanup. See [current validation](macos-current-validation.md).
+
+The native paste policy on macOS is explicitly `leave`, matching the browser behavior and avoiding a racy clipboard restoration. Plaintext up to16KiB is supported for controls exposing the required AX value/range; formatted native paste and broader clipboard-interference cases remain outside this acceptance. These targeted local results do not complete the canonical release matrix, other native apps/platforms, auxiliary-window ownership, or existing-user-tab inventory requirements above.
