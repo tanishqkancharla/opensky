@@ -1,5 +1,7 @@
 # Current macOS SDK validation
 
+The [broader September 14 run](macos-broad-validation-2026-09-14.md) passed 16 of 18 distinct checks: nine standalone Chrome cases and seven native cases. Two native document openings failed before input; both were safely cleaned up and remain failures. This supersedes any impression that the earlier successful smokes establish uniformly reliable opening.
+
 The installed driver is now `028471ff1d307b9455c39039f9aa5e1b73d4da05`
 (binary SHA-256 `8be5bec39a355ffcf90f4330f1fd8f07863192711a722530a484ecd8eb9b5082`).
 It keeps paste outcome observation inside foreground activation. One saved-file

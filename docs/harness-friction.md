@@ -4164,3 +4164,32 @@ an accepted fix. All three observers and the owned app exited, keymaps matched,
 and the disposable container was removed. Compact local evidence is
 `work/v14-app-stall/acceptance.json`; the saved DOCX SHA-256 is
 `5935df4377d0cce61e21820aa08734441aed37cb5a344a96069c2f2da86af482`.
+
+
+### MAC-BROAD-01 — intermittent native document opening and installed-browser metadata
+
+The broader September 14 macOS run passed 16/18 distinct checks on SDK e6dbbb06
+(runtime byte-identical to installed 595250e) and driver 028471ff / binary 8be5bec3.
+PASTE-N03 and SELECT-N02 stopped in public `open_target` before test input with
+`native_target_unproven`. One independently observed fresh process showed only
+an Open panel; the other had the requested-title window but null AXDocument
+metadata plus an auxiliary layer-0 window. This proves an opening/identity
+reliability gap, not a causal selection/paste defect or user interference.
+Product behavior is unchanged; exact ownership guards remain in place. Next
+diagnosis should capture the raw launch response and PID-filtered document-URL
+observations within one fresh open-only control. No replay of the failed input
+or title-based adoption is appropriate.
+
+The first Chrome case separately failed before launch because strict signature
+verification rejected FinderInfo metadata on the installed app. After explicit
+user approval, 69 backed-up metadata entries were removed, full Google signing
+requirements passed, and all nine browser cases passed. No code/profile changes or
+weakened signature checks. The initial failure remains recorded. All test-owned
+processes/documents were cleaned; two failed launches needed independently
+verified manual process cleanup, preserving the user's existing TextEdit.
+
+Evidence and limits: [Mac validation](macos-broad-validation-2026-09-14.md),
+local `work/macos-broad-20260914/acceptance.json`, `open-failure-review.json`,
+`recovery/`, `chrome-installation-repair.json`, and `browser-cleanup.json`.
+No matched Mac agent score, platform scroll acceptance, or full release-matrix
+claim follows from these checks.
