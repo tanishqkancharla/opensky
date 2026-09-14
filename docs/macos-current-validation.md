@@ -1,58 +1,25 @@
 # Current macOS SDK validation
 
-On 2026-09-13 the installed OpenSky SDK `c69d3b8533ffc860759707737e45dc5578466b23`
-and OpenSky Driver `f0e316a8f9a40423491c5ca0c438c1e0d9626e3b`
-(binary SHA-256 `6f11c320173612ca996d589ec51c45e777a60022f981e938d3c773a8883b278e`)
-passed four real public-SDK cases. Native paste remains unsupported on macOS
-and its real test failed at the public operation.
+The 2026-09-13 local candidate passed the real public-SDK multiline-paste workflow and a Unicode-selection regression control:
 
-| Behavior | Result |
+- SDK: `99eb49050bf77919715487ee30689b4f2cc30301`
+- Driver: `082df36caf57aa7f5d5b4ca4652599afd736cc23`
+- Driver binary SHA-256: `a59248620829b6801c5568f73b3149163d6998145b3092cee0c0ad5feb1c6ad7`
+
+| Behavior | Result on this candidate |
 | --- | --- |
-| Open/close requested file while same-named sibling remains readable | Pass |
-| Replace second repeated match after Unicode text | Pass |
-| Insert before that match without replacing it | Pass |
-| Insert after that match without replacing it | Pass |
-| Capture existing native window | Pass: actual PNG visually verified |
-| Paste multiline text | Fail: native paste unavailable |
+| Select all, paste two lines, save, and verify exact file contents | Pass, 16.78 seconds including fixture |
+| Replace the disambiguated second match after Unicode text, save, and verify | Pass, 58.69 seconds including fixture |
+| Close owned document, quit its exact process, remove temporary files, preserve pre-existing process | Pass for both workflows |
 
-Selection and insertion were verified from the actual saved files, before
-teardown input. The three selection cases took 55.25, 47.31, and 54.99 seconds
-including their fixtures; this is correctness evidence, not a latency claim.
-The paste attempt retained the original file unchanged. Permissions and fixture
-setup succeeded; this failure is not a permission request or a reason to retry.
+The installed SDK was updated from a packed copy of this source, including its generic model skill. The driver uses the existing stable signing certificate. Accessibility and Screen Recording remain granted.
 
-The selection/paste fixture now opens its temporary document through public
-`open_target`, binds its exact returned window to an independently observed
-fresh process identity, and records ownership before test input. It closes the
-exact document through `close_target`, cooperatively quits only the verified
-process, verifies exit, and removes the temporary file. The existing user
-TextEdit process remained running throughout all four cases. This permits
-these tests without asking the user to quit TextEdit.
+The first paste candidate returned an uncertain result without changing the document. A foreground candidate then inserted a literal letter instead of pasting. The accepted correction carries accumulated modifier flags on foreground key events and selects the guarded foreground route before dispatching modified macOS keys. These first failures remain retained; no uncertain paste is automatically replayed.
 
-The opening fixture now records exact returned window/process identities and
-quits both owned test processes after the public document closes. Its fresh
-OPEN-N01 run passed in 19.29 seconds, including verification that temporary
-files were removed and the existing user TextEdit process remained running.
-The first fixture attempt failed before input because SDK methods are frozen;
-a separate forwarding facade corrected the observer without changing SDK calls.
+macOS paste currently supports plaintext up to 16 KiB into a focused control with readable AX value and UTF-16 selection range. It leaves the supplied text on the clipboard. AX outcome verification does not claim independent clipboard transfer or saved-file verification; these tests separately check actual saved files. Rich text and controls without the required AX evidence remain unsupported.
 
-Actual screenshot capture through the installed CLI succeeded and its PNG was
-visually verified. The existing window was only read, with no input or cleanup
-sent to it. Both Accessibility and Screen Recording are granted. The screenshot
-was removed after verification; its dimensions and hash remain in the receipt.
+Earlier source `c69d3b8533ffc860759707737e45dc5578466b23` with driver `f0e316a8f9a40423491c5ca0c438c1e0d9626e3b` passed requested-file opening/closing, all three selection/insertion cases, and actual screenshot capture. Those historical results have not been relabeled as reruns of the new candidate. A separate protected-folder opening issue still awaits the relevant macOS file-access consent; Accessibility and Screen Recording do not grant folder access. The launch-timeout reporting correction is a separate draft, not part of the installed paste candidate.
 
-Fresh app launching remains intermittent: two subsequent attempts timed out in
-NSWorkspace before opening a document. Restarting the same installed daemon
-allowed the opening test to pass, but a later launch timed out again. This is
-not resolved and is separate from permissions. One intervening screenshot
-attempt was stopped by shell-sandbox desktop visibility; that result does not
-establish that the user's desktop was locked.
+Local evidence: `work/macos-paste-modifiers-01/acceptance.json`, `work/macos-selection-modifiers-01/acceptance.json`, and retained earlier failures under `work/macos-paste-{candidate,observed,foreground}-*`. Earlier evidence remains under `work/macos-open-cleanup-04`, `work/macos-selection-current-01`, and `work/macos-capture-existing-01`. These receipts are local, not publicly hosted artifacts.
 
-Raw evidence is retained locally in `work/macos-open-current-01`,
-`work/macos-selection-current-01`, and `work/macos-paste-current-01`; it is not
-represented as publicly hosted by this report. These deterministic SDK results
-are separate from the frozen Linux paired agent measurement. No model inference
-calls were made by these tests. macOS native paste and broader driver-followup
-acceptance remain incomplete.
-
-Additional local evidence: `work/macos-open-cleanup-04`, `work/macos-screenshot-current-03`, and `work/macos-capture-existing-01/acceptance.json`.
+These deterministic SDK smokes made no model inference calls and are separate from frozen Linux paired agent scores. They do not replace the canonical desktop release matrix. Broader macOS API parity and release validation remain incomplete.
