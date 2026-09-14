@@ -34,10 +34,27 @@ Tests continue to drive the same public select/type/save actions.
 passed on Linux, macOS, and Windows. Linux included 20 input tests (one additional
 case intentionally ignored), 188 driver tests, 33 contract tests and 660 core tests.
 [Canonical desktop and installer validation](https://github.com/tanishqkancharla/cua/actions/runs/34817566624)
-is pending. The SDK typing workflow now builds this candidate from its pinned
-source, retains a release-binary hash manifest, and verifies that binary and
-identity before running all 10 cases on three fresh desktops. Release validation
-is pending; artifact reuse stays disabled until its hash is independently pinned.
+passed all 265 Linux/Windows desktop cases, both source-installer checks, and
+all three platform builds. This does not include the canonical macOS GUI matrix
+or migration from a previously published driver release.
+
+The [full SDK run](https://github.com/tanishqkancharla/opensky/actions/runs/34818732007)
+passed the nine existing cases on each of three fresh desktops (27 passes).
+TYPE-L03 stopped before its controlled pause because the workflow lacked the
+disposable-desktop flag. These three configuration failures remain recorded.
+The [focused correction](https://github.com/tanishqkancharla/opensky/actions/runs/34820063198)
+passed TYPE-L03 and ordinary TYPE-L01 on three fresh desktops (six passes, 24
+intentionally skipped checks). Actual pauses were 650.62, 650.44, and 650.65 ms.
+
+Both runs used the same release binary, SHA-256
+`a0bb400f185094e292507b642c77714ded1361b45c181526385c3fa59a00500a`.
+Only the workflow changed between SDK sources `a6741e88` and `db0ebbe91`:
+it declares the hosted desktop disposable and pins the independently downloaded
+release artifact for reuse. The product and test code are identical. Across the
+two runs, all ten distinct cases have passing evidence: 27 independently checked
+saved documents, six UI-only assertions, three verified stalls, and 36 owned-app
+cleanup/keymap receipts, including the three initial setup failures. This is
+combined acceptance, not a claim that the first full run was green.
 
 This does not prove universal X11 text consumption: clients without the ping
 protocol retain the older delay and its known limitation. Custom event loops,
