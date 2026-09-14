@@ -1204,23 +1204,29 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    if (this.target === "linux" && format === "text" && resolved && !resolved.browser) {
+    if ((this.target === "linux" || this.target === "mac") && format === "text" && resolved && !resolved.browser) {
       this.assertTargetUsable(resolved);
       await this.requireUsableInputWindow(resolved);
-      // The compound driver operation checks exact live focus, owns the
-      // clipboard transaction and sends one paste. Never split this into
-      // clipboard writes plus a key, or replay an uncertain delivery.
+      // The compound driver operation checks exact live focus and sends one
+      // paste. Never split this into clipboard writes plus a key, or replay
+      // an uncertain delivery. Linux restores supported prior clipboard
+      // contents; macOS deliberately leaves this payload on the clipboard.
       try {
         const result = await this.driver.call("native_paste", {
           pid: resolved.pid,
           window_id: resolved.windowId,
           text: args.text,
           format,
+          ...(this.target === "mac" ? { clipboard_policy: "leave" } : {}),
         });
         const outcome = asRecord(result.structured);
-        if (outcome?.status !== "completed" || outcome.transfer_verified !== true) {
+        const verified = this.target === "linux"
+          ? outcome?.status === "completed" && outcome.transfer_verified === true
+          : outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false;
+        if (!verified) {
           throw new OpenSkyError(
-            "Native paste delivery was not verified. Observe before retrying; do not replay automatically.",
+            "Native paste receipt did not verify the required platform-specific outcome. " +
+              "Observe before retrying; do not replay automatically.",
             "native_paste_unverified",
             outcome,
           );

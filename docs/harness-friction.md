@@ -3967,9 +3967,27 @@ Real acceptance: all three unchanged Unicode selection/cursor tests passed
 against installed SDK c69 and driver f0e316a8 (binary6f11c320), with exact saved
 files, three process exits, three temporary removals, and the original TextEdit
 instance preserved. PASTE-N01 reached the real public call and failed because
-Mac native paste is unavailable; its setup/cleanup passed and original text
-remained intact. That failure is retained, not treated as fixture acceptance of
-paste. See [current macOS validation](macos-current-validation.md).
+the then-installed driver did not implement macOS native paste; its setup/cleanup
+passed and original text remained intact. That failure is retained, not treated
+as fixture acceptance of paste. See [current macOS validation](macos-current-validation.md).
+
+### PASTE-M01 — macOS native plaintext paste routing candidate
+
+The SDK now routes generic native plaintext paste through the macOS driver's
+exact-target `native_paste` operation, using `clipboard_policy:"leave"` only on
+macOS. It retains the Linux receipt requirement of `transfer_verified:true`.
+macOS instead accepts only `status:"completed"`,
+`target_value_verified:true`, and `transfer_verified:false`: AX value and
+selection read-back prove the targeted result, but do not prove a clipboard
+transfer or saved document. The driver limits input to 16 KiB plaintext and
+refuses controls without a focused, readable AX value and selection. macOS
+leaves the payload on the clipboard, matching browser behavior and avoiding a
+clipboard-restoration race. Any incomplete or uncertain receipt marks the action
+before propagating the error; it is never replayed automatically.
+
+Validation is pending the unchanged real public-SDK PASTE-N01 fixture against
+the rebuilt driver. This entry records an SDK/documentation candidate only; it
+does not claim GUI, saved-file, clipboard, or driver-install acceptance.
 
 ### MAC-NATIVE-OPEN-CLEANUP-01 — quit only SDK-owned test instances
 

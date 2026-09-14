@@ -86,7 +86,7 @@ await app.click(13);
 return app.getAXState();
 ```
 
-The facade exposes bound app and exact tab objects with camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Exact browser tabs support clipboard paste in text, HTML, and literal Markdown formats. Native plaintext paste is available on Linux X11 with a supporting OpenSky Driver; see `paste` for its limits. Hidden tabs, the in-app browser, optional browser capabilities, and host marks remain unsupported or unavailable.
+The facade exposes bound app and exact tab objects with camelCase methods. `getAXState()` is AX-only; use `getScreenshot()` or `getAXStateAndScreenshot()` only when needed. Its optional `query` returns a fresh semantic view narrowed to matching content on large exact browser pages. Installed Chrome and Edge providers are discoverable before any tab is opened. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred when no provider is specified. Use `browser.tabs.new/get/list/selected` and `browser.nameSession` for the current native lifecycle, or the efficient `cua.createBrowserTab("chrome", url)` shortcut for a known URL. Both routes return tabs supporting `goto`, `back`, `forward`, `reload`, and exact `close`. Because each OpenSky tab is an isolated owned browser session, `selected()` returns a tab only when exactly one live candidate exists; it returns `undefined` rather than guessing across multiple sessions. Only facade-owned tabs are discoverable. Exact browser tabs support clipboard paste in text, HTML, and literal Markdown formats. Native plaintext paste is available on Linux X11 and macOS with a supporting OpenSky Driver; see `paste` for platform limits. Hidden tabs, the in-app browser, optional browser capabilities, and host marks remain unsupported or unavailable.
 
 Browser queries include bounded source-ordered evidence neighborhoods when the
 helper supports them, retaining unmatched labels beside matches. These are local
@@ -276,13 +276,24 @@ up to 16 KiB into the exact observed and focused window. It preserves supported
 prior clipboard formats and restores them only if no newer clipboard owner has
 taken over. Direct transfers are supported; INCR, rich-text input, clipboard
 managers, and apps that negotiate clipboard formats only after input remain
-unsupported. Other native platforms still refuse this operation.
+unsupported.
 
-A transfer failure may follow actual input. Observe before retrying and never
-replay an uncertain paste automatically. A newer external copy may be what the
-app consumed; inspect the resulting content. Transfer verification does not
-prove an arbitrary application saved the edit. Never substitute typing without
-considering the different event and newline semantics.
+On macOS with a supporting OpenSky Driver, native `paste` accepts plaintext up
+to 16 KiB into an exact observed, focused control only when AX exposes both a
+readable plaintext value and selection range. It leaves the supplied plaintext
+on the clipboard, like browser paste: it never tries to restore prior contents,
+because restoration can race with a later user copy. A completed receipt proves
+the expected AX text outcome, not that a clipboard transfer or a saved document
+was independently verified. Rich-text input, controls without
+readable AX value or selection, and unverified outcomes are refused or remain
+uncertain.
+
+A transfer failure or incomplete receipt may follow actual input. Observe before
+retrying and never replay an uncertain paste automatically. A newer external
+copy may be what the app consumed; inspect the resulting content. Linux transfer
+verification and macOS AX read-back do not prove an arbitrary application saved
+the edit. Never substitute typing without considering the different event and
+newline semantics.
 
 ### `drag`
 
@@ -334,7 +345,7 @@ Do not click through OS permission prompts, password dialogs, or "are you sure" 
 - Always derive indices from fresh state.
 - Treat action failures as ambiguous until state is refreshed. An action may take effect even if the promise rejects.
 - Prefer `set_value()` for exact multiline replacement.
-- Browser `paste()` leaves the supplied content on the clipboard. Supported native paste conditionally restores prior contents; preserve newer external copies and observe after uncertain delivery. Do not substitute typing unless its semantics are acceptable.
+- Browser and macOS native `paste()` leave the supplied content on the clipboard. Linux native paste conditionally restores prior contents; preserve newer external copies and observe after uncertain delivery. Do not substitute typing unless its semantics are acceptable.
 - Avoid newlines in `type_text()` when Return could submit.
 - Do not target the host agent, its IDE, or the terminal hosting it for safety.
 
