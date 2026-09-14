@@ -1664,18 +1664,19 @@ export class OpenSky implements OpenSkyApi {
       payload.x = args.x;
       payload.y = args.y;
     }
+    // PID-routed typing cannot distinguish sibling native windows. Choose the
+    // exact-window foreground route before any AX attempt rather than replaying
+    // a refusal that may follow an unreadable AX write.
+    if (this.target === "mac" && args.element_index === undefined) {
+      payload.delivery_mode = "foreground";
+    }
     try {
       await this.driver.call("type_text", payload);
     } catch (error) {
-      // These pre-dispatch refusals mean background input did not run: either
-      // no actuator exists or PID-only routing cannot distinguish sibling
-      // windows. Retry only against the same exact window with guarded focus.
+      // This typed refusal means background delivery has no input actuator.
+      // Retry against the same proven window, as click/key input already does.
       // Do not retry arbitrary typing errors: input may already have occurred.
-      if (!(error instanceof OpenSkyError) || !resolved.windowId) throw error;
-      const refusal = asRecord(error.details);
-      const ambiguousBeforeInput = error.code === "same_pid_keyboard_ambiguity" &&
-        refusal?.effect === "refused" && refusal.pid === resolved.pid && refusal.window_id === resolved.windowId;
-      if (error.code !== "background_unavailable" && !ambiguousBeforeInput) throw error;
+      if (!(error instanceof OpenSkyError) || error.code !== "background_unavailable" || !resolved.windowId || payload.delivery_mode === "foreground") throw error;
       await this.driver.call("type_text", { ...payload, delivery_mode: "foreground" });
     }
     this.markAction(resolved);

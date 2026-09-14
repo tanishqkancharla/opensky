@@ -23,7 +23,7 @@ describe("skill install", () => {
     });
     assert.equal(result.destinations.length, 2);
     const markdown = await readFile(join(dir, ".cursor", "skills", "opensky", "SKILL.md"), "utf8");
-    assert.match(markdown, /canonical loop/i);
+    assert.equal(markdown, await readFile(join(result.source, "SKILL.md"), "utf8"));
     const removed = await uninstallSkill({ cwd: dir, global: false, agents: ["cursor", "agents"] });
     assert.equal(removed.length, 2);
   });

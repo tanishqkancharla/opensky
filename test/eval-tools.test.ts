@@ -5,20 +5,12 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import { createOpenSkyToolRuntime, dispatchBatchActions, OPENSKY_TOOL_NAMES, validateBatchActions } from "../evals/tools.js";
+import { CuaDriverClient } from "../src/driver.js";
 import type { DriverClient, DriverResult } from "../src/types.js";
 
 describe("OpenSky tool runtime lifecycle", () => {
   it("gives agent hosts an explicit cleanup hook", async () => {
-    const calls: Array<{ tool: string; args: Record<string, unknown> }> = [];
-    const driver: DriverClient = {
-      async ensureDaemon() {},
-      async status() { return { running: true, text: "running" }; },
-      async call(tool, args = {}): Promise<DriverResult> {
-        calls.push({ tool, args });
-        const structured = tool === "end_session" ? { session: args.session, active: false } : { status: "ok" };
-        return { structured, text: JSON.stringify(structured), raw: structured };
-      },
-    };
+    const driver = new CuaDriverClient({ autoStart: false, autoInstall: false });
     const runtime = createOpenSkyToolRuntime(driver, "mac", {
       homeDir: await mkdtemp(join(tmpdir(), "opensky-eval-tools-")),
     });
@@ -29,9 +21,10 @@ describe("OpenSky tool runtime lifecycle", () => {
     assert.equal(runtime.tools.length > 0, true);
     assert.equal(OPENSKY_TOOL_NAMES.includes("navigate"), true);
     assert.equal(OPENSKY_TOOL_NAMES.includes("close_target"), true);
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0]?.tool, "end_session");
-    assert.match(String(calls[0]?.args.session), /^opensky-\d+-[0-9a-f]{8}$/);
+    await assert.rejects(
+      async () => runtime.tools[0]!.execute("after-close", {}),
+      /closed/i,
+    );
   });
 
   it("rejects contradictory observation queries before dispatching input", async () => {
