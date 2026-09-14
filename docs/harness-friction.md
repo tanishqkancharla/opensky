@@ -4091,3 +4091,18 @@ IDs rather than the unsupported GI path method. Full E2E TypeScript checking,
 Python syntax compilation, shell syntax and diff checks pass. Real focused CI
 validation remains pending; the earlier warm success does not certify this
 changed fixture.
+
+LINUX-V14-UNICODE-TRACE-02 accepted on SDK `8d36e31eeb362deed9e7c0aeae9b9ee09b3cf008`:
+[focused CI 34812655608](https://github.com/tanishqkancharla/opensky/actions/runs/34812655608)
+passed TYPE-L01 and KEY-L01 on three fresh desktops (6 passed, 21 intentionally
+skipped). Driver source/binary pins remain V14. Independent collection verified
+all six saved DOCX contents, unchanged keymaps and exact owned-app cleanup.
+The three Unicode traces contain 48/55/50 exact-app events, each with 29 paragraph
+insertion payloads reconstructing the expected complete text under one retained
+paragraph proxy ID. Both observer processes exited cleanly in every attempt.
+Optional metadata lookup errors for disappearing objects remain recorded (six
+per trace); there were no callback errors. A final focus event can drain during
+listener deregistration after the stop request; confirmed process/group exit is
+the shutdown evidence. Download ZIPs were removed after hash-verified collection.
+This accepts the observer integration; it does not resolve the original typing
+flake or change frozen agent scores. Do not repeat identical successful probes.
