@@ -280,7 +280,9 @@ unsupported.
 
 On macOS with a supporting OpenSky Driver, native `paste` accepts plaintext up
 to 16 KiB into an exact observed, focused control only when AX exposes both a
-readable plaintext value and selection range. It leaves the supplied plaintext
+readable plaintext value and selection range. Like untargeted native shortcuts,
+it briefly activates the exact window for one paste chord, then restores the
+previous foreground app. It leaves the supplied plaintext
 on the clipboard, like browser paste: it never tries to restore prior contents,
 because restoration can race with a later user copy. A completed receipt proves
 the expected AX text outcome, not that a clipboard transfer or a saved document

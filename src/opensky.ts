@@ -1217,7 +1217,7 @@ export class OpenSky implements OpenSkyApi {
           window_id: resolved.windowId,
           text: args.text,
           format,
-          ...(this.target === "mac" ? { clipboard_policy: "leave" } : {}),
+          ...(this.target === "mac" ? { clipboard_policy: "leave", delivery_mode: "foreground" } : {}),
         });
         const outcome = asRecord(result.structured);
         const verified = this.target === "linux"

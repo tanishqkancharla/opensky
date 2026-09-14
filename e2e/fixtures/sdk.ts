@@ -120,6 +120,15 @@ export const nativeTest = test.extend<{ document: NativeDocument }>({
         try {
           await use({ handle: owned.handle, path, read: () => readFile(path, "utf8") });
         } finally {
+          // Observe the public outcome after the test, including when paste
+          // reports uncertainty before the test can save. This diagnostic
+          // cannot turn a failed action or saved-file assertion into a pass.
+          try {
+            const after = await sdk.get_app_state({ app: owned.handle, includeScreenshot: false, disableDiff: true });
+            await writeFile(join(artifacts, "post-action-ax.txt"), after.text);
+          } catch (error) {
+            await writeFile(join(artifacts, "post-action-observation-error.txt"), String(error));
+          }
           // Capture the persisted file before any teardown save. The test's
           // explicit save remains the saved-file oracle; this is recovery only.
           await writeFile(join(artifacts, "saved-before-cleanup.txt"), await readFile(path));
