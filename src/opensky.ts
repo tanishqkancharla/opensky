@@ -2468,6 +2468,13 @@ export class OpenSky implements OpenSkyApi {
       ...(modifiers.length > 0 ? { modifiers } : {}),
       ...target,
     };
+    if (this.target === "mac" && modifiers.length > 0) {
+      // AppKit menu equivalents can ignore a PID-routed modified key even
+      // when the AX control is focused. Choose the guarded exact-window
+      // route before dispatch, as for untargeted native shortcuts.
+      await this.driver.call("press_key", { ...payload, delivery_mode: "foreground" });
+      return;
+    }
     try {
       await this.driver.call("press_key", { ...payload, delivery_mode: "background" });
       return;

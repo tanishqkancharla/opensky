@@ -257,7 +257,7 @@ Brings the exact bound ordinary window onto the current desktop. Coordinate and 
 
 ### `press_key`
 
-xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targeted; cannot invoke global OS shortcuts. Element-targeted chords use background delivery so modifiers are preserved while focus remains isolated; use `x`/`y` only for custom surfaces.
+xdotool-style keys: `"Return"`, ` "super+a"`, `"Up"`, `"KP_0"`. Application-targeted; cannot invoke global OS shortcuts. On macOS, modified keys briefly activate the exact window, focus an addressed element when supplied, and restore the previous foreground app after dispatch. Other element-targeted keys prefer background delivery; use `x`/`y` only for custom surfaces.
 
 Exact typed browser tabs use trusted page-scoped key delivery. Omit
 `element_index` only when page focus is already known, or pass a current
