@@ -4106,3 +4106,16 @@ listener deregistration after the stop request; confirmed process/group exit is
 the shutdown evidence. Download ZIPs were removed after hash-verified collection.
 This accepts the observer integration; it does not resolve the original typing
 flake or change frozen agent scores. Do not repeat identical successful probes.
+
+MAC-PASTE-FOCUS-01: independent review of driver `028471ff` found the bounded
+readback remains inside foreground activation with one paste dispatch and the
+existing target/clipboard guards. The remaining narrow acceptance is explicit
+foreground restoration, which PASTE-N01's saved-file assertion did not measure.
+New PASTE-N02 opens two independently owned TextEdit instances through the public
+SDK, selects the target, puts the other instance frontmost, pastes once, then
+asserts the other instance is frontmost before saving. Actual target file content
+and the unchanged sibling document are separate outcome assertions. A read-only
+NSWorkspace PID observation is exposed as an external fixture; it is not an SDK
+internal-call assertion. Typechecking passes; real desktop acceptance is pending.
+The prior Space-transition failure remains retained. This does not require new
+permissions, modify the paste implementation, or add app-specific agent guidance.

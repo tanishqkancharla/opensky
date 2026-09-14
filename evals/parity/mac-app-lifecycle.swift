@@ -32,7 +32,8 @@ if args.count == 2 && args[1] == "desktop-state" {
     emit(["ready": reasons.isEmpty, "reasons": reasons,
           "onConsole": onConsole as Any? ?? NSNull(), "loginDone": loginDone as Any? ?? NSNull(),
           "locked": locked as Any? ?? NSNull(), "screensaverRunning": saverRunning,
-          "frontmostBundleId": frontmost as Any? ?? NSNull()])
+          "frontmostBundleId": frontmost as Any? ?? NSNull(),
+          "frontmostPid": NSWorkspace.shared.frontmostApplication?.processIdentifier as Any? ?? NSNull()])
 } else if args.count == 3 && args[1] == "list" {
     emit(NSRunningApplication.runningApplications(withBundleIdentifier: args[2]).compactMap(identity))
 } else if args.count == 3 && ["inspect", "inspect-ax"].contains(args[1]), let pid = pid_t(args[2]), let app = NSRunningApplication(processIdentifier: pid) {
