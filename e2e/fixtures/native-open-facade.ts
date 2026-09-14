@@ -1,4 +1,4 @@
-import type { OpenSky } from "opensky-cua";
+import type { PublicSdk as OpenSky } from "./sdk.js";
 
 /** Separate facade for lifecycle observation; never writes to the real SDK. */
 export function lifecycleFacade(real: OpenSky, observe: { open(args: Parameters<OpenSky["open_target"]>): ReturnType<OpenSky["open_target"]>; close(args: Parameters<OpenSky["close_target"]>): ReturnType<OpenSky["close_target"]> }): OpenSky {

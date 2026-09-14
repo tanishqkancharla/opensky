@@ -3,12 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test as base } from "vitest";
 import { PNG } from "pngjs";
-import { createCua, createOpenSky, type CuaFacade, type OpenSky, type Tab, type TargetHandle } from "opensky-cua";
+import { createCua, createOpenSky, type CuaFacade, type Tab, type TargetHandle } from "opensky-cua";
 import { editorPage, servePage, type Site } from "./site.js";
 import { verifyDriverRuntime } from "../../evals/parity/driver-runtime.js";
 import { withSdkOwnedMacDocument } from "./mac-sdk-document.js";
 
-type BrowserFixtures = { sdk: OpenSky; cua: CuaFacade; html: string; site: Site; tab: Tab };
+export type PublicSdk = Parameters<typeof createCua>[0];
+
+type BrowserFixtures = { sdk: PublicSdk; cua: CuaFacade; html: string; site: Site; tab: Tab };
 
 export const test = base.extend<BrowserFixtures>({
   html: editorPage,
@@ -104,21 +106,22 @@ export function scrollMarkerTop(png: Uint8Array): number {
 }
 
 export const nativeText = "α 😀 one needle.\nβ 😀 two needle.\n";
-type NativeDocument = { handle: TargetHandle; path: string; read(): Promise<string> };
+type NativeDocument = { handle: TargetHandle; path: string; editorIndex: number; initialText: string; read(): Promise<string> };
 
-export const nativeTest = test.extend<{ document: NativeDocument }>({
-  document: async ({ sdk }, use) => {
+export const nativeTest = test.extend<{ document: NativeDocument; documentText: string }>({
+  documentText: nativeText,
+  document: async ({ sdk, documentText }, use) => {
     if (process.platform !== "darwin") throw new Error("This native fixture requires macOS TextEdit; select browser tests on other platforms.");
     const directory = await mkdtemp(join(tmpdir(), "opensky-native-e2e-"));
     const artifacts = await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR ?? tmpdir(), "native-document-"));
     const path = join(directory, "sdk-draft.txt");
-    await writeFile(path, nativeText, "utf8");
+    await writeFile(path, documentText, "utf8");
     try {
       await withSdkOwnedMacDocument({ sdk, path, artifacts }, async owned => {
         const opened = await sdk.get_app_state({ app: owned.handle, includeScreenshot: false, disableDiff: true });
         await writeFile(join(artifacts, "sdk-initial.txt"), opened.text);
         try {
-          await use({ handle: owned.handle, path, read: () => readFile(path, "utf8") });
+          await use({ handle: owned.handle, path, editorIndex: nativeEditorIndex(opened.text), initialText: documentText, read: () => readFile(path, "utf8") });
         } finally {
           // Observe the public outcome after the test, including when paste
           // reports uncertainty before the test can save. This diagnostic

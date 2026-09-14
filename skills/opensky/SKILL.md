@@ -310,7 +310,7 @@ native window drag.
 
 `selection_type`: `text` (default), `exact` (alias), `cursor_before`, `cursor_after`. `prefix` / `suffix` disambiguate repeated matches.
 
-On Linux, this requires the updated driver’s native Text selection operation and an element from the latest observation. Duplicate live matches without unique context are refused. A partial or unverified result may have changed the selection; observe before continuing. OpenSky does not replay selection failures through keyboard input.
+On Linux and macOS, this requires the updated driver's native text-range operation and an element from the latest observation. It matches the control's live text and verifies the resulting selection or caret. Duplicate live matches without unique context are refused. A partial or unverified result may have changed the selection; observe before continuing. OpenSky does not replay selection failures through keyboard input. macOS controls must expose readable text and a writable accessibility selection range.
 
 ### `set_value` vs `type_text`
 

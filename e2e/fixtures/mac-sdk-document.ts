@@ -1,3 +1,4 @@
+import type { PublicSdk as OpenSky } from "./sdk.js";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -5,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
-import type { AppState, OpenSky, TargetHandle } from "opensky-cua";
+import type { AppState, TargetHandle } from "opensky-cua";
 
 const exec = promisify(execFile);
 const bundleId = "com.apple.TextEdit";

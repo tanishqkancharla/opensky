@@ -25,6 +25,15 @@ test("SELECT-N01: replaces the disambiguated second occurrence after Unicode tex
   await expect.poll(() => document.read()).toBe(nativeText.replace("two needle", "two chosen"));
 });
 
+test("SELECT-N03: an ambiguous match preserves the established selection", async ({ sdk, document }) => {
+  await sdk.select_text({ app: document.handle, element_index: document.editorIndex, text: "needle", prefix: "two ", suffix: "." });
+  const state = await sdk.get_app_state({ app: document.handle, includeScreenshot: false, disableDiff: true });
+  await expect(sdk.select_text({ app: document.handle, element_index: nativeEditorIndex(state.text), text: "needle" })).rejects.toThrow(/ambiguous/i);
+  await sdk.type_text({ app: document.handle, text: "chosen" });
+  await sdk.press_key({ app: document.handle, key: "super+s" });
+  await expect.poll(() => document.read()).toBe(nativeText.replace("two needle", "two chosen"));
+});
+
 for (const { selection, replacement } of [
   { selection: "cursor_before" as const, replacement: "two Xneedle" },
   { selection: "cursor_after" as const, replacement: "two needleX" },

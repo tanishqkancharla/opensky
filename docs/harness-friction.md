@@ -3971,7 +3971,7 @@ the then-installed driver did not implement macOS native paste; its setup/cleanu
 passed and original text remained intact. That failure is retained, not treated
 as fixture acceptance of paste. See [current macOS validation](macos-current-validation.md).
 
-### PASTE-M01 — macOS native plaintext paste routing candidate
+### PASTE-M01 — macOS native plaintext paste routing
 
 The SDK now routes generic native plaintext paste through the macOS driver's
 exact-target `native_paste` operation, using `clipboard_policy:"leave"` only on
@@ -3985,9 +3985,7 @@ leaves the payload on the clipboard, matching browser behavior and avoiding a
 clipboard-restoration race. Any incomplete or uncertain receipt marks the action
 before propagating the error; it is never replayed automatically.
 
-Validation is pending the unchanged real public-SDK PASTE-N01 fixture against
-the rebuilt driver. This entry records an SDK/documentation candidate only; it
-does not claim GUI, saved-file, clipboard, or driver-install acceptance.
+Update 2026-09-13: real PASTE-N01 now passes on SDK99eb490 and driver082df36c, with exact saved two-line text and verified owned-process/document cleanup. SELECT-N01 also passed as a regression control. The first background candidate left text unchanged; the first foreground candidate inserted a literal v. The accepted driver correction carries accumulated modifier flags on foreground chords; the SDK chooses that exact-window route before dispatching modified macOS keys. Both first failures are retained. The packed SDK and skill were installed and verified, and the unchanged stable driver signature retained both permissions. Evidence: work/macos-paste-modifiers-01/acceptance.json, work/macos-selection-modifiers-01/acceptance.json, and work/macos-sdk-install-99eb490/acceptance.json. This is targeted acceptance, not the canonical release matrix or full clipboard-format parity.
 
 ### MAC-NATIVE-OPEN-CLEANUP-01 — quit only SDK-owned test instances
 
@@ -4015,3 +4013,12 @@ NSWorkspace before any app is observed; restarting the same signed daemon
 allowed one opening test to pass but did not resolve subsequent timeouts.
 Further permission prompts are not supported by this evidence. A separate
 shell-sandbox preflight failure must not be labeled a locked user desktop.
+
+
+### MAC-CAPTURE-LAUNCH-02 — protected-folder consent is separate
+
+Further diagnosis narrowed the queued native open to an unanswered Documents-folder access request. Accessibility and Screen Recording do not authorize protected-folder file access. The user has been asked for that specific permission; its public-SDK opening acceptance remains pending. Temporary-file paste and selection tests run successfully on the installed daemon. A separate draft corrects timeout replies to report unknown launch outcome and forbid automatic replay; that reporting change is not yet installed.
+
+### SELECT-M02 — replace per-character selection with a native range operation
+
+SELECT-N01 passed its saved Unicode-file assertion but took58.69seconds including its fixture. The macOS SDK still walked from the document beginning with individual keyboard events, and SET-037 retains an earlier long-paragraph timeout. This is an input implementation gap, not a reason to increase the evaluator deadline. A generic driver selection-range operation is in preparation: match live AX text, disambiguate context, set one UTF-16 range, verify range/caret, and propagate uncertainty without keyboard replay. The SDK candidate routes through that primitive. Real short/long selection, cursor-edge, and ambiguous-refusal acceptance are pending; no new pass is claimed here. The long-document fixture uses a fresh owned app/document and an actual saved-file oracle.

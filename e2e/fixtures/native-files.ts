@@ -1,10 +1,11 @@
+import type { PublicSdk as OpenSky } from "./sdk.js";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import type { AppState, OpenSky, TargetHandle } from "opensky-cua";
+import type { AppState, TargetHandle } from "opensky-cua";
 import { lifecycleFacade } from "./native-open-facade.js";
 import { finishNativeOpen } from "./native-open-outcome.js";
 import { test as base } from "./sdk.js";

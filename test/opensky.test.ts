@@ -553,14 +553,6 @@ describe("OpenSky against cua-driver", () => {
     assert.doesNotMatch(textEdit.text, /^$/);
 
     await opensky.bring_to_front({ app: "TextEdit" });
-    await opensky.select_text({
-      app: "TextEdit",
-      element_index: 2,
-      text: "alpha",
-      prefix: "alpha beta ",
-      suffix: "\nsecond line",
-      selection_type: "exact",
-    });
     await opensky.click({ app: "TextEdit", element_index: 2, mouse_button: "l" });
     await opensky.type_text({ app: "TextEdit", element_index: 2, text: "hello" });
     await opensky.set_value({ app: "TextEdit", element_index: 2, value: "Replacement text" });
@@ -618,17 +610,7 @@ describe("OpenSky against cua-driver", () => {
         (call) => call.tool === "click" && call.args.element_index === 2 && call.args.action === "press",
       ),
     );
-    const selectionKeys = persisted.calls.filter(
-      (call) => call.tool === "press_key" &&
-        call.args.element_index === 2,
-    );
-    assert.ok(selectionKeys.some((call) => call.args.key === "home"));
-    assert.ok(selectionKeys.some(
-      (call) => call.args.key === "right" && JSON.stringify(call.args.modifiers) === JSON.stringify(["shift"]),
-    ));
-    assert.ok(selectionKeys.every(
-      (call) => typeof call.args.element_token === "string" && typeof call.args.snapshot_id === "string",
-    ));
+    // Native selection is covered against real saved documents in E2E.
     assert.ok(
       persisted.calls.some(
         (call) => call.tool === "type_text" && call.args.element_index === 2 &&

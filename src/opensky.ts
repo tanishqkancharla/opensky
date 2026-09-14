@@ -1525,26 +1525,30 @@ export class OpenSky implements OpenSkyApi {
     if (resolved.browser) {
       throw new OpenSkyError("select_text is not available for typed browser pages; copy observed page text directly instead.");
     }
-    if (this.target === "linux") {
+    if (this.target === "linux" || this.target === "mac") {
       // Native Text offsets belong to this element, not the whole document.
       // The driver matches live text and verifies the resulting range/caret.
       // Never replay a partial selection as keyboard or pointer input.
-      const result = await this.driver.call("select_text", {
-        pid: resolved.pid,
-        ...this.elementTarget(resolved, args.element_index),
-        text: args.text,
-        ...(args.prefix === undefined ? {} : { prefix: args.prefix }),
-        ...(args.suffix === undefined ? {} : { suffix: args.suffix }),
-        selection_type: selectionType,
-      });
-      this.markAction(resolved);
-      const outcome = asRecord(result.structured);
-      if (outcome?.status !== "completed" || outcome.verified !== true) {
-        throw new OpenSkyError(
-          "The driver did not verify the requested text selection. Observe before retrying; selection may have changed.",
-          typeof outcome?.code === "string" ? outcome.code : "selection_unverified",
-          outcome,
-        );
+      try {
+        const result = await this.driver.call("select_text", {
+          pid: resolved.pid,
+          ...this.elementTarget(resolved, args.element_index),
+          text: args.text,
+          ...(args.prefix === undefined ? {} : { prefix: args.prefix }),
+          ...(args.suffix === undefined ? {} : { suffix: args.suffix }),
+          selection_type: selectionType,
+        });
+        const outcome = asRecord(result.structured);
+        if (outcome?.status !== "completed" || outcome.verified !== true) {
+          throw new OpenSkyError(
+            "The driver did not verify the requested text selection. Observe before retrying; selection may have changed.",
+            typeof outcome?.code === "string" ? outcome.code : "selection_unverified",
+            outcome,
+          );
+        }
+      } finally {
+        // A refused receipt can follow a partial range mutation.
+        this.markAction(resolved);
       }
       return;
     }
@@ -1556,29 +1560,16 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(`Text ${JSON.stringify(args.text)} was not found in element ${args.element_index}`);
     }
 
-    // macOS arrows move by composed characters, while JavaScript offsets are
-    // UTF-16 code units. Translating those offsets directly to key presses
-    // overshoots after emoji and can replace unrelated text.
-    let beforeMoves = index;
-    let moves = args.text.length;
-    if (this.target === "mac") {
-      const boundaries = [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(haystack)]
-        .map(segment => segment.index);
-      boundaries.push(haystack.length);
-      const start = boundaries.indexOf(index);
-      const end = boundaries.indexOf(index + args.text.length);
-      if (start < 0 || end < 0) {
-        throw new OpenSkyError("The requested text splits a composed character; keyboard selection cannot address that range safely.");
-      }
-      beforeMoves = start;
-      moves = end - start;
-    }
+    // Windows retains the existing keyboard fallback until its native range
+    // operation has equivalent real-platform acceptance.
+    const beforeMoves = index;
+    const moves = args.text.length;
 
     await this.pressElementKey(
       resolved,
       args.element_index,
       "home",
-      this.target === "mac" ? ["cmd"] : ["ctrl"],
+      ["ctrl"],
     );
     for (let i = 0; i < beforeMoves; i += 1) {
       await this.pressElementKey(resolved, args.element_index, "right");
