@@ -1,212 +1,98 @@
-# Linux parity objective
+# Linux parity objective and current evidence
 
-Updated by user direction on 2026-09-08. This supersedes the macOS-first portion
-of the existing goal. The goal API currently cannot edit objective text.
+Linux remains the priority under the user's September 8 direction. Compare
+OpenSky's public SDK with genuine native Computer Use on isolated remote Linux
+desktops, using matched Terra-medium Codex CLI agents, the same task assets,
+and independent saved-outcome graders. Exclude Codex's in-app browser.
 
-Achieve and measure native Computer Use versus OpenSky parity on isolated remote
-Linux desktops. Use GitHub-hosted runners where they work; use exe.dev only if
-the required desktop/runtime or iteration workflow cannot run reliably in CI.
-Do not launch further macOS GUI tests during this phase.
+The later local macOS installation and public-SDK test requests are authorized
+separately. They do not change a frozen Linux campaign or its scores.
 
-Use the genuine native Linux runtime and OpenSky's public SDK against the same
-apps, task assets and independent saved-outcome graders. Run matched Terra
-agents at medium effort. Keep deterministic experience tests separate from
-agent scores, and setup/capture checks separate from successful task completion.
-No mocks or harness edits to an agent's output document.
+## Measurement contract
 
-Start with one or two tasks. Advance to five, then a frozen twenty only after
-desktop setup, input, reset, cleanup and grading are trustworthy. Freeze and
-record SDK/driver/native runtime versions, app versions, task definitions and
-scoring policy across each comparison. Report both absolute success rates and
-the native-success tasks OpenSky fails; both agents failing does not establish
-parity. Report tool calls, elapsed time, infrastructure exclusions and spending
-alongside successful outcomes. Repair observed gaps and rerun the same tasks.
+- Start with one or two tasks, then five, then a frozen twenty after setup,
+  reset, cleanup, and grading have been validated.
+- Freeze SDK, driver, native runtime, app and image versions, task definitions,
+  scoring policy, and model configuration within each comparison.
+- Keep all twenty task rows visible, including unrun tasks and first failures.
+  Report absolute success and native-success tasks that OpenSky fails. A shared
+  failure does not demonstrate that either backend can perform the behavior.
+- Keep deterministic public-experience tests separate from agent task scores.
+  Use real applications and saved outcomes; do not mock the service, rewrite
+  the agent's output document, or add app-specific product/harness guidance.
+- Preserve native compaction without a whole-task deadline or tool-call budget.
+  Track elapsed time, calls, context, and evaluation estimates. Task success
+  takes priority over ordinary speed differences.
+- One deterministic controller owns reservations, dispatch, collection,
+  cleanup, and settlement. Each arm gets a fresh disposable desktop, app
+  profile, and document. Never restart a live or uncertain run merely because
+  an observation timed out, or replay input after unknown delivery.
 
-Preserve native compaction with no whole-task deadline or tool-call budget.
-Keep the existing independently enforced spending controls: cumulative limit
-currently approved through $150 (explicit approval on 2026-09-10), with user
-review before the next $50 increment.
-Use `evals/runs/parity-budget.json` as the authoritative cumulative ledger;
-conservative full-reservation charges are estimates, not invoices. Report each
-completed run and keep the status canvas current. Exclude Codex's in-app browser.
+## Current measured results
 
-## Current accepted evidence — 2026-09-12
+The [V14 report](linux-parity-v14.md) and its
+[machine-readable receipt](linux-parity-v14.json) retain the source pins,
+per-task outcomes, costs, evidence limitations, and run variability.
 
-This section supersedes the dated next-step and budget notes below. The frozen
-V8 campaign on SDK `64b1eff49542f2181a39c63fc2adc6c52bd37c7f` completed all
-20 matched tasks: OpenSky 18/20 and native 16/20, with no unrun tasks. OpenSky
-passed 15 of the 16 native-success tasks. This is one trial per task/backend,
-not a repeatability or general API-parity certificate. The sole native-only
-failure was an agent choosing whole-word replacement; no SDK defect has been
-established from that choice. Preserve the exact-color, ambiguous subscript
-scope, and image-overlap limitations in `work/v8-full-baseline-review.json`.
-The previously requested strikethrough and dropdown retries both passed on V8;
-do not dispatch them again based on the historical plan below.
+| Frozen full campaign | OpenSky | Native | Unrun |
+| --- | ---: | ---: | ---: |
+| Original V14 | 18/20 | 16/20 | 0 |
+| Full V14 repeat | 16/20 | 14/20 | 0 |
 
-Shared scoped-helper candidate `b00d8a047658e5b994a09b109c523430d9e379ad`
-passed all six real public REPL cases in
-[CI 34729223727](https://github.com/tanishqkancharla/opensky/actions/runs/34729223727).
-Both backends saved the expected document after same-cell and later-cell helper
-calls; existing loop controls and owned cleanup also passed. This changes shared
-evaluator admission only and does not revise the frozen agent scores.
+The repeat advanced through real two-task and five-task gates before twenty.
+Original V14 has no native-only successes; the repeat has one (dropdown).
+Saved-file review found extra cells entered by OpenSky on that task, without
+establishing a new SDK defect. These are measurements of the fixed Linux
+configuration, not a general or statistical parity certificate. Ten original
+pairs have explicitly reconstructed local receipts; their older raw archives
+remain unavailable. The repeat retains its separate failed editor setup attempt.
 
-Public SDK clipboard acceptance now passes all three cases in
-[CI 34731261852](https://github.com/tanishqkancharla/opensky/actions/runs/34731261852)
-on SDK `ceaf2d52a37bf5821f203847e73e2f1bc9615578`: paste refuses a clipboard
-ownership change during snapshot while preserving the newer five-format payload
-and unchanged live/saved document; ordinary five-format preservation and empty
-clipboard restoration also pass. All owned apps and clipboard clients exited.
-This closes the snapshot-race coverage gap without a driver change; after-input
-races and INCR/large transfers remain outside this public acceptance.
-The pinned release driver source is `57d1b03e046021dbdaca459602c5734170295693`,
-SHA256 `6af15f02dae0bcb0781084d42378da047313aca3a463d63a4580c157606ce566`.
-No app-specific product guidance or additional paid campaign is warranted by
-this coverage check. The authoritative evaluation ledger currently has
-$217.32473 charged, no outstanding reservations, and approval through $250;
-coding inference and infrastructure are separate.
+The [repeat command](../evals/parity/repeat-vm-campaign.md) is implemented and
+validated on the already-provisioned immutable stage. It does not provision a
+new host. New-host portability is a documented limitation, not evidence that
+the completed repeats were invalid. Keep future results separate from these
+frozen campaigns.
 
-## Priority update — 2026-09-09
+## Verified integration and remaining work
 
-Behavioral parity takes precedence over speed differences. Continue to report
-elapsed time, calls and context, but do not gate broader matched task coverage
-on small performance improvements. Fix a performance issue when it is clearly
-large enough to impair the experience or prevent useful iteration. Keep source
-and scoring comparability; do not change task expectations to obtain passes.
+The [public SDK gate](https://github.com/tanishqkancharla/opensky/actions/runs/34784123429)
+passed 27 cases across three fresh desktops with the V14 driver. It retains
+an earlier intermittent Unicode failure: one previous `TYPE-L01` run saved
+`É near Dublin Zoo — 中文 😀.` instead of the requested complete sentence.
+Subsequent passes do not resolve its cause. Existing XRecord traces capture
+keyboard events, but an independent control disproved their XKB-notification
+coverage. Do not infer application consumption from those traces or repeat
+the same probe without a new discriminating observation.
 
-Next, broaden paired agent coverage to VS Code and Impress on the accepted
-configuration. The latest Calc pair is native pass / OpenSky fail: all requested
-values match, but 18 extra intermediate cells violate whole-sheet rules. The
-metadata batching candidate passed three real Calc saved-outcome checks and
-nine observation comparisons (owned document URI excepted), but remains outside
-the accepted paired configuration; further speed tuning is parked.
+The [combined driver CI](https://github.com/tanishqkancharla/cua/actions/runs/34805603685)
+passed 265 Linux/Windows desktop cases and both source installer checks at
+`a194945287b1de7f7dc2b29e69144bf1fc836f3c`. Expected refusals count as passed
+contract cases, not successful agent tasks. This integration does not change
+V14's frozen SDK or driver identities.
 
-The custom driver builds currently use Rust's development profile while the
-canonical shipping workflow uses release. Historical timing measurements remain
-valid for the tested build, but release performance is unmeasured. This caveat
-must not be confused with a task-success result or used to postpone coverage.
+Local macOS saved-file acceptance previously passed five selection workflows
+and plaintext paste on driver `03d6078ff0f29acbdd1a1417d7fd34b7b110ffd0`.
+[Driver PR #19](https://github.com/tanishqkancharla/cua/pull/19) subsequently
+moves paste read-back inside foreground activation. Its real saved-file paste
+case passed; its selection control stopped before typing after an actual
+Space transition. The canonical macOS GUI matrix remains unexecuted, so local
+smokes must not be described as full macOS certification. See
+[macOS validation](macos-current-validation.md) and the
+[friction ledger](harness-friction.md) for exact acceptance boundaries.
 
-The first VS Code pair completed on accepted SDK8c818c7 / driver4863e5b:
-native32 (CI34409909946) and OpenSky33 (CI34410305380) both passed replacing
-“text” with “test”. Both retained saved files exactly match frozen gold, all
-cleanup/usage receipts passed, and all compared fingerprints match except the
-Ubuntu patch label. This establishes one editor task, not broad editor parity.
-Native16.805s/5calls and OpenSky37.595s/7calls remain secondary metrics. Evidence:
-`evals/runs/campaign-linux-smoke-1/code-replace-pair.json`.
+Prioritize demonstrated public-behavior gaps. Expand evaluation coverage at
+meaningful gates rather than rerunning a full campaign after every edit. Keep
+source changes, their first relevant results, and remaining limitations linked.
 
-The first Impress pair also completed on the same accepted software: OpenSky34
-(CI34410676094) and native35 (CI34411170884) both passed making slide1 green.
-Both saved backgrounds are reference color00a933, raw and adapted full graders
-passed, and cleanup/usage receipts passed. Native23.070s/8calls versus
-OpenSky82.821s/7calls is secondary. Evidence: impress-background-pair.json.
+## Accounting and cleanup
 
-The next fixed-software20-task index reuses all eligible8c results, including
-the Calc failure, and excludes older SDK results from its aggregate. This is
-an additive evidence index, not an identical-environment campaign: retained
-Ubuntu labels differ24.04.4/24.04.5, so the strict desktop-fingerprint freeze in
-campaign.ts remains unmet. Preserve that limitation and all raw evidence. The
-next untested item in committed fullTaskIds is Calc fill-blanks01b269ae, with
-native first according to the already frozen counterbalancing order.
+The user's September 13 direction removed periodic $50 approval checkpoints.
+Continue to reserve and reconcile each evaluation through the authoritative
+`evals/runs/parity-budget.json` ledger. Evaluation estimates exclude coding-agent
+inference and infrastructure and must not be presented as total project cost.
 
-The historical notes below describe earlier gates and may have been superseded;
-the live campaign artifacts are authoritative for current run status.
-
-## Current evidence and next gate (2026-09-10)
-
-The frozen software baseline is in `evals/runs/linux-baseline-8c818c7` with an
-immutable 20-task plan. All twenty pairs are complete (native 18 passes, OpenSky
-14). Four native-only successes are profit, dropdown validation, strikethrough
-and freezing headers; two tasks failed on both. This is a single-run baseline,
-not a repeatability estimate. Calc, Impress, Writer and
-VS Code task setup/scoring have all been admitted and used in real agent runs.
-Some earlier pairs differ in Ubuntu point-release labels; this is a frozen
-software campaign, not proof of one identical environment throughout.
-
-After the baseline, preserve its failures and run corrections separately.
-Selection is a concrete native-only gap on Writer strikethrough: native struck
-all 387 target characters, OpenSky none after two selectText refusals. A no-model
-public SDK regression reproduces the same refusal. The isolated driver/SDK
-candidate624 now builds on Linux and passes all eight focused real SDK
-selection, caret, formatting and window/token guard behaviors. Earlier failed
-candidates and fixture failures remain retained. Coincident maximized-window
-identity and concurrent-client races remain limitations. The next measurement
-is a separate matched strikethrough comparison, followed by dropdown validation
-if the first pair is valid. The earlier
-indexed editable-field click fix has supporting real SDK evidence but has not
-yet been measured in a matched agent retry. Profit failure is extra agent edits,
-not evidence of failed input; see the retained trace and saved-cell diagnosis.
-
-GitHub-hosted paid evaluations and one-off owned Docker tests on the authorized
-exe.dev VM are working. No persistent runner registration is needed. Keep local
-macOS GUI unused during this phase. Authoritative current run, ledger and live
-page evidence supersede the historical milestones below.
-
-## Historical milestones (retained for provenance)
-
-- The deterministic Linux desktop gate passed for both backends in run
-  34274308972, including the real native Node REPL screenshot transport,
-  heading/save outcomes, verified process exit and temporary removal.
-- Candidate c26ec3aa680486c60147aa53d79b9e068750aa0d has two completed
-  successful agent pairs: heading and lowercase. Evidence lives in
-  `evals/runs/campaign-linux-smoke-1`, including saved files, scores, tool
-  traces, complete usage and environment fingerprints.
-- Heading runtime fingerprints match. Lowercase differs in Ubuntu point-release
-  labels (24.04.4 / 24.04.5); kernel, apps and evaluation runtime fingerprints
-  match. Retain this difference when interpreting the comparison.
-- OpenSky took 92.365 s / 7 calls versus native 14.705 s / 4 calls for heading;
-  240.536 s / 18 calls versus 40.834 s / 10 calls for lowercase. Investigate
-  observation latency and a stale save-dialog element token after the baseline.
-- The five-task ramp is complete: native 4/5, OpenSky 3/5. Font is the one
-  native-success/OpenSky-failure gap; both agents changed only the title for
-  subscript, while the reference expects eight occurrences. Both passed strike.
-  The selected native/OpenSky font, subscript and strike pairs used ed4fe66 and
-  matching runtime fingerprints; strike has the same Ubuntu label difference
-  as lowercase. First two pairs used c26ec3a. Preserve this version distinction.
-- `five-task-baseline-summary.json` preserves the original selected run history.
-  The matched font retry on SDK 16e62c1 and driver 00e3b936e still failed with
-  OpenSky (427.893 s / 24 calls) and passed with native (87.823 s / 18 calls).
-  All fingerprints matched. Evidence: font-fixed-pair.json, runs 34288468049
-  and 34289296019. The five-task rates remain native 4/5 and OpenSky 3/5.
-  Accounting after those turns: $74.5640524, no active reservation.
-- The combined modifier, Unicode timing and sparse-index candidate passed
-  nine real checks across three GitHub desktops, and three more checks on
-  exe.dev. Earlier Unicode intermittence remains documented. A new real
-  dialog-coordinate regression failed on the same driver; candidate cf83a6692
-  restricts AT-SPI hit-testing to the requested window. Three-desktop run
-  34289751231 is pending. These deterministic checks are not agent scores.
-- Full twenty-task support remains unfinished: install and validate Linux Calc
-  and Impress, implement the real VS Code task fixture, verify reset/cleanup
-  and scoring for each category, then freeze that environment for paired runs.
-  The current worker rejects VS Code explicitly; do not silently omit those tasks.
-- User-provided exe.dev host is reachable with the correct account. Official
-  runner files and dependencies are installed. Persistent runner registration
-  and service startup await explicit approval after automatic review rejected
-  that expansion of future job access. Hosted evaluations and authorized
-  one-off Docker tests work without it; registration is optional, not a blocker.
-- Preserve macOS driver follow-ups for later; historical macOS results do not
-  count as Linux evidence.
-
-
-## Fixed-software index and continuing the20-task set
-
-`evals/runs/linux-baseline-8c818c7/plan.json` was frozen additively after arms30–35
-with SHAecd69e4df775175f986e17484fd54c859513e2922084ceadb2433b15f6052827.
-It records the committed20-task manifest, exact software/runtime fingerprints,
-Terra medium with native compaction, scoring profile, imported evidence and
-selection policy. Select the first valid arm per task/backend by CI run ID,
-including failures; retain later attempts separately rather than replacing a
-failure. Raw source artifacts remain in campaign-linux-smoke-1.
-
-`work/refresh-linux-baseline.py` verifies raw CI/admission/result/score/cleanup,
-configuration, model, app and driver fingerprints, then refreshes only the
-additive summary. The current index contains all six imported arms:3/20 pairs,
-native3passed/OpenSky2passed. The public status view now selects this index and
-marks older-build Writer tasks as not yet run on this build. Those historical
-scores remain preserved. The index is explicitly a fixed-software comparison:
-Ubuntu patch labels differ; strict identical-environment freeze remains unmet.
-
-Continue per-arm finalization and accounting through the existing helpers, then
-refresh the baseline and status narrative. Keep accepted main SDK8c818c7 fixed
-for this index. Native36 is dispatched for Calc fill-blanks01b269ae as the next
-item in fullTaskIds; OpenSky37 follows after valid completion/reconciliation.
-No whole-agent deadline or tool-call limit is introduced. Current cumulative
-settled estimate is$86.2227098, with$5 reserved for native36, within$100 approval.
+Report completed runs and actionable failures. Remove disposable containers,
+owned test apps/documents, transfer archives, and obsolete build artifacts after
+collecting compact evidence. Preserve frozen inputs, first failures, necessary
+build caches, and one local rollback. Never clean up a user's pre-existing app
+or another controller's live work.

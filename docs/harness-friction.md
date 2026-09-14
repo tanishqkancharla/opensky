@@ -4025,3 +4025,31 @@ SELECT-N01 passed its saved Unicode-file assertion but took58.69seconds includin
 
 
 SELECT-M02 acceptance update: SDK595250e and driver03d6078f (binary3fb0866809eabadf47a04fb1cf8bd39fd30b244dc417c21cfbdb0bb229fa94df) passed all five real selection cases: the existing Unicode contextual replacement, a match beyond a2,000-character Unicode prefix, cursor-before, cursor-after, and ambiguity refusal preserving an established selection. The paste regression passed too. Saved files, exact process exit, temporary removal, and baseline process preservation were checked for all six workflows. The short case decreased from58.69s to16.28s including fixture; the long case passed in15.75s. Overlap ambiguity, strict snapshot binding, writable-range preflight, exact focus, and retained-object lifetime were corrected during review before live acceptance. The SDK and generic skill are installed; canonical release validation and unsupported AX controls remain separate. Evidence is linked in macos-current-validation.md. A fixture-only TypeScript issue was also corrected: lifecycle observation exposes the public SDK interface rather than pretending its forwarding object contains private class fields. No fake driver selection behavior was added; real saved-file cases own selection acceptance.
+
+### MAC-NATIVE-PASTE-01 foreground observation follow-up
+
+Integrated driver `a1949452` returned unknown after one paste chord in a fresh
+public-SDK document; its AX and saved file remained unchanged. No input was
+replayed. Candidate `028471ff1d307b9455c39039f9aa5e1b73d4da05` keeps the exact
+window activated through the existing bounded AX/clipboard read-back, then
+restores focus. Background delivery, clipboard ownership checks, and the
+unknown-outcome contract are unchanged. Its signed release build and real
+`PASTE-N01` saved-file assertion passed (16.31 seconds including fixture).
+This is one passing candidate attempt, not proof that the intermittent cause
+is eliminated. [Driver PR #19](https://github.com/tanishqkancharla/cua/pull/19)
+retains that distinction and the outstanding canonical macOS GUI coverage.
+
+### SELECT-M02 Space-transition control
+
+The same candidate's long selection control verified selection but refused
+subsequent typing because its exact window was off the desktop. A separate
+selection-only diagnostic paired driver window records with independent
+CoreGraphics observations: the document remained on Space 3 while active
+Space changed from 3 to 3050, and both observers reported it off-screen. The
+independent observer was already off-screen immediately before selection, so
+selection is not established as the transition's cause. The visibility guard
+was not weakened, and this diagnostic dispatched no typing or paste. Both
+workflows cleaned their owned processes/documents and preserved the existing
+user app. Stable-desktop saved-file acceptance remains incomplete; this result
+is separate from the prior five successful selection workflows and Linux
+agent scores.
