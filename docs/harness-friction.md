@@ -4142,3 +4142,25 @@ owned apps/documents were removed and user TextEdit PID56231 remained. The two
 PASTE-N02 setup failures remain distinct; persistent activation has not passed.
 These results accept the narrow paste correction and its regression control,
 not intermittent-failure elimination or the canonical macOS release matrix.
+
+LINUX-V14-UNICODE-STALL-01: one new controlled application-processing diagnostic
+reproduced silent Unicode loss on unchanged V14 SDKc69/driverbd7/binaryba8.
+The fixture paused only its exact owned Writer PID295 through a retained pidfd
+after observing the first remapped é keypress. /proc proved it stopped; the
+watchdog resumed it after654.64ms, and independent parent cleanup proved the
+same process was running again. The ordinary public TYPE-L01 actions were
+unchanged. typeText returned success, but the saved DOCX contained
+`A café near Dublin Zoo  中文 😀.` (missing the em dash). Independent AT-SPI
+insertion payloads reconstruct that same incorrect text. XRecord shows the
+em-dash mapping installed, its keypress delivered, and its mapping restored
+while the app remained paused. Thus a server-delivery round trip plus200ms
+is insufficient to protect a deferred client's temporary-keymap translation.
+This is causal evidence for the induced loss, not proof of the identical cause
+for the historical missing-prefix/uppercase-É failure. Native under the same
+stall is unrun; this diagnostic is not an agent parity score. Preserve the
+existing real keyboard semantics and replace elapsed-time-only map lifetime
+with an application-consumption barrier; merely increasing the sleep is not
+an accepted fix. All three observers and the owned app exited, keymaps matched,
+and the disposable container was removed. Compact local evidence is
+`work/v14-app-stall/acceptance.json`; the saved DOCX SHA-256 is
+`5935df4377d0cce61e21820aa08734441aed37cb5a344a96069c2f2da86af482`.

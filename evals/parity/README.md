@@ -3,13 +3,13 @@
 Status: the frozen Linux V14 measurement completed all 20 matched tasks (40
 arms): OpenSky passed 18/20 and native passed 16/20, with OpenSky passing all
 16 native-success tasks. See the publishable [V14 report](../../docs/linux-parity-v14.md).
-This is Linux-first evidence for the current direction, one trial per
-task/backend under adapted saved-outcome scoring, not a general parity or
-repeatability certificate. The repaired SDK CI gate 34784123429 passed 27/27
-cases; the earlier intermittent Unicode truncation remains unexplained.
-The [bounded repeat entrypoint](repeat-vm-campaign.md) has completed a real
-two-task acceptance on the provisioned V14 stage (OpenSky 2/2, native 1/2).
-It retains all 20 rows and requires a validated predecessor for the 5/20 ramp.
+The [bounded repeat entrypoint](repeat-vm-campaign.md) subsequently completed
+its real 2 -> 5 -> 20 ramp on the provisioned immutable V14 stage. The separate
+full repeat scored OpenSky 16/20 and native 14/20; all 20 rows and the original
+outcomes remain visible. This establishes repeat execution for this configuration,
+not general API or statistical parity. The repaired SDK CI gate 34784123429
+passed 27/27 cases. Focused observer-integration run 34812655608 passed six cases
+on three desktops; the earlier intermittent Unicode truncation remains unresolved.
 
 The setup and milestone prose below is retained as historical context for the
 evaluator and its generic commands. It does not supersede the frozen V14
