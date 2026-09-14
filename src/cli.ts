@@ -15,14 +15,14 @@ import { installSkill, skillDestinations, uninstallSkill } from "./skill-install
 const HELP = `opensky — async Node REPL for computer-use
 
 Usage:
-  opensky                     Start an interactive async REPL with opensky preloaded
+  opensky                     Start an interactive async REPL with cua preloaded
   opensky repl                Same as above
   opensky eval <code>         Evaluate async JavaScript (top-level await)
   opensky -e <code>           Same as eval
   opensky run <file>          Run a .js file as an async script
   opensky serve              Start a persistent REPL server for multi-turn eval
   opensky stop               Stop the persistent REPL server
-  opensky doctor             Install the desktop helper if needed and check status
+  opensky doctor             Check OpenSky Driver setup and start its daemon if needed
   opensky skill install      Copy the opensky skill into agent skill directories
   opensky skill add           Alias for skill install
   opensky skill uninstall    Remove installed opensky skill copies
@@ -30,7 +30,7 @@ Usage:
 Options:
   --json                  Print eval results as JSON
   --no-serve              Do not reuse a running persistent REPL
-  --global, -g            Install the skill into ~/.agent/skills (user-level)
+  --global, -g            Install into user agent skill directories instead of this project
   --home <dir>            Override OPENSKY_HOME (default ~/.opensky)
   --driver <path>        Path to the desktop helper binary
   --socket <path>        Path to an existing desktop-helper socket
@@ -45,12 +45,15 @@ Environment:
   OPENSKY_DRIVER                    override helper binary path
   OPENSKY_DRIVER_BINARY             select an OpenSky Driver build (identity checked)
   CUA_DRIVER_PATH                   legacy helper binary override
-  CUA_DRIVER_APP_PATH               explicit macOS helper app (otherwise derived from binary)
+  OPENSKY_DRIVER_APP_PATH           select a macOS OpenSky Driver app bundle
   OPENSKY_DRIVER_SOCKET             connect to an existing OpenSky Driver socket
 
 Examples:
-  opensky eval 'await opensky.list_apps()'
-  opensky eval --json 'const s = await opensky.get_app_state({app:"App Name", disableDiff:true}); return s.text'
+  opensky eval 'await cua.getState()'
+  opensky serve              # leave running to retain bindings across eval calls
+  opensky eval --json 'var app = await cua.getApp("App Name"); await app.getAXState()'
+  opensky eval 'await app.getAXState()'
+  opensky stop
 `;
 
 async function main(argv = process.argv.slice(2)): Promise<number> {

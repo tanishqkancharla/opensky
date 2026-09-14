@@ -4193,3 +4193,31 @@ local `work/macos-broad-20260914/acceptance.json`, `open-failure-review.json`,
 `recovery/`, `chrome-installation-repair.json`, and `browser-cleanup.json`.
 No matched Mac agent score, platform scroll acceptance, or full release-matrix
 claim follows from these checks.
+
+
+### DOCS-AGENT-01 — duplicated onboarding and stale capability descriptions
+
+The agent skill required about 3,250 words up front, mixing preloaded-tool and
+CLI hosts, preferred and legacy APIs, and platform implementation details.
+The README repeated those details and incorrectly described native paste as
+unavailable. CLI help implied automatic driver installation and listed a stale
+skill directory. This was documentation friction, not a driver failure.
+
+The rewritten skill keeps the common `cua` entry points, action signatures,
+observation/focus rules and uncertainty handling in roughly 685 words. Setup,
+advanced browser context, text-input restrictions and legacy fixed-target
+operations are separate packaged references. The README now leads with agent
+and SDK quick starts, and CLI help uses `cua` with accurate setup descriptions.
+Runtime integration details remain in `docs/runtime-reference.md`. Instructions
+remain app-independent; the core preloaded-host path needs no filesystem access.
+
+Validation: TypeScript build; three existing skill installation/evaluation-receipt
+tests; a real temporary skill installation proving all four references match;
+npm package dry-run proving all five skill files ship; local-link validation;
+and YAML/frontmatter/scaffold checks using the installed JavaScript YAML parser
+(the standard Python validator lacks PyYAML here). Independent source review
+corrected emitted-versus-returned observation wording and a missing socket alias.
+Temporary package cache and installation artifacts were removed. This changes
+future skill receipts, not frozen runs, and supplies no new agent score or GUI
+acceptance evidence. Hosts exposing only the core skill retain ordinary actions;
+advanced operations require their linked references or host-provided API docs.

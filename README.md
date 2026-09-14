@@ -1,474 +1,132 @@
-# opensky
+# OpenSky
 
-REPL cells preserve top-level variable, function, and class declarations across
-calls. Top-level variables are mutable session bindings, including declarations
-written with `const`, and may be redeclared in later cells. Direct top-level
-redeclarations, assignments, and updates of a binding previously declared with
-`const` emit an advisory warning before cell output; the assignment still runs.
-These warnings analyze direct cell expressions, not deferred callbacks or
-control-flow bodies, and do not predict which branch of an expression executes.
-Mutating an object's properties does not replace its binding. Nested blocks and
-functions retain JavaScript lexical scope. `globalThis` and `__openskyLogs` are
-reserved declaration names. Screenshot bytes printed to the strict evaluator's
-console are summarized; observation methods attach the image directly.
+Operate desktop apps and browser tabs from an agent or JavaScript program.
+OpenSky provides a TypeScript SDK (`opensky-cua`), a persistent async REPL
+(`opensky`), and an [agent skill](skills/opensky/SKILL.md), backed by
+[OpenSky Driver](https://github.com/tanishqkancharla/cua), our CUA Driver fork.
 
-`opensky` is an open computer-use library, async Node REPL, and agent skill backed by [OpenSky Driver](https://github.com/tanishqkancharla/cua), our fork of Cua Driver (`opensky-driver call …`). It includes a native-style `cua` facade and preserves the original flat `opensky` API. The facade intentionally reports unsupported operations instead of claiming complete `@oai/sky` coverage.
-
-Harness development is tracked in the [friction and fixes ledger](docs/harness-friction.md)
-and the concise, cross-domain [harness principles](docs/harness-principles.md).
-
-Native `cua.getApp()` bindings observe the active visible window within the
-bound app process, so later observations can show a newly opened dialog or
-return to its document. Actions use the exact window from the latest successful
-observation. Explicit SDK target handles remain fixed: app observation returns
-a new handle when the window changes and never inherits document-close ownership.
-The flat SDK can request the same behavior with `get_app_state({app, scope:"app"})`;
-its default scope is `"window"`. On macOS, an exact eligible accessibility-focused
-window takes precedence over stacking order. When focus is unavailable, missing
-or ambiguous stacking evidence is reported.
-
-```js
-import { createOpenSky } from "opensky-cua";
-
-const opensky = createOpenSky();
-const apps = await opensky.list_apps();
-const before = await opensky.get_app_state({ app: "Calculator", disableDiff: true });
-await opensky.click({ app: "Calculator", element_index: 13 });
-const after = await opensky.get_app_state({ app: "Calculator" });
-await opensky.close();
-```
+The preferred `cua` API uses bound app/tab objects: observe the interface, act on
+an observed control, then verify the result. It follows the native Computer Use
+interaction shape; unsupported capabilities are reported explicitly.
 
 ## Install
 
-```bash
+```sh
 npm install -g opensky-cua
 opensky doctor
+opensky skill install -g
 ```
 
-OpenSky requires **OpenSky Driver**, built from our `tanishqkancharla/cua` fork.
-From the OpenSky Driver checkout, run `bash libs/cua-driver/scripts/install.sh`
-(macOS/Linux), or `libs/cua-driver/scripts/install.ps1` (Windows). The source
-installer requires Rust and the platform build tools. Fork release downloads are
-not available yet; `opensky doctor` reports the setup instructions if it is missing.
-It never downloads or falls back to upstream Cua Driver.
+Install **OpenSky Driver** from the fork checkout first if `doctor` reports it
+missing: `bash libs/cua-driver/scripts/install.sh` on macOS/Linux, or
+`libs/cua-driver/scripts/install.ps1` on Windows. Building requires Rust and
+platform build tools. Automatic fork release downloads are not available;
+OpenSky never falls back to upstream CUA Driver.
 
-For the validated Linux build, use SDK commit
-`c69d3b8533ffc860759707737e45dc5578466b23` and driver commit
-[`bd7c5a52253b20a8169d0a9a10437b8a14c68f6a`](https://github.com/tanishqkancharla/cua/tree/bd7c5a52253b20a8169d0a9a10437b8a14c68f6a).
-Check out that driver commit before running its source installer; the fork's
-default branch is not the validated Linux source. The
-[V14 comparison](docs/linux-parity-v14.md) records the tested binary, runtime,
-results and limitations. These Linux results do not certify macOS or Windows.
+On macOS, grant Accessibility and Screen Recording to
+`/Applications/OpenSkyDriver.app`, displayed as **OpenSky Driver**. Its permission
+identity is separate from the upstream app. `doctor` checks the selected binary
+and starts the daemon if needed; it does not install a missing build.
 
-The executable is `opensky-driver` (`opensky-driver.exe` on Windows). On macOS
-it lives in `/Applications/OpenSkyDriver.app`, displayed as **OpenSky Driver**.
-Grant Accessibility and Screen Recording to that app, then run `opensky doctor`.
-The renamed app has its own permission identity; existing Cua grants do not transfer.
+Use `OPENSKY_DRIVER_BINARY=/absolute/path/to/opensky-driver` to select a build,
+and `OPENSKY_DRIVER_SOCKET` for a non-default daemon socket.
+See [runtime configuration](docs/runtime-reference.md) for advanced options.
 
-Set `OPENSKY_DRIVER_BINARY=/absolute/path/to/opensky-driver` to select a build.
-Precedence: `--driver` / `driverOptions.binaryPath`, `OPENSKY_DRIVER_BINARY`,
-`OPENSKY_DRIVER`, then legacy `CUA_DRIVER_BINARY` / `CUA_DRIVER_PATH`.
-All selected builds must report the OpenSky Driver identity protocol; old
-`cua-driver-local` builds must be rebuilt from the renamed fork.
-`OPENSKY_DRIVER_APP_PATH` selects a macOS bundle when no binary override is set.
-An explicit missing selection fails without falling back to PATH.
+`skill install -g` copies the skill and references into user-level `.agents`,
+`.cursor`, `.claude`, and `.codex` skill directories. Omit `-g` for the current
+project. Reload skills or start a new agent session after installing.
 
-For a non-default socket, use `OPENSKY_DRIVER_SOCKET` (legacy `CUA_DRIVER_SOCKET`)
-or `--socket`. Both transports share the same executable validation. The SDK
-exports `OpenSkyDriverClient` and `OpenSkyDriverOptions`; the old `CuaDriverClient`
-name remains an alias for source compatibility. `autoInstall` remains accepted
-but no longer downloads a helper.
+## Agent quick start
 
-From this repo instead of npm:
+If the host provides a preloaded `cua_repl` tool, use `cua` directly:
 
-```bash
-npm install
-npm run build
-node dist/cli.js doctor
+```js
+var app = await cua.getApp("App Name");
 ```
 
-## Add / install the skill
+Read the emitted observation, act on its current indices, then observe again.
+That host emits observations and screenshots automatically.
 
-The skill lives at [`skills/opensky/SKILL.md`](skills/opensky/SKILL.md). Agents load it from `.agents/skills`, `.cursor/skills`, `.claude/skills`, or `.codex/skills`.
+For a shell-based agent, start a persistent session in a separate process:
 
-### Agent Skills CLI (`npx skills add`)
-
-From a checkout of this project:
-
-```bash
-# project-level (committed with the repo)
-npx skills add . --skill opensky -a cursor -a claude-code -a copilot -y
-
-# user-level (every project on this machine)
-npx skills add . --skill opensky -g -y
+```sh
+opensky serve
 ```
 
-After the repo is on GitHub:
+Then execute cells from subsequent shell calls:
 
-```bash
-npx skills add tanishqkancharla/opensky --skill opensky -g -y
-```
-
-List without installing:
-
-```bash
-npx skills add . --list
-```
-
-### `opensky skill add` / `opensky skill install`
-
-Copies `skills/opensky` into the local agent directories:
-
-```bash
-# project: ./.agents/skills/opensky, ./.cursor/skills/opensky, ...
-opensky skill add
-opensky skill install
-
-# user: ~/.agents/skills/opensky, ~/.cursor/skills/opensky, ...
-opensky skill install --global
-opensky skill add -g
-```
-
-`skill add` is an alias for `skill install`.
-
-Manual copy:
-
-```bash
-mkdir -p .cursor/skills
-cp -R skills/opensky .cursor/skills/opensky
-```
-
-Then start a new agent session (or `/opensky`) so the skill is picked up.
-
-## Usage
-
-```bash
-opensky                  # interactive async REPL  (prompt: opensky>)
-opensky eval 'await opensky.list_apps()'
-opensky eval --json 'return await opensky.get_app_state({app:"Calculator", disableDiff:true})'
-opensky run script.js
-opensky serve            # persist context across evals (token in OPENSKY_HOME/repl.json)
+```sh
+opensky eval 'var app = await cua.getApp("App Name"); await app.getAXState()'
+opensky eval 'await app.getAXState()'
 opensky stop
-opensky doctor
 ```
 
-The REPL evaluates each snippet as an async function body, so `await` works. A single expression is returned automatically; otherwise `return` the value you want printed. `Date`, `Number`, and other standard JS globals are in scope.
+`serve` retains JavaScript bindings and observation state. Without a live server,
+`eval` creates a fresh runtime each time. The CLI prints the last expression;
+screenshot bytes require a host image viewer. Use `opensky --help` for commands
+and [CLI setup and output](skills/opensky/references/cli.md) for details.
 
-`opensky serve` binds 127.0.0.1 and requires the token stored in `repl.json` (mode 0600). It omits direct `process` and `require` globals, but it is intended only for trusted local snippets and is not a security boundary. `OPENSKY_HOME` (default `~/.opensky`) is created mode 0700; `session.json` is mode 0600.
+The [skill](skills/opensky/SKILL.md) contains the common method signatures and
+interaction rules. It is generic: no application-specific task recipes.
+Advanced references are loaded only when needed:
 
-## Native-style `cua` facade
+- [Browser tabs and large-page context](skills/opensky/references/browser.md)
+- [Text input, selection, and paste](skills/opensky/references/text-input.md)
+- [Legacy SDK and explicit native file ownership](skills/opensky/references/legacy-api.md)
 
-The package exports `cua` for the singleton lifecycle and `createCua(opensky)` for an explicitly owned lifecycle. The CLI REPL preloads both `cua` and the legacy `opensky` object.
-
-The strict `cua_repl` evaluator follows Computer's explicit output behavior:
-observations emit automatically unless `emit:false`; plain expression/return
-values are not displayed. Use `nodeRepl.write(value)` and
-`await nodeRepl.emitImage(bytesOrDataUrl)` for explicit text and PNG/JPEG/WebP
-output. Hosts can import `createNodeReplOutput` / `installNodeReplOutput` for that
-integration. The general-purpose CLI retains its existing expression/log output.
-See [observed behavior and validation](docs/computer-parity.md) and
-[deferred driver/backend work](docs/driver-followups.md).
+## TypeScript / JavaScript SDK
 
 ```js
-const app = await cua.getApp("Calculator");
-console.log(await app.getAXState());
-await app.click(13);
+import { createOpenSky, createCua } from "opensky-cua";
 
-const tab = await cua.createBrowserTab("chrome", "https://example.com");
-await tab.goto("https://example.com/about");
-console.log(await tab.getAXState());
-await tab.close();
-
-const browser = await cua.getBrowser({ id: "chrome" });
-await browser.nameSession("research");
-const blank = await browser.tabs.new();
-await blank.goto("https://example.com");
-await blank.close();
-```
-
-The facade provides camelCase, bound-target methods: `getState`, `listApps`, `getApp`, `listBrowsers`, `listTabs`, `getBrowser`, `createBrowserTab`, and `getTab`; current native-style `browser.tabs.new/get/list/selected` and `browser.nameSession`; target observations and actions; and exact-tab `goto`, `back`, `forward`, `reload`, and `close`. `getAXState()` is AX-only by default, `getScreenshot()` returns screenshot bytes, and `getAXStateAndScreenshot()` returns both. `disableDiffing` maps to the driver's diff control. As a generic OpenSky extension, facade observations also accept `query` to return a fresh semantic view narrowed to matching page content.
-
-Queries retain matching paths and, with the capable personal-fork helper, automatically include bounded source-ordered evidence neighborhoods with unmatched labels and siblings. A complete set of matches still does not establish page-wide order or completeness. `tab.getAXState({context: index})` expands around a current browser action or read-only content index **from the same stored snapshot**, without a fresh page capture or invalidating existing action references. Returned group indices read a group's beginning; enclosing-group indices move outward. Read-only anchors cannot receive input.
-
-For an emitted earlier/later cursor, use `tab.getAXState({continuation: token})`. It reads an adjacent window in the same stored group, without recapturing the page. Copy the token exactly: it is single-use and bound to the exact tab, snapshot, frame and group. Repeating a group request restarts at its beginning, not the next page. Context and continuation cannot combine with each other, query or screenshots; input or a fresh observation invalidates old tokens. These personal-fork capabilities are under real-driver validation; older helpers may omit automatic neighborhoods or cursors. An omission without a cursor does not establish traversability, and materialized group coverage never establishes unseen virtualized content or order across frames.
-
-Coordinates use screenshot-pixel tuples (`[x, y]`), not objects: `tab.click([x, y])`, `tab.scroll([x, y], "down", 1)`, and `tab.drag([fromX, fromY], [toX, toY])`. Browser coordinate input requires a fresh screenshot of that exact tab; an AX-only observation does not provide a mapping. Prefer current semantic indices when available.
-
-Native app coordinates also refer to the image's pixels. After a native screenshot, click, drag, and scroll reject points outside that image with `invalid_params` before sending input. The error includes the image dimensions so a corrected action can continue. A new observation replaces this geometry; an AX-only observation clears it. Native input without a known screenshot mapping retains its existing behavior.
-
-Browser outlines retain the driver's source indentation, named/stateful containers,
-and repeated labels. Only bare unnamed `generic` containers are abbreviated as
-`-`, with an inline legend; these placeholders are not action refs. The outline
-has a 10,000-character whole-line prefix budget, and the separate ranked action
-list has an 8,000-character/120-entry budget (coverage text and headings are
-additional). A rendering omission is explicitly partial even if driver collection
-was complete. Action-list order is not page order. This renderer cannot recover
-context omitted by the driver, or infer exact relationships from duplicate labels.
-Automatic evidence neighborhoods have a separate shared limit of six groups,
-96 member nodes and 24,000 UTF-8 outline bytes. A context page has at most 25
-members and 12,000 UTF-8 outline bytes; it is not cut again by the ordinary
-outline budget. Omission metadata and continuation recipes remain outside those
-outline limits. These bounds are output budgets, not completeness guarantees.
-
-`getState()` labels its browser inventory with `tabInventoryScope: "facade-owned-only"`. An empty inventory means no facade-owned tabs were observed; it does not establish that the user has no pre-existing tabs or windows.
-
-Browser-provider discovery uses the installed app catalog, so `getBrowser()` works in a clean session before OpenSky has created a tab. Provider documentation emits only on its first selection. `browser.tabs.new()` and `createBrowserTab(browser)` create exact blank tabs; supplying a URL opens it directly. `nameSession()` and an explicit creation `sessionName` label future unique owned driver sessions; omitted settings retain the provider's current value. `getAXState()` after navigation collects fresh state, with a full initial view rather than a diff against the undisplayed internal navigation snapshot. Tab discovery remains deliberately limited to exact tabs created by this facade; it does not enumerate or close user-owned tabs. Because each owned tab is an isolated browser session, `selected()` returns a tab only when exactly one live owned candidate exists and otherwise returns `undefined` instead of guessing. A URL hint retains affinity with an exact facade-owned tab at that URL; otherwise Chrome is preferred and Edge is the fallback. The in-app browser, hidden tab creation, optional browser capabilities, and host metadata methods (`markDeliverable`/`markHandoff` without callbacks) throw typed `CuaUnsupportedError`s or are unavailable. Exact browser tabs support real clipboard paste in text, HTML, and literal Markdown formats. Native paste remains unavailable pending a compound clipboard transaction.
-
-## Legacy `opensky` API
-
-The original snake_case, app-argument API remains available for backward compatibility:
-
-| Method | Cua Driver tools used |
-| --- | --- |
-| `list_apps()` | `list_apps` |
-| `get_app_state({app, scope?, disableDiff?, includeScreenshot?, includeAppChrome?, query?, context_element_index?, continuation?})` | Typed `get_browser_state` for an exact Chromium target/tab; `query` collects matches and bounded evidence neighborhoods; `context_element_index` and emitted `continuation` tokens read same-snapshot context. Otherwise uses `launch_app` if needed, `list_windows`, `get_window_state` |
-| `open_target({app, targets, includeScreenshot?, query?})` | For one HTTP(S) URL in Chrome/Edge/Chromium, prepares an isolated profile, binds the exact target/tab, navigates, and returns `semantic_v2`; `query` narrows that initial exact-browser observation. On macOS, native targets request a fresh app instance and bind only after proving a new pid with one uniquely revalidated ordinary window |
-| `navigate({app, url | action, includeScreenshot?, query?})` | Navigates an exact driver-owned typed tab to a URL or performs exact-tab back, forward, or reload, then returns settled state |
-| `close_target({app})` | Closes one exact driver-owned browser target or proven-owned macOS native window; refuses to close ordinary user-owned app/window/tab state |
-| `bring_to_front({app})` | `bring_to_front` with the exact bound window |
-| `click` | Native `click` / `double_click`; exact tabs use a semantic ref or fresh screenshot coordinates with proven pixel-to-CSS metadata |
-| `drag` | Native `drag`; exact tabs use semantic `browser_pointer` drag or screenshot coordinates only with proven pixel-to-CSS metadata |
-| `paste` | Exact browser paste with text/HTML/literal Markdown; native paste remains unavailable |
-| `perform_secondary_action` | Supported `click` actions (`press`/`show_menu`/`open`/…), `bring_to_front`, or Delete |
-| `press_key` | Native `press_key` / `hotkey`; exact tabs use trusted `browser_key` with optional type-capable element targeting |
-| `scroll` | Native `scroll`; exact tabs use a semantic scroll ref or fresh screenshot coordinates with proven pixel-to-CSS metadata |
-| `select_text` | Linux: verified native Text range/caret in the observed element (requires updated driver). Observe again after selection before using an indexed control; other platforms: element-targeted Home/arrows. `exact` alias and prefix/suffix disambiguation. |
-| `set_value` | `set_value` (including exact slider/stepper values) |
-| `type_text` | `type_text` (element, coordinates, or verified focus) |
-| `close()` | Ends only driver sessions owned by this OpenSky instance; safe to call repeatedly |
-
-`opensky.target` is `"mac"`, `"win"`, or `"linux"`.
-
-Every state includes a short opaque `targetHandle` (also available as
-`state.target.handle` for an explicitly opened resource). Pass that handle as
-the existing `app` value to address the exact same window or tab:
-
-```js
-const first = await opensky.open_target({ app: "Google Chrome", targets: [firstUrl] });
-const second = await opensky.open_target({ app: "Google Chrome", targets: [secondUrl] });
-await opensky.click({ app: first.targetHandle, element_index: 4 });
-await opensky.close_target({ app: second.targetHandle });
-```
-
-Opening another target in the same app does not replace or close its siblings.
-The app name remains convenient shorthand for the newest live target; a handle
-is exact and an unknown or closed `tgt_…` handle fails before app discovery,
-launch, or input. Handles also scope snapshot indices and action settling, so an
-index observed from one sibling cannot silently address another.
-
-OpenSky also mirrors the native runtime's ergonomics around helper lifecycle and
-observation timing: expired named sessions are revived transparently, state
-capture waits briefly after actions, typed browser state is rechecked for semantic
-stability with a bounded two-second budget, and helper-reported degraded AX snapshots
-are retried for up to four seconds. If the helper still cannot resolve AX for an
-off-space or custom-drawn window, `get_app_state` preserves its screenshot and
-returns explicit coordinate-fallback guidance instead of a silent empty tree.
-Fresh target opens retain the launched document/window identity instead of
-silently adopting an older sibling. Exact token-addressed AX actions remain
-safe off-Space; only coordinate and ambient input require an on-screen target.
-AX output keeps top-level menu-bar context while pruning
-closed menu contents, and public element indices remain stable across snapshots
-so compact diffs stay useful after the helper renumbers its AX walk. Screenshot
-paths are unique per capture, and indexed actions fail fast if the latest
-snapshot no longer contains that element; coordinate actions remain available.
-
-## Recommended action loop
-
-```js
-const before = await opensky.get_app_state({
-  app: "Calculator",
-  disableDiff: true,
-});
-
-await opensky.click({ app: "Calculator", element_index: 13 });
-
-const after = await opensky.get_app_state({ app: "Calculator" });
-console.log(after.text);
-```
-
-Element indices are snapshots. Some identifiers fail silently. An action can take effect even if a later screenshot capture rejects. Refresh state before retrying.
-
-Driver refusals throw `OpenSkyError`, retaining an exact structured code when
-available and the driver payload in `details`. Projected action results may
-provide only an escalation target/reason; OpenSky reports those without inventing
-the original cause or switching input routes. Refused actions are not
-automatically replayed based on diagnostic text mentioning session recovery.
-The exact pre-dispatch `session_ended` admission refusal can revive the client's
-own named session once; projected action refusals cannot.
-Unknown delivery remains explicit. The default one-shot Cua CLI can omit outer
-diagnostic text, so an exact refusal cause is not always recoverable. The opt-in
-persistent MCP transport preserves the full driver envelope; it cannot restore
-details that the driver itself did not return.
-
-`perform_actions` never retries a completed prefix. If a DOM/UI mutation makes a later element stale, the stopped result includes a fresh settled AX state so the next action can use new indices without a separate observation call.
-
-Evaluator action tools accept `observation_query` to narrow their settled post-action exact-browser state. This composes navigation and discovery without a redundant `get_app_state` call. It is invalid when observation is disabled.
-
-`navigate` similarly combines exact-tab URL, back, forward, or reload navigation
-and the settled destination observation in one call. Pass exactly one of `url` or
-`action`, and use `query` when the resulting page is large. These operations never
-use browser chrome or native keyboard shortcuts. If navigation is acknowledged but
-observation fails, OpenSky says that it may have completed and requires observation
-before retrying.
-
-Exact-tab `press_key` uses trusted page-scoped CDP input without activating browser
-chrome. An optional element index must name a current type-capable semantic ref;
-coordinates fail closed. Exact-tab drag accepts either two pointer-capable semantic
-indices or screenshot coordinates. Coordinate drag is enabled only after a fresh
-browser screenshot supplies an explicit screenshot-pixel to viewport-CSS mapping.
-No browser action falls through to native window input.
-
-`paste` targets the currently focused editable control in an exact browser tab,
-using a fresh semantic ref and a real Chromium paste command. Text supports
-multiple lines, HTML preserves rich formatting, and Markdown is literal source.
-Browser paste leaves the supplied content on the clipboard, without restoration.
-The driver serializes its clipboard writes and refuses a detected change before
-delivery; this is not an atomic transaction with unrelated OS clipboard writers.
-Native paste remains unavailable pending compound delivery and safe conditional
-clipboard restoration. OpenSky never silently substitutes typing for paste.
-
-URL targets return page-scoped semantic state by default, omitting restored tabs,
-favorites, toolbars, and application menus. Chromium URLs use a driver-owned
-isolated profile and exact typed target/tab binding, so they neither reuse nor
-close the user's existing tabs. Safe resolved destinations are shown as `url=`
-metadata on semantic links when the driver provides them. Long destinations use
-an explicitly truncated `urlPreview=` (200 characters); interact through the
-element index, not the preview. This keeps long signed or tracking URLs from
-crowding useful controls out of the text budget. Use `close_target({app})` when a task explicitly
-asks to close that exact target. Call `close()` in a `finally` block when using
-the library directly; the CLI, REPL, and server entry points do this
-automatically on normal exit or termination.
-Each isolated-browser driver session is durably reserved before launch in its
-own private record under `OPENSKY_HOME/browser-session-leases/`. Records contain
-the exact session name plus a runtime UUID, owner PID, creation time, and transport
-ownership; they are published and transferred with same-filesystem atomic renames. Two live
-OpenSky runtimes can therefore share a home without reaping or overwriting each
-other's cleanup authority. With the CLI transport, a later runtime claims a crash
-leftover only when the recorded effective owner PID is demonstrably absent. A new
-MCP proxy cannot adopt another proxy's session, even after owner death: its stale
-lease and target handles are retained/quarantined for reconciliation. PID reuse and
-indeterminate liveness conservatively retain the lease instead of risking a
-destructive claim. A failed or ambiguous `end_session` likewise retains the
-exact lease for retry. Cleanup requires a structured receipt naming the same
-session and reporting `active: false`; otherwise `session_end_unconfirmed`
-preserves ownership. Confirmed teardown removes only that session's record. Ordinary
-user-owned browser state is never added to this ledger.
-
-For a native macOS target, `open_target` asks LaunchServices for a distinct app
-instance and grants close authority only when the launch response proves the
-request was dispatched, the returned pid did not exist before the request, the
-returned app identity matches, and an independent window inventory contains
-exactly one ordinary window with the same id. It does not infer ownership from
-a title, reuse an existing process, or adopt a sibling. `close_target` passes
-that exact `(pid, window_id)` to Cua Driver's cooperative `close_window`; there
-is no keyboard, menu, coordinate, or process-kill fallback. A save/confirmation
-sheet, disabled close control, delivery failure, no-op, stale identity, or
-unverified response leaves the canonical target and authority intact for an
-explicit retry. Only a verified `closed` result removes the target and repoints
-the app-name alias to its newest surviving sibling. Other platforms remain
-observable but are not granted native close authority until their driver route
-can provide equivalent proof.
-
-The version-2 session file migrates older copied app bindings into canonical
-target records and alias pointers. Legacy managed-session array entries whose
-generated name exposes an owner PID migrate into per-session leases; entries
-without enough owner evidence remain recorded but are never granted destructive
-cleanup authority. Target/alias/tree persistence in `session.json` is still
-last-writer-wins rather than transactional. Concurrent runtimes may safely share
-a home for cleanup ownership, but should use separate homes when they need
-cross-process target discovery or mutation until per-target leases land.
-
-`open_target` and later observations also return optional structured `target`
-identity. It distinguishes the requested resource, exact bound native window,
-and current document title/URL when the helper publishes one. Typed Chromium
-bindings report a verified tab; legacy native-window URL handling remains
-explicitly unverified. A new native window is never reported as a new tab.
-
-If an app is reported running but has no ordinary UI window, `get_app_state` asks the driver to launch/reveal the app before giving up. This matches native `getApp` behavior for background or stale app registrations without guessing a sibling window.
-
-### Opt-in persistent driver transport
-
-`createOpenSky()` still defaults to the one-shot CLI transport. To try the
-persistent stdio transport against the existing signed daemon:
-
-```js
-const opensky = createOpenSky({
-  transport: "mcp",
-  driverOptions: { autoInstall: false, autoStart: false },
-});
+const sdk = createOpenSky();
+const cua = createCua(sdk);
 try {
-  console.log(await opensky.list_apps());
+  const tab = await cua.createBrowserTab("chrome", "https://example.com");
+  console.log(await tab.getAXState());
+  await tab.goto("https://example.com/about");
+  console.log(await tab.getAXState());
+  await tab.close();
 } finally {
-  await opensky.close();
+  await sdk.close();
 }
 ```
 
-The equivalent one-shot CLI invocation is
-`opensky --no-serve --transport mcp eval 'await opensky.list_apps()'`.
-An explicit transport flag refuses to reuse an already-running REPL server;
-it does not silently change that server's transport.
-Windows/Linux require an explicit `driverOptions.socket` or `CUA_DRIVER_SOCKET`;
-OpenSky never switches to a direct, in-process driver to make MCP work.
-Cross-platform, crash-recovery, and new-user GUI acceptance remain incomplete,
-so this is not a default change or parity claim.
+Direct SDK users consume returned observations; embedded hosts can provide an
+`emit` callback. App objects expose `getAXState`, `getScreenshot`, `click`,
+`pressKey`, `typeText`, `setValue`, `selectText`, `paste`, `scroll`, and `drag`.
+Tabs add `goto`, `back`, `forward`, `reload`, and exact `close`.
+See [runtime integration](docs/runtime-reference.md) for emitters and lifecycle.
 
-Each instance uses its own base session by default. `close()` immediately rejects
-new operations, drains admitted work, ends exact owned sessions, and only then
-closes its internally created MCP proxy. Its `transportCloseReceipt` describes
-process exit, not independent proof that a target disappeared. If cleanup fails,
-retain the home/leases and inspect the error; a retry may finish cleanup, but never
-reopens normal operations. The default library drain limit is 30 seconds, tunable
-with `drainTimeoutMs`. A drain timeout does not schedule a late finalizer.
+App observations follow the active window within the bound process, including
+dialogs; actions target the latest observed window. Explicit legacy handles
+stay fixed to their window. Browser sessions are isolated and OpenSky-owned;
+existing user tabs are not discoverable. Coordinates use the latest screenshot's
+pixels. Native paste is supported on macOS and Linux X11 with the documented
+[text and clipboard restrictions](skills/opensky/references/text-input.md).
 
-An injected `driver` is caller-owned: OpenSky never closes its transport. Close
-every consumer before calling `StdioMcpDriverClient.closeTransport()` yourself.
-Do not combine injection with `transport` or `driverOptions`. Advanced MCP options
-bound queued/admitted work (64), frames (32 MiB), and shutdown. Ordinary driver
-calls in both CLI and MCP transports wait for completion by default; set
-`driverOptions.timeoutMs` to a positive integer to opt into a deadline, or
-`null` to explicitly leave it uncapped. Lifecycle checks remain bounded. Explicit
-timeouts, malformed replies, and lost connections quarantine the client without
-replaying unknown-delivery calls. Low-level `invoke`/`driver.call` with explicit
-session labels are trusted escape hatches, not a sandbox for untrusted consumers.
+## Validation and development
 
-## Development
+Platform results apply to their recorded source and binary versions. The
+[Linux V14 comparison](docs/linux-parity-v14.md) uses SDK
+`c69d3b8533ffc860759707737e45dc5578466b23` and driver
+[`bd7c5a52253b20a8169d0a9a10437b8a14c68f6a`](https://github.com/tanishqkancharla/cua/tree/bd7c5a52253b20a8169d0a9a10437b8a14c68f6a).
+Use those pins to reproduce it; the fork's default branch is not that validated
+Linux source. See the [Mac window validation](docs/macos-window-fixes-2026-09-14.md)
+for the separate macOS evidence and remaining limitations. A documentation
+revision does not constitute a new parity measurement.
 
-Tests and model evaluations run under Node.js with `tsx`, executing TypeScript
-source directly. Use Node.js 22.19 or newer for the development/evaluation
-toolchain (the Pi SDK requires it).
+Development/evaluation uses Node.js 22.19+:
 
-```bash
+```sh
 npm install
+npm run build
 npm test
 ```
 
-`npm run build` emits the Node-compatible `dist/` used by the published
-`opensky` bin. The ordinary CLI REPL also works under Bun. Strict evaluator
-mode requires VM microtask draining and checks that capability before admitting
-any cell: Bun 1.3.4 ignores that VM option, so it is rejected with a Node.js
-recovery instruction instead of risking an uninterruptible Promise loop.
-Runaway-loop regressions run in externally bounded child processes so a broken
-runtime cannot leave a wedged test process behind.
-
-The evaluator's close operation stops admission of new tool/bridge calls,
-drains already-admitted work, and only then cleans up owned targets. An
-unsettled action or failed cleanup is not proof of a clean desktop; retain
-ownership evidence and retry exact cleanup rather than closing unrelated apps.
-
-The deterministic unit suite uses contract doubles and real-driver-derived
-replay tapes so it can run without desktop permissions. Release acceptance is
-separate and uses an installed real Cua Driver against live native apps and
-websites; `evals/real-driver-smoke.ts` and
-`evals/real-driver-browser-task.ts` are the local canaries.
-
-## Evals
-
-Computer-use harness comparison (opensky vs Cua Driver vs Codex Computer Use) lives in [`evals/`](evals/). Each case claims a Cua Fleet VM (or uses an explicitly selected local real driver), runs gpt-5.6-terra, then a judge scores the transcript.
-
-```bash
-export FLEETS_TOKEN=...
-export OPENAI_API_KEY=...
-npm run evals -- --harness opensky,cua-driver,codex
-```
-
-Codex Computer Use needs a macOS Fleet image (`CUA_EVAL_OS=macos` and `CUA_EVAL_IMAGE=...`). See [`evals/README.md`](evals/README.md).
+The build emits `dist/` for the CLI and SDK. The ordinary test suite includes
+contract doubles and replay tapes and does not establish real GUI acceptance.
+See [real SDK E2E tests](e2e/README.md), [parity evaluations](evals/parity/README.md),
+and [driver follow-ups](docs/driver-followups.md) for behavior-level validation.
+Harness findings belong in the [friction ledger](docs/harness-friction.md);
+reusable lessons belong in [harness principles](docs/harness-principles.md).
