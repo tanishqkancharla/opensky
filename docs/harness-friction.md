@@ -4119,3 +4119,15 @@ NSWorkspace PID observation is exposed as an external fixture; it is not an SDK
 internal-call assertion. Typechecking passes; real desktop acceptance is pending.
 The prior Space-transition failure remains retained. This does not require new
 permissions, modify the paste implementation, or add app-specific agent guidance.
+
+MAC-PASTE-FOCUS-01 first attempt stopped before paste when public bring_to_front
+could not activate the owned witness. A user-requested identical retry returned
+from bring_to_front but the independent observer saw Codex frontmost throughout
+its five-second setup check. The user reported concurrent desktop use; neither
+attempt proves an activation defect. Both exact test processes/documents were
+cleaned in both attempts, preserving user PID56231. The original failed tests
+remain retained. PASTE-N03 isolates paste restoration by reading the existing
+non-TextEdit foreground PID, checking it remains foreground after target selection,
+pasting once, checking restoration, and verifying the exact saved target file.
+It neither activates nor sends input to the observed foreground application.
+PASTE-N02 remains a distinct persistent-activation/isolation workflow.

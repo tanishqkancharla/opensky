@@ -1,5 +1,20 @@
 # Current macOS SDK validation
 
+The installed driver is now `028471ff1d307b9455c39039f9aa5e1b73d4da05`
+(binary SHA-256 `8be5bec39a355ffcf90f4330f1fd8f07863192711a722530a484ecd8eb9b5082`).
+It keeps paste outcome observation inside foreground activation. One saved-file
+paste test passed on this candidate; a selection control stopped before typing
+during a real Space transition. A new explicit foreground-restoration case
+stopped before paste because `bring_to_front` could not activate its separate
+owned witness. Both temporary app instances and documents were cleaned up,
+and the pre-existing user TextEdit instance was preserved. These failures
+remain retained; current-candidate acceptance is partial. Local receipts:
+`work/macos-paste-settle-01/acceptance.json`,
+`work/macos-visibility-control-01/acceptance.json`, and
+`work/macos-paste-focus-01/acceptance.json`.
+
+## Previously accepted candidate
+
 The 2026-09-13 local candidate passed six real public-SDK saved-document workflows: multiline paste and five native text-selection cases.
 
 - SDK: `595250e3a61624ffef8bf7a07d886fb392ec0f01`
