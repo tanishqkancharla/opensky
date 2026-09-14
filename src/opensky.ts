@@ -1667,10 +1667,15 @@ export class OpenSky implements OpenSkyApi {
     try {
       await this.driver.call("type_text", payload);
     } catch (error) {
-      // This typed refusal means background delivery has no input actuator.
-      // Retry against the same proven window, as click/key input already does.
+      // These pre-dispatch refusals mean background input did not run: either
+      // no actuator exists or PID-only routing cannot distinguish sibling
+      // windows. Retry only against the same exact window with guarded focus.
       // Do not retry arbitrary typing errors: input may already have occurred.
-      if (!(error instanceof OpenSkyError) || error.code !== "background_unavailable" || !resolved.windowId) throw error;
+      if (!(error instanceof OpenSkyError) || !resolved.windowId) throw error;
+      const refusal = asRecord(error.details);
+      const ambiguousBeforeInput = error.code === "same_pid_keyboard_ambiguity" &&
+        refusal?.effect === "refused" && refusal.pid === resolved.pid && refusal.window_id === resolved.windowId;
+      if (error.code !== "background_unavailable" && !ambiguousBeforeInput) throw error;
       await this.driver.call("type_text", { ...payload, delivery_mode: "foreground" });
     }
     this.markAction(resolved);
@@ -2273,7 +2278,8 @@ export class OpenSky implements OpenSkyApi {
 
   private async observeAppWindow(source: ResolvedApp): Promise<ResolvedApp> {
     const listed = await this.driver.call("list_windows", { pid: source.pid });
-    const next = pickAppWindowId(windowsFrom(listed.structured), source.pid);
+    const next = pickAppWindowId(windowsFrom(listed.structured), source.pid,
+      this.target === "mac" ? asRecord(listed.structured)?.focused_window_id : undefined);
     if (next === undefined) {
       throw new OpenSkyError("The app has no unambiguous frontmost visible window. No input was sent; reveal the intended window and observe again.");
     }
@@ -2890,12 +2896,16 @@ export function pickOrdinaryWindowId(windows: Record<string, unknown>[]): number
   return pickWindowId(windows.filter(isOrdinaryWindow));
 }
 
-/** App-wide observations use actual stacking order, never title/area scoring.
+/** App-wide observations prefer an exact eligible focused window when supplied,
+ * then actual stacking order, never title/area scoring.
  * This deliberately differs from opening a specific document window. */
-export function pickAppWindowId(windows: Record<string, unknown>[], pid: number): number | undefined {
+export function pickAppWindowId(windows: Record<string, unknown>[], pid: number, focusedWindowId?: unknown): number | undefined {
   const visible = windows.filter(window => window.pid === pid && window.is_on_screen === true &&
     window.on_current_space !== false && (window.layer === undefined || window.layer === 0) &&
     Number.isSafeInteger(window.window_id) && Number(window.window_id) > 0 && isOrdinaryWindow(window));
+  const focused = Number.isSafeInteger(focusedWindowId) && Number(focusedWindowId) > 0
+    ? visible.filter(window => window.window_id === focusedWindowId) : [];
+  if (focused.length === 1) return focused[0]!.window_id as number;
   if (visible.length === 1) return visible[0]!.window_id as number;
   if (!visible.length || visible.some(window => typeof window.z_index !== "number" || !Number.isFinite(window.z_index))) return undefined;
   const top = Math.max(...visible.map(window => window.z_index as number));

@@ -69,8 +69,9 @@ On macOS they must enable **Accessibility** and **Screen Recording** in System S
 
 Prefer the bound native-style facade:
 
-`cua.getApp()` follows the frontmost visible window of that app on each
-observation, including dialogs. Observe after actions that open or close windows;
+`cua.getApp()` follows the active visible window of that app on each
+observation, including dialogs. On macOS it prefers the exact accessibility-focused
+window when available, then falls back to observed stacking order. Observe after actions that open or close windows;
 subsequent actions address the exact latest observed window. An explicit legacy
 `targetHandle` keeps its original document/window identity. Use fresh indices
 after a window transition. App observations refuse ambiguous stacking evidence.

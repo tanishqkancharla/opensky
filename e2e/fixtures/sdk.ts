@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test as base } from "vitest";
@@ -31,6 +31,21 @@ export const test = base.extend<BrowserFixtures>({
       screenshotFormat: "png",
       driverOptions: { binaryPath, socket, autoInstall: false, autoStart: false },
     });
+    if (process.platform === "darwin" && process.env.OPENSKY_E2E_ARTIFACT_DIR) {
+      // Retain actual launch/window observations for intermittent opening
+      // failures. This forwards every call unchanged; it never supplies results.
+      const call = sdk.driver.call.bind(sdk.driver);
+      sdk.driver.call = async (tool, args = {}) => {
+        const startedAt = new Date().toISOString();
+        const result = await call(tool, args);
+        if (tool === "launch_app" || (tool === "list_windows" && args.pid)) {
+          await appendFile(join(homeDir, "native-window-calls.jsonl"), JSON.stringify({
+            startedAt, tool, args, structured: result.structured,
+          }) + "\n");
+        }
+        return result;
+      };
+    }
     try {
       await use(sdk);
     } finally {

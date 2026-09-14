@@ -17,13 +17,15 @@ console are summarized; observation methods attach the image directly.
 Harness development is tracked in the [friction and fixes ledger](docs/harness-friction.md)
 and the concise, cross-domain [harness principles](docs/harness-principles.md).
 
-Native `cua.getApp()` bindings observe the frontmost visible window within the
+Native `cua.getApp()` bindings observe the active visible window within the
 bound app process, so later observations can show a newly opened dialog or
 return to its document. Actions use the exact window from the latest successful
 observation. Explicit SDK target handles remain fixed: app observation returns
 a new handle when the window changes and never inherits document-close ownership.
 The flat SDK can request the same behavior with `get_app_state({app, scope:"app"})`;
-its default scope is `"window"`. Missing or ambiguous stacking evidence is reported.
+its default scope is `"window"`. On macOS, an exact eligible accessibility-focused
+window takes precedence over stacking order. When focus is unavailable, missing
+or ambiguous stacking evidence is reported.
 
 ```js
 import { createOpenSky } from "opensky-cua";

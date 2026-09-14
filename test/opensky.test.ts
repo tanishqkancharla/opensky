@@ -49,6 +49,17 @@ describe("opensky helpers", () => {
     assert.equal(pickAppWindowId([{ ...visible, window_id: 1, is_on_screen: undefined }], 7), undefined);
   });
 
+  it("app observation prefers exact eligible focus when it differs from stacking order", () => {
+    const visible = { pid: 7, is_on_screen: true, frame: { width: 500, height: 200 } };
+    const windows = [{ ...visible, window_id: 1, z_index: 418 }, { ...visible, window_id: 2, z_index: 263 }];
+    assert.equal(pickAppWindowId(windows, 7, 2), 2);
+    assert.equal(pickAppWindowId(windows, 7, null), 1);
+    assert.equal(pickAppWindowId(windows, 7, "2"), 1);
+    assert.equal(pickAppWindowId(windows, 7, 999), 1);
+    assert.equal(pickAppWindowId([{ ...windows[1], pid: 8 }, windows[0]!], 7, 2), 1);
+    assert.equal(pickAppWindowId([{ ...windows[1], on_current_space: false }, windows[0]!], 7, 2), 1);
+  });
+
   it("maps list_apps records onto the opensky App shape", () => {
     const apps = mapApps({
       apps: [
