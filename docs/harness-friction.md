@@ -3952,3 +3952,21 @@ All scores remain unchanged, but the repeat report discloses this ambiguity:
 a strict reference failure is not proof of inability to perform the requested
 edit. Source document and reference RGB values and hashes are retained in the
 local repeat diagnosis. No prompt, scorer, SDK, or driver behavior was changed.
+
+## Mac SDK-owned document fixture (2026-09-13)
+
+The prior native-success fixture refused an existing user TextEdit process,
+blocking current-install acceptance even though public `open_target` creates
+a fresh exact document instance. The replacement fixture uses that consumer
+API, independently correlates the returned window with a new process identity,
+persists ownership before readiness or test input, and performs exact close,
+cooperative quit, and verified temporary-file cleanup. Desktop state is checked
+before and after actions. It never quits a baseline user process.
+
+Real acceptance: all three unchanged Unicode selection/cursor tests passed
+against installed SDK c69 and driver f0e316a8 (binary6f11c320), with exact saved
+files, three process exits, three temporary removals, and the original TextEdit
+instance preserved. PASTE-N01 reached the real public call and failed because
+Mac native paste is unavailable; its setup/cleanup passed and original text
+remained intact. That failure is retained, not treated as fixture acceptance of
+paste. See [current macOS validation](macos-current-validation.md).

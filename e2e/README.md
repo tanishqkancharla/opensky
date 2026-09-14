@@ -1,6 +1,6 @@
 # OpenSky SDK E2E drafts
 
-**Status: all ten browser SDK cases pass on hosted Linux, including real paste and background scrolling with foreground-focus isolation. The native exact-document opening/close case also passes on macOS; selection and paste acceptance remain in progress.**
+**Status: all ten browser SDK cases pass on hosted Linux, including real paste and background scrolling with foreground-focus isolation. Current-install macOS opening/close and three Unicode selection/cursor cases pass; native paste remains unavailable and has a retained real failure baseline. See [current macOS validation](../docs/macos-current-validation.md).**
 There are 19 implemented SDK experience test bodies (18 intended successful workflows and one rejection)
 and 14 explicitly pending scenarios. A passing typecheck or test listing is not
 driver acceptance. Missing capabilities produce failing E2E results, not passing

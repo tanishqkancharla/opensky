@@ -57,7 +57,10 @@ five-task repeat was dispatched as part of this acceptance.
 The subsequent count-5 execution completed ten valid arms (OpenSky 5/5, native
 4/5; 15 tasks unrun) for $2.772508 evaluation inference. The full20 repeat was
 admitted only after that completed stage passed raw-evidence revalidation.
-Its result is pending and must not be combined with the original V14 score.
+It completed 40 valid scored arms: OpenSky 16/20 and native 14/20. The
+retained unscored editor setup failure and recovery are documented below. The
+[full measurement report](../../docs/linux-parity-v14.md) keeps this repeat
+separate from the original V14 score.
 
 ## Interrupted full20 recovery
 
