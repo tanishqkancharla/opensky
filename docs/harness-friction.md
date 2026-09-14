@@ -4053,3 +4053,28 @@ workflows cleaned their owned processes/documents and preserved the existing
 user app. Stable-desktop saved-file acceptance remains incomplete; this result
 is separate from the prior five successful selection workflows and Linux
 agent scores.
+
+### LINUX-V14-UNICODE-TRACE-02 — observe application text changes
+
+A new passive, exact-process AT-SPI observer captured 51 events during one
+unchanged public `TYPE-L01` workflow on the frozen V14 driver: 32 insertions,
+three deletions, ten selection changes and six focus changes. The paragraph
+insertion payloads reconstruct the complete requested Unicode sentence, and
+the independently saved DOCX matches it. The test passed in 12.00 seconds;
+the keyboard map was unchanged and the app, observer and container exited.
+This establishes a usable application text-event channel for this workflow,
+not the cause or elimination of the earlier intermittent corruption.
+
+The first attempt stopped before app launch because the image omitted AT-SPI
+introspection metadata. The succeeding attempt extracted only the metadata
+matching its existing 2.52.0 runtime; no app libraries were installed or
+upgraded. That setup failure is retained. The observer's optional `get_path`
+lookup is unsupported by Python GI, and its errors remain in the trace, so
+stable cross-paragraph identity is not yet verified. Correct that field before
+future CI integration; do not spend more identical warm typing attempts.
+Observer timestamps describe receipt time, not exact application execution.
+
+The remote trace and DOCX hashes matched their collected copies before the
+owned staging directory was removed. No model evaluations were launched and
+no V14 agent score was changed. Trace SHA-256:
+`aae9404415f5fb25c581e32fd7c891509d84f71567063f48276ca1e479dc7ad6`.
