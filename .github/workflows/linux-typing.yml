@@ -25,10 +25,9 @@ permissions:
 
 env:
   OPENSKY_DRIVER_REF: cfe578ba53afce435486694bcb0048e81f2d9a34
-  # This is intentionally empty until a candidate release artifact has been
-  # recorded and independently pinned. A fresh same-run build is verified by
-  # its artifact manifest; reuse is rejected while this expected value is unset.
-  OPENSKY_DRIVER_SHA256: ''
+  # Release artifact from run 34818732007; downloaded bytes, manifest and
+  # source identity independently verified before enabling reuse.
+  OPENSKY_DRIVER_SHA256: a0bb400f185094e292507b642c77714ded1361b45c181526385c3fa59a00500a
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -110,6 +109,9 @@ jobs:
     needs: driver
     runs-on: ubuntu-24.04
     env:
+      # This matrix uses fresh hosted VMs and owned app profiles. The stall
+      # fixture refuses process control unless the runner declares isolation.
+      OPENSKY_DISPOSABLE_DESKTOP: '1'
       OPENSKY_LINUX_OFFICE_BACKEND: opensky
       OPENSKY_LINUX_TYPING_TEST: '1'
       OPENSKY_X11_INPUT_RECORD: '1'
