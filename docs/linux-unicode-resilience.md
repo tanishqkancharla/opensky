@@ -1,7 +1,7 @@
 # Linux Unicode typing during application stalls
 
 A reproduced X11 typing failure silently omitted the em dash from
-`A café near Dublin Zoo — 中文 😀.` when the application paused for about650ms.
+`A café near Dublin Zoo — 中文 😀.` when the application paused for about 650 ms.
 The driver returned success, but both the saved document and application text
 events lacked the character. Its temporary keycode mapping had already been
 restored while the application was stopped.
@@ -17,10 +17,10 @@ The real SDK checks passed on fresh remote desktops using binary SHA-256
 
 | Public behavior | Result |
 | --- | --- |
-| Unicode typing while the owned app paused for650.91ms | Full saved sentence; five matching app acknowledgements before map restoration |
+| Unicode typing while the owned app paused for 650.91 ms | Full saved sentence; five matching app acknowledgements before map restoration |
 | Ordinary Unicode typing | Full saved sentence and restored keyboard map |
 | Menu shortcut after typing | Saved text unchanged by the accelerator |
-| Committed TYPE-L03 with optional passive diagnostics disabled | Full saved sentence after650.64ms pause; required stall observer and cleanup worked |
+| Committed TYPE-L03 with optional passive diagnostics disabled | Full saved sentence after 650.64 ms pause; required stall observer and cleanup worked |
 
 The first three checks used frozen SDK `c69d3b8533ffc860759707737e45dc5578466b23`.
 The permanent test used SDK `a67bd1464e18b75cf900ba9f00be3b285e5ef19d`, directly
@@ -31,12 +31,13 @@ pidfd/start-time checks, watchdog, independent emergency resume, and cleanup.
 Tests continue to drive the same public select/type/save actions.
 
 [Candidate builds and unit checks](https://github.com/tanishqkancharla/cua/actions/runs/34816598668)
-passed on Linux, macOS, and Windows. Linux included20 input tests (one additional
-case intentionally ignored),188 driver tests,33 contract tests and660 core tests.
+passed on Linux, macOS, and Windows. Linux included 20 input tests (one additional
+case intentionally ignored), 188 driver tests, 33 contract tests and 660 core tests.
 [Canonical desktop and installer validation](https://github.com/tanishqkancharla/cua/actions/runs/34817566624)
-is pending. The regular SDK typing workflow still pins the old frozen driver;
-its candidate pin should be advanced after this gate, before treating its full
-suite as validation of this fix.
+is pending. The SDK typing workflow now builds this candidate from its pinned
+source, retains a release-binary hash manifest, and verifies that binary and
+identity before running all 10 cases on three fresh desktops. Release validation
+is pending; artifact reuse stays disabled until its hash is independently pinned.
 
 This does not prove universal X11 text consumption: clients without the ping
 protocol retain the older delay and its known limitation. Custom event loops,
@@ -46,6 +47,6 @@ artificial stall. The original differently corrupted prefix is retained and is
 not claimed to have the same cause.
 
 These are deterministic SDK regressions, not new agent scores. The original and
-repeat20-task results remain frozen. No evaluation model calls were made for
-this correction. Ready source to first relevant result took374seconds, so the
+repeat 20-task results remain frozen. No evaluation model calls were made for
+this correction. Ready source to first relevant result took 374 seconds, so the
 five-minute feedback target was not achieved on this iteration.

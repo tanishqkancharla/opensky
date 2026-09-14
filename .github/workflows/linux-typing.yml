@@ -11,7 +11,7 @@ on:
         type: boolean
         default: false
       driver_artifact_run:
-        description: Existing driver build run; binary must match the pinned V14 SHA-256
+        description: Existing driver build run; reuse requires a separately pinned release SHA-256
         type: string
         default: ''
       test_name_pattern:
@@ -24,8 +24,11 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: bd7c5a52253b20a8169d0a9a10437b8a14c68f6a
-  OPENSKY_DRIVER_SHA256: ba8b7c854f05f15be028ceee7ea0fbdf3266bd6f616309d5e78f0014c00c6e7d
+  OPENSKY_DRIVER_REF: cfe578ba53afce435486694bcb0048e81f2d9a34
+  # This is intentionally empty until a candidate release artifact has been
+  # recorded and independently pinned. A fresh same-run build is verified by
+  # its artifact manifest; reuse is rejected while this expected value is unset.
+  OPENSKY_DRIVER_SHA256: ''
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -80,11 +83,17 @@ jobs:
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
+          (
+            cd driver-artifact
+            sha256sum opensky-driver > sha256.txt
+          )
           python3 - <<'PY'
-          import json, os
+          import json, os, re
           identity = json.load(open('driver-artifact/identity.json'))
           assert identity['product'] == 'opensky-driver' and identity['protocolVersion'] == 1
           assert identity['source'] == os.environ['OPENSKY_DRIVER_REF']
+          manifest = open('driver-artifact/sha256.txt').read().strip()
+          assert re.fullmatch(r'[0-9a-f]{64}  opensky-driver', manifest), manifest
           PY
       - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
         with:
@@ -140,6 +149,10 @@ jobs:
         if: inputs.driver_artifact_run != ''
         run: |
           [[ "$OPENSKY_REUSED_DRIVER_RUN" =~ ^[0-9]+$ ]]
+          [[ "$OPENSKY_DRIVER_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+            echo 'Refusing driver artifact reuse until OPENSKY_DRIVER_SHA256 is independently pinned'
+            exit 1
+          }
       - name: Use the verified driver candidate
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
@@ -149,17 +162,26 @@ jobs:
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
-          printf '%s  %s\n' "$OPENSKY_DRIVER_SHA256" .driver/opensky-driver | sha256sum --check -
+          test -s .driver/sha256.txt
           python3 - <<'PY'
-          import json, os, subprocess
+          import hashlib, json, os, re, subprocess
           identity = json.load(open(".driver/identity.json"))
           assert identity["source"] == os.environ["OPENSKY_DRIVER_REF"]
           assert identity["product"] == "opensky-driver" and identity["protocolVersion"] == 1
+          manifest = open(".driver/sha256.txt").read().strip()
+          match = re.fullmatch(r"([0-9a-f]{64})  opensky-driver", manifest)
+          assert match, manifest
+          actual_sha256 = hashlib.sha256(open(".driver/opensky-driver", "rb").read()).hexdigest()
+          assert actual_sha256 == match.group(1)
+          expected_sha256 = os.environ["OPENSKY_DRIVER_SHA256"]
+          if expected_sha256:
+              assert expected_sha256 == actual_sha256
+          else:
+              assert not os.environ["OPENSKY_REUSED_DRIVER_RUN"], "reuse requires an independent release pin"
           os.chmod(".driver/opensky-driver", 0o755)
           actual = json.loads(subprocess.check_output([".driver/opensky-driver", "--opensky-driver-identity"]))
           assert actual == identity
           PY
-          sha256sum .driver/opensky-driver > .driver/sha256.txt
           chmod +x .driver/opensky-driver
       - name: Verify public SDK typing and saved text
         run: bash e2e/ci/native-linux-probe.sh
