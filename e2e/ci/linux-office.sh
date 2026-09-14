@@ -75,6 +75,9 @@ scenario_args=()
 if [[ "${OPENSKY_LINUX_TYPING_TEST:-}" == 1 ]]; then
   scenario=specs/linux-typing.test.ts
   scenario_args+=(--bail=0)
+  if [[ -n "${OPENSKY_LINUX_TEST_NAME_PATTERN:-}" ]]; then
+    scenario_args+=(--testNamePattern "$OPENSKY_LINUX_TEST_NAME_PATTERN")
+  fi
 fi
 npm test -- "$scenario" "${scenario_args[@]}" --reporter=verbose --reporter=json \
   --outputFile.json="$OPENSKY_LINUX_OFFICE_ARTIFACT/results.json"

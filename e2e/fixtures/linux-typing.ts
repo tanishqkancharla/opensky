@@ -10,6 +10,7 @@ import type { App } from "../../src/cua.js";
 import { recordAppTiming } from "./app-timing.js";
 import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 import { withX11InputRecord } from "./x11-input-record.js";
+import { withTextEvents } from "./text-events.js";
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -31,7 +32,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
       await withOwnedLinuxApp({ executable: "/usr/bin/libreoffice", documentTitle: "typing.docx", artifacts,
         args: [`-env:UserInstallation=${pathToFileURL(join(temporary, "profile")).href}`, "--norestore", "--nologo", "--nofirststartwizard", "--writer", document],
         env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
-      }, async () => {
+      }, async (owned) => {
         sdk = createOpenSky({ transport, homeDir: join(temporary, "sdk"), autoLaunch: false,
           driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
         const app = recordAppTiming(await createCua(sdk).getApp("LibreOffice"), artifacts);
@@ -52,10 +53,17 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
             await writeFile(join(artifacts, "keyboard-after.txt"), current);
             return current === originalKeyboard;
           } } });
+          const observedDrive = async () => {
+            if (process.env.OPENSKY_ATSPI_TEXT_RECORD === "1" && task.name.startsWith("TYPE-L01:")) {
+              await withTextEvents(join(artifacts, "text-events"), owned.pid, drive);
+            } else {
+              await drive();
+            }
+          };
           if (process.env.OPENSKY_X11_INPUT_RECORD === "1" && task.name.startsWith("TYPE-L01:")) {
-            await withX11InputRecord(join(artifacts, "x11-input"), drive);
+            await withX11InputRecord(join(artifacts, "x11-input"), observedDrive);
           } else {
-            await drive();
+            await observedDrive();
           }
         } finally {
           await writeFile(join(artifacts, "keyboard-after.txt"), (await exec("xmodmap", ["-pke"])).stdout);

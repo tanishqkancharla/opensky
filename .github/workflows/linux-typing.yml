@@ -14,6 +14,10 @@ on:
         description: Existing driver build run; binary must match the pinned V14 SHA-256
         type: string
         default: ''
+      test_name_pattern:
+        description: 'Optional focused Vitest name pattern; empty runs all typing cases'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -100,6 +104,8 @@ jobs:
       OPENSKY_LINUX_OFFICE_BACKEND: opensky
       OPENSKY_LINUX_TYPING_TEST: '1'
       OPENSKY_X11_INPUT_RECORD: '1'
+      OPENSKY_ATSPI_TEXT_RECORD: '1'
+      OPENSKY_LINUX_TEST_NAME_PATTERN: ${{ inputs.test_name_pattern }}
       OPENSKY_AGENT_TASK: 3ef2b351-8a84-4ff2-8724-d86eae9b842e
       OPENSKY_NATIVE_PACKAGE_SHA256: 2caa7df314ce37e9048359d8e6a4a78e24574a3b54d6bf510f17754b66dda775
       OPENSKY_NATIVE_PACKAGE_FILE: ${{ github.workspace }}/.native-reference/chatgpt.deb
@@ -116,7 +122,7 @@ jobs:
       - name: Install desktop and scorer
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core xdotool x11-utils x11-xserver-utils libreoffice-writer libreoffice-gtk3 fonts-liberation tesseract-ocr libpipewire-0.3-0 libei1 libxtst6
+          sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core python3-gi gir1.2-atspi-2.0 xdotool x11-utils x11-xserver-utils libreoffice-writer libreoffice-gtk3 fonts-liberation tesseract-ocr libpipewire-0.3-0 libei1 libxtst6
           npm ci --ignore-scripts
           npm run build
           npm ci --ignore-scripts --prefix e2e

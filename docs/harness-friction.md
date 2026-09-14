@@ -4078,3 +4078,16 @@ The remote trace and DOCX hashes matched their collected copies before the
 owned staging directory was removed. No model evaluations were launched and
 no V14 agent score was changed. Trace SHA-256:
 `aae9404415f5fb25c581e32fd7c891509d84f71567063f48276ca1e479dc7ad6`.
+
+LINUX-V14-UNICODE-TRACE-02 CI integration: the normal typing fixture now has an
+opt-in `OPENSKY_ATSPI_TEXT_RECORD=1` recorder scoped to its owned process. The
+typing workflow enables it alongside X11 key-event capture for `TYPE-L01`.
+The recorder uses the distro Python with GI metadata; agent prompts, public
+SDK actions, and saved-document assertions are unchanged. A workflow input can
+select a focused test-name pattern while the empty default retains the full
+suite. Both observers must preserve the original program failure and retain
+their own cleanup/error evidence. Source identity uses retained local proxy
+IDs rather than the unsupported GI path method. Full E2E TypeScript checking,
+Python syntax compilation, shell syntax and diff checks pass. Real focused CI
+validation remains pending; the earlier warm success does not certify this
+changed fixture.
