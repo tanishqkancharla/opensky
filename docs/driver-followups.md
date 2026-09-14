@@ -132,5 +132,10 @@ The native paste policy on macOS is explicitly `leave`, matching the browser beh
 
 The Linux Unicode mapping-lifetime correction now has four passing real SDK
 checks, including a controlled application stall and the committed TYPE-L03
-regression. Canonical desktop validation is pending; unsupported ping clients
-remain a documented limitation. See [Unicode resilience validation](linux-unicode-resilience.md).
+regression. Driver `cfe578ba53afce435486694bcb0048e81f2d9a34` subsequently passed
+265 canonical Linux/Windows desktop cases, both source-installer checks, and
+three-platform builds. The release binary also has passing evidence for all ten
+Linux SDK cases across a baseline run and a focused workflow correction; the
+three initial configuration failures remain recorded. Canonical macOS GUI
+validation and unsupported ping clients remain outside this acceptance. See
+[Unicode resilience validation](linux-unicode-resilience.md).

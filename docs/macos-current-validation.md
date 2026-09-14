@@ -23,6 +23,16 @@ Local receipts:
 `work/macos-paste-restore-01/acceptance.json`, and
 `work/macos-selection-control-02/acceptance.json`.
 
+The requested September 14 rerun passed both cases again with SDK
+`a6741e88bf36b1f2a2676db10e9c5227ef33d306` and the same installed driver:
+paste/focus restoration in 18.93 seconds and long Unicode selection in 15.49
+seconds. Actual saved files matched the expected contents; the prior foreground
+app remained the same at all three paste observations. Both test-owned TextEdit
+instances exited and scratch documents were removed, while the user's existing
+TextEdit instance survived. Receipt:
+`work/macos-user-rerun-20260914/acceptance.json`. These are focused deterministic
+reruns, not a broad concurrent-user or canonical macOS GUI certification.
+
 ## Previously accepted candidate
 
 The 2026-09-13 local candidate passed six real public-SDK saved-document workflows: multiline paste and five native text-selection cases.
