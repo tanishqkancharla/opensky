@@ -8,10 +8,20 @@ during a real Space transition. A new explicit foreground-restoration case
 stopped before paste because `bring_to_front` could not activate its separate
 owned witness. Both temporary app instances and documents were cleaned up,
 and the pre-existing user TextEdit instance was preserved. These failures
-remain retained; current-candidate acceptance is partial. Local receipts:
+remain retained. A later isolated foreground-restoration test passed (18.53s):
+the exact target saved the payload once and the prior foreground PID was observed
+before selection, after selection and after paste. The long Unicode selection
+control also passed (15.46s), replacing only its contextual match. Both owned
+processes and temporary documents were cleaned; the user instance was preserved.
+This accepts the narrow paste change and its selection regression, while the
+persistent-activation workflow and broader Mac acceptance remain separate.
+Local receipts:
 `work/macos-paste-settle-01/acceptance.json`,
 `work/macos-visibility-control-01/acceptance.json`, and
-`work/macos-paste-focus-01/acceptance.json`.
+`work/macos-paste-focus-01/acceptance.json`,
+`work/macos-paste-focus-02/acceptance.json`,
+`work/macos-paste-restore-01/acceptance.json`, and
+`work/macos-selection-control-02/acceptance.json`.
 
 ## Previously accepted candidate
 

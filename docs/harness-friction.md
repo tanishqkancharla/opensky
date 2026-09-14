@@ -4131,3 +4131,14 @@ non-TextEdit foreground PID, checking it remains foreground after target selecti
 pasting once, checking restoration, and verifying the exact saved target file.
 It neither activates nor sends input to the observed foreground application.
 PASTE-N02 remains a distinct persistent-activation/isolation workflow.
+
+MAC-PASTE-FOCUS-01 narrow acceptance: PASTE-N03 passed18.53s on SDKc881f01
+and installed driver028471ff / binary8be5bec. Independent observations show
+Codex PID17199 before selection, after selection and after paste; its foreground
+was restored without directing input at it. Actual target file contains the
+payload exactly once. SELECT-N02 control passed15.46s on the same candidate,
+changing only the final contextual match beyond the long Unicode prefix. Both
+owned apps/documents were removed and user TextEdit PID56231 remained. The two
+PASTE-N02 setup failures remain distinct; persistent activation has not passed.
+These results accept the narrow paste correction and its regression control,
+not intermittent-failure elimination or the canonical macOS release matrix.
