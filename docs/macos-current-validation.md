@@ -12,6 +12,7 @@ and its real test failed at the public operation.
 | Replace second repeated match after Unicode text | Pass |
 | Insert before that match without replacing it | Pass |
 | Insert after that match without replacing it | Pass |
+| Capture existing native window | Pass: actual PNG visually verified |
 | Paste multiline text | Fail: native paste unavailable |
 
 Selection and insertion were verified from the actual saved files, before
@@ -28,11 +29,24 @@ process, verifies exit, and removes the temporary file. The existing user
 TextEdit process remained running throughout all four cases. This permits
 these tests without asking the user to quit TextEdit.
 
-The older opening fixture closed both documents correctly but left its two
-empty test processes alive. The parent independently inspected and quit them
-with exact PID/bundle/launch-time checks, then removed their files. That opening
-case still needs the same automatic process-cleanup improvement before it is
-used as an unattended repeated test.
+The opening fixture now records exact returned window/process identities and
+quits both owned test processes after the public document closes. Its fresh
+OPEN-N01 run passed in 19.29 seconds, including verification that temporary
+files were removed and the existing user TextEdit process remained running.
+The first fixture attempt failed before input because SDK methods are frozen;
+a separate forwarding facade corrected the observer without changing SDK calls.
+
+Actual screenshot capture through the installed CLI succeeded and its PNG was
+visually verified. The existing window was only read, with no input or cleanup
+sent to it. Both Accessibility and Screen Recording are granted. The screenshot
+was removed after verification; its dimensions and hash remain in the receipt.
+
+Fresh app launching remains intermittent: two subsequent attempts timed out in
+NSWorkspace before opening a document. Restarting the same installed daemon
+allowed the opening test to pass, but a later launch timed out again. This is
+not resolved and is separate from permissions. One intervening screenshot
+attempt was stopped by shell-sandbox desktop visibility; that result does not
+establish that the user's desktop was locked.
 
 Raw evidence is retained locally in `work/macos-open-current-01`,
 `work/macos-selection-current-01`, and `work/macos-paste-current-01`; it is not
@@ -40,3 +54,5 @@ represented as publicly hosted by this report. These deterministic SDK results
 are separate from the frozen Linux paired agent measurement. No model inference
 calls were made by these tests. macOS native paste and broader driver-followup
 acceptance remain incomplete.
+
+Additional local evidence: `work/macos-open-cleanup-04`, `work/macos-screenshot-current-03`, and `work/macos-capture-existing-01/acceptance.json`.

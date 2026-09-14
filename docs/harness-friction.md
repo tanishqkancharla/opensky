@@ -3970,3 +3970,30 @@ instance preserved. PASTE-N01 reached the real public call and failed because
 Mac native paste is unavailable; its setup/cleanup passed and original text
 remained intact. That failure is retained, not treated as fixture acceptance of
 paste. See [current macOS validation](macos-current-validation.md).
+
+### MAC-NATIVE-OPEN-CLEANUP-01 — quit only SDK-owned test instances
+
+OPEN-N01 previously closed its two document windows but left empty processes
+running. Its fixture now observes the unchanged public open/close calls through
+a separate facade, records exact window and process identities before returning
+to the test, and verifies cooperative process exit before deleting documents.
+It never mutates the frozen SDK object or quits a baseline user process. Action
+and cleanup failures are both propagated. The initial frozen-method failure is
+retained, along with a later independent NSWorkspace launch timeout.
+
+Real acceptance `work/macos-open-cleanup-04`: OPEN-N01 passed in 19.29 seconds;
+both owned instances exited, the temporary directory was removed, and the
+pre-existing TextEdit instance remained running. Three focused non-GUI checks
+and TypeScript validation passed. This validates lifecycle cleanup, not broader
+launch reliability: the same installed driver later timed out on a fresh launch.
+
+### MAC-CAPTURE-LAUNCH-01 — distinguish capture grants from fresh launch
+
+Both daemon-reported permissions are granted. The installed SDK captured an
+existing TextEdit window successfully; its actual PNG was visually verified and
+removed afterward (`work/macos-capture-existing-01/acceptance.json`). No input
+was sent to that user window. Fresh `open_target` intermittently times out in
+NSWorkspace before any app is observed; restarting the same signed daemon
+allowed one opening test to pass but did not resolve subsequent timeouts.
+Further permission prompts are not supported by this evidence. A separate
+shell-sandbox preflight failure must not be labeled a locked user desktop.
