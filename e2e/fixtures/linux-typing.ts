@@ -11,6 +11,7 @@ import { recordAppTiming } from "./app-timing.js";
 import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 import { withX11InputRecord } from "./x11-input-record.js";
 import { withTextEvents } from "./text-events.js";
+import { withAppStall } from "./app-stall.js";
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -54,7 +55,11 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
             return current === originalKeyboard;
           } } });
           const observedDrive = async () => {
-            if (process.env.OPENSKY_ATSPI_TEXT_RECORD === "1" && task.name.startsWith("TYPE-L01:")) {
+            if (task.name.startsWith("TYPE-L03:")) {
+              // TYPE-L03 always starts the active X RECORD control. Passive
+              // keyboard/text observers remain optional diagnostics for L01.
+              await withAppStall(join(artifacts, "app-stall"), owned.pid, drive);
+            } else if (process.env.OPENSKY_ATSPI_TEXT_RECORD === "1" && task.name.startsWith("TYPE-L01:")) {
               await withTextEvents(join(artifacts, "text-events"), owned.pid, drive);
             } else {
               await drive();
