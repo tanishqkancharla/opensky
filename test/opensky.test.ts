@@ -608,7 +608,7 @@ describe("OpenSky against cua-driver", () => {
     );
     assert.ok(
       persisted.calls.some(
-        (call) => call.tool === "press_key" && call.args.delivery_mode === "background" &&
+        (call) => call.tool === "press_key" && call.args.delivery_mode === "foreground" &&
           call.args.element_index === 2 && call.args.key === "a" &&
           JSON.stringify(call.args.modifiers) === JSON.stringify(["cmd"]),
       ),
@@ -619,7 +619,7 @@ describe("OpenSky against cua-driver", () => {
       ),
     );
     const selectionKeys = persisted.calls.filter(
-      (call) => call.tool === "press_key" && call.args.delivery_mode === "background" &&
+      (call) => call.tool === "press_key" &&
         call.args.element_index === 2,
     );
     assert.ok(selectionKeys.some((call) => call.args.key === "home"));
