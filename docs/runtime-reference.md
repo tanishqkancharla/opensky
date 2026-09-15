@@ -80,6 +80,10 @@ Ordinary CLI REPL execution also works under Bun.
 
 ## Driver selection
 
+OpenSky Driver is built from the `main` branch of `tanishqkancharla/cua`.
+The source relationship is recorded in `driver-source.json` at the repository
+root so local tooling does not have to infer it from the remote URL.
+
 Binary selection precedence is `--driver` / `driverOptions.binaryPath`,
 `OPENSKY_DRIVER_BINARY`, `OPENSKY_DRIVER`, then legacy `CUA_DRIVER_BINARY` /
 `CUA_DRIVER_PATH`. Explicit missing selections fail without a PATH fallback.

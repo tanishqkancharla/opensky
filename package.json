@@ -13,6 +13,7 @@
   "files": [
     "dist",
     "skills",
+    "driver-source.json",
     "README.md"
   ],
   "engines": {

@@ -64,16 +64,21 @@ class TypedBrowserDriver implements DriverClient {
             name: "Google Chrome",
             bundle_id: "com.google.Chrome",
             launch_path: "/Applications/Google Chrome.app",
-            running: false,
+            running: true,
+            pid: PID,
           }],
         });
       case "browser_prepare":
         if (this.ambiguousPrepare) return result({ status: "pending", prepared: false });
+        const profile = effectiveArgs.profile as Record<string, unknown> | undefined;
         return result({
           status: "ok",
           prepared: true,
           prepared_pid: PID,
           action: "launched_isolated_browser",
+          ...(profile?.headless === true && profile.expose_debugger_endpoint === true
+            ? { debugger_http_url: "http://127.0.0.1:9222" }
+            : {}),
           side_effects: { launched_browser: true, created_profile: true },
         });
       case "list_windows":
@@ -862,6 +867,73 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal(state.target?.document.requestRelation, "exact");
   });
 
+  it("opens a driver-owned headless tab and exposes its trusted-host debugger endpoint", async () => {
+    const { opensky, driver } = await harness();
+
+    const state = await opensky.open_target({
+      app: "Google Chrome",
+      targets: ["about:blank"],
+      includeScreenshot: false,
+      browserVisible: false,
+    });
+
+    const prepare = driver.calls.find((call) => call.tool === "browser_prepare");
+    const browserSession = String(prepare?.args.session);
+    assert.deepEqual(prepare?.args, {
+      session: browserSession,
+      allow_launch: true,
+      profile: {
+        mode: "isolated_new",
+        headless: true,
+        expose_debugger_endpoint: true,
+      },
+    });
+    assert.equal(driver.calls.some((call) =>
+      call.tool === "list_windows" && call.args.session === browserSession
+    ), false);
+    const bind = driver.calls.find((call) =>
+      call.tool === "get_browser_state" && call.args.pid === PID
+    );
+    assert.deepEqual(bind?.args, { session: browserSession, pid: PID });
+    assert.deepEqual(state.browserConnection, {
+      debuggerHttpUrl: "http://127.0.0.1:9222",
+      providerTabId: TAB_ID,
+    });
+    assert.equal(state.target?.tab?.status, "verified");
+  });
+
+  it("attaches an exact existing Chrome tab and detaches without closing user state", async () => {
+    const { opensky, driver } = await harness();
+
+    const state = await opensky.attach_browser({
+      app: "Google Chrome",
+      pid: PID,
+      windowId: WINDOW_ID,
+      providerTabId: TAB_ID,
+      sessionName: "Current Chrome",
+      includeScreenshot: false,
+    });
+
+    const prepare = driver.calls.find((call) => call.tool === "browser_prepare");
+    const browserSession = String(prepare?.args.session);
+    assert.match(browserSession, /-browser-existing-Current-Chrome-/);
+    assert.deepEqual(prepare?.args, {
+      pid: PID,
+      window_id: WINDOW_ID,
+      session: browserSession,
+      strategy: { kind: "existing_profile" },
+    });
+    assert.equal(state.target?.tab?.status, "verified");
+    assert.equal(state.target?.tab?.url, "about:blank");
+
+    await opensky.navigate({ app: state.targetHandle, url: URL, includeScreenshot: false });
+    assert.equal(driver.calls.find((call) => call.tool === "browser_navigate")?.args.tab_id, TAB_ID);
+    await assert.rejects(() => opensky.close_target({ app: state.targetHandle }), /No driver-owned exact target/);
+
+    await opensky.close();
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === browserSession).length, 1);
+  });
+
   it("keeps later controls addressable when a preceding destination URL is very long", async () => {
     const { opensky, driver } = await harness();
     driver.resultUrl = `https://example.com/results?signature=${"x".repeat(10_000)}`;
@@ -1008,7 +1080,7 @@ describe("OpenSky typed-browser contract", () => {
 
     await assert.rejects(
       () => opensky.navigate({ app: "Calculator", url: "https://example.com/" }),
-      /navigate requires an exact driver-owned typed browser binding.*No app was launched/s,
+      /navigate requires an exact active typed browser binding.*No app was launched/s,
     );
     assert.equal(driver.calls.length, 0);
   });

@@ -66,6 +66,11 @@ export interface AppState {
   degradedReason?: string;
   /** Honest target/document identity; tab identity remains unverified without typed browser binding. */
   target?: TargetIdentity;
+  /** Exact provider tab identity, plus trusted-host CDP metadata when explicitly exposed. */
+  browserConnection?: {
+    debuggerHttpUrl?: string;
+    providerTabId: string;
+  };
 }
 
 export type TargetResourceKind = "url" | "path" | "mixed";
@@ -126,8 +131,19 @@ export interface OpenSky {
     includeScreenshot?: boolean;
     /** Optional human-readable label embedded in a unique owned browser-session id. */
     sessionName?: string;
+    /** Open a driver-owned Chromium target without a native window. */
+    browserVisible?: boolean;
     /** Narrow the initial exact typed browser observation. */
     query?: string;
+  }): Promise<AppState>;
+  /** Bind one exact tab in an already-running Chromium window without taking ownership of it. */
+  attach_browser(args: {
+    app: string;
+    pid?: number;
+    windowId?: number;
+    providerTabId?: string;
+    sessionName?: string;
+    includeScreenshot?: boolean;
   }): Promise<AppState>;
   /** Navigate an existing exact typed-browser tab and return its settled state. */
   navigate(args: ({ app: string; url: string; action?: never } | {
@@ -252,7 +268,7 @@ export interface ResolvedApp {
   targetRequest?: TargetRequestIdentity;
   /** Proof that this process created and may cooperatively close one exact native window. */
   nativeCloseAuthority?: NativeCloseAuthority;
-  /** Exact typed-browser binding for driver-owned Chromium page content. */
+  /** Exact typed-browser binding for driver-owned or explicitly attached Chromium page content. */
   browser?: BrowserBinding;
 }
 
@@ -268,6 +284,7 @@ export interface BrowserBinding {
   targetId: string;
   tabId: string;
   managed: boolean;
+  debuggerHttpUrl?: string;
   title?: string;
   url?: string;
   documentId?: string;
@@ -320,6 +337,8 @@ export interface WindowSnapshot {
   degraded?: boolean;
   degradedReason?: string;
   truncated?: boolean;
+  /** Structured elements returned before app-scope presentation filtering. */
+  rawElementCount?: number;
   totalElementCount?: number;
   returnedElementCount?: number;
   documentChanged?: boolean;

@@ -20,6 +20,8 @@ export interface CuaDriverOptions {
   session?: string;
   socket?: string;
   env?: NodeJS.ProcessEnv;
+  /** Start a dedicated daemon with the existing-profile capability grant. */
+  allowExistingBrowserProfiles?: boolean;
 }
 
 const INSTALL_HELP = "Build OpenSky Driver from https://github.com/tanishqkancharla/cua using libs/cua-driver/scripts/install.sh (install.ps1 on Windows), then run `opensky doctor`.";
@@ -180,6 +182,11 @@ export class CuaDriverClient implements DriverClient {
     }
 
     const binary = await this.requireBinary();
+    const serveArgs = [
+      "serve",
+      "--no-overlay",
+      ...(this.options.allowExistingBrowserProfiles ? ["--grant", "existing-profile"] : []),
+    ];
     const target = detectTarget();
     if (target === "mac") {
       const appPath = await appBundleForDriver(binary);
@@ -187,20 +194,20 @@ export class CuaDriverClient implements DriverClient {
       // instances when multiple first-run commands arrive together.
       const opened = appPath ? await this.exec(
         "/usr/bin/open",
-        ["-g", appPath, "--args", ...this.withSocket(["serve", "--no-overlay"])],
+        ["-g", appPath, "--args", ...this.withSocket(serveArgs)],
         3_000,
       ) : undefined;
       if (!opened || opened.code !== 0) {
-        await this.spawnDetached(binary, this.withSocket(["serve", "--no-overlay"]));
+        await this.spawnDetached(binary, this.withSocket(serveArgs));
       }
     } else if (target === "win") {
       await this.exec(binary, this.withSocket(["autostart", "kick"]), 15_000);
       const afterKick = await this.status();
       if (!afterKick.running) {
-        await this.spawnDetached(binary, this.withSocket(["serve", "--no-overlay"]));
+        await this.spawnDetached(binary, this.withSocket(serveArgs));
       }
     } else {
-      await this.spawnDetached(binary, this.withSocket(["serve", "--no-overlay"]));
+      await this.spawnDetached(binary, this.withSocket(serveArgs));
     }
 
     const deadline = Date.now() + (this.options.startTimeoutMs ?? 10_000);

@@ -3,7 +3,8 @@
 Operate desktop apps and browser tabs from an agent or JavaScript program.
 OpenSky provides a TypeScript SDK (`opensky-cua`), a persistent async REPL
 (`opensky`), and an [agent skill](skills/opensky/SKILL.md), backed by
-[OpenSky Driver](https://github.com/tanishqkancharla/cua), our CUA Driver fork.
+[OpenSky Driver](https://github.com/tanishqkancharla/cua), the `main` branch of
+our CUA Driver fork.
 
 The preferred `cua` API uses bound app/tab objects: observe the interface, act on
 an observed control, then verify the result. It follows the native Computer Use
@@ -17,11 +18,19 @@ opensky doctor
 opensky skill install -g
 ```
 
-Install **OpenSky Driver** from the fork checkout first if `doctor` reports it
-missing: `bash libs/cua-driver/scripts/install.sh` on macOS/Linux, or
-`libs/cua-driver/scripts/install.ps1` on Windows. Building requires Rust and
-platform build tools. Automatic fork release downloads are not available;
-OpenSky never falls back to upstream CUA Driver.
+Install **OpenSky Driver** from the fork's `main` branch first if `doctor`
+reports it missing:
+
+```sh
+git clone https://github.com/tanishqkancharla/cua.git
+cd cua
+bash libs/cua-driver/scripts/install.sh
+```
+
+Use `libs/cua-driver/scripts/install.ps1` instead on Windows. The
+machine-readable source contract is [driver-source.json](driver-source.json).
+Building requires Rust and platform build tools. Automatic fork release
+downloads are not available; OpenSky never falls back to upstream CUA Driver.
 
 On macOS, grant Accessibility and Screen Recording to
 `/Applications/OpenSkyDriver.app`, displayed as **OpenSky Driver**. Its permission
@@ -82,7 +91,9 @@ import { createOpenSky, createCua } from "opensky-cua";
 const sdk = createOpenSky();
 const cua = createCua(sdk);
 try {
-  const tab = await cua.createBrowserTab("chrome", "https://example.com");
+  const tab = await cua.createBrowserTab("chrome", "https://example.com", {
+    visible: false, // omit or use true for an ordinary visible browser window
+  });
   console.log(await tab.getAXState());
   await tab.goto("https://example.com/about");
   console.log(await tab.getAXState());
@@ -100,9 +111,12 @@ See [runtime integration](docs/runtime-reference.md) for emitters and lifecycle.
 
 App observations follow the active window within the bound process, including
 dialogs; actions target the latest observed window. Explicit legacy handles
-stay fixed to their window. Browser sessions are isolated and OpenSky-owned;
-existing user tabs are not discoverable. Coordinates use the latest screenshot's
-pixels. Native paste is supported on macOS and Linux X11 with the documented
+stay fixed to their window. Browser sessions created by OpenSky are isolated and
+owned. A caller with an exact native browser window ID can explicitly bind an
+existing Chromium tab with `cua.attachBrowserTab(...)`; detaching never closes
+that user-owned tab. `getState` lists only tabs created or attached through that
+facade. Coordinates use the latest screenshot's pixels. Native paste is supported
+on macOS and Linux X11 with the documented
 [text and clipboard restrictions](skills/opensky/references/text-input.md).
 
 ## Validation and development

@@ -68,14 +68,20 @@ export interface BrowserInfo {
 export interface TabInfo extends BrowserTabInfo { browserId: string }
 export interface BrowserState extends BrowserInfo { tabs: BrowserTabInfo[] }
 export interface CuaState {
-  /** OpenSky inventories cannot establish whether pre-existing user tabs exist. */
-  tabInventoryScope: "facade-owned-only";
+  /** Includes only tabs explicitly created or attached through this facade. */
+  tabInventoryScope: "facade-bound-only";
   apps: AppInfo[];
   browsers: BrowserState[];
 }
 export interface BrowserOptions extends ObservationOptions { browser?: string }
 export interface GetBrowserOptions { id?: string; url?: string }
 export interface CreateBrowserTabOptions { visible?: boolean; sessionName?: string }
+export interface AttachBrowserTabOptions extends ObservationOptions {
+  pid?: number;
+  windowId?: number;
+  providerTabId?: string;
+  sessionName?: string;
+}
 
 export interface Target {
   getAXState(options?: StateOptions): Promise<string>;
@@ -97,6 +103,8 @@ export interface App extends Target {}
 export interface Tab extends Target {
   readonly id: string;
   readonly browserId: string;
+  /** Trusted-host metadata for attaching an external assertion client. */
+  readonly debuggerHttpUrl?: string;
   goto(url: string): Promise<void>;
   back(): Promise<void>;
   forward(): Promise<void>;
@@ -142,17 +150,20 @@ export class CuaTargetClosedError extends OpenSkyError {
 
 export class CuaTargetNotFoundError extends OpenSkyError {
   constructor(id: string) {
-    super(`No exact OpenSky-owned tab matches ${JSON.stringify(id)}; no target was opened and no input was sent.`, "cua_target_not_found");
+    super(`No exact OpenSky-bound tab matches ${JSON.stringify(id)}; no target was opened and no input was sent.`, "cua_target_not_found");
     this.name = "CuaTargetNotFoundError";
   }
 }
 
-type OwnedTabRecord = {
+type BoundTabRecord = {
   handle: TargetHandle;
   browserId: string;
+  providerTabId?: string;
+  debuggerHttpUrl?: string;
   profileName?: string;
   title?: string;
   url?: string;
+  owned: boolean;
   closed: boolean;
 };
 
@@ -162,7 +173,7 @@ const BROWSERS = Object.freeze({
 });
 
 export class CuaFacade {
-  private readonly tabs = new Map<string, OwnedTabRecord>();
+  private readonly tabs = new Map<string, BoundTabRecord>();
   private readonly browserSessionNames = new Map<string, string>();
   private readonly documentedBrowsers = new Set<string>();
   private readonly unobservedNavigations = new Map<TargetHandle, number>();
@@ -177,7 +188,7 @@ export class CuaFacade {
   async getState(options: ObservationOptions = {}): Promise<CuaState> {
     const apps = await this.listApps({ emit: false });
     const state: CuaState = {
-      tabInventoryScope: "facade-owned-only",
+      tabInventoryScope: "facade-bound-only",
       apps,
       browsers: this.browserStates(availableBrowserIds(apps)),
     };
@@ -256,9 +267,6 @@ export class CuaFacade {
     const sessionName = options.sessionName === undefined
       ? this.browserSessionNames.get(browserId)
       : normalizeBrowserSessionName(options.sessionName);
-    if (options.visible === false) {
-      throw new CuaUnsupportedError("createBrowserTab", "hidden browser tabs are unavailable; the isolated Chromium window is visible");
-    }
     // Like Computer, explicitly supplied settings apply to the provider before
     // opening; later calls that omit them retain the configured value.
     if (options.sessionName !== undefined) this.browserSessionNames.set(browserId, sessionName!);
@@ -267,20 +275,61 @@ export class CuaFacade {
       targets: [normalizedUrl],
       includeScreenshot: false,
       ...(sessionName ? { sessionName } : {}),
+      ...(options.visible === undefined ? {} : { browserVisible: options.visible }),
     });
     if (state.target?.tab?.status !== "verified") {
       throw new CuaUnsupportedError("createBrowserTab", "the driver did not return a verified exact tab binding");
     }
-    const record: OwnedTabRecord = {
+    const record: BoundTabRecord = {
       handle: state.targetHandle,
       browserId,
       profileName: sessionName,
       title: state.target.tab.title ?? state.target.document.title,
       url: state.target.tab.url ?? state.target.document.url ?? normalizedUrl,
+      providerTabId: state.browserConnection?.providerTabId,
+      debuggerHttpUrl: state.browserConnection?.debuggerHttpUrl,
+      owned: true,
       closed: false,
     };
     this.tabs.set(record.handle, record);
     this.options.emit?.(state.text);
+    return new BoundTab(this, record);
+  }
+
+  async attachBrowserTab(browser: string, options: AttachBrowserTabOptions = {}): Promise<Tab> {
+    if (arguments.length > 2) {
+      throw new OpenSkyError("Invalid params: use cua.attachBrowserTab(id, {pid?, windowId?, providerTabId?, sessionName?})", "invalid_params");
+    }
+    validateBrowserOptions(options, {
+      emit: "boolean", pid: "number", windowId: "number", providerTabId: "string", sessionName: "string",
+    }, "cua.attachBrowserTab(id, {pid?, windowId?, providerTabId?, sessionName?})");
+    const browserId = normalizeBrowserId(browser);
+    const descriptor = BROWSERS[browserId as keyof typeof BROWSERS];
+    if (!descriptor) throw new CuaUnsupportedError("attachBrowserTab", `browser ${JSON.stringify(browser)} is not supported`);
+    const sessionName = options.sessionName === undefined ? undefined : normalizeBrowserSessionName(options.sessionName);
+    const state = await this.opensky.attach_browser({
+      app: descriptor.app,
+      ...(options.pid === undefined ? {} : { pid: options.pid }),
+      ...(options.windowId === undefined ? {} : { windowId: options.windowId }),
+      ...(options.providerTabId === undefined ? {} : { providerTabId: options.providerTabId }),
+      ...(sessionName ? { sessionName } : {}),
+      includeScreenshot: false,
+    });
+    if (state.target?.tab?.status !== "verified") {
+      throw new CuaUnsupportedError("attachBrowserTab", "the driver did not return a verified exact tab binding");
+    }
+    const record: BoundTabRecord = {
+      handle: state.targetHandle,
+      browserId,
+      profileName: sessionName,
+      title: state.target.tab.title ?? state.target.document.title,
+      url: state.target.tab.url ?? state.target.document.url,
+      providerTabId: state.browserConnection?.providerTabId,
+      owned: false,
+      closed: false,
+    };
+    this.tabs.set(record.handle, record);
+    this.emit(state.text, options);
     return new BoundTab(this, record);
   }
 
@@ -359,7 +408,7 @@ export class CuaFacade {
     if (options.emit !== false) this.options.emit?.(value);
   }
 
-  closeTab(record: OwnedTabRecord): void {
+  closeTab(record: BoundTabRecord): void {
     record.closed = true;
     this.unobservedNavigations.delete(record.handle);
     this.navigationVersions.delete(record.handle);
@@ -374,7 +423,7 @@ export class CuaFacade {
     return live.length === 1 ? new BoundTab(this, live[0]!) : undefined;
   }
 
-  async mark(kind: "deliverable" | "handoff", record: OwnedTabRecord): Promise<void> {
+  async mark(kind: "deliverable" | "handoff", record: BoundTabRecord): Promise<void> {
     const callback = kind === "deliverable" ? this.options.markDeliverable : this.options.markHandoff;
     if (!callback) {
       throw new CuaUnsupportedError(
@@ -386,7 +435,7 @@ export class CuaFacade {
   }
 
   private browserStates(available = new Set<string>()): BrowserState[] {
-    const grouped = new Map<string, OwnedTabRecord[]>();
+    const grouped = new Map<string, BoundTabRecord[]>();
     for (const tab of this.tabs.values()) {
       if (tab.closed) continue;
       const current = grouped.get(tab.browserId) ?? [];
@@ -547,9 +596,10 @@ class BoundApp extends BoundTarget implements App {
 }
 
 class BoundTab extends BoundTarget implements Tab {
-  constructor(facade: CuaFacade, private readonly record: OwnedTabRecord) { super(facade, record.handle); }
+  constructor(facade: CuaFacade, private readonly record: BoundTabRecord) { super(facade, record.handle); }
   get id() { return this.record.handle; }
   get browserId() { return this.record.browserId; }
+  get debuggerHttpUrl() { return this.record.debuggerHttpUrl; }
 
   async goto(url: string): Promise<void> { await this.navigate({ url }); }
   async back(): Promise<void> { await this.navigate({ action: "back" }); }
@@ -558,6 +608,9 @@ class BoundTab extends BoundTarget implements Tab {
 
   async close(): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
+    if (!this.record.owned) {
+      throw new CuaUnsupportedError("Tab.close", "this tab belongs to the user; sdk.close() detaches without closing it");
+    }
     await this.facade.opensky.close_target({ app: this.targetHandle });
     this.facade.closeTab(this.record);
   }
@@ -583,7 +636,7 @@ class BoundBrowser implements Browser {
   }
 
   async documentation(): Promise<string> {
-    return `OpenSky browser ${JSON.stringify(this.browserId)}: cua.getBrowser({id?, url?}) selects a provider; it does not navigate. browser.tabs.new() takes no arguments and opens about:blank. cua.createBrowserTab(${JSON.stringify(this.browserId)}, url?, {visible?, sessionName?}) also opens about:blank when URL is omitted. For a known URL supply it directly or use tab.goto(url). browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(); tab.close() closes its exact owned tab. User-owned tabs are not discoverable or closable.`;
+    return `OpenSky browser ${JSON.stringify(this.browserId)}: cua.getBrowser({id?, url?}) selects a provider; it does not navigate. browser.tabs.new() takes no arguments and opens about:blank. cua.createBrowserTab(${JSON.stringify(this.browserId)}, url?, {visible?, sessionName?}) also opens about:blank when URL is omitted. cua.attachBrowserTab(${JSON.stringify(this.browserId)}, {windowId, providerTabId?}) binds an existing user tab without taking close ownership. For a known URL supply it directly or use tab.goto(url). browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(); tab.close() closes only an exact facade-owned tab.`;
   }
 
   async nameSession(name: string): Promise<void> { this.facade.nameBrowserSession(this.browserId, name); }
@@ -688,6 +741,6 @@ function mapAppInfo(app: LegacyAppInfo): AppInfo {
   };
 }
 
-function tabInfo(tab: OwnedTabRecord): TabInfo {
-  return { id: tab.handle, browserId: tab.browserId, title: tab.title, url: tab.url };
+function tabInfo(tab: BoundTabRecord): TabInfo {
+  return { id: tab.handle, browserId: tab.browserId, providerTabId: tab.providerTabId, title: tab.title, url: tab.url };
 }

@@ -21,11 +21,30 @@ import {
   pickWindowId,
   pruneMenuSubtrees,
   sanitizeTreeText,
+  stabilizeElementIndices,
 } from "../src/opensky.js";
 import type { SnapshotElement } from "../src/types.js";
 import { makeHarness } from "./harness.ts";
 
 describe("opensky helpers", () => {
+  it("does not reuse ambiguous public indices for repeated controls", () => {
+    const previous: SnapshotElement[] = [
+      { element_index: 10, driver_index: 100, role: "AXButton", label: "Expand" },
+      { element_index: 11, driver_index: 101, role: "AXButton", label: "Expand" },
+      { element_index: 12, driver_index: 102, role: "AXButton", label: "Save" },
+    ];
+    const current: SnapshotElement[] = [
+      { element_index: 200, role: "AXButton", label: "Close" },
+      { element_index: 201, role: "AXButton", label: "Expand" },
+      { element_index: 202, role: "AXButton", label: "Save" },
+    ];
+
+    const stabilized = stabilizeElementIndices(previous, current);
+
+    assert.deepEqual(stabilized.map((element) => element.element_index), [13, 14, 12]);
+    assert.deepEqual(stabilized.map((element) => element.driver_index), [200, 201, 202]);
+  });
+
   it("app observation follows actual z-order, including an untitled dialog above a large document", () => {
     assert.equal(pickAppWindowId([
       { pid: 7, window_id: 1, title: "document.docx", is_main: true, z_index: 4, is_on_screen: true, frame: { width: 1000, height: 800 } },
@@ -348,6 +367,21 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(observations.length, 2);
     assert.equal(observations[0].args.max_depth, undefined);
     assert.equal(observations[1].args.max_depth, 3);
+  });
+
+  it("keeps one native snapshot when every returned element is represented", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.unprovenIncomplete = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.doesNotMatch(state.text, /^Accessibility projection:/);
+    assert.match(state.text, /Scientific/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const observations = after.calls.filter((call: { tool: string }) => call.tool === "get_window_state");
+    assert.equal(observations.length, 1);
   });
 
   it("projects an incomplete web tree at a depth that preserves nested controls", async () => {

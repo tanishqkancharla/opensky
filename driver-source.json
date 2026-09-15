@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/tanishqkancharla/cua.git",
+  "branch": "main",
+  "path": "libs/cua-driver",
+  "product": "opensky-driver",
+  "identityProtocolVersion": 1
+}

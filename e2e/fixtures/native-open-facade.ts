@@ -5,7 +5,7 @@ export function lifecycleFacade(real: OpenSky, observe: { open(args: Parameters<
   return {
     target: real.target,
     list_apps: () => real.list_apps(), get_app_state: args => real.get_app_state(args),
-    open_target: args => observe.open([args]), navigate: args => real.navigate(args),
+    open_target: args => observe.open([args]), attach_browser: args => real.attach_browser(args), navigate: args => real.navigate(args),
     close_target: args => observe.close([args]), bring_to_front: args => real.bring_to_front(args),
     click: args => real.click(args), drag: args => real.drag(args), paste: args => real.paste(args),
     perform_secondary_action: args => real.perform_secondary_action(args), press_key: args => real.press_key(args),

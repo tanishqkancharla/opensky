@@ -25,6 +25,12 @@ class FakeOpenSky {
     const handle = `tgt_tab_${++this.sequence}`;
     return state(handle, `opened:${handle}`, undefined, String((args.targets as string[])[0]));
   }
+  async attach_browser(args: Record<string, unknown>): Promise<AppState> {
+    this.calls.push({ method: "attach_browser", args });
+    const attached = state(`tgt_tab_${++this.sequence}`, "attached", undefined, "https://existing.example/");
+    attached.browserConnection = { providerTabId: "provider-existing" };
+    return attached;
+  }
   async navigate(args: Record<string, unknown>): Promise<AppState> {
     this.calls.push({ method: "navigate", args });
     const url = typeof args.url === "string" ? args.url : `https://${String(args.action)}.example/`;
@@ -54,9 +60,13 @@ describe("native-style cua facade", () => {
     ]);
     await assert.rejects(() => cua.createBrowserTab("chrome", ""), /requires a URL/);
     await assert.rejects(() => cua.createBrowserTab("chrome", null as never), /URL must be a string/);
-    await assert.rejects(() => cua.createBrowserTab("chrome", undefined, { visible: false, sessionName: "Rejected" }), CuaUnsupportedError);
+    await cua.createBrowserTab("chrome", undefined, { visible: false, sessionName: "Headless" });
+    assert.deepEqual(fake.calls.at(-1), { method: "open_target", args: {
+      app: "Google Chrome", targets: ["about:blank"], includeScreenshot: false,
+      sessionName: "Headless", browserVisible: false,
+    } });
     await cua.createBrowserTab("chrome");
-    assert.equal((fake.calls.at(-1)!.args as { sessionName: string }).sessionName, "Parity");
+    assert.equal((fake.calls.at(-1)!.args as { sessionName: string }).sessionName, "Headless");
   });
 
   it("emits browser documentation on first selection only, including aliases", async () => {
@@ -70,6 +80,31 @@ describe("native-style cua facade", () => {
     assert.equal(emitted.length, 1);
     assert.match(await browser.documentation(), /OpenSky browser/);
     assert.equal(emitted.length, 1, "explicit documentation returns text for the caller to display");
+  });
+
+  it("attaches an existing exact browser tab without granting close ownership", async () => {
+    const fake = new FakeOpenSky();
+    const cua = createCua(fake as unknown as OpenSky);
+    const tab = await cua.attachBrowserTab("chrome", {
+      pid: 4242,
+      windowId: 99,
+      providerTabId: "provider-existing",
+      sessionName: "Current Chrome",
+      emit: false,
+    });
+
+    assert.deepEqual(fake.calls[0], { method: "attach_browser", args: {
+      app: "Google Chrome",
+      pid: 4242,
+      windowId: 99,
+      providerTabId: "provider-existing",
+      sessionName: "Current Chrome",
+      includeScreenshot: false,
+    } });
+    assert.equal((await cua.listTabs({ emit: false }))[0]?.providerTabId, "provider-existing");
+    const before = fake.calls.length;
+    await assert.rejects(() => tab.close(), /belongs to the user/);
+    assert.equal(fake.calls.length, before);
   });
 
   it("requires a fresh full observation after ambiguous navigation failure", async () => {
@@ -305,21 +340,21 @@ describe("native-style cua facade", () => {
     await assert.rejects(() => cua.getBrowser({ id: "chrome" }), /not installed or available/);
   });
 
-  it("labels populated and empty state inventories as facade-owned only", async () => {
+  it("labels populated and empty state inventories as facade-bound only", async () => {
     const fake = new FakeOpenSky();
     const emitted: unknown[] = [];
     const cua = createCua(fake as unknown as OpenSky, { emit: (value) => emitted.push(value) });
     const before = await cua.getState();
-    assert.equal(before.tabInventoryScope, "facade-owned-only");
+    assert.equal(before.tabInventoryScope, "facade-bound-only");
     assert.deepEqual(before.browsers, []);
-    assert.equal((emitted.at(-1) as typeof before).tabInventoryScope, "facade-owned-only");
+    assert.equal((emitted.at(-1) as typeof before).tabInventoryScope, "facade-bound-only");
     const tab = await cua.createBrowserTab("chrome", "https://example.com/");
     const during = await cua.getState();
-    assert.equal(during.tabInventoryScope, "facade-owned-only");
+    assert.equal(during.tabInventoryScope, "facade-bound-only");
     assert.equal(during.browsers[0]?.tabs[0]?.id, tab.id);
     await tab.close();
     const after = await cua.getState();
-    assert.equal(after.tabInventoryScope, "facade-owned-only");
+    assert.equal(after.tabInventoryScope, "facade-bound-only");
     assert.deepEqual(after.browsers, []);
   });
 

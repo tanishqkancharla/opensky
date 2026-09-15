@@ -75,7 +75,7 @@ const SECONDARY_ACTIONS: Record<string, { kind: "click" | "front" | "key"; actio
 
 // The interface makes this exhaustive: adding a public operation requires a gate.
 const GUARDED_OPERATIONS = {
-  list_apps: true, get_app_state: true, open_target: true, navigate: true,
+  list_apps: true, get_app_state: true, open_target: true, attach_browser: true, navigate: true,
   close_target: true, bring_to_front: true, click: true, drag: true, paste: true,
   perform_secondary_action: true, press_key: true, scroll: true, select_text: true,
   set_value: true, type_text: true, invoke: true,
@@ -279,8 +279,8 @@ export class OpenSky implements OpenSkyApi {
     } else {
       await this.refreshWindowAfterAction(resolved);
     }
-    if (!resolved.windowId && !exactTargetRequested) await this.adoptWindowForObservation(resolved);
-    if (!resolved.windowId) {
+    if (!resolved.browser && !resolved.windowId && !exactTargetRequested) await this.adoptWindowForObservation(resolved);
+    if (!resolved.browser && !resolved.windowId) {
       return {
         app: resolved.launchPath || resolved.name || args.app,
         targetHandle: resolved.handle,
@@ -334,6 +334,12 @@ export class OpenSky implements OpenSkyApi {
       degraded: snapshot.degraded,
       degradedReason: snapshot.degradedReason,
       target: targetIdentityFor(resolved, snapshot),
+      ...(resolved.browser ? {
+        browserConnection: {
+          ...(resolved.browser.debuggerHttpUrl ? { debuggerHttpUrl: resolved.browser.debuggerHttpUrl } : {}),
+          providerTabId: resolved.browser.tabId,
+        },
+      } : {}),
     };
   }
 
@@ -432,6 +438,7 @@ export class OpenSky implements OpenSkyApi {
     targets: string[];
     includeScreenshot?: boolean;
     sessionName?: string;
+    browserVisible?: boolean;
     query?: string;
   }): Promise<AppState> {
     if (!args?.app || !Array.isArray(args.targets) || args.targets.length === 0) {
@@ -631,6 +638,125 @@ export class OpenSky implements OpenSkyApi {
     });
   }
 
+  /** Bind one exact tab in an existing user-owned Chromium window. */
+  async attach_browser(args: {
+    app: string;
+    pid?: number;
+    windowId?: number;
+    providerTabId?: string;
+    sessionName?: string;
+    includeScreenshot?: boolean;
+  }): Promise<AppState> {
+    if (!args?.app) throw invalidParams("app is required");
+    if (args.pid !== undefined && (!Number.isSafeInteger(args.pid) || args.pid <= 0)) {
+      throw invalidParams("pid must be a positive integer");
+    }
+    if (args.windowId !== undefined && (!Number.isSafeInteger(args.windowId) || args.windowId <= 0)) {
+      throw invalidParams("windowId must be a positive integer");
+    }
+    if (args.providerTabId !== undefined && !args.providerTabId.trim()) {
+      throw invalidParams("providerTabId must contain non-whitespace text");
+    }
+    await this.ensureLoaded();
+    const listed = await this.listRawApps();
+    const match = findApp(listed, args.app);
+    if (!isChromiumApp(args.app, match)) {
+      throw new OpenSkyError("attach_browser requires a running supported Chromium browser.");
+    }
+    const pid = args.pid ?? Number(match?.pid);
+    if (!Number.isSafeInteger(pid) || pid <= 0) {
+      throw new OpenSkyError(`No running browser process was found for ${JSON.stringify(args.app)}.`);
+    }
+    const windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured)
+      .filter(isOrdinaryWindow);
+    const windowId = args.windowId ?? (windows.length === 1 ? Number(windows[0]?.window_id) : undefined);
+    if (!Number.isSafeInteger(windowId) || windowId! <= 0 ||
+        !windows.some((window) => Number(window.window_id) === windowId)) {
+      throw new OpenSkyError(
+        `Could not select one exact existing browser window for pid ${pid}. ` +
+          `Pass windowId from the browser's native window inventory; candidates: ${windows.map(window => window.window_id).join(", ") || "none"}.`,
+      );
+    }
+
+    const sessionLabel = safeBrowserSessionLabel(args.sessionName);
+    const session = `${this.session}-browser-existing${sessionLabel ? `-${sessionLabel}` : ""}-${process.pid}-${this.runtimeId}-${++this.browserSequence}`;
+    await this.browserLeases.reserve(session);
+    this.managedBrowserSessions.add(session);
+    try {
+      const preparation = await this.driver.call("browser_prepare", {
+        pid,
+        window_id: windowId,
+        session,
+        strategy: { kind: "existing_profile" },
+      });
+      const prepared = asRecord(preparation.structured) ?? {};
+      if (prepared.status !== "ok" || prepared.prepared !== true) {
+        throw new OpenSkyError("The desktop helper did not confirm existing-profile attachment.");
+      }
+      const boundResult = await this.driver.call("get_browser_state", {
+        pid,
+        window_id: windowId,
+        session,
+      });
+      const bound = asRecord(boundResult.structured) ?? {};
+      if (bound.status !== "ok" || bound.binding_quality !== "exact" || bound.mutation_allowed !== true) {
+        throw new OpenSkyError("The desktop helper could not bind the existing browser window exactly.");
+      }
+      const targetId = optionalString(bound.target_id);
+      const tabs = asArray<Record<string, unknown>>(bound.tabs);
+      const requestedTab = args.providerTabId?.trim();
+      const selected = requestedTab
+        ? tabs.find((tab) => tab.tab_id === requestedTab)
+        : tabs.find((tab) => tab.active === true) ?? (tabs.length === 1 ? tabs[0] : undefined);
+      const tabId = optionalString(selected?.tab_id);
+      if (!targetId || !tabId) {
+        throw new OpenSkyError(requestedTab
+          ? `The exact browser window does not contain provider tab ${JSON.stringify(requestedTab)}.`
+          : "The exact browser binding did not identify one selected tab.");
+      }
+      const url = optionalString(selected?.url);
+      const resolved: ResolvedApp = {
+        handle: newTargetHandle(),
+        openedAt: this.nextOpenedAt(),
+        query: args.app,
+        name: String(match?.name ?? args.app),
+        bundleId: optionalString(match?.bundle_id),
+        launchPath: optionalString(match?.launch_path),
+        pid,
+        windowId,
+        contentScope: "web",
+        browser: { session, targetId, tabId, managed: false },
+        targetRequest: {
+          requested: url ? [url] : [],
+          resourceKind: "url",
+          requestDispatch: "unknown",
+          window: { id: windowId, source: "post_launch_list", correlation: "uncorrelated" },
+        },
+      };
+      this.registerTarget(resolved);
+      this.markResolved(resolved);
+      this.markAction(resolved);
+      await this.persist();
+      return this.get_app_state({
+        app: resolved.handle,
+        disableDiff: true,
+        includeScreenshot: args.includeScreenshot,
+      });
+    } catch (error) {
+      try {
+        await this.endSessionConfirmed(session);
+        await this.browserLeases.release(session);
+        this.managedBrowserSessions.delete(session);
+      } catch (cleanupError) {
+        throw new OpenSkyError(
+          `Existing-browser attachment failed (${error instanceof Error ? error.message : String(error)}), and capability cleanup also failed: ` +
+            `${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        );
+      }
+      throw error;
+    }
+  }
+
   /** Close only an exact driver-owned target created by this instance. */
   async close_target(args: { app: string }): Promise<void> {
     if (!args?.app) throw invalidParams("app is required");
@@ -827,7 +953,7 @@ export class OpenSky implements OpenSkyApi {
   }
 
   private async tryOpenTypedBrowser(
-    args: { app: string; targets: string[]; includeScreenshot?: boolean; sessionName?: string; query?: string },
+    args: { app: string; targets: string[]; includeScreenshot?: boolean; sessionName?: string; browserVisible?: boolean; query?: string },
     match?: Record<string, unknown>,
   ): Promise<AppState | null> {
     if (
@@ -845,12 +971,15 @@ export class OpenSky implements OpenSkyApi {
     await this.browserLeases.reserve(session);
     this.managedBrowserSessions.add(session);
     try {
-      const pid = Number(match?.pid);
       const preparation = await this.driver.call("browser_prepare", {
-        ...(Number.isFinite(pid) && pid > 0 ? { pid } : {}),
         session,
         allow_launch: true,
-        profile: { mode: "isolated_new" },
+        profile: {
+          mode: "isolated_new",
+          ...(args.browserVisible === false
+            ? { headless: true, expose_debugger_endpoint: true }
+            : {}),
+        },
       });
       const preparedState = asRecord(preparation.structured) ?? {};
       if (preparedState.status !== "ok" || preparedState.prepared !== true) {
@@ -862,15 +991,24 @@ export class OpenSky implements OpenSkyApi {
       if (!Number.isFinite(preparedPid) || preparedPid <= 0) {
         throw new OpenSkyError("The desktop helper prepared an isolated browser without a process identity.");
       }
-      const windowsResult = await this.driver.call("list_windows", { pid: preparedPid, session });
-      const windows = windowsFrom(windowsResult.structured);
-      const windowId = pickUsableWindowId(windows) ?? pickOrdinaryWindowId(windows);
-      if (windowId === undefined) {
-        throw new OpenSkyError("The isolated browser launched without an exact ordinary window.");
+      const headless = args.browserVisible === false;
+      const debuggerHttpUrl = optionalString(preparedState.debugger_http_url);
+      if (headless && !debuggerHttpUrl) {
+        throw new OpenSkyError("The desktop helper launched a headless browser without a debugger endpoint.");
+      }
+      let windowId = 0;
+      if (!headless) {
+        const windowsResult = await this.driver.call("list_windows", { pid: preparedPid, session });
+        const windows = windowsFrom(windowsResult.structured);
+        const selectedWindowId = pickUsableWindowId(windows) ?? pickOrdinaryWindowId(windows);
+        if (selectedWindowId === undefined) {
+          throw new OpenSkyError("The isolated browser launched without an exact ordinary window.");
+        }
+        windowId = selectedWindowId;
       }
       const boundResult = await this.driver.call("get_browser_state", {
         pid: preparedPid,
-        window_id: windowId,
+        ...(!headless ? { window_id: windowId } : {}),
         session,
       });
       const bound = asRecord(boundResult.structured) ?? {};
@@ -913,12 +1051,14 @@ export class OpenSky implements OpenSkyApi {
         pid: preparedPid,
         windowId,
         contentScope: "web",
-        browser: { session, targetId, tabId, managed: true },
+        browser: { session, targetId, tabId, managed: true, debuggerHttpUrl },
         targetRequest: {
           requested: [...args.targets],
           resourceKind: "url",
           requestDispatch: "sent",
-          window: { id: windowId, source: "launch_result", correlation: "new_since_request" },
+          window: headless
+            ? { source: "none", correlation: "none" }
+            : { id: windowId, source: "launch_result", correlation: "new_since_request" },
         },
       };
       this.registerTarget(resolved);
@@ -926,7 +1066,7 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       await this.persist();
       return this.get_app_state({
-        app: args.app,
+        app: resolved.handle,
         disableDiff: true,
         includeScreenshot: args.includeScreenshot,
         query: args.query,
@@ -1704,9 +1844,9 @@ export class OpenSky implements OpenSkyApi {
     if (resolved) this.assertTargetUsable(resolved);
     if (looksLikeTargetHandle(app) && !resolved) throw unknownTargetHandle(app);
     const browser = resolved?.browser;
-    if (!resolved || !browser?.managed || !this.managedBrowserSessions.has(browser.session)) {
+    if (!resolved || !browser || !this.managedBrowserSessions.has(browser.session)) {
       throw new OpenSkyError(
-        `${operation} requires an exact driver-owned typed browser binding for ${JSON.stringify(app)}. ` +
+        `${operation} requires an exact active typed browser binding for ${JSON.stringify(app)}. ` +
           "No app was launched and no native keyboard or pointer input was sent.",
       );
     }
@@ -1963,10 +2103,10 @@ export class OpenSky implements OpenSkyApi {
     resolved: ResolvedApp,
     options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number; query?: string },
   ): Promise<WindowSnapshot> {
-    if (!resolved.windowId) {
+    if (!resolved.browser && !resolved.windowId) {
       resolved.windowId = await this.pickWindow(resolved.pid, {});
     }
-    if (!resolved.windowId) {
+    if (!resolved.browser && !resolved.windowId) {
       throw new OpenSkyError(`No window found for ${resolved.name} (pid ${resolved.pid})`);
     }
     if (resolved.browser) {
@@ -2037,7 +2177,7 @@ export class OpenSky implements OpenSkyApi {
     this.memory.targets[resolved.handle] = resolved;
     return {
       pid: resolved.pid,
-      windowId: resolved.windowId,
+      windowId: resolved.windowId!,
       snapshotId,
       tree,
       elements,
@@ -2047,6 +2187,7 @@ export class OpenSky implements OpenSkyApi {
       degraded: structured.degraded === true,
       degradedReason: optionalString(structured.degraded_reason),
       truncated: structured.elements_complete === false || totalElementCount > returnedElementCount,
+      rawElementCount: rawElements.length,
       totalElementCount,
       returnedElementCount,
       documentChanged,
@@ -2138,6 +2279,7 @@ export class OpenSky implements OpenSkyApi {
       screenshotPath: screenshot ? screenshotPath : null,
       screenshot,
       truncated: snapshot.complete === false || rendered.truncated,
+      rawElementCount: rawElements.length,
       totalElementCount: totalNodes,
       returnedElementCount: selectedNodes,
       documentChanged,
@@ -2222,7 +2364,9 @@ export class OpenSky implements OpenSkyApi {
     const hasOmittedElements = snapshot.totalElementCount !== undefined &&
       snapshot.returnedElementCount !== undefined &&
       snapshot.totalElementCount > snapshot.returnedElementCount;
-    const needsProjection = this.target !== "linux" || hasOmittedElements;
+    const hasUnrepresentedElements = snapshot.returnedElementCount !== undefined &&
+      snapshot.returnedElementCount > (snapshot.rawElementCount ?? snapshot.elements.length);
+    const needsProjection = hasOmittedElements || (this.target !== "linux" && hasUnrepresentedElements);
     if (snapshot.truncated && needsProjection && !snapshot.degraded && !resolved.browser) {
       const full = snapshot;
       const projectionDepth = resolved.contentScope === "web" ? 5 : 3;
@@ -3477,7 +3621,7 @@ export function compactTreeActionHints(tree: string, elements: SnapshotElement[]
     .join("\n");
 }
 
-/** Reuse public element indices across snapshots even when the helper renumbers its walk. */
+/** Reuse only unambiguous public element indices when the helper renumbers its walk. */
 export function stabilizeElementIndices(
   previous: SnapshotElement[],
   current: SnapshotElement[],
@@ -3490,27 +3634,22 @@ export function stabilizeElementIndices(
       element_index: compactInitial ? index : element.element_index,
     }));
   }
+  const previousIdentityCounts = countElementIdentities(previous);
+  const currentIdentityCounts = countElementIdentities(current);
   const unused = new Set(previous.map((element) => element.element_index));
   let nextIndex = Math.max(-1, ...previous.map((element) => element.element_index)) + 1;
   return current.map((element) => {
     const candidates = previous.filter((prior) => unused.has(prior.element_index) &&
       // Do not transfer a read-only identity onto an actionable row with the same label.
       (prior.readOnly === true) === (element.readOnly === true));
-    const prior =
-      (element.identifier
-        ? candidates.find(
-            (candidate) => candidate.role === element.role && candidate.identifier === element.identifier,
-          )
-        : undefined) ??
-      (element.label
-        ? candidates.find((candidate) => elementIdentity(candidate) === elementIdentity(element))
-        : undefined) ??
-      candidates.find(
-        (candidate) =>
-          candidate.role === element.role &&
-          candidate.driver_index === element.driver_index,
-      ) ??
-      candidates.find((candidate) => elementIdentity(candidate) === elementIdentity(element));
+    const identity = elementIdentity(element);
+    // A role/label pair such as "Expand" is not object identity. Reusing one
+    // duplicate's public index after a sibling is inserted or removed silently
+    // retargets every later duplicate. Preserve an index only when the semantic
+    // identity is unique in both snapshots; otherwise issue a fresh one.
+    const prior = previousIdentityCounts.get(identity) === 1 && currentIdentityCounts.get(identity) === 1
+      ? candidates.find((candidate) => elementIdentity(candidate) === identity)
+      : undefined;
     if (prior) unused.delete(prior.element_index);
     return {
       ...element,
@@ -3518,6 +3657,15 @@ export function stabilizeElementIndices(
       element_index: prior?.element_index ?? nextIndex++,
     };
   });
+}
+
+function countElementIdentities(elements: SnapshotElement[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const element of elements) {
+    const identity = elementIdentity(element);
+    counts.set(identity, (counts.get(identity) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function elementIdentity(element: SnapshotElement): string {

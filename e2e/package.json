@@ -1,16 +1,19 @@
 {
-  "name": "opensky-sdk-e2e-drafts",
+  "name": "opensky-sdk-e2e",
   "private": true,
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "list": "vitest list --config vitest.config.ts",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "list:playwright": "playwright test --config playwright.config.ts --list",
+    "test:playwright": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
     "opensky-cua": "file:.."
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/node": "^22.13.10",
     "typescript": "^5.8.2",
     "vitest": "4.1.11",

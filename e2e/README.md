@@ -1,4 +1,4 @@
-# OpenSky SDK E2E drafts
+# OpenSky SDK E2E tests
 
 **Current validation:** [Broader macOS checks](../docs/macos-broad-validation-2026-09-14.md) passed all nine selected standalone Chrome cases and seven of nine native checks; two native openings failed before input. Plaintext native paste is supported on the installed candidate. Historical hosted Linux results and remaining prerequisites are recorded below.
 The original experience suite had 19 implemented test bodies and 14 explicitly pending scenarios; additional platform cases have since been added. A passing typecheck or test listing is not
@@ -29,15 +29,20 @@ package exports; they do not import `src/` or inject a `DriverClient`.
 ## Tested boundary
 
 The path is **public SDK → real installed OpenSky Driver → real browser/native app →
-public AX state, the app's HTTP backend, or a saved document**. This is SDK E2E
+public AX state, rendered browser state, or a saved document**. This is SDK E2E
 coverage, not a test of a separate UI built on the SDK, and not model evaluation.
 
 The requested [testing skill](../../../../../../Projects/saffron-health/halo-v2/.agents/skills/testing/SKILL.md)
 calls for real consumer workflows, no mocks, distinct assertion ownership and
-fixture-managed isolation. These are library tests using
-[Vitest fixtures](https://vitest.dev/guide/test-context.html#test-extend).
-Playwright would be appropriate for testing an SDK consumer's UI; driving the
-desktop through Playwright here would bypass the SDK boundary under test.
+fixture-managed isolation. The broad suite uses
+[Vitest fixtures](https://vitest.dev/guide/test-context.html#test-extend). A small
+[Playwright Test](https://playwright.dev/docs/test-fixtures) smoke suite supplies
+the same public `cua` fixture used by agents. CUA creates one driver-owned
+headless Chromium tab and exposes its loopback debugger endpoint to the trusted
+test host. Playwright connects to that exact tab, loads inline HTML owned by each
+spec, and asserts its rendered state; only CUA performs the action under test.
+There is no local server, backend API, test-only action hook, or second browser
+client.
 
 The test driver should use the same public operations and observations available
 to human, agent, and programmatic consumers. Practical configuration (an isolated
@@ -79,6 +84,12 @@ Codex's in-app browser and is not part of this acceptance suite.
   range controls, save sheets and transport failures needing real prerequisites.
 - [SDK fixtures](fixtures/sdk.ts), [test page](fixtures/site.ts) and
   [serial configuration](vitest.config.ts).
+- [Playwright smoke workflows](playwright/basic.spec.ts),
+  [Playwright fixtures](playwright/fixtures.ts), and
+  [serial configuration](playwright.config.ts): each spec owns its inline HTML;
+  the reusable fixture contains only the agent-equivalent `cua` API. Playwright
+  performs setup and rendered-state assertions in the exact headless tab around
+  click, form-save, and delayed-result actions performed through CUA.
 
 ## Prepare and inspect without GUI execution
 
@@ -91,6 +102,7 @@ cd e2e
 npm ci --ignore-scripts
 npm run typecheck
 npm run list
+npm run list:playwright
 ```
 
 The E2E package is separate from the existing Node test suite; this draft does
@@ -110,6 +122,20 @@ OPENSKY_REAL_DRIVER=1 \
 OPENSKY_DRIVER_BINARY=/absolute/path/to/opensky-driver \
 npm test -- specs/browser-success.test.ts
 ```
+
+Run the Playwright Test smoke cases with the same real-driver prerequisites.
+CUA launches and owns the headless Chrome process; Playwright attaches only for
+setup and assertion:
+
+```sh
+OPENSKY_REAL_DRIVER=1 \
+OPENSKY_DRIVER_BINARY=/absolute/path/to/opensky-driver \
+npm run test:playwright
+```
+
+On macOS, this suite passed 3/3 cases against the local OpenSky Driver candidate:
+button text mutation, form text save, and delayed browser-local output. This is
+same-tab browser-local evidence; it does not establish cross-platform coverage.
 
 Run native cases separately on macOS with TextEdit installed. Select Edge with
 `OPENSKY_E2E_BROWSER=edge`. Use the same browser cases on separately provisioned
