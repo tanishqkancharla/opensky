@@ -22,7 +22,7 @@ var app = await cua.getApp("App Name");
 // The user supplied a URL and browser.
 var tab = await cua.createBrowserTab("chrome", "https://example.com", {sessionName: "Task"});
 
-// You need to discover available apps, browsers, or facade-bound tabs.
+// You need to discover available apps, browsers, or live provider tabs.
 await cua.getState();
 ```
 
@@ -30,12 +30,12 @@ Use the user's specified browser (`"chrome"` or `"edge"`). Without a browser
 preference, `await cua.getBrowser({url})` selects a provider but does not open a
 tab; then use `cua.createBrowserTab(browser.browserId, url)`.
 `cua.getTab(id, {browser: browserId})` selects a tab from the observed inventory.
-That inventory contains only tabs explicitly created or attached through this
-facade. Create an owned background tab with
-`cua.createBrowserTab(browserId, url, {visible: false})`. To operate an existing
-user Chromium tab, explicitly bind its exact native window and optional provider
-tab ID with `cua.attachBrowserTab(browserId, {windowId, providerTabId})`; closing
-that bound object is refused because OpenSky does not own the user's tab.
+`cua.listTabs()` and `getState()` refresh the live Chrome/Edge provider inventory;
+the returned opaque ID can be passed to `cua.getTab`. Create an owned background
+tab with `cua.createBrowserTab(browserId, url, {visible: false})`. Discovered user
+tabs remain borrowed: `tab.close()` is refused and SDK shutdown detaches without
+closing them. Use `cua.attachBrowserTab(browserId, {windowId, providerTabId})`
+only when the caller already has exact native/provider identity to bind directly.
 
 For a **CLI host**, keep `opensky serve` running in a separate process, then use:
 

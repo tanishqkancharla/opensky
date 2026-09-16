@@ -6,15 +6,20 @@ import { pathToFileURL } from "node:url";
 import { describe, it } from "node:test";
 
 import { createCua, CuaTargetClosedError, CuaUnsupportedError } from "../src/cua.js";
-import type { AppState, OpenSky } from "../src/types.js";
+import type { AppState, BrowserTabInventoryEntry, OpenSky } from "../src/types.js";
 
 class FakeOpenSky {
   calls: Array<{ method: string; args: unknown }> = [];
   private sequence = 0;
   screenshotUrl = "";
   apps = [{ id: "com.example", displayName: "Example" }];
+  discoveredTabs: BrowserTabInventoryEntry[] = [];
 
   async list_apps() { this.calls.push({ method: "list_apps", args: {} }); return this.apps; }
+  async list_browser_tabs(args: Record<string, unknown>) {
+    this.calls.push({ method: "list_browser_tabs", args });
+    return this.discoveredTabs;
+  }
   async get_app_state(args: Record<string, unknown>): Promise<AppState> {
     this.calls.push({ method: "get_app_state", args });
     const handle = String(args.app).startsWith("tgt_") ? String(args.app) : "tgt_app";
@@ -340,22 +345,69 @@ describe("native-style cua facade", () => {
     await assert.rejects(() => cua.getBrowser({ id: "chrome" }), /not installed or available/);
   });
 
-  it("labels populated and empty state inventories as facade-bound only", async () => {
+  it("labels populated and empty state inventories as provider-discovered", async () => {
     const fake = new FakeOpenSky();
     const emitted: unknown[] = [];
     const cua = createCua(fake as unknown as OpenSky, { emit: (value) => emitted.push(value) });
     const before = await cua.getState();
-    assert.equal(before.tabInventoryScope, "facade-bound-only");
+    assert.equal(before.tabInventoryScope, "provider-discovered");
     assert.deepEqual(before.browsers, []);
-    assert.equal((emitted.at(-1) as typeof before).tabInventoryScope, "facade-bound-only");
+    assert.equal((emitted.at(-1) as typeof before).tabInventoryScope, "provider-discovered");
     const tab = await cua.createBrowserTab("chrome", "https://example.com/");
     const during = await cua.getState();
-    assert.equal(during.tabInventoryScope, "facade-bound-only");
+    assert.equal(during.tabInventoryScope, "provider-discovered");
     assert.equal(during.browsers[0]?.tabs[0]?.id, tab.id);
     await tab.close();
     const after = await cua.getState();
-    assert.equal(after.tabInventoryScope, "facade-bound-only");
+    assert.equal(after.tabInventoryScope, "provider-discovered");
     assert.deepEqual(after.browsers, []);
+  });
+
+  it("discovers existing provider tabs through listTabs and keeps them actionable but user-owned", async () => {
+    const fake = new FakeOpenSky();
+    fake.apps = [{ id: "com.google.Chrome", displayName: "Google Chrome", isRunning: true }];
+    fake.discoveredTabs = [
+      {
+        targetHandle: "tgt_existing_one",
+        providerTabId: "provider-one",
+        pid: 4242,
+        windowId: 91,
+        title: "One",
+        url: "https://one.example/",
+        active: false,
+        owned: false,
+      },
+      {
+        targetHandle: "tgt_existing_two",
+        providerTabId: "provider-two",
+        pid: 4242,
+        windowId: 91,
+        title: "Two",
+        url: "https://two.example/",
+        active: true,
+        owned: false,
+      },
+    ];
+    const cua = createCua(fake as unknown as OpenSky);
+
+    const first = await cua.listTabs({ browser: "chrome", emit: false });
+    assert.deepEqual(first.map(tab => ({ id: tab.id, providerTabId: tab.providerTabId, active: tab.active, owned: tab.owned })), [
+      { id: "tgt_existing_one", providerTabId: "provider-one", active: false, owned: false },
+      { id: "tgt_existing_two", providerTabId: "provider-two", active: true, owned: false },
+    ]);
+    const browser = await cua.getBrowser({ id: "chrome" });
+    assert.equal((await browser.tabs.selected())?.id, "tgt_existing_two");
+    const tab = await cua.getTab("tgt_existing_two", { browser: "chrome", emit: false });
+    await tab.goto("https://next.example/");
+    assert.equal((fake.calls.find(call => call.method === "navigate")?.args as { app: string }).app, "tgt_existing_two");
+    await assert.rejects(() => tab.close(), /belongs to the user/);
+
+    fake.discoveredTabs = [{ ...fake.discoveredTabs[1]!, title: "Two updated", active: true }];
+    const refreshed = await cua.listTabs({ browser: "chrome", emit: false });
+    assert.deepEqual(refreshed.map(item => [item.id, item.title]), [["tgt_existing_two", "Two updated"]]);
+
+    fake.apps = [{ id: "com.google.Chrome", displayName: "Google Chrome", isRunning: false }];
+    assert.deepEqual(await cua.listTabs({ browser: "chrome", emit: false }), []);
   });
 
   it("matches the current bound browser.tabs lifecycle and session naming ergonomics", async () => {

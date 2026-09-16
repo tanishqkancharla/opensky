@@ -56,7 +56,9 @@ Given two real standalone browser profiles with tabs at the same URL/title but
 different fixture content, call `cua.getState`/`listTabs`, choose the target using
 its actual provider/profile/tab identity, then `cua.getTab` and `getAXState`.
 Verify the requested profile's content. Prerequisite: real profile fixtures and
-public existing-tab enumeration/binding, which the owned-only facade lacks today.
+an independently controlled disposable desktop. Public existing-tab
+enumeration/binding is implemented, but this two-profile case has not yet been
+run against a real provider.
 The setup must establish which real profile is intended before SDK discovery;
 never infer identity from duplicate title text.
 

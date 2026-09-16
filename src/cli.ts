@@ -191,6 +191,7 @@ async function runDoctor(flags: Flags): Promise<number> {
     binaryPath: flags.driver,
     socket: flags.socket ?? process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET,
     autoStart: true,
+    allowExistingBrowserProfiles: true,
   });
   let helperError: string | undefined;
   try {

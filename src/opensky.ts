@@ -20,6 +20,7 @@ import { SessionStore, sessionFile, type StoredSnapshot } from "./session-store.
 import type {
   App,
   AppState,
+  BrowserTabInventoryEntry,
   Direction,
   DriverClient,
   MouseButton,
@@ -75,7 +76,7 @@ const SECONDARY_ACTIONS: Record<string, { kind: "click" | "front" | "key"; actio
 
 // The interface makes this exhaustive: adding a public operation requires a gate.
 const GUARDED_OPERATIONS = {
-  list_apps: true, get_app_state: true, open_target: true, attach_browser: true, navigate: true,
+  list_apps: true, list_browser_tabs: true, get_app_state: true, open_target: true, attach_browser: true, navigate: true,
   close_target: true, bring_to_front: true, click: true, drag: true, paste: true,
   perform_secondary_action: true, press_key: true, scroll: true, select_text: true,
   set_value: true, type_text: true, invoke: true,
@@ -134,9 +135,10 @@ export class OpenSky implements OpenSkyApi {
     this.target = options.target ?? detectTarget();
     this.runtimeId = randomUUID();
     this.session = options.session ?? `opensky-${process.pid}-${this.runtimeId.slice(0, 8)}`;
+    const driverOptions = { allowExistingBrowserProfiles: true, ...options.driverOptions, session: this.session };
     this.ownedMcpDriver = !options.driver && options.transport === "mcp"
-      ? new StdioMcpDriverClient({ ...options.driverOptions, session: this.session }) : undefined;
-    this.rawDriver = options.driver ?? this.ownedMcpDriver ?? new CuaDriverClient({ ...options.driverOptions, session: this.session });
+      ? new StdioMcpDriverClient(driverOptions) : undefined;
+    this.rawDriver = options.driver ?? this.ownedMcpDriver ?? new CuaDriverClient(driverOptions);
     this.lifecycle = new AsyncLifecycle("OpenSky", () => this.finalizeClose(), options.drainTimeoutMs ?? 30_000);
     // Each OpenSky owns a distinct base label even when the transport is shared.
     // The exposed driver uses the same admission gate; only finalization bypasses it.
@@ -199,6 +201,158 @@ export class OpenSky implements OpenSkyApi {
   async list_apps(): Promise<App[]> {
     const result = await this.driver.call("list_apps", {});
     return mapApps(result.structured);
+  }
+
+  /** Discover actionable tabs in each exact window of a running user Chromium app. */
+  async list_browser_tabs(args: { app: string }): Promise<BrowserTabInventoryEntry[]> {
+    if (!args?.app?.trim()) throw invalidParams("app is required");
+    await this.ensureLoaded();
+    const listed = await this.listRawApps();
+    const match = findApp(listed, args.app);
+    if (!isChromiumApp(args.app, match)) {
+      throw new OpenSkyError("list_browser_tabs requires a running supported Chromium browser.");
+    }
+    const inventory: BrowserTabInventoryEntry[] = [];
+    const processes = listed.filter((candidate) => sameAppIdentity(candidate, match));
+    const seenPids = new Set<number>();
+
+    for (const processMatch of processes) {
+      const pid = Number(processMatch.pid);
+      if (!Number.isSafeInteger(pid) || pid <= 0 || seenPids.has(pid)) continue;
+      seenPids.add(pid);
+      // Isolated browser processes are already represented by their owned CUA
+      // records. Re-attaching to them as if they were user tabs would duplicate
+      // identity and weaken close ownership.
+      if (Object.values(this.memory.targets).some((target) => target.pid === pid && target.browser?.managed === true)) continue;
+      const windows = windowsFrom((await this.driver.call("list_windows", { pid })).structured)
+        .filter(isOrdinaryWindow);
+      const mainWindows = windows.filter((window) => window.is_main === true || window.main === true);
+      const selectedWindowId = mainWindows.length === 1
+        ? Number(mainWindows[0]!.window_id)
+        : pickAppWindowId(windows, pid);
+
+      for (const window of windows) {
+        const windowId = Number(window.window_id);
+        if (!Number.isSafeInteger(windowId) || windowId <= 0) continue;
+        let existing = Object.values(this.memory.targets).find((target) =>
+          target.pid === pid && target.windowId === windowId && target.browser?.managed === false &&
+          this.managedBrowserSessions.has(target.browser.session)
+        );
+        let session = existing?.browser?.session;
+        let createdSession = false;
+        if (!session) {
+          session = `${this.session}-browser-existing-inventory-${process.pid}-${this.runtimeId}-${++this.browserSequence}`;
+          await this.browserLeases.reserve(session);
+          this.managedBrowserSessions.add(session);
+          createdSession = true;
+        }
+        try {
+          if (createdSession) {
+            const preparation = await this.driver.call("browser_prepare", {
+              pid,
+              window_id: windowId,
+              session,
+              strategy: { kind: "existing_profile" },
+            });
+            const prepared = asRecord(preparation.structured) ?? {};
+            if (prepared.status !== "ok" || prepared.prepared !== true) {
+              throw new OpenSkyError("The desktop helper did not confirm existing-profile discovery.");
+            }
+          }
+          const boundResult = await this.driver.call("get_browser_state", {
+            pid,
+            window_id: windowId,
+            session,
+          });
+          const bound = asRecord(boundResult.structured) ?? {};
+          if (bound.status !== "ok" || bound.binding_quality !== "exact" || bound.mutation_allowed !== true) {
+            throw new OpenSkyError(`The desktop helper could not bind browser window ${windowId} exactly.`);
+          }
+          const targetId = optionalString(bound.target_id);
+          if (!targetId) throw new OpenSkyError("Existing-browser discovery returned no exact target identity.");
+          const tabs = asArray<Record<string, unknown>>(bound.tabs);
+          const liveTabIds = new Set<string>();
+          for (const tab of tabs) {
+            const tabId = optionalString(tab.tab_id);
+            if (!tabId) continue;
+            liveTabIds.add(tabId);
+            const title = optionalString(tab.title);
+            const url = optionalString(tab.url);
+            const providerActive = typeof tab.active === "boolean" ? tab.active : null;
+            const active = providerActive === true && selectedWindowId !== undefined
+              ? windowId === selectedWindowId
+              : providerActive;
+            existing = Object.values(this.memory.targets).find((target) =>
+              target.browser?.session === session && target.browser.tabId === tabId
+            );
+            const resolved = existing ?? {
+              handle: newTargetHandle(),
+              openedAt: this.nextOpenedAt(),
+              query: args.app,
+              name: String(processMatch.name ?? args.app),
+              bundleId: optionalString(processMatch.bundle_id),
+              launchPath: optionalString(processMatch.launch_path),
+              pid,
+              windowId,
+              contentScope: "web" as const,
+              browser: { session, targetId, tabId, managed: false, active },
+              targetRequest: {
+                requested: url ? [url] : [],
+                resourceKind: "url" as const,
+                requestDispatch: "unknown" as const,
+                window: { id: windowId, source: "post_launch_list" as const, correlation: "uncorrelated" as const },
+              },
+            };
+            resolved.pid = pid;
+            resolved.windowId = windowId;
+            resolved.browser = { ...resolved.browser!, session, targetId, tabId, managed: false, title, url, active };
+            resolved.targetRequest = {
+              requested: url ? [url] : [],
+              resourceKind: "url",
+              requestDispatch: "unknown",
+              window: { id: windowId, source: "post_launch_list", correlation: "uncorrelated" },
+            };
+            if (!existing) {
+              this.registerTarget(resolved);
+              this.markResolved(resolved);
+            } else {
+              this.memory.targets[resolved.handle] = resolved;
+            }
+            inventory.push({
+              targetHandle: resolved.handle,
+              providerTabId: tabId,
+              pid,
+              windowId,
+              title,
+              url,
+              active,
+              owned: false,
+            });
+          }
+          for (const target of Object.values(this.memory.targets)) {
+            if (target.browser?.session === session && !liveTabIds.has(target.browser.tabId)) {
+              this.removeTarget(target.handle);
+            }
+          }
+        } catch (error) {
+          if (createdSession) {
+            try {
+              await this.endSessionConfirmed(session);
+              await this.browserLeases.release(session);
+              this.managedBrowserSessions.delete(session);
+            } catch (cleanupError) {
+              throw new OpenSkyError(
+                `Existing-browser discovery failed (${error instanceof Error ? error.message : String(error)}), and capability cleanup also failed: ` +
+                  `${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+              );
+            }
+          }
+          throw error;
+        }
+      }
+    }
+    await this.persist();
+    return inventory;
   }
 
   async get_app_state(args: {
@@ -2919,6 +3073,15 @@ function findApp(apps: Record<string, unknown>[], query: string): Record<string,
     apps.find((app) => optionalString(app.launch_path)?.toLowerCase().endsWith(q)) ||
     apps.find((app) => optionalString(app.name)?.toLowerCase().includes(q))
   );
+}
+
+function sameAppIdentity(candidate: Record<string, unknown>, reference?: Record<string, unknown>): boolean {
+  if (!reference) return false;
+  for (const key of ["bundle_id", "launch_path", "name"] as const) {
+    const expected = optionalString(reference[key])?.trim().toLowerCase();
+    if (expected) return optionalString(candidate[key])?.trim().toLowerCase() === expected;
+  }
+  return false;
 }
 
 function launchArgsFor(app: string, match?: Record<string, unknown>): Record<string, unknown> {

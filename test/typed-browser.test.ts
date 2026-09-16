@@ -40,6 +40,11 @@ class TypedBrowserDriver implements DriverClient {
   snapshotEnvelope?: Record<string, unknown>;
   snapshotResult?: (captured: DriverResult) => DriverResult | Promise<DriverResult>;
   clickResult?: () => DriverResult | Promise<DriverResult>;
+  boundTabs: Array<Record<string, unknown>> = [
+    { tab_id: TAB_ID, title: "New Tab", url: "about:blank", active: true },
+  ];
+  browserWindows: Array<Record<string, unknown>> = [ordinaryWindow()];
+  boundTabsByWindow = new Map<number, Array<Record<string, unknown>>>();
 
   replaceDocument(): void {
     this.documentId = `doc-test-${Number(this.documentId.split("-").at(-1)) + 1}`;
@@ -82,7 +87,7 @@ class TypedBrowserDriver implements DriverClient {
           side_effects: { launched_browser: true, created_profile: true },
         });
       case "list_windows":
-        return result({ windows: [ordinaryWindow()] });
+        return result({ windows: this.browserWindows });
       case "get_browser_state":
         if (effectiveArgs.target_id !== undefined) {
           if (effectiveArgs.context_ref !== undefined && this.contextResult) return this.contextResult(effectiveArgs);
@@ -107,7 +112,7 @@ class TypedBrowserDriver implements DriverClient {
           binding_route: "native_cdp_window",
           mutation_allowed: true,
           native_title: "Example Search",
-          tabs: [{ tab_id: TAB_ID, title: "New Tab", url: "about:blank", active: true }],
+          tabs: this.boundTabsByWindow.get(Number(effectiveArgs.window_id)) ?? this.boundTabs,
         });
       case "browser_navigate":
         if (typeof effectiveArgs.url === "string") this.currentUrl = effectiveArgs.url;
@@ -115,8 +120,8 @@ class TypedBrowserDriver implements DriverClient {
         else if (effectiveArgs.action === "forward") this.currentUrl = "https://example.com/forward";
         return result({
           status: "ok",
-          target_id: TARGET_ID,
-          tab_id: TAB_ID,
+          target_id: effectiveArgs.target_id,
+          tab_id: effectiveArgs.tab_id,
           url: typeof effectiveArgs.url === "string" ? this.currentUrl : null,
           action: typeof effectiveArgs.url === "string" ? "url" : effectiveArgs.action,
           history_destination_attested: effectiveArgs.action === "back" || effectiveArgs.action === "forward",
@@ -932,6 +937,69 @@ describe("OpenSky typed-browser contract", () => {
 
     await opensky.close();
     assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === browserSession).length, 1);
+  });
+
+  it("discovers every existing tab, preserves live handles, and removes disappeared tabs", async () => {
+    const { opensky, driver } = await harness();
+    driver.boundTabs = [
+      { tab_id: "provider-one", title: "One", url: "https://one.example/", active: false },
+      { tab_id: "provider-two", title: "Two", url: "https://two.example/", active: true },
+    ];
+
+    const first = await opensky.list_browser_tabs({ app: "Google Chrome" });
+    assert.deepEqual(first.map(tab => [tab.providerTabId, tab.title, tab.active, tab.owned]), [
+      ["provider-one", "One", false, false],
+      ["provider-two", "Two", true, false],
+    ]);
+    const stable = first[1]!.targetHandle;
+    const prepare = driver.calls.find((call) => call.tool === "browser_prepare");
+    const browserSession = String(prepare?.args.session);
+    assert.match(browserSession, /-browser-existing-inventory-/);
+
+    driver.boundTabs = [
+      { tab_id: "provider-two", title: "Two updated", url: "https://two.example/next", active: true },
+      { tab_id: "provider-three", title: "Three", url: "https://three.example/", active: false },
+    ];
+    const second = await opensky.list_browser_tabs({ app: "Google Chrome" });
+    assert.equal(second.find(tab => tab.providerTabId === "provider-two")?.targetHandle, stable);
+    assert.equal(second.find(tab => tab.providerTabId === "provider-two")?.title, "Two updated");
+    assert.equal(driver.calls.filter((call) => call.tool === "browser_prepare").length, 1);
+    await assert.rejects(() => opensky.get_app_state({ app: first[0]!.targetHandle }), /unknown or stale/i);
+
+    await opensky.navigate({ app: stable, url: URL, includeScreenshot: false });
+    assert.equal(driver.calls.findLast((call) => call.tool === "browser_navigate")?.args.tab_id, "provider-two");
+    await assert.rejects(() => opensky.close_target({ app: stable }), /No driver-owned exact target/);
+
+    await opensky.close();
+    assert.equal(driver.calls.filter((call) => call.tool === "end_session" && call.args.session === browserSession).length, 1);
+  });
+
+  it("discovers tabs across every ordinary window in the running browser process", async () => {
+    const { opensky, driver } = await harness();
+    const secondWindowId = WINDOW_ID + 1;
+    driver.browserWindows = [
+      ordinaryWindow(),
+      { ...ordinaryWindow(), window_id: secondWindowId, title: "Second Chrome window", is_main: false },
+    ];
+    driver.boundTabsByWindow.set(WINDOW_ID, [
+      { tab_id: "window-one", title: "One", url: "https://one.example/", active: true },
+    ]);
+    driver.boundTabsByWindow.set(secondWindowId, [
+      { tab_id: "window-two", title: "Two", url: "https://two.example/", active: true },
+    ]);
+
+    const inventory = await opensky.list_browser_tabs({ app: "Google Chrome" });
+    assert.deepEqual(inventory.map(tab => [tab.windowId, tab.providerTabId, tab.active]), [
+      [WINDOW_ID, "window-one", true],
+      [secondWindowId, "window-two", false],
+    ]);
+    assert.equal(driver.calls.filter((call) => call.tool === "browser_prepare").length, 2);
+    assert.equal(new Set(inventory.map(tab => tab.targetHandle)).size, 2);
+
+    await opensky.close();
+    assert.equal(driver.calls.filter((call) =>
+      call.tool === "end_session" && String(call.args.session).includes("browser-existing-inventory")
+    ).length, 2);
   });
 
   it("keeps later controls addressable when a preceding destination URL is very long", async () => {

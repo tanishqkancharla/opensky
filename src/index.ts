@@ -18,6 +18,7 @@ export { OpenSkyError } from "./errors.js";
 export type {
   App,
   AppState,
+  BrowserTabInventoryEntry,
   Direction,
   MouseButton,
   NavigationAction,

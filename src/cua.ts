@@ -54,6 +54,8 @@ export interface BrowserTabInfo {
   providerTabId?: string;
   title?: string;
   url?: string;
+  active?: boolean | null;
+  owned: boolean;
 }
 
 export interface BrowserInfo {
@@ -68,8 +70,8 @@ export interface BrowserInfo {
 export interface TabInfo extends BrowserTabInfo { browserId: string }
 export interface BrowserState extends BrowserInfo { tabs: BrowserTabInfo[] }
 export interface CuaState {
-  /** Includes only tabs explicitly created or attached through this facade. */
-  tabInventoryScope: "facade-bound-only";
+  /** Includes current provider tabs plus tabs owned by this facade. */
+  tabInventoryScope: "provider-discovered";
   apps: AppInfo[];
   browsers: BrowserState[];
 }
@@ -163,6 +165,7 @@ type BoundTabRecord = {
   profileName?: string;
   title?: string;
   url?: string;
+  active?: boolean | null;
   owned: boolean;
   closed: boolean;
 };
@@ -187,8 +190,9 @@ export class CuaFacade {
 
   async getState(options: ObservationOptions = {}): Promise<CuaState> {
     const apps = await this.listApps({ emit: false });
+    await this.refreshDiscoveredTabs(undefined, apps);
     const state: CuaState = {
-      tabInventoryScope: "facade-bound-only",
+      tabInventoryScope: "provider-discovered",
       apps,
       browsers: this.browserStates(availableBrowserIds(apps)),
     };
@@ -218,6 +222,7 @@ export class CuaFacade {
 
   async listTabs(options: BrowserOptions = {}): Promise<TabInfo[]> {
     const browserId = options.browser ? normalizeBrowserId(options.browser) : undefined;
+    await this.refreshDiscoveredTabs(browserId);
     const tabs = [...this.tabs.values()]
       .filter((tab) => !tab.closed && (!browserId || tab.browserId === browserId))
       .map(tabInfo);
@@ -237,8 +242,9 @@ export class CuaFacade {
       throw new CuaUnsupportedError("getBrowser", `browser ${JSON.stringify(browserId)} is not installed or available`);
     }
     if (!browserId && normalizedUrl) {
-      const exactOwned = [...this.tabs.values()].find((tab) => !tab.closed && tab.url === normalizedUrl);
-      browserId = exactOwned?.browserId ?? preferredBrowserId(available);
+      await this.refreshDiscoveredTabs(undefined, apps);
+      const exactTab = [...this.tabs.values()].find((tab) => !tab.closed && tab.url === normalizedUrl);
+      browserId = exactTab?.browserId ?? preferredBrowserId(available);
     }
     if (!browserId) {
       browserId = preferredBrowserId(available);
@@ -288,6 +294,7 @@ export class CuaFacade {
       url: state.target.tab.url ?? state.target.document.url ?? normalizedUrl,
       providerTabId: state.browserConnection?.providerTabId,
       debuggerHttpUrl: state.browserConnection?.debuggerHttpUrl,
+      active: true,
       owned: true,
       closed: false,
     };
@@ -325,6 +332,9 @@ export class CuaFacade {
       title: state.target.tab.title ?? state.target.document.title,
       url: state.target.tab.url ?? state.target.document.url,
       providerTabId: state.browserConnection?.providerTabId,
+      // Explicit attachment proves exact identity, not that this tab is the
+      // currently selected tab in its native window.
+      active: null,
       owned: false,
       closed: false,
     };
@@ -334,7 +344,11 @@ export class CuaFacade {
   }
 
   async getTab(id: string, options: BrowserOptions = {}): Promise<Tab> {
-    const record = this.tabs.get(id);
+    let record = this.tabs.get(id);
+    if (!record) {
+      await this.refreshDiscoveredTabs(options.browser ? normalizeBrowserId(options.browser) : undefined);
+      record = this.tabs.get(id);
+    }
     if (!record) throw new CuaTargetNotFoundError(id);
     if (record.closed) throw new CuaTargetClosedError(id);
     if (options.browser && normalizeBrowserId(options.browser) !== record.browserId) {
@@ -418,9 +432,12 @@ export class CuaFacade {
     this.browserSessionNames.set(browserId, normalizeBrowserSessionName(name));
   }
 
-  selectedTab(browserId: string): Tab | undefined {
+  async selectedTab(browserId: string): Promise<Tab | undefined> {
+    await this.refreshDiscoveredTabs(browserId);
     const live = [...this.tabs.values()].filter((record) => !record.closed && record.browserId === browserId);
-    return live.length === 1 ? new BoundTab(this, live[0]!) : undefined;
+    const selected = live.filter((record) => record.active === true);
+    const record = selected.length === 1 ? selected[0] : live.length === 1 ? live[0] : undefined;
+    return record ? new BoundTab(this, record) : undefined;
   }
 
   async mark(kind: "deliverable" | "handoff", record: BoundTabRecord): Promise<void> {
@@ -454,10 +471,57 @@ export class CuaFacade {
         profileName: this.browserSessionNames.get(id) ?? (tabs.length === 1 ? tabs[0]?.profileName : undefined),
         tabs: tabs.map(({ browserId: _browserId, ...tab }) => {
           const info = tabInfo({ ...tab, browserId: id });
-          return { id: info.id, providerTabId: info.providerTabId, title: info.title, url: info.url };
+          return {
+            id: info.id,
+            providerTabId: info.providerTabId,
+            title: info.title,
+            url: info.url,
+            active: info.active,
+            owned: info.owned,
+          };
         }),
       };
     });
+  }
+
+  private async refreshDiscoveredTabs(browserId?: string, knownApps?: AppInfo[]): Promise<void> {
+    const apps = knownApps ?? await this.listApps({ emit: false });
+    const ids = browserId ? [browserId] : [...availableBrowserIds(apps)];
+    for (const id of ids) {
+      const descriptor = BROWSERS[id as keyof typeof BROWSERS];
+      if (!descriptor) {
+        if (browserId) throw new CuaUnsupportedError("listTabs", `browser ${JSON.stringify(id)} is not supported`);
+        continue;
+      }
+      const app = apps.find((candidate) => browserIdForApp(candidate) === id);
+      if (!app?.isRunning) {
+        for (const record of this.tabs.values()) {
+          if (record.browserId === id && !record.owned) record.closed = true;
+        }
+        continue;
+      }
+      const entries = await this.opensky.list_browser_tabs({ app: descriptor.app });
+      const liveHandles = new Set(entries.map((entry) => entry.targetHandle));
+      for (const record of this.tabs.values()) {
+        if (record.browserId === id && !record.owned && !liveHandles.has(record.handle)) record.closed = true;
+      }
+      for (const entry of entries) {
+        const current = this.tabs.get(entry.targetHandle);
+        const record: BoundTabRecord = current ?? {
+          handle: entry.targetHandle,
+          browserId: id,
+          owned: false,
+          closed: false,
+        };
+        record.providerTabId = entry.providerTabId;
+        record.title = entry.title;
+        record.url = entry.url;
+        record.active = entry.active;
+        record.owned = false;
+        record.closed = false;
+        this.tabs.set(record.handle, record);
+      }
+    }
   }
 }
 
@@ -636,7 +700,7 @@ class BoundBrowser implements Browser {
   }
 
   async documentation(): Promise<string> {
-    return `OpenSky browser ${JSON.stringify(this.browserId)}: cua.getBrowser({id?, url?}) selects a provider; it does not navigate. browser.tabs.new() takes no arguments and opens about:blank. cua.createBrowserTab(${JSON.stringify(this.browserId)}, url?, {visible?, sessionName?}) also opens about:blank when URL is omitted. cua.attachBrowserTab(${JSON.stringify(this.browserId)}, {windowId, providerTabId?}) binds an existing user tab without taking close ownership. For a known URL supply it directly or use tab.goto(url). browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(); tab.close() closes only an exact facade-owned tab.`;
+    return `OpenSky browser ${JSON.stringify(this.browserId)}: cua.getBrowser({id?, url?}) selects a provider; it does not navigate. browser.tabs.list() discovers live provider tabs, browser.tabs.get(id) binds the exact returned tab, and browser.tabs.selected() returns the uniquely active tab. Discovered user tabs are borrowed and cannot be closed. browser.tabs.new() takes no arguments and opens an owned about:blank tab. cua.createBrowserTab(${JSON.stringify(this.browserId)}, url?, {visible?, sessionName?}) also opens about:blank when URL is omitted. cua.attachBrowserTab(${JSON.stringify(this.browserId)}, {windowId, providerTabId?}) directly binds a known existing user tab without taking close ownership. For a known URL supply it directly or use tab.goto(url). browser.nameSession(name), browser.documentation(); tab.close() closes only an exact facade-owned tab.`;
   }
 
   async nameSession(name: string): Promise<void> { this.facade.nameBrowserSession(this.browserId, name); }
@@ -717,12 +781,18 @@ function normalizeBrowserSessionName(value: string): string {
 function availableBrowserIds(apps: readonly AppInfo[]): Set<string> {
   const ids = new Set<string>();
   for (const app of apps) {
-    const id = app.id.toLowerCase();
-    const name = app.displayName?.toLowerCase() ?? "";
-    if (id === "com.google.chrome" || name === "google chrome" || id.endsWith("/google chrome.app")) ids.add("chrome");
-    if (id === "com.microsoft.edgemac" || name === "microsoft edge" || id.endsWith("/microsoft edge.app")) ids.add("edge");
+    const browserId = browserIdForApp(app);
+    if (browserId) ids.add(browserId);
   }
   return ids;
+}
+
+function browserIdForApp(app: AppInfo): string | undefined {
+  const id = app.id.toLowerCase();
+  const name = app.displayName?.toLowerCase() ?? "";
+  if (id === "com.google.chrome" || name === "google chrome" || id.endsWith("/google chrome.app")) return "chrome";
+  if (id === "com.microsoft.edgemac" || name === "microsoft edge" || id.endsWith("/microsoft edge.app")) return "edge";
+  return undefined;
 }
 
 function preferredBrowserId(available: ReadonlySet<string>): string | undefined {
@@ -742,5 +812,13 @@ function mapAppInfo(app: LegacyAppInfo): AppInfo {
 }
 
 function tabInfo(tab: BoundTabRecord): TabInfo {
-  return { id: tab.handle, browserId: tab.browserId, providerTabId: tab.providerTabId, title: tab.title, url: tab.url };
+  return {
+    id: tab.handle,
+    browserId: tab.browserId,
+    providerTabId: tab.providerTabId,
+    title: tab.title,
+    url: tab.url,
+    active: tab.active,
+    owned: tab.owned,
+  };
 }
