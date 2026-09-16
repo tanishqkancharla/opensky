@@ -112,10 +112,15 @@ See [runtime integration](docs/runtime-reference.md) for emitters and lifecycle.
 App observations follow the active window within the bound process, including
 dialogs; actions target the latest observed window. Explicit legacy handles
 stay fixed to their window. Browser sessions created by OpenSky are isolated and
-owned. A caller with an exact native browser window ID can explicitly bind an
-existing Chromium tab with `cua.attachBrowserTab(...)`; detaching never closes
-that user-owned tab. `getState` lists only tabs created or attached through that
-facade. Coordinates use the latest screenshot's pixels. Native paste is supported
+owned. `cua.listTabs()` and `getState()` discover the live tabs in every exact
+ordinary window reported for running Chrome or Edge processes. Returned IDs are
+stable while the OpenSky session and provider tab remain live; `cua.getTab(id)`
+acts on that exact tab. Discovered tabs are user-owned, so `tab.close()` refuses
+to close them and `sdk.close()` only detaches. A caller can still bind a known
+window/tab directly with `cua.attachBrowserTab(...)`. Existing-profile discovery
+requires the driver's `existing-profile` grant; OpenSky requests it when starting
+its own helper, so restart an older already-running daemon after upgrading.
+Coordinates use the latest screenshot's pixels. Native paste is supported
 on macOS and Linux X11 with the documented
 [text and clipboard restrictions](skills/opensky/references/text-input.md).
 

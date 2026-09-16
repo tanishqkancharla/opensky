@@ -73,6 +73,18 @@ export interface AppState {
   };
 }
 
+/** One exact actionable tab returned by existing-browser discovery. */
+export interface BrowserTabInventoryEntry {
+  targetHandle: TargetHandle;
+  providerTabId: string;
+  pid: number;
+  windowId: number;
+  title?: string;
+  url?: string;
+  active: boolean | null;
+  owned: false;
+}
+
 export type TargetResourceKind = "url" | "path" | "mixed";
 export type TargetWindowSource = "launch_result" | "post_launch_list" | "none";
 export type TargetWindowCorrelation = "new_since_request" | "title_match" | "uncorrelated" | "none";
@@ -107,6 +119,8 @@ export interface TargetIdentity extends TargetRequestIdentity {
 export interface OpenSky {
   readonly target: OpenSkyTarget;
   list_apps(): Promise<App[]>;
+  /** Discover and bind the tabs in every exact ordinary window of a running Chromium app. */
+  list_browser_tabs(args: { app: string }): Promise<BrowserTabInventoryEntry[]>;
   get_app_state(args: {
     app: string;
     disableDiff?: boolean;
@@ -268,7 +282,7 @@ export interface ResolvedApp {
   targetRequest?: TargetRequestIdentity;
   /** Proof that this process created and may cooperatively close one exact native window. */
   nativeCloseAuthority?: NativeCloseAuthority;
-  /** Exact typed-browser binding for driver-owned or explicitly attached Chromium page content. */
+  /** Exact typed-browser binding for driver-owned, discovered, or explicitly attached Chromium page content. */
   browser?: BrowserBinding;
 }
 
@@ -284,6 +298,7 @@ export interface BrowserBinding {
   targetId: string;
   tabId: string;
   managed: boolean;
+  active?: boolean | null;
   debuggerHttpUrl?: string;
   title?: string;
   url?: string;

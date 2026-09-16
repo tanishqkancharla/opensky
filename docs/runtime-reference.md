@@ -38,6 +38,13 @@ OpenSky never switches to a direct, in-process driver to make MCP work.
 Cross-platform, crash-recovery, and new-user GUI acceptance remain incomplete,
 so this is not a default change or parity claim.
 
+OpenSky enables the driver's bounded `existing-profile` grant when it starts its
+own daemon so `cua.listTabs()` can inventory running Chrome/Edge windows. An
+already-running daemon keeps the grants it was started with; restart it after an
+upgrade if discovery reports that existing-profile consent is unavailable.
+Discovery creates exact per-window borrowed sessions, and `close()` detaches
+those sessions without closing the user's windows or tabs.
+
 Each instance uses its own base session by default. `close()` immediately rejects
 new operations, drains admitted work, ends exact owned sessions, and only then
 closes its internally created MCP proxy. Its `transportCloseReceipt` describes

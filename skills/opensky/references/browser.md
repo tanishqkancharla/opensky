@@ -16,15 +16,20 @@ await blank.close();
 ```
 
 `chrome` and `edge` are supported providers. `getBrowser({url})` retains affinity
-with an owned tab at that URL; otherwise it prefers installed Chrome, then Edge.
+with a live tab at that URL; otherwise it prefers installed Chrome, then Edge.
 Selection alone does not navigate. `cua.getTab(id, {browser: browserId})` selects
-and observes an exact owned tab; `getState()` inventories apps and owned tabs.
-An empty inventory does not establish that the user has no browser tabs.
+and observes an exact tab; `getState()` and `listTabs()` refresh live provider
+tabs as well as facade-owned tabs. An empty inventory means no discoverable tab
+was returned under the current provider permissions; it does not prove the user
+has no tabs in unsupported/undiscoverable browser instances.
 
-Each OpenSky tab has an isolated owned browser session, not the user's existing
-profile. `browser.tabs.selected()` returns a tab only with exactly one live owned
-candidate; otherwise it returns `undefined`. Hidden tabs and embedded in-app
-browsers are unsupported. Optional host marks require host-provided callbacks.
+Tabs created through OpenSky use isolated owned browser sessions. Tabs discovered
+in existing Chrome/Edge windows are borrowed and cannot be closed through the
+facade. Provider tab IDs stay stable across inventory refreshes for the life of
+the discovery session. `browser.tabs.selected()` returns the uniquely active tab,
+or the sole live tab when active state is unavailable; ambiguity returns
+`undefined`. Embedded in-app browsers are unsupported. Optional host marks
+require host-provided callbacks.
 
 Navigation methods do not display their destination state automatically. Observe
 with `getAXState()` afterward. If navigation reports an observation failure, it
