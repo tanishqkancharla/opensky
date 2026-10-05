@@ -4260,3 +4260,43 @@ Temporary package cache and installation artifacts were removed. This changes
 future skill receipts, not frozen runs, and supplies no new agent score or GUI
 acceptance evidence. Hosts exposing only the core skill retain ordinary actions;
 advanced operations require their linked references or host-provided API docs.
+
+## CHROME-LAUNCH-01 — Prepared process precedes native window registration
+
+A reported intermittent visible `cua.createBrowserTab("chrome", url)` failure
+raised “The isolated browser launched without an exact ordinary window.” The
+SDK called `browser_prepare` once and immediately enumerated windows once;
+process readiness need not imply native window readiness. No raw failing driver
+trace was supplied, so this timing explanation remains inferred from the code.
+
+The SDK now polls `list_windows` for the same prepared PID and owned session
+at approximately 100 ms intervals for a five-second monotonic window-readiness
+budget. It stops immediately on an ordinary window and preserves the existing
+exact browser/tab binding and navigation checks. It never repeats preparation,
+launches another process, or falls back to a user browser. Exhaustion follows
+the existing confirmed owned-session cleanup and lease retention on cleanup
+failure. Enumeration errors propagate immediately; headless launches bypass
+window enumeration. An in-flight driver RPC retains its own timeout, so the
+five-second budget bounds retries rather than cancelling a slow RPC.
+
+Validation: TypeScript build and all 105 tests in `typed-browser.test.ts` and
+`cua.test.ts` passed. Added deterministic coverage for empty and auxiliary-only
+window observations followed by readiness, bounded timeout with confirmed
+owned-session/lease cleanup, and enumeration failure without replay. Existing
+first-read success, exact binding/navigation, headless and failed-cleanup tests
+remain green.
+
+Existing real-driver `TEXT-B01` was attempted on macOS 27.0 (26A428), with
+vendor-signed Chrome 154.0.8037.98 and the already provisioned OpenSky driver
+0.23.2. It failed during `browser_prepare`: Chrome exited with SIGTRAP before
+exposing DevTools, before the changed window loop. Two direct launches with
+fresh profiles (including a temporary-directory profile) also exited with
+SIGTRAP and “Failed to get the path for 1001.” This is a separate unresolved
+browser-startup blocker; it does not establish the cause or acceptance of this
+SDK fix. `PASTE-B01` was not run after that prerequisite failure. Exact owned
+process cleanup was verified after every attempt; generated Chrome crash dialogs
+were closed without sending reports. The temporary vendor bundle
+was removed from Applications and retained with the local validation artifacts.
+No live delayed-window recovery, new benchmark score, or installed-package
+update is claimed. Recreated from the user's written specification; the original
+patch from the other Mac was unavailable.
