@@ -1152,13 +1152,23 @@ export class OpenSky implements OpenSkyApi {
       }
       let windowId = 0;
       if (!headless) {
-        const windowsResult = await this.driver.call("list_windows", { pid: preparedPid, session });
-        const windows = windowsFrom(windowsResult.structured);
-        const selectedWindowId = pickUsableWindowId(windows) ?? pickOrdinaryWindowId(windows);
-        if (selectedWindowId === undefined) {
-          throw new OpenSkyError("The isolated browser launched without an exact ordinary window.");
+        // Process preparation can finish before the native window is registered.
+        // Observe the same owned process; never prepare or launch it again.
+        const deadline = performance.now() + 5_000;
+        while (true) {
+          const windowsResult = await this.driver.call("list_windows", { pid: preparedPid, session });
+          const windows = windowsFrom(windowsResult.structured);
+          const selectedWindowId = pickUsableWindowId(windows) ?? pickOrdinaryWindowId(windows);
+          if (selectedWindowId !== undefined) {
+            windowId = selectedWindowId;
+            break;
+          }
+          const remaining = deadline - performance.now();
+          if (remaining <= 0) {
+            throw new OpenSkyError("The isolated browser launched without an exact ordinary window.");
+          }
+          await sleep(Math.min(100, remaining));
         }
-        windowId = selectedWindowId;
       }
       const boundResult = await this.driver.call("get_browser_state", {
         pid: preparedPid,
