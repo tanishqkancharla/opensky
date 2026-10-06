@@ -1624,6 +1624,7 @@ export class OpenSky implements OpenSkyApi {
 
   async press_key(args: {
     app: string;
+    scope?: "window" | "app";
     key: string;
     element_index?: number;
     x?: number;
@@ -1639,7 +1640,15 @@ export class OpenSky implements OpenSkyApi {
     if (args.element_index !== undefined && hasX) {
       throw invalidParams("element_index cannot be combined with x/y");
     }
-    const resolved = await this.requireResolved(args.app);
+    if (args.scope !== undefined && args.scope !== "window" && args.scope !== "app") throw invalidParams("Invalid keyboard scope");
+    if (args.scope === "app" && (args.element_index !== undefined || hasX)) throw invalidParams("App keyboard scope cannot carry an observed element or coordinate target");
+    let resolved = await this.requireResolved(args.app);
+    if (args.scope === "app") {
+      if (this.target !== "mac" || resolved.browser || resolved.contentScope) throw invalidParams("App keyboard scope requires a native Mac app binding");
+      // Keyboard context follows AXFocusedWindow; indexed observations can
+      // independently follow a panel that owns the focused control.
+      resolved = await this.observeAppWindow(resolved, false);
+    }
     if (resolved.browser) {
       if (hasX) {
         throw this.typedBrowserUnsupported(
@@ -1919,6 +1928,7 @@ export class OpenSky implements OpenSkyApi {
 
   async type_text(args: {
     app: string;
+    scope?: "window" | "app";
     text: string;
     element_index?: number;
     x?: number;
@@ -1934,7 +1944,15 @@ export class OpenSky implements OpenSkyApi {
     if (args.element_index !== undefined && hasX) {
       throw invalidParams("element_index cannot be combined with x/y");
     }
-    const resolved = await this.requireResolved(args.app);
+    if (args.scope !== undefined && args.scope !== "window" && args.scope !== "app") throw invalidParams("Invalid keyboard scope");
+    if (args.scope === "app" && (args.element_index !== undefined || hasX)) throw invalidParams("App keyboard scope cannot carry an observed element or coordinate target");
+    let resolved = await this.requireResolved(args.app);
+    if (args.scope === "app") {
+      if (this.target !== "mac" || resolved.browser || resolved.contentScope) throw invalidParams("App keyboard scope requires a native Mac app binding");
+      // Keyboard context follows AXFocusedWindow; indexed observations can
+      // independently follow a panel that owns the focused control.
+      resolved = await this.observeAppWindow(resolved, false);
+    }
     if (resolved.browser) {
       if (hasX) {
         throw this.typedBrowserUnsupported(
@@ -2585,10 +2603,26 @@ export class OpenSky implements OpenSkyApi {
     this.lastActionAt.delete(key);
   }
 
-  private async observeAppWindow(source: ResolvedApp): Promise<ResolvedApp> {
+  private async observeAppWindow(source: ResolvedApp, preferFocusedControl = true): Promise<ResolvedApp> {
     const listed = await this.driver.call("list_windows", { pid: source.pid });
-    const next = pickAppWindowId(windowsFrom(listed.structured), source.pid,
-      this.target === "mac" ? asRecord(listed.structured)?.focused_window_id : undefined);
+    let windows = windowsFrom(listed.structured);
+    const focused = this.target === "mac" ? asRecord(listed.structured)?.focused_window_id : undefined;
+    const focusedControl = this.target === "mac" && preferFocusedControl ? asRecord(listed.structured)?.focused_element_window_id : undefined;
+    let next = pickAppWindowId(windows, source.pid, focused, focusedControl);
+    if (this.target === "mac" && next !== undefined && next === focusedControl) {
+      const probe = await this.driver.call("get_window_state", {
+        pid: source.pid, window_id: next, probe_only: true, include_screenshot: false,
+      });
+      const metadata = asRecord(probe.structured);
+      if (metadata?.probe_only !== true || typeof metadata.window_matched !== "boolean" ||
+          metadata.pid !== source.pid || metadata.window_id !== next) {
+        throw new OpenSkyError("The desktop helper did not confirm an exact metadata-only focused control window probe. No input was sent.");
+      }
+      if (!metadata.window_matched) {
+        windows = windows.filter(window => window.window_id !== next);
+        next = pickAppWindowId(windows, source.pid, focused);
+      }
+    }
     if (next === undefined) {
       throw new OpenSkyError("The app has no unambiguous frontmost visible window. No input was sent; reveal the intended window and observe again.");
     }
@@ -3217,10 +3251,13 @@ export function pickOrdinaryWindowId(windows: Record<string, unknown>[]): number
 /** App-wide observations prefer an exact eligible focused window when supplied,
  * then actual stacking order, never title/area scoring.
  * This deliberately differs from opening a specific document window. */
-export function pickAppWindowId(windows: Record<string, unknown>[], pid: number, focusedWindowId?: unknown): number | undefined {
+export function pickAppWindowId(windows: Record<string, unknown>[], pid: number, focusedWindowId?: unknown, focusedControlWindowId?: unknown): number | undefined {
   const visible = windows.filter(window => window.pid === pid && window.is_on_screen === true &&
     window.on_current_space !== false && (window.layer === undefined || window.layer === 0) &&
     Number.isSafeInteger(window.window_id) && Number(window.window_id) > 0 && isOrdinaryWindow(window));
+  const controlWindow = Number.isSafeInteger(focusedControlWindowId) && Number(focusedControlWindowId) > 0
+    ? visible.filter(window => window.window_id === focusedControlWindowId) : [];
+  if (controlWindow.length === 1) return controlWindow[0]!.window_id as number;
   const focused = Number.isSafeInteger(focusedWindowId) && Number(focusedWindowId) > 0
     ? visible.filter(window => window.window_id === focusedWindowId) : [];
   if (focused.length === 1) return focused[0]!.window_id as number;

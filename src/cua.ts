@@ -208,9 +208,10 @@ export class CuaFacade {
 
   async getApp(app: string): Promise<App> {
     if (!app?.trim()) throw new OpenSkyError("Invalid params: app is required", "invalid_params");
-    const state = await this.opensky.get_app_state({ app, scope: "app", disableDiff: true, includeScreenshot: false });
+    const appScope = !app.trim().toLowerCase().startsWith("tgt_");
+    const state = await this.opensky.get_app_state({ app, ...(appScope ? {scope: "app" as const} : {}), disableDiff: true, includeScreenshot: false });
     this.options.emit?.(state.text);
-    return new BoundApp(this, state.targetHandle);
+    return new BoundApp(this, state.targetHandle, appScope);
   }
 
   async listBrowsers(options: ObservationOptions = {}): Promise<BrowserInfo[]> {
@@ -536,7 +537,7 @@ abstract class BoundTarget implements Target {
     // A new observation can follow a dialog or reveal a resized window. Never
     // retain image coordinates across an observation that supplies no image.
     this.screenshotBounds = undefined;
-    const state = await this.facade.state(this.targetHandle, options, screenshot, this instanceof BoundApp, accessibilityTree);
+    const state = await this.facade.state(this.targetHandle, options, screenshot, this instanceof BoundApp && this.appScope, accessibilityTree);
     this.observedHandle = state.targetHandle;
     const { width, height } = state.screenshot ?? {};
     if (this instanceof BoundApp && typeof width === "number" && typeof height === "number" &&
@@ -618,7 +619,8 @@ abstract class BoundTarget implements Target {
       throw new OpenSkyError("Invalid params: use pressKey(key, elementIndex?) with an index from the latest observation", "invalid_params");
     }
     this.facade.prepareAction(this.targetHandle);
-    await this.facade.opensky.press_key({ app: this.targetHandle, key, ...(elementIndex !== undefined ? { element_index: elementIndex } : {}) });
+    await this.facade.opensky.press_key({ app: this.targetHandle, key,
+      ...(this.facade.opensky.target === "mac" && this instanceof BoundApp && this.appScope && elementIndex === undefined ? {scope: "app" as const} : {}), ...(elementIndex !== undefined ? { element_index: elementIndex } : {}) });
   }
 
   async scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void> {
@@ -646,7 +648,8 @@ abstract class BoundTarget implements Target {
 
   async typeText(text: string): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
-    await this.facade.opensky.type_text({ app: this.targetHandle, text });
+    await this.facade.opensky.type_text({ app: this.targetHandle, text,
+      ...(this.facade.opensky.target === "mac" && this instanceof BoundApp && this.appScope ? {scope: "app" as const} : {}), });
   }
 
   async performSecondaryAction(elementIndex: number, action: string): Promise<void> {
@@ -656,7 +659,7 @@ abstract class BoundTarget implements Target {
 }
 
 class BoundApp extends BoundTarget implements App {
-  constructor(facade: CuaFacade, handle: TargetHandle) { super(facade, handle); }
+  constructor(facade: CuaFacade, handle: TargetHandle, readonly appScope = true) { super(facade, handle); }
 }
 
 class BoundTab extends BoundTarget implements Tab {

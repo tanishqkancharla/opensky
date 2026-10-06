@@ -4339,3 +4339,21 @@ Driver d5a4330615be0b7568ffc1a8994c313f88b0381b: one owned prepared process,
 exact ordinary window, loaded loopback page/Count, no typed browser acquisition.
 Build-independent E2E typecheck and exact cleanup pass. Mac-only evidence;
 canonical platform matrix and fresh resource comparison remain pending.
+
+## SET217 — App-scope Find control window
+
+Observed main AXFocusedWindow and Find focused-control window differ. New Driver
+PR28 exposes the exact owner-checked visible focused control window. App scope
+prefers/probes it for observations/indexed actions; Mac named-app ambient keys
+and typing follow focused keyboard window separately, and opaque CUA handles
+remain document-bound. Exact input ancestry/token guards remain unchanged.
+Whole focus selection5/CUA23 contracts/build/typecheck pass. Actual clean FIND-N01
+proves Next2of2 / Previous1of2 / Close and wrong-main refusal before input on
+signed Driver dfbf383. Local page initially0of2 is normalized with one explicit
+first-match Enter; no product cause for that fixture substate is asserted.
+Canonical matrix and fresh affected paid comparison pending.
+
+SET217 selection follow-up current installed97aa26e: unchanged-runtime extended FIND-N01 first reproduced bring_to_front_exact_window_unverified; focused-editor fix now accepted by the same real keeper in campaign and clean SDK. Actual panel-owned select_text verifies location0/length6, next typeText replaces domain with documentation, then clear/close; exact main-document negative click still refuses. Six existing SELECT-N01/N03/cursor_before/cursor_after, FORMAT-N01(savedRTF), SELECTION-OBS-N03(two owned windows) pass; all GUI cleanup clear. Mac511+2 units pass (desktop ignored/skipped not acceptance). Fresh paired Terra verification pending; canonical platform matrix and other app auxiliary surfaces remain pending.
+
+
+SET217 iteration102: matched real native/SDK Find setValue changes the query without computing matches; focused typing computes1of2 on both. Shared Chromium behavior; no targeted SDK fix. Previous reviewed1117/1118 pair reused transparently, preserving worse1.54179 index. Current real FOCUS-N02 two-window isolation passes. MENU-N05 filename setup and DOC-N01 cold launch fail before menu/resource acceptance (including unchanged daemon restart and temporary-path control); cause unproven. Fresh current TextEdit1125/1126 both preserve exact original file and cancel MoveTo/Other; SDK initial primary file-label click refuses exact editor focus then secondary Open succeeds, awaiting matched native click classification. All exact owned cleanup clear. Full canonical matrix pending.

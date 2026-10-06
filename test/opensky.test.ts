@@ -68,6 +68,21 @@ describe("opensky helpers", () => {
     assert.equal(pickAppWindowId([{ ...visible, window_id: 1, is_on_screen: undefined }], 7), undefined);
   });
 
+  it("app observation follows the verified focused control surface while retaining exact eligibility", () => {
+    const main = {pid: 7, window_id: 1, is_on_screen: true, z_index: 10, frame: {width: 1200, height: 900}};
+    const panel = {pid: 7, window_id: 2, is_on_screen: true, z_index: 11, frame: {width: 403, height: 84}};
+    const choose = (windows: Record<string, unknown>[], control: unknown) => pickAppWindowId(windows, 7, 1, control);
+    assert.equal(choose([main, panel], 2), 2);
+    assert.equal(choose([main, panel], undefined), 1);
+    assert.equal(choose([main, panel], "2"), 1);
+    assert.equal(choose([main, {...panel, pid: 8}], 2), 1);
+    assert.equal(choose([main, {...panel, is_on_screen: false}], 2), 1);
+    assert.equal(choose([main, {...panel, on_current_space: false}], 2), 1);
+    assert.equal(choose([main, {...panel, layer: 1}], 2), 1);
+    assert.equal(choose([main, {...panel, frame: {width: 50, height: 50}}], 2), 1);
+    assert.equal(choose([main, panel, panel], 2), 1);
+  });
+
   it("app observation prefers exact eligible focus when it differs from stacking order", () => {
     const visible = { pid: 7, is_on_screen: true, frame: { width: 500, height: 200 } };
     const windows = [{ ...visible, window_id: 1, z_index: 418 }, { ...visible, window_id: 2, z_index: 263 }];
