@@ -1,0 +1,11 @@
+## Focused follow-up: exact Move To sheet observation on Driver 0.34.0
+
+Two controlled real TextEdit runs reproduce the current failure. After File > Move To, AXFocusedWindow is an AXSheet with its own CGWindowID. The same AXSheet exposes AXWindow and AXParent pointing to the original document AXWindow, same PID; that document also contains the identical sheet as an AXChild. Driver get_window_state probe does not match the sheet surface, and SDK app-scope observation falls through to an unrelated restored sdk-draft.txt window. The Move To dispatch itself has not been shown to target the wrong document; the demonstrated failure is subsequent observation routing. Original RTF identity and bytes remained unchanged; exact owned app cleanup passed.
+
+Scope: publish additive focused_sheet_parent_window_id metadata only from a proven same-process focused AXSheet / AXWindow parent relationship, retain live/current-space eligibility, and have SDK app-scope observation probe that exact owner before unrelated stacking candidates. Keep exact handle/input protections and focused-control behavior. No title matching, launch replay, or permissions changes.
+
+Acceptance: reproduce old failure/new pass with real multi-window TextEdit Move To, observe the attached sheet, cancel it through freshly observed controls, preserve original document, and clean up owned apps. Run existing SHEET-N01, FOCUS-N01/N02 and relevant Find focus tests before paid cold task verification. Add focused contract coverage for foreign/hidden/missing parent metadata. Full cross-platform certification remains required before ready/merge; this Mac-only observation metadata is absent elsewhere.
+
+Evidence: iteration-103/textedit-sheet-relationship (PID30194, AXSheet53191, original AXWindow53148), textedit-window-reproduction (PID19778). The fork driver disables issues; this is the shared issue. Independent cold document launch failure remains issue #19.
+
+Implementation status: scope and acceptance recorded; runtime implementation pending.
