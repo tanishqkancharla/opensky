@@ -54,6 +54,26 @@ class FakeOpenSky {
 }
 
 describe("native-style cua facade", () => {
+  it("keeps Mac named-app ambient keyboard context separate from indexed control actions", async () => {
+    const fake = Object.assign(new FakeOpenSky(), {target: "mac"});
+    const app = await createCua(fake as unknown as OpenSky).getApp("Example");
+    fake.calls = [];
+    await app.pressKey("Enter"); await app.typeText("domain"); await app.click(7);
+    assert.deepEqual(fake.calls, [
+      {method:"press_key",args:{app:"tgt_app",key:"Enter",scope:"app"}},
+      {method:"type_text",args:{app:"tgt_app",text:"domain",scope:"app"}},
+      {method:"click",args:{app:"tgt_app",element_index:7,mouse_button:undefined,click_count:undefined}},
+    ]);
+  });
+
+  it("keeps an opaque document CUA handle exact for observations and ambient keys", async () => {
+    const fake = Object.assign(new FakeOpenSky(), {target: "mac"});
+    const app = await createCua(fake as unknown as OpenSky).getApp("tgt_document");
+    await app.getAXState(); await app.pressKey("Enter"); await app.typeText("exact");
+    assert.ok(fake.calls.every(call => !(call.args as Record<string,unknown>).scope));
+    assert.ok(fake.calls.every(call => (call.args as Record<string,unknown>).app === "tgt_document"));
+  });
+
   it("opens a blank tab with an omitted URL and retains explicit provider settings", async () => {
     const fake = new FakeOpenSky();
     const cua = createCua(fake as unknown as OpenSky);

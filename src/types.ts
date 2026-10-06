@@ -209,6 +209,7 @@ export interface OpenSky {
   }): Promise<void>;
   press_key(args: {
     app: string;
+    scope?: "window" | "app";
     key: string;
     element_index?: number;
     x?: number;
@@ -237,6 +238,7 @@ export interface OpenSky {
   }): Promise<void>;
   type_text(args: {
     app: string;
+    scope?: "window" | "app";
     text: string;
     element_index?: number;
     x?: number;
