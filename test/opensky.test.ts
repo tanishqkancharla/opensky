@@ -382,6 +382,41 @@ describe("OpenSky against cua-driver", () => {
     assert.doesNotMatch(second.text, /No accessibility changes/);
   });
 
+  it("recovers one explicitly timed-out exact Mac walk and acts only with the fresh token", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.timeoutNativeWalk = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.match(state.text, /Scientific/);
+    assert.doesNotMatch(state.text, /^Accessibility projection:/);
+    await opensky.click({ app: "Calculator", element_index: 13 });
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const reads = after.calls.filter((call: { tool: string; args: {probe_only?: boolean} }) => call.tool === "get_window_state" && !call.args.probe_only);
+    assert.equal(reads.length, 2);
+    assert.equal(reads[0].args.timeout_ms, undefined);
+    assert.equal(reads[1].args.timeout_ms, 5000);
+    assert.equal(reads[1].args.pid, reads[0].args.pid);
+    assert.equal(reads[1].args.window_id, reads[0].args.window_id);
+    const input = after.calls.find((call: { tool: string }) => call.tool === "click");
+    assert.equal(input.args.snapshot_id, "s00000002");
+    assert.equal(input.args.element_token, "s00000002:13");
+  });
+
+  it("bounds timeout recovery to one read and retains the second partial state", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.timeoutNativeWalk = true; fixture.timeoutNativeWalkAlways = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.doesNotMatch(state.text, /Scientific/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const reads = after.calls.filter((call: { tool: string; args: {probe_only?: boolean} }) => call.tool === "get_window_state" && !call.args.probe_only);
+    assert.equal(reads.length, 2); assert.equal(reads[1].args.timeout_ms, 5000);
+  });
+
   it("projects a saturated native tree shallowly so later controls stay visible", async () => {
     const { opensky, statePath } = await makeHarness();
     await opensky.list_apps();

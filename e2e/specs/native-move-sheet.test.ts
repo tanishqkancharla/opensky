@@ -11,6 +11,12 @@ function control(state:string, matches:(line:string)=>boolean):number {
 }
 
 test("SHEET-N02: app scope observes and cancels Move To on the exact parent amid sibling documents",async({sdk,cua,document})=>{
+ const original=await sdk.get_app_state({app:document.handle,includeScreenshot:false,disableDiff:true});
+ const windowId=original.target?.window.id;expect(windowId).toBeTypeOf("number");
+ const driver=sdk as unknown as {invoke(tool:string,args:Record<string,unknown>):Promise<{structured:unknown}>};
+ const inventory=(await driver.invoke("list_windows",{})).structured as {windows:Array<{pid:number;window_id:number}>};
+ const parents=inventory.windows.filter(window=>window.window_id===windowId);expect(parents).toHaveLength(1);
+ const pid=parents[0]!.pid;
  await sdk.press_key({app:document.handle,key:"super+n"});
  const sibling=await sdk.get_app_state({app:document.handle,scope:"app",includeScreenshot:false,disableDiff:true});
  expect(sibling.targetHandle).not.toBe(document.handle);
@@ -22,9 +28,9 @@ test("SHEET-N02: app scope observes and cancels Move To on the exact parent amid
  await expect.poll(async()=>{state=await app.getAXState({emit:false,disableDiffing:true});return state;},{timeout:2000,interval:100}).toContain("moveDocument:");
  await app.click(control(state,line=>line.includes('AXMenuItem "Move To')&&line.includes('moveDocument:')));
  state=await app.getAXState({emit:false,disableDiffing:true});
- const listed=(await sdk.driver.call("list_windows",{pid:document.identity.pid})).structured as any;
- expect(listed.focused_sheet_parent_window_id).toBe(document.windowId);
- expect(listed.focused_window_id).not.toBe(document.windowId);
+ const listed=(await driver.invoke("list_windows",{pid})).structured as any;
+ expect(listed.focused_sheet_parent_window_id).toBe(windowId);
+ expect(listed.focused_window_id).not.toBe(windowId);
  expect(state).toContain("AXSheet");
  expect(state).toContain(document.initialText.trim());
  const observed=await sdk.get_app_state({app:document.handle,scope:"app",includeScreenshot:false,disableDiff:true});
