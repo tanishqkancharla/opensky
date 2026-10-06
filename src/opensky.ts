@@ -2608,8 +2608,9 @@ export class OpenSky implements OpenSkyApi {
     let windows = windowsFrom(listed.structured);
     const focused = this.target === "mac" ? asRecord(listed.structured)?.focused_window_id : undefined;
     const focusedControl = this.target === "mac" && preferFocusedControl ? asRecord(listed.structured)?.focused_element_window_id : undefined;
-    let next = pickAppWindowId(windows, source.pid, focused, focusedControl);
-    if (this.target === "mac" && next !== undefined && next === focusedControl) {
+    const focusedSheetParent = this.target === "mac" ? asRecord(listed.structured)?.focused_sheet_parent_window_id : undefined;
+    let next = pickAppWindowId(windows, source.pid, focused, focusedControl, focusedSheetParent);
+    if (this.target === "mac" && next !== undefined && (next === focusedControl || next === focusedSheetParent)) {
       const probe = await this.driver.call("get_window_state", {
         pid: source.pid, window_id: next, probe_only: true, include_screenshot: false,
       });
@@ -2619,6 +2620,9 @@ export class OpenSky implements OpenSkyApi {
         throw new OpenSkyError("The desktop helper did not confirm an exact metadata-only focused control window probe. No input was sent.");
       }
       if (!metadata.window_matched) {
+        if (next === focusedSheetParent) {
+          throw new OpenSkyError("The focused sheet's exact parent window could not be observed. No input was sent; observe again after the dialog settles.");
+        }
         windows = windows.filter(window => window.window_id !== next);
         next = pickAppWindowId(windows, source.pid, focused);
       }
@@ -3251,10 +3255,17 @@ export function pickOrdinaryWindowId(windows: Record<string, unknown>[]): number
 /** App-wide observations prefer an exact eligible focused window when supplied,
  * then actual stacking order, never title/area scoring.
  * This deliberately differs from opening a specific document window. */
-export function pickAppWindowId(windows: Record<string, unknown>[], pid: number, focusedWindowId?: unknown, focusedControlWindowId?: unknown): number | undefined {
+export function pickAppWindowId(windows: Record<string, unknown>[], pid: number, focusedWindowId?: unknown, focusedControlWindowId?: unknown, focusedSheetParentWindowId?: unknown): number | undefined {
   const visible = windows.filter(window => window.pid === pid && window.is_on_screen === true &&
     window.on_current_space !== false && (window.layer === undefined || window.layer === 0) &&
     Number.isSafeInteger(window.window_id) && Number(window.window_id) > 0 && isOrdinaryWindow(window));
+  // A sheet is observed through its proven exact parent. Invalid/vanished
+  // parent metadata must not produce a healthy tree of an unrelated sibling.
+  if (focusedSheetParentWindowId !== undefined && focusedSheetParentWindowId !== null) {
+    const parent = Number.isSafeInteger(focusedSheetParentWindowId) && Number(focusedSheetParentWindowId) > 0
+      ? visible.filter(window => window.window_id === focusedSheetParentWindowId) : [];
+    return parent.length === 1 ? parent[0]!.window_id as number : undefined;
+  }
   const controlWindow = Number.isSafeInteger(focusedControlWindowId) && Number(focusedControlWindowId) > 0
     ? visible.filter(window => window.window_id === focusedControlWindowId) : [];
   if (controlWindow.length === 1) return controlWindow[0]!.window_id as number;

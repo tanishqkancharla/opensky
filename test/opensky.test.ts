@@ -94,6 +94,21 @@ describe("opensky helpers", () => {
     assert.equal(pickAppWindowId([{ ...windows[1], on_current_space: false }, windows[0]!], 7, 2), 1);
   });
 
+  it("observes a focused sheet through its exact eligible parent and refuses invalid parent metadata", () => {
+    const original = {pid: 7, window_id: 1, is_on_screen: true, z_index: 1, frame: {width: 900, height: 700}};
+    const sibling = {...original, window_id: 2, z_index: 20};
+    const sheet = {...original, window_id: 3, z_index: 21, frame: {width: 320, height: 92}};
+    const choose = (windows: Record<string, unknown>[], parent: unknown) => pickAppWindowId(windows, 7, 3, undefined, parent);
+    assert.equal(choose([original, sibling, sheet], 1), 1);
+    for (const parent of ["1", 0, -1, 999]) assert.equal(choose([original, sibling, sheet], parent), undefined);
+    for (const altered of [{...original, pid: 8}, {...original, is_on_screen: false},
+      {...original, on_current_space: false}, {...original, layer: 1}, {...original, frame: {width: 50, height: 50}}]) {
+      assert.equal(choose([altered, sibling, sheet], 1), undefined);
+    }
+    assert.equal(choose([original, original, sibling, sheet], 1), undefined);
+    assert.equal(choose([original, sibling, sheet], null), 3);
+  });
+
   it("maps list_apps records onto the opensky App shape", () => {
     const apps = mapApps({
       apps: [
