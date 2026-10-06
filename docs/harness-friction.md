@@ -4300,3 +4300,28 @@ was removed from Applications and retained with the local validation artifacts.
 No live delayed-window recovery, new benchmark score, or installed-package
 update is claimed. Recreated from the user's written specification; the original
 patch from the other Mac was unavailable.
+
+## SET219 — Driver0.34 explicit transport compatibility
+
+Closed upstream schemas retire numeric index/snapshot aliases, per-call window
+timing and native screenshot format/scale hints. The OpenSky fork explicitly
+advertises inputCompatibility=token-only-v1 in its verified offline identity.
+CLI and MCP clients normalize only those aliases, retain exact token/PID/window,
+and refuse index-only input before sending it. Legacy helpers retain arguments.
+Native PNG's redundant hint is omitted; JPEG/scale overrides refuse explicitly.
+No tool input is retried or broadened.
+
+For explicitly flagged Mac helpers, SDK startup uses trusted daemon-launch
+observation settings250ms/50ms; explicit host values win. Launch Services and
+spawn fallback receive the same settings. Existing daemons are not restarted or
+reconfigured by ordinary calls. Short observation budgets can omit late changes,
+so fresh outcome observations remain necessary.
+
+Companion Driver draftPR25 upgrades0.34 while retaining OpenSky identity and
+permissions. Current campaign SDK/Driver passed owned app inventory, browser
+Unicode/paste, TextEdit selection/sheet/format, Calculator timing (median511.50ms),
+Clock and loaded Safari URL checks. These runs include other campaign changes;
+they are not isolated acceptance of this clean SDK PR or a new paid score.
+Focused public CLI/MCP inert transport/launch fixtures cover compatibility,
+refusal-before-send, legacy arguments and host overrides. Clean build/contracts
+pending; Linux/Windows and canonical desktop matrix not claimed.
