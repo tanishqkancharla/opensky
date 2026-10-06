@@ -4260,3 +4260,82 @@ Temporary package cache and installation artifacts were removed. This changes
 future skill receipts, not frozen runs, and supplies no new agent score or GUI
 acceptance evidence. Hosts exposing only the core skill retain ordinary actions;
 advanced operations require their linked references or host-provided API docs.
+
+## CHROME-LAUNCH-01 — Prepared process precedes native window registration
+
+A reported intermittent visible `cua.createBrowserTab("chrome", url)` failure
+raised “The isolated browser launched without an exact ordinary window.” The
+SDK called `browser_prepare` once and immediately enumerated windows once;
+process readiness need not imply native window readiness. No raw failing driver
+trace was supplied, so this timing explanation remains inferred from the code.
+
+The SDK now polls `list_windows` for the same prepared PID and owned session
+at approximately 100 ms intervals for a five-second monotonic window-readiness
+budget. It stops immediately on an ordinary window and preserves the existing
+exact browser/tab binding and navigation checks. It never repeats preparation,
+launches another process, or falls back to a user browser. Exhaustion follows
+the existing confirmed owned-session cleanup and lease retention on cleanup
+failure. Enumeration errors propagate immediately; headless launches bypass
+window enumeration. An in-flight driver RPC retains its own timeout, so the
+five-second budget bounds retries rather than cancelling a slow RPC.
+
+Validation: TypeScript build and all 105 tests in `typed-browser.test.ts` and
+`cua.test.ts` passed. Added deterministic coverage for empty and auxiliary-only
+window observations followed by readiness, bounded timeout with confirmed
+owned-session/lease cleanup, and enumeration failure without replay. Existing
+first-read success, exact binding/navigation, headless and failed-cleanup tests
+remain green.
+
+Existing real-driver `TEXT-B01` was attempted on macOS 27.0 (26A428), with
+vendor-signed Chrome 154.0.8037.98 and the already provisioned OpenSky driver
+0.23.2. It failed during `browser_prepare`: Chrome exited with SIGTRAP before
+exposing DevTools, before the changed window loop. Two direct launches with
+fresh profiles (including a temporary-directory profile) also exited with
+SIGTRAP and “Failed to get the path for 1001.” This is a separate unresolved
+browser-startup blocker; it does not establish the cause or acceptance of this
+SDK fix. `PASTE-B01` was not run after that prerequisite failure. Exact owned
+process cleanup was verified after every attempt; generated Chrome crash dialogs
+were closed without sending reports. The temporary vendor bundle
+was removed from Applications and retained with the local validation artifacts.
+No live delayed-window recovery, new benchmark score, or installed-package
+update is claimed. Recreated from the user's written specification; the original
+patch from the other Mac was unavailable.
+
+## SET219 — Driver0.34 explicit transport compatibility
+
+Closed upstream schemas retire numeric index/snapshot aliases, per-call window
+timing and native screenshot format/scale hints. The OpenSky fork explicitly
+advertises inputCompatibility=token-only-v1 in its verified offline identity.
+CLI and MCP clients normalize only those aliases, retain exact token/PID/window,
+and refuse index-only input before sending it. Legacy helpers retain arguments.
+Native PNG's redundant hint is omitted; JPEG/scale overrides refuse explicitly.
+No tool input is retried or broadened.
+
+For explicitly flagged Mac helpers, SDK startup uses trusted daemon-launch
+observation settings250ms/50ms; explicit host values win. Launch Services and
+spawn fallback receive the same settings. Existing daemons are not restarted or
+reconfigured by ordinary calls. Short observation budgets can omit late changes,
+so fresh outcome observations remain necessary.
+
+Companion Driver draftPR25 upgrades0.34 while retaining OpenSky identity and
+permissions. Current campaign SDK/Driver passed owned app inventory, browser
+Unicode/paste, TextEdit selection/sheet/format, Calculator timing (median511.50ms),
+Clock and loaded Safari URL checks. These runs include other campaign changes;
+they are not isolated acceptance of this clean SDK PR or a new paid score.
+Focused public CLI/MCP inert transport/launch fixtures cover compatibility,
+refusal-before-send, legacy arguments and host overrides. Clean build and141 focused tests pass. The clean PR checkout now passes actual
+PASTE-B01/TEXT-B01/KEY-B01 on final signed Driver d0b065bf12bf81cab99c7566a43a466277a3c722
+with exact owned cleanup. New KEY-B01 proves selection before typing, trusted
+input and exact Unicode replacement/current title; native Cmd+A coverage remains
+in the campaign because its selection metadata API is a separate local change.
+Linux/Windows and canonical desktop matrix not claimed.
+
+## SET220 — Cold native Chrome page accessibility
+
+Companion Driver draftPR27 queries the app root AXRole before existing bounded
+enablement. Read-only root-role witness restores page controls without native
+plugin or setters. New AX-N01 cold native app regression passes on installed
+Driver d5a4330615be0b7568ffc1a8994c313f88b0381b: one owned prepared process,
+exact ordinary window, loaded loopback page/Count, no typed browser acquisition.
+Build-independent E2E typecheck and exact cleanup pass. Mac-only evidence;
+canonical platform matrix and fresh resource comparison remain pending.

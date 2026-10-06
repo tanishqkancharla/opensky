@@ -6,7 +6,7 @@ if (process.argv.slice(2).join(" ") === "--version") {
 }
 
 if (process.argv.slice(2).join(" ") === "--opensky-driver-identity") {
-  process.stdout.write(JSON.stringify({product: "opensky-driver", protocolVersion: 1}) + "\n");
+  process.stdout.write(JSON.stringify({product: "opensky-driver", protocolVersion: 1, ...(["token-only", "token-only-start"].includes(process.env.MCP_FIXTURE_MODE) ? {inputCompatibility: "token-only-v1"} : {})}) + "\n");
   process.exit(0);
 }
 
@@ -14,6 +14,17 @@ if (process.argv.slice(2).join(" ") === "--opensky-driver-identity") {
 const argv = process.argv.slice(2);
 const mode = process.env.MCP_FIXTURE_MODE ?? "normal";
 if (!argv.includes("mcp")) {
+  if (mode === "token-only-start" && argv.includes("serve")) {
+    const {writeFileSync} = await import("node:fs");
+    writeFileSync(process.env.START_RECEIPT, JSON.stringify({timeout:process.env.CUA_DRIVER_WINDOW_CHANGE_TIMEOUT_MS,poll:process.env.CUA_DRIVER_WINDOW_CHANGE_POLL_MS,args:argv}));
+    process.exit(0);
+  }
+  if (mode === "token-only-start" && argv.includes("status") && !(await import("node:fs")).existsSync(process.env.START_RECEIPT)) process.exit(1);
+  if (argv.includes("call")) {
+    const index=argv.indexOf("call"), raw=argv[index+1]==="--raw", name=argv[index+(raw?2:1)], args=JSON.parse(argv[index+(raw?3:2)]);
+    process.stdout.write(JSON.stringify(toolResult({name,args,sequence:1}))+"\n");
+    process.exit(0);
+  }
   if (argv.includes("status")) {
     if (process.env.EXPECT_STATUS_ARGS && JSON.stringify(argv) !== process.env.EXPECT_STATUS_ARGS) {
       process.stderr.write("unexpected status socket arguments\n");
@@ -100,7 +111,7 @@ function handle(request) {
     send({
       jsonrpc: "2.0",
       id: request.id,
-      result: { tools: ["echo", "image", "start_session"].map(name => ({ name, inputSchema: { type: "object" } })) },
+      result: { tools: ["echo", "image", "start_session", ...(mode === "token-only" ? ["get_window_state"] : [])].map(name => ({ name, inputSchema: { type: "object" } })) },
     });
     return;
   }
