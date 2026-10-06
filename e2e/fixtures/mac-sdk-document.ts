@@ -1,3 +1,4 @@
+import { compileMacSwiftHelper } from "./mac-swift-compiler.js";
 import type { PublicSdk as OpenSky } from "./sdk.js";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -39,11 +40,9 @@ export async function withSdkOwnedMacDocument<T>(options: {
   let baseline: Identity[] = [];
   let openAttempted = false;
   try {
-    await exec("/usr/bin/swiftc", [
-      "-module-cache-path", join(temporary, "swift-cache"),
-      fileURLToPath(new URL("../../evals/parity/mac-app-lifecycle.swift", import.meta.url)),
-      "-o", helper,
-    ], { timeout: 60_000 });
+    const compilation = await compileMacSwiftHelper(
+      fileURLToPath(new URL("../../evals/parity/mac-app-lifecycle.swift", import.meta.url)), helper);
+    await writeFile(join(options.artifacts, "compiler-setup.json"), JSON.stringify(compilation, null, 2));
     const call = async (args: string[]) => exec(helper, args, { timeout: 10_000 });
     const desktop = JSON.parse((await call(["desktop-state"])).stdout) as { ready: boolean; reasons: string[] };
     await writeFile(join(options.artifacts, "desktop-before.json"), JSON.stringify({ checkedAt: new Date().toISOString(), ...desktop }, null, 2));

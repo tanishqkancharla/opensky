@@ -3,7 +3,7 @@ import {nativeTest} from "../fixtures/sdk.js";
 import {writeFile} from "node:fs/promises";
 import {join} from "node:path";
 
-const test=nativeTest.extend<{documentCleanupSave:boolean}>({documentCleanupSave:false,documentText:"Move To exact parent fixture.\n"});
+const test=nativeTest.extend<{documentCleanupSave:boolean;documentText:string}>({documentCleanupSave:false,documentText:"Move To exact parent fixture.\n"});
 function control(state:string, matches:(line:string)=>boolean):number {
  const rows=state.split("\n").filter(matches);
  expect(rows).toHaveLength(1);
