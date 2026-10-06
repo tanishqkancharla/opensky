@@ -4329,3 +4329,13 @@ with exact owned cleanup. New KEY-B01 proves selection before typing, trusted
 input and exact Unicode replacement/current title; native Cmd+A coverage remains
 in the campaign because its selection metadata API is a separate local change.
 Linux/Windows and canonical desktop matrix not claimed.
+
+## SET220 — Cold native Chrome page accessibility
+
+Companion Driver draftPR27 queries the app root AXRole before existing bounded
+enablement. Read-only root-role witness restores page controls without native
+plugin or setters. New AX-N01 cold native app regression passes on installed
+Driver d5a4330615be0b7568ffc1a8994c313f88b0381b: one owned prepared process,
+exact ordinary window, loaded loopback page/Count, no typed browser acquisition.
+Build-independent E2E typecheck and exact cleanup pass. Mac-only evidence;
+canonical platform matrix and fresh resource comparison remain pending.
