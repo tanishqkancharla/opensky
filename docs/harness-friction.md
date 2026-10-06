@@ -4352,3 +4352,5 @@ proves Next2of2 / Previous1of2 / Close and wrong-main refusal before input on
 signed Driver dfbf383. Local page initially0of2 is normalized with one explicit
 first-match Enter; no product cause for that fixture substate is asserted.
 Canonical matrix and fresh affected paid comparison pending.
+
+SET217 selection follow-up current installed97aa26e: unchanged-runtime extended FIND-N01 first reproduced bring_to_front_exact_window_unverified; focused-editor fix now accepted by the same real keeper in campaign and clean SDK. Actual panel-owned select_text verifies location0/length6, next typeText replaces domain with documentation, then clear/close; exact main-document negative click still refuses. Six existing SELECT-N01/N03/cursor_before/cursor_after, FORMAT-N01(savedRTF), SELECTION-OBS-N03(two owned windows) pass; all GUI cleanup clear. Mac511+2 units pass (desktop ignored/skipped not acceptance). Fresh paired Terra verification pending; canonical platform matrix and other app auxiliary surfaces remain pending.

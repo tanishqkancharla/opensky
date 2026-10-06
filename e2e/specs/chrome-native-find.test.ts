@@ -38,6 +38,11 @@ findTest('FIND-N01: native app scope binds actual Find controls while the main d
   state=await app.getAXState({emit:false,disableDiffing:true});states.push(state);expect(state).toContain('Result 1 of 2');
   await app.click(index(state,'AXButton','Next'));state=await app.getAXState({emit:false,disableDiffing:true});states.push(state);expect(state).toContain('Result 2 of 2');
   await app.click(index(state,'AXButton','Previous'));state=await app.getAXState({emit:false,disableDiffing:true});states.push(state);expect(state).toContain('Result 1 of 2');
+  await app.selectText(index(state,'AXTextField','Find'),'domain');
+  await app.typeText('documentation');state=await app.getAXState({emit:false,disableDiffing:true});states.push(state);
+  expect(state).toMatch(/AXTextField "Find".*(?:= |value=)"documentation"/);
+  await app.pressKey('CMD+A');await app.pressKey('BACKSPACE');state=await app.getAXState({emit:false,disableDiffing:true});states.push(state);
+  expect(state).not.toMatch(/AXTextField "Find".*(?:= |value=)"(?:domain|documentation)"/);
   await app.click(index(state,'AXButton','Close find bar'));state=await app.getAXState({emit:false,disableDiffing:true});states.push(state);expect(state).not.toContain('Close find bar');expect(state).toContain('domain one; domain two.');
   const clicks=calls.filter(c=>c.tool==='click');expect(clicks).toHaveLength(4);expect(clicks[0].args.window_id).toBe(main.window_id);expect(clicks.slice(1).every(c=>c.args.window_id===panel.window_id&&c.args.pid===main.pid)).toBe(true);
   expect(calls.filter(c=>c.tool==='browser_prepare')).toHaveLength(1);
