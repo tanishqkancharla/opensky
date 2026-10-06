@@ -1,0 +1,33 @@
+import {writeFile} from "node:fs/promises";
+import {join} from "node:path";
+import {expect} from "vitest";
+import {actionIndex,test} from "../fixtures/sdk.js";
+const seed="Old café 😀";
+const html=`<main><label>Draft message<textarea aria-label="Draft message">${seed}</textarea></label></main>
+<script>const field=document.querySelector('textarea');let events=[],reports=Promise.resolve();
+const report=()=>{const patch={text:field.value,start:field.selectionStart,end:field.selectionEnd,events:[...events],title:document.title};reports=reports.then(()=>fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)}));};
+field.addEventListener('keyup',event=>{events.push({kind:'keyup',key:event.key,meta:event.metaKey,trusted:event.isTrusted});report();});
+field.addEventListener('input',event=>{events.push({kind:'input',trusted:event.isTrusted});report();});report();</script>`;
+type Receipt={text:string;start:number;end:number;events:Array<{kind:string;key?:string;meta?:boolean;trusted:boolean}>;title:string};
+const keyTest=test.extend({html});
+keyTest("KEY-B01: real Cmd+A selection precedes exact Unicode replacement in an owned tab", async ({sdk,cua,tab,site}) => {
+  const field=actionIndex(await tab.getAXState({emit:false,disableDiffing:true}),"textbox","Draft message");
+  await tab.pressKey("END",field);
+  await tab.pressKey("CMD+A");
+  await expect.poll(async()=>((await site.read()) as unknown as Receipt).events.some(event=>event.kind==='keyup'&&event.key?.toLowerCase()==='a')).toBe(true);
+  const selected=(await site.read()) as unknown as Receipt;
+  await writeFile(join(process.env.OPENSKY_E2E_ARTIFACT_DIR!,"browser-select-all-before-input.json"),JSON.stringify(selected,null,2));
+  expect(selected.text).toBe(seed);expect(selected.start).toBe(0);expect(selected.end).toBe(seed.length);
+  expect(selected.events.some(event=>event.kind==='keyup'&&event.key?.toLowerCase()==='a'&&event.meta&&event.trusted)).toBe(true);
+  await tab.getAXState({emit:false,disableDiffing:true});
+  const replacement="New 東京 😀";await tab.typeText(replacement);
+  await expect.poll(async()=>(await site.read()).text).toBe(replacement);
+  const final=(await site.read()) as unknown as Receipt;
+  const inputEvents=final.events.filter(event=>event.kind==='input');
+  expect(inputEvents.length).toBeGreaterThan(0);expect(inputEvents.every(event=>event.trusted)).toBe(true);
+  const state=await sdk.get_app_state({app:tab.id,includeScreenshot:false,disableDiff:true});
+  const tabs=await cua.listTabs({emit:false});
+  await writeFile(join(process.env.OPENSKY_E2E_ARTIFACT_DIR!,"browser-select-all-final.json"),JSON.stringify({final,state,tabs},null,2));
+  expect(tabs.find(info=>info.id===tab.id)?.title).toBe("OpenSky SDK fixture");
+  expect(state.text).toContain(replacement);
+});

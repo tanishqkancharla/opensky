@@ -4323,5 +4323,9 @@ Unicode/paste, TextEdit selection/sheet/format, Calculator timing (median511.50m
 Clock and loaded Safari URL checks. These runs include other campaign changes;
 they are not isolated acceptance of this clean SDK PR or a new paid score.
 Focused public CLI/MCP inert transport/launch fixtures cover compatibility,
-refusal-before-send, legacy arguments and host overrides. Clean build/contracts
-pending; Linux/Windows and canonical desktop matrix not claimed.
+refusal-before-send, legacy arguments and host overrides. Clean build and141 focused tests pass. The clean PR checkout now passes actual
+PASTE-B01/TEXT-B01/KEY-B01 on final signed Driver d0b065bf12bf81cab99c7566a43a466277a3c722
+with exact owned cleanup. New KEY-B01 proves selection before typing, trusted
+input and exact Unicode replacement/current title; native Cmd+A coverage remains
+in the campaign because its selection metadata API is a separate local change.
+Linux/Windows and canonical desktop matrix not claimed.
