@@ -126,3 +126,26 @@ test("TYPE-L02: saves a long document entered in one typing action", { timeout: 
   await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe(longDocument);
   await expect(keyboard.unchanged()).resolves.toBe(true);
 });
+
+
+test("EDIT-L01: replaces only a selected suffix after Unicode text", { timeout: 120_000 }, async ({ app }) => {
+  await app.pressKey("ALT+O");
+  const menu = await app.getAXState({ disableDiffing: true });
+  expect(menu).toMatch(/\[(\d+)\] menu item "Character\.\.\."/);
+  await app.click(Number(menu.match(/\[(\d+)\] menu item "Character\.\.\."/)![1]));
+  const dialog = await app.getAXStateAndScreenshot({ disableDiffing: true });
+  expect(dialog.state).toContain('dialog = "Character"');
+  await app.click([350, 75]);
+  await app.pressKey("CTRL+A");
+  await app.typeText("café 😀 suffix");
+  const initial = await app.getAXState({ disableDiffing: true });
+  expect(initial).toContain('dialog = "Character"');
+  expect(initial.match(/^\s*- \[\d+\] text "[^"]*" value="café 😀 suffix"(?: |$)/gm)).toHaveLength(1);
+  await app.pressKey("END");
+  // Select the six ASCII suffix characters, leaving the Unicode prefix intact.
+  for (let count = 0; count < 6; count++) await app.pressKey("SHIFT+LEFT");
+  await app.typeText("中文");
+  const edited = await app.getAXState({ disableDiffing: true });
+  expect(edited).toContain('dialog = "Character"');
+  expect(edited.match(/^\s*- \[\d+\] text "[^"]*" value="café 😀 中文"(?: |$)/gm)).toHaveLength(1);
+});
