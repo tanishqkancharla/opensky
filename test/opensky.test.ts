@@ -921,7 +921,7 @@ describe("OpenSky against cua-driver", () => {
 
     await assert.rejects(
       () => opensky.paste({ app: "TextEdit", text: "do not dispatch" }),
-      /safe paste requires.*No clipboard, app, window, tab, or input was touched/s,
+      /Native paste is unsupported.*No clipboard, app, window, tab, or input was touched/s,
     );
     const calls = await readFile(logPath, "utf8").catch(() => "");
     assert.equal(calls, "");

@@ -1512,13 +1512,15 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    if ((this.target === "linux" || this.target === "mac") && format === "text" && resolved && !resolved.browser) {
+    if ((this.target === "mac" || (this.target === "linux" && format === "text")) && resolved && !resolved.browser) {
       this.assertTargetUsable(resolved);
       await this.requireUsableInputWindow(resolved);
       // The compound driver operation checks exact live focus and sends one
       // paste. Never split this into clipboard writes plus a key, or replay
-      // an uncertain delivery. Linux restores supported prior clipboard
-      // contents; macOS deliberately leaves this payload on the clipboard.
+      // an uncertain delivery. Both platforms preserve supported prior clipboard
+      // contents. Mac reports restoration separately and keeps an observed newer copy. Rich Mac
+      // content is converted before mutation; the driver verifies exact plain
+      // text insertion, while callers observe the resulting rich formatting.
       try {
         const result = await this.driver.call("native_paste", {
           pid: resolved.pid,
@@ -1551,9 +1553,10 @@ export class OpenSky implements OpenSkyApi {
       return;
     }
     throw new OpenSkyError(
-      "paste is temporarily unavailable because safe paste requires a compound desktop-helper primitive " +
-        "that cannot overwrite a concurrent user clipboard change. No clipboard, app, window, tab, or input was touched. " +
-        "Use type_text only when typing semantics are acceptable; OpenSky does not silently substitute it for paste.",
+      `Native paste is unsupported for target ${this.target} with format ${format}, or no exact native target is bound. ` +
+        "Mac supports text/html/md; Linux supports text. No clipboard, app, window, tab, or input was touched. " +
+        "This is a capability limitation, not an observed clipboard race; retrying the same request will not enable it.",
+      "unsupported_native_paste",
     );
   }
 
