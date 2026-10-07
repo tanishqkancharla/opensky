@@ -4379,3 +4379,12 @@ SET225 paid verification104: fresh independent cold Terra native1152/SDK1153 bot
 ### SET226 — Pair writer owns the controller lease
 
 Current pair recorder used caller sequencing alone. It now acquires the same nonblocking arm-run lease before parsing/writing pair bookkeeping. Actual held-lease check refuses before changing the pair receipt; normal completed pair write succeeds. Durable isolated subprocess test replaces database access with a tripwire and proves admission rejects before it;6 parent feedback tests pass. This parent-only safety change affects no desktop inputs or paid metric definition. Current104 remains running with4 selected tasks pending.
+
+
+## SET252 — Spend the full capture budget once instead of discarding a timed-out first walk
+
+Layer: SDK native Mac observation. Current paid Notes1190 proves four1000ms captures time out before complete5000ms recovery. Same-owned-window read-only ABBA control109 measures default+recovery2561ms versus direct5000ms1472ms, both exact,0pending/not truncated; later three full reads return440elements. Native1185 initial getApp1446ms and action-plus-observation1160–1991ms lack the SDK's repeated partial/full sequence.
+
+Use the already-established5000ms recovery ceiling directly for full Mac AX captures. The driver returns when collection finishes; the ceiling is not a sleep. One snapshot supplies both published state and input tokens; an exhausted budget remains explicitly partial with no repeated walk or input. Browser, screenshot-only, explicit-depth and other platform routes retain their existing defaults. Existing fresh-token and exhausted-walk owners are updated rather than duplicated. Capture-budget control is actual read-only evidence; SDK units, relevant current E2Es and affected paid rerun remain pending. No driver rebuild or permission change.
+
+SET252 current acceptance: campaign117 and scoped PR81 SDK/facade tests/builds pass, including one published full-capture token, one bounded exhausted walk, unchanged Linux default and unchanged explicit-depth projection budget. Twelve existing actual Mac contracts pass on unchanged signed68ff driver; every app/fixture cleanup passes. Clean PR24 public Notes bind/readback independently uses exactly two full5000ms captures (1566/1560ms),0pending/not truncated, exact owned PID/window; cleanup passes. These are focused Mac controls, not Linux live acceptance or a canonical matrix. Affected paid rerun next.

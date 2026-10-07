@@ -382,7 +382,7 @@ describe("OpenSky against cua-driver", () => {
     assert.doesNotMatch(second.text, /No accessibility changes/);
   });
 
-  it("recovers one explicitly timed-out exact Mac walk and acts only with the fresh token", async () => {
+  it("uses the full Mac walk budget once and acts only with that capture token", async () => {
     const { opensky, statePath } = await makeHarness();
     await opensky.list_apps();
     const fixture = JSON.parse(await readFile(statePath, "utf8"));
@@ -394,17 +394,16 @@ describe("OpenSky against cua-driver", () => {
     await opensky.click({ app: "Calculator", element_index: 13 });
     const after = JSON.parse(await readFile(statePath, "utf8"));
     const reads = after.calls.filter((call: { tool: string; args: {probe_only?: boolean} }) => call.tool === "get_window_state" && !call.args.probe_only);
-    assert.equal(reads.length, 2);
-    assert.equal(reads[0].args.timeout_ms, undefined);
-    assert.equal(reads[1].args.timeout_ms, 5000);
-    assert.equal(reads[1].args.pid, reads[0].args.pid);
-    assert.equal(reads[1].args.window_id, reads[0].args.window_id);
+    assert.equal(reads.length, 1);
+    assert.equal(reads[0].args.timeout_ms, 5000);
+    assert.equal(reads[0].args.pid, fixture.apps[0].pid);
+    assert.equal(reads[0].args.window_id, fixture.apps[0].windows[0].window_id);
     const input = after.calls.find((call: { tool: string }) => call.tool === "click");
-    assert.equal(input.args.snapshot_id, "s00000002");
-    assert.equal(input.args.element_token, "s00000002:13");
+    assert.equal(input.args.snapshot_id, "s00000001");
+    assert.equal(input.args.element_token, "s00000001:13");
   });
 
-  it("bounds timeout recovery to one read and retains the second partial state", async () => {
+  it("bounds an exhausted full Mac walk to one read and retains its partial state", async () => {
     const { opensky, statePath } = await makeHarness();
     await opensky.list_apps();
     const fixture = JSON.parse(await readFile(statePath, "utf8"));
@@ -414,7 +413,18 @@ describe("OpenSky against cua-driver", () => {
     assert.doesNotMatch(state.text, /Scientific/);
     const after = JSON.parse(await readFile(statePath, "utf8"));
     const reads = after.calls.filter((call: { tool: string; args: {probe_only?: boolean} }) => call.tool === "get_window_state" && !call.args.probe_only);
-    assert.equal(reads.length, 2); assert.equal(reads[1].args.timeout_ms, 5000);
+    assert.equal(reads.length, 1); assert.equal(reads[0].args.timeout_ms, 5000);
+  });
+
+  it("keeps the native capture default for Linux", async () => {
+    const { driver, dir, statePath } = await makeHarness();
+    const linux = createOpenSky({ driver, target: "linux", homeDir: join(dir, "linux-home"), settleDelayMs: 0 });
+    try {
+      await linux.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+      const after = JSON.parse(await readFile(statePath, "utf8"));
+      const reads = after.calls.filter((call: any) => call.tool === "get_window_state");
+      assert.equal(reads.length, 1); assert.equal(reads[0].args.timeout_ms, undefined);
+    } finally { await linux.close(); }
   });
 
   it("projects a saturated native tree shallowly so later controls stay visible", async () => {
@@ -432,6 +442,8 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(observations.length, 2);
     assert.equal(observations[0].args.max_depth, undefined);
     assert.equal(observations[1].args.max_depth, 3);
+    assert.equal(observations[0].args.timeout_ms, 5000);
+    assert.equal(observations[1].args.timeout_ms, undefined);
   });
 
   it("keeps one native snapshot when every returned element is represented", async () => {

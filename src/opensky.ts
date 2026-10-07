@@ -2319,20 +2319,15 @@ export class OpenSky implements OpenSkyApi {
       screenshot_scale: this.screenshotScale,
       max_depth: options.maxDepth,
     };
-    let result = await this.driver.call("get_window_state", captureArgs);
-    let structured = asRecord(result.structured) ?? {};
-    // Equal returned/discovered counts do not include nodes still pending in
-    // an interrupted AX walk. Recover once, without another action or launch,
-    // and use only the new capture's tokens, pixels and completeness evidence.
-    if (this.target === "mac" && options.maxDepth === undefined &&
-        structured.pid === resolved.pid && structured.window_id === resolved.windowId &&
-        structured.degraded !== true && structured.truncated === true &&
-        structured.truncation_reason === "timeout" &&
-        typeof structured.nodes_pending === "number" && Number.isFinite(structured.nodes_pending) &&
-        structured.nodes_pending > 0) {
-      result = await this.driver.call("get_window_state", { ...captureArgs, timeout_ms: 5000 });
-      structured = asRecord(result.structured) ?? {};
-    }
+    // Full Mac walks use the existing recovery budget directly. The driver
+    // returns as soon as collection finishes; a short initial timeout followed
+    // by the same full walk discards work and publishes an unused snapshot.
+    // Depth-limited reads and other platforms retain their own defaults.
+    const result = await this.driver.call("get_window_state", {
+      ...captureArgs,
+      ...(this.target === "mac" && options.maxDepth === undefined ? { timeout_ms: 5000 } : {}),
+    });
+    const structured = asRecord(result.structured) ?? {};
     const rawElements = normalizeElements(structured.elements);
     const rawTree =
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
