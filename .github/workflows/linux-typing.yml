@@ -37,10 +37,9 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 7204f181f21a7d01ee6f85dd32128c4f3d4b0324
-  # Exact artifact37661276295: returned ELF, manifest and embedded source
-  # independently verified before admitting reuse for affected desktop controls.
-  OPENSKY_DRIVER_SHA256: f8773cc6af47a3bd44be04a8b3010b119159fa70747950a48a7e75de73f4daa9
+  OPENSKY_DRIVER_REF: 96d7c850353471af107b73fbfc3517747261bf3a
+  # Fresh candidate: verify its returned ELF and identity before admitting reuse.
+  OPENSKY_DRIVER_SHA256: ''
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 

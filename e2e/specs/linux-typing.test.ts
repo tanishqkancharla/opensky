@@ -51,7 +51,12 @@ test("COORD-L01: a screenshot click edits the font dialog rather than the docume
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('dialog = "Character"');
   await app.pressKey("CTRL+A");
   await app.typeText("Liberation Serif");
-  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Family:" value="Liberation Serif"');
+  // LibreOffice names this editable after its value and exposes Family as a
+  // separate label. Require one exact editable value; a font-list cell or an
+  // appended old value must not satisfy the assertion.
+  const edited = await app.getAXState({ disableDiffing: true });
+  expect(edited).toContain('dialog = "Character"');
+  expect(edited.match(/^\s*- \[\d+\] text "[^"]*" value="Liberation Serif"(?: |$)/gm)).toHaveLength(1);
 });
 
 test("SHOT-L01: a screenshot preserves the observed save button target", { timeout: 120_000 }, async ({ app, document }) => {
@@ -74,7 +79,12 @@ test("SHOT-L02: a screenshot of the new dialog targets its font field", { timeou
   await app.pressKey("CTRL+A");
   await app.typeText("Liberation Serif");
   await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('dialog = "Character"');
-  await expect(app.getAXState({ disableDiffing: true })).resolves.toContain('text "Family:" value="Liberation Serif"');
+  // LibreOffice names this editable after its value and exposes Family as a
+  // separate label. Require one exact editable value; a font-list cell or an
+  // appended old value must not satisfy the assertion.
+  const edited = await app.getAXState({ disableDiffing: true });
+  expect(edited).toContain('dialog = "Character"');
+  expect(edited.match(/^\s*- \[\d+\] text "[^"]*" value="Liberation Serif"(?: |$)/gm)).toHaveLength(1);
 });
 
 test("COORD-L02: rejects a point outside the observed dialog and accepts a corrected save click", { timeout: 120_000 }, async ({ app, document }) => {
