@@ -102,10 +102,10 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
               return Buffer.from(item.data, "base64");
             };
             const state = async (options: unknown) => {
-              const result = await cell(`nodeRepl.write({nativeState: await app.getAXState(${JSON.stringify(options ?? {})})});`);
+              const result = await cell(`nodeRepl.write(JSON.stringify({nativeState: await app.getAXState(${JSON.stringify({ ...(options as object ?? {}), emit: false })})}));`);
               for (const item of result.content ?? []) {
                 if (item.type !== "text" || !item.text) continue;
-                try { const value = JSON.parse(item.text); if (typeof value.nativeState === "string") return value.nativeState; } catch {}
+                try { const value = JSON.parse(item.text); if (typeof value.nativeState === "string") { await writeFile(join(artifacts, "native-ax-state.txt"), value.nativeState); return value.nativeState; } } catch {}
               }
               throw new Error("Native AX observation returned no serialized state");
             };
@@ -157,6 +157,10 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
  * targeting from the separately retained native Linux text-entry refusal. */
 export async function prepareSaveDocument(app: TypingApp, text: string): Promise<string> {
   if (process.env.OPENSKY_LINUX_SCREENSHOT_REDUCTION === "1") {
+    // The retained native ready screenshot proves this point lies in the
+    // document text. Observe anew on each interface before using its pixels.
+    await app.getScreenshot();
+    await app.click([400, 500]);
     await app.pressKey("ctrl+a");
     await app.pressKey("a");
     await app.pressKey("ctrl+s");
@@ -166,4 +170,15 @@ export async function prepareSaveDocument(app: TypingApp, text: string): Promise
   await app.typeText(text);
   await app.pressKey("CTRL+S");
   return text;
+}
+
+/** Public formats differ: OpenSky brackets/quotes versus native Linux lines.
+ * Accept only one exact observed button label, never a guessed index. */
+export function saveButtonIndex(state: string): number {
+  const matches = [
+    ...state.matchAll(/\[(\d+)\] push button "Use Word 2007 Format"/g),
+    ...state.matchAll(/^\s*(\d+) push button Use Word 2007 Format$/gm),
+  ];
+  expect(matches).toHaveLength(1);
+  return Number(matches[0][1]);
 }

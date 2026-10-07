@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import { test, prepareSaveDocument } from "../fixtures/linux-typing.js";
+import { test, prepareSaveDocument, saveButtonIndex } from "../fixtures/linux-typing.js";
 
 test("TYPE-L01: types once into the selected document and saves the actual text", async ({ app, document, keyboard }) => {
   await app.pressKey("CTRL+A");
@@ -35,8 +35,7 @@ test("KEY-L01: a menu accelerator does not insert its letter into the document",
 test("CLICK-L01: a freshly observed save button saves the document", async ({ app, document }) => {
   const expected = await prepareSaveDocument(app, "Save this document.");
   const state = await app.getAXState({ disableDiffing: true });
-  expect(state).toMatch(/\[(\d+)\] push button "Use Word 2007 Format"/);
-  await app.click(Number(state.match(/\[(\d+)\] push button "Use Word 2007 Format"/)![1]));
+  await app.click(saveButtonIndex(state));
   await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe(expected);
 });
 
@@ -58,9 +57,9 @@ test("COORD-L01: a screenshot click edits the font dialog rather than the docume
 test("SHOT-L01: a screenshot preserves the observed save button target", { timeout: 120_000 }, async ({ app, document }) => {
   const expected = await prepareSaveDocument(app, "Save after observing a screenshot.");
   const state = await app.getAXState({ disableDiffing: true });
-  expect(state).toMatch(/\[(\d+)\] push button "Use Word 2007 Format"/);
+  const index = saveButtonIndex(state);
   await app.getScreenshot();
-  await app.click(Number(state.match(/\[(\d+)\] push button "Use Word 2007 Format"/)![1]));
+  await app.click(index);
   await expect.poll(() => document.readText(), { timeout: 10_000 }).toBe(expected);
 });
 
