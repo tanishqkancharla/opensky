@@ -187,3 +187,5 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 
 - Verify downstream actions after a successful dispatch acknowledgment: an earlier action can leave latent collateral state. Change one preparatory factor before broadening delivery policies.
 - Give observable task fixtures the same ownership, isolation and teardown lifecycle as the arm; retain observations separately from completion review.
+
+- Carry exact launch ownership into teardown; a missing application inventory entry must neither lose proved ownership nor authorize guessed cleanup. Retain original failures when later teardown is verified.
