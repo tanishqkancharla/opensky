@@ -61,6 +61,34 @@ describe("opensky helpers", () => {
     const literal = '- AXStaticText = "literal\n  - [20] AXRow\n    - AXStaticText = content"';
     const literalRemoval = diffTrees(literal, [{element_index:20,role:'AXRow'}], '', []);
     assert.ok(literalRemoval.includes('Removed display row: AXStaticText = "literal\n  - [20] AXRow\n    - AXStaticText = content"'), 'quoted content never becomes ancestry');
+    const retained: SnapshotElement = {element_index:289,role:'AXRow',identifier:'ICMNoteListCell, Note[id=owned]'};
+    const oldParent: SnapshotElement = {element_index:288,role:'AXCell'};
+    const newParent: SnapshotElement = {element_index:300,role:'AXCell'};
+    const child = '- [289] AXRow [id=ICMNoteListCell, Note[id=owned]]';
+    const oldTree = `- [288] AXCell\n  ${child}`;
+    const newTree = `- [300] AXCell\n  - AXGroup\n    ${child}`;
+    const relation = diffTrees(oldTree,[oldParent,retained],newTree,[newParent,retained]);
+    assert.match(relation,/^~ \[289\] AXRow \[id=ICMNoteListCell, Note\[id=owned\]\] \[parent=300\]$/m);
+    assert.equal(relation.split('\n').filter(line=>line.startsWith('~ [289]')).length,1);
+    assert.ok(!relation.includes('+ [289]'), 'retained input identity stays retained');
+    assert.match(relation,/Removed element IDs: 288/);
+    const rootMove=diffTrees(oldTree,[oldParent,retained],child,[retained]);
+    assert.match(rootMove,/\[parent=root\]/);
+    const alsoChanged=diffTrees(oldTree,[oldParent,retained],newTree,[newParent,{...retained,selected:true}]);
+    assert.equal(alsoChanged.split('\n').filter(line=>line.startsWith('~ [289]')).length,1);
+    for (const [tree,elements] of [
+      [newTree,[retained]], // The new parent is not in structured input data.
+      [newTree,[newParent,retained,retained]],
+      [newTree,[{...newParent,role:'AXButton'},retained]],
+      [`${newTree}\n${child}`,[newParent,retained]],
+      [`${newTree}\n- [300] AXCell`,[newParent,retained]],
+      [`- [300] AXCell\n  - AXStaticText = "literal\n    ${child} content"`,[newParent,retained]],
+      [`- [300] AXCell\n  ${child} "unterminated`,[newParent,retained]],
+    ] as Array<[string,SnapshotElement[]]>) {
+      assert.ok(!diffTrees(oldTree,[oldParent,retained],tree,elements).includes('[parent='), 'ambiguous/unbound/literal/partial rows provide no relation');
+    }
+    assert.ok(!diffTrees('',[oldParent,retained],newTree,[newParent,retained]).includes('[parent='), 'missing prior row is unknown');
+    assert.ok(!diffTrees(newTree,[newParent,retained],newTree,[newParent,retained]).includes('[parent='));
   });
 
   it("does not reuse ambiguous public indices for repeated controls", () => {
