@@ -21,10 +21,20 @@ type Fixture = { app: TypingApp; document: { readText(): Promise<string> }; keyb
 export const test = base.extend<Fixture & { fixture: Fixture }>({
   fixture: async ({ task }, use) => {
     assertDisposableLinuxDesktop();
+    const reduction = process.env.OPENSKY_LINUX_SCREENSHOT_REDUCTION === "1";
+    if (reduction && !/^(CLICK-L01|SHOT-L01):/.test(task.name)) {
+      throw new Error("Screenshot preparation reduction is restricted to the two existing save-target owners");
+    }
     const transport = process.env.OPENSKY_TEST_TRANSPORT;
     if (transport !== undefined && transport !== "cli" && transport !== "mcp") throw new Error("Invalid OPENSKY_TEST_TRANSPORT");
     const artifacts = resolve(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "typing", task.name.split(":")[0]);
     await mkdir(artifacts, { recursive: true });
+    await writeFile(join(artifacts, "control-profile.json"), JSON.stringify({
+      backend: process.env.OPENSKY_LINUX_TYPING_NATIVE_FACADE === "1" ? "native" : "opensky",
+      preparation: reduction ? "one-public-character-key" : "original-typeText",
+      packageSHA256: process.env.OPENSKY_NATIVE_PACKAGE_SHA256,
+      agentEvaluation: false, scored: false,
+    }, null, 2));
     const originalKeyboard = (await exec("xmodmap", ["-pke"])).stdout;
     await writeFile(join(artifacts, "keyboard-before.txt"), originalKeyboard);
     const temporary = await mkdtemp(join(tmpdir(), "opensky-typing-"));
@@ -142,3 +152,18 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
   document: async ({ fixture }, use) => use(fixture.document),
   keyboard: async ({ fixture }, use) => use(fixture.keyboard),
 });
+
+/** Same preparation on both real interfaces. This isolates save/screenshot
+ * targeting from the separately retained native Linux text-entry refusal. */
+export async function prepareSaveDocument(app: TypingApp, text: string): Promise<string> {
+  if (process.env.OPENSKY_LINUX_SCREENSHOT_REDUCTION === "1") {
+    await app.pressKey("ctrl+a");
+    await app.pressKey("a");
+    await app.pressKey("ctrl+s");
+    return "a";
+  }
+  await app.pressKey("CTRL+A");
+  await app.typeText(text);
+  await app.pressKey("CTRL+S");
+  return text;
+}
