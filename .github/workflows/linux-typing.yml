@@ -37,9 +37,9 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 877e3b15d2ec6f42f28143601c8ae47ee079ce93
-  # Exact UTF8 build37674541460: native owners and returned ELF/source/identity verified.
-  OPENSKY_DRIVER_SHA256: 78a5c1c0d4c8f0e285154c1333b672f84f196c8b97b692d3b267ea2c0e6c3cdd
+  OPENSKY_DRIVER_REF: e0a87b610912ba8e8fcd2be64a8b5402fabbc5a1
+  # Borrowed-keymap repair: clear the old digest until a new exact ELF is verified.
+  OPENSKY_DRIVER_SHA256: ''
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
