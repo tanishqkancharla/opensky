@@ -31,7 +31,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
     await mkdir(artifacts, { recursive: true });
     await writeFile(join(artifacts, "control-profile.json"), JSON.stringify({
       backend: process.env.OPENSKY_LINUX_TYPING_NATIVE_FACADE === "1" ? "native" : "opensky",
-      preparation: reduction ? "one-public-character-key" : "original-typeText",
+      preparation: reduction ? "owned-save-dialog-fixture" : "original-typeText",
       packageSHA256: process.env.OPENSKY_NATIVE_PACKAGE_SHA256,
       agentEvaluation: false, scored: false,
     }, null, 2));
@@ -46,7 +46,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
         args: [`-env:UserInstallation=${pathToFileURL(join(temporary, "profile")).href}`, "--norestore", "--nologo", "--nofirststartwizard", "--writer", document],
         env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
       }, async (owned) => {
-        const driveApp = async (app: TypingApp) => {
+        const driveApp = async (app: TypingApp, bindDialog?: (windowId: number) => Promise<void>) => {
           try {
             await expect.poll(async () => {
               const image = join(artifacts, "ready.png");
@@ -55,6 +55,34 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
               await writeFile(join(artifacts, "ready.txt"), text);
               return text;
             }, { timeout: 20_000 }).toMatch(/File\s+Edit\s+View\s+Insert/);
+            if (reduction) {
+              // Prepare an owned initial dialog, not an evaluated native input
+              // implementation. Both interfaces start at this same checkpoint.
+              if (!await owned.inspect()) throw new Error("Owned document exited before dialog setup");
+              const active = Number((await exec("xdotool", ["getactivewindow"], { timeout: 3_000 })).stdout.trim());
+              if (active !== Number(owned.window)) throw new Error("Fixture document is not active; setup input refused");
+              await exec("xdotool", ["key", "--clearmodifiers", "ctrl+a", "a", "ctrl+s"], { timeout: 5_000 });
+              let dialog: number | undefined;
+              const deadline = Date.now() + 15_000;
+              while (!dialog && Date.now() < deadline) {
+                const candidate = Number((await exec("xdotool", ["getactivewindow"], { timeout: 3_000 })).stdout.trim());
+                if (candidate !== Number(owned.window)) {
+                  const pid = Number((await exec("xdotool", ["getwindowpid", String(candidate)], { timeout: 3_000 })).stdout.trim());
+                  if (pid !== owned.pid || !await owned.inspect()) throw new Error("Dialog is outside the independently owned app");
+                  const properties = (await exec("xprop", ["-id", String(candidate), "WM_TRANSIENT_FOR"], { timeout: 3_000 })).stdout;
+                  const parent = properties.match(/window id # (0x[0-9a-f]+)/i)?.[1];
+                  if (!parent || Number(parent) !== Number(owned.window)) throw new Error("Dialog is not transient for the owned document");
+                  dialog = candidate;
+                } else await new Promise(done => setTimeout(done, 100));
+              }
+              if (!dialog) throw new Error("Owned fixture save dialog did not appear");
+              await writeFile(join(artifacts, "dialog-preparation.json"), JSON.stringify({
+                fixtureSetupOnly: true, evaluatedTextInput: false, expectedSavedText: "a",
+                documentWindow: Number(owned.window), dialogWindow: dialog, pid: owned.pid,
+                source: "owned X11 setup; actual public interfaces handle observations and save click",
+              }, null, 2));
+              await bindDialog?.(dialog);
+            }
             const drive = async () => use({ app, document: { async readText() {
               return (await exec(process.env.OPENSKY_EVAL_PYTHON ?? "python3", ["-c",
                 'import sys,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); r=E.fromstring(z.read("word/document.xml")); n={"w":"http://schemas.openxmlformats.org/wordprocessingml/2006/main"}; print("\\n".join("".join(p.itertext()) for p in r.findall(".//w:body/w:p",n)),end="")', document])).stdout;
@@ -116,7 +144,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
               getAXState: state,
               getScreenshot: async () => image(await call("getScreenshot", [])),
               getAXStateAndScreenshot: async () => { throw new Error("Combined native observation is outside this focused control"); },
-            });
+            }, async windowId => { await cell(`var app = await cua.getApp({windowId: ${windowId}});`); });
           });
         } else {
           sdk = createOpenSky({ transport, homeDir: join(temporary, "sdk"), autoLaunch: false,
@@ -153,19 +181,10 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
   keyboard: async ({ fixture }, use) => use(fixture.keyboard),
 });
 
-/** Same preparation on both real interfaces. This isolates save/screenshot
- * targeting from the separately retained native Linux text-entry refusal. */
+/** Original public preparation is unchanged. The explicit reduced profile
+ * starts both interfaces at the already prepared independently owned dialog. */
 export async function prepareSaveDocument(app: TypingApp, text: string): Promise<string> {
-  if (process.env.OPENSKY_LINUX_SCREENSHOT_REDUCTION === "1") {
-    // The retained native ready screenshot proves this point lies in the
-    // document text. Observe anew on each interface before using its pixels.
-    await app.getScreenshot();
-    await app.click([400, 500]);
-    await app.pressKey("ctrl+a");
-    await app.pressKey("a");
-    await app.pressKey("ctrl+s");
-    return "a";
-  }
+  if (process.env.OPENSKY_LINUX_SCREENSHOT_REDUCTION === "1") return "a";
   await app.pressKey("CTRL+A");
   await app.typeText(text);
   await app.pressKey("CTRL+S");

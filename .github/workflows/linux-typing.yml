@@ -20,7 +20,7 @@ on:
         options: ['3', '1']
         default: '3'
       screenshot_reduction:
-        description: 'Use the same single-character key preparation to isolate the two save targets'
+        description: 'Start both interfaces at an identically prepared, owned save dialog'
         type: boolean
         default: false
       native_screenshot_control:
