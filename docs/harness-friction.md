@@ -4691,3 +4691,12 @@ Automatic packets previously indexed call receipts but omitted before/after keyb
 
 
 SET310/312 exact build37702544906 at SDKe3be3d5 passed whole native release library owners [('908', '0', '0', '0', '0'), ('640', '0', '10', '0', '0')]; no owner filters changed. Drivere0a87b610912ba8e8fcd2be64a8b5402fabbc5a1/identity0.34.0/protocol1/token-only-v1 and ELF64 x86-64 SHAb9262bf383468f8f1331160fe93906741801ca09d513af087ccec74eb422cfe5 independently verified against returned bytes, manifest and embedded source. Ordinary native run37700238451 passed the complete key_input_x11 binary including borrowed-map restoration. Admit artifact reuse for original TYPE-L01/TYPE-L03 on one owned hosted desktop, with full passive mapping trace. This does not prove stalled application Unicode consumption; original failures remain authoritative until affected desktop results arrive.
+
+
+## SET314 — Save native dependency caches within same-repository pull requests
+
+Original native PR gates use save-if main-only and repeatedly retain cold misses. Durable issue38 scopes CI-only candidate238fa53a in driver draftPR38: four existing cache guards now save for main or same-repository pull requests; third-party fork writes and cache key/environment/test selections remain unchanged. Parsed workflow semantics match after normalizing only those guards. Native save/hit and measured gain remain pending; do not infer a speedup from policy alone. The Linux input artifact uses separately verified e0a and is unchanged.
+
+## SET316 — Keep current affected runs visible in bounded status
+
+More than eight active remote checks hide the newest original typing run behind older queued gates. Parent compact status now orders active immutable run IDs newest first before its existing eight-row bound; full source-checked history, failure counts, raw evidence and score/dispatch rules remain untouched. One adversarial registration-order owner plus all original parent owners71pass. Source accounting changes only the existing collector and added owner;3893other frozen sources, installed Mac runtime and actual GUI evidence remain unchanged, and scoped Mac candidate independently verifies. This improves visibility; no claimed CI runtime or paid token gain.
