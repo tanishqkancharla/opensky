@@ -19,6 +19,10 @@ on:
         type: choice
         options: ['3', '1']
         default: '3'
+      native_screenshot_control:
+        description: 'Compare CLICK/SHOT against the separately pinned current native window facade'
+        type: boolean
+        default: false
       test_name_pattern:
         description: 'Optional focused Vitest name pattern; empty runs all typing cases'
         type: string
@@ -97,11 +101,12 @@ jobs:
       OPENSKY_DISPOSABLE_DESKTOP: '1'
       OPENSKY_LINUX_OFFICE_BACKEND: opensky
       OPENSKY_LINUX_TYPING_TEST: '1'
+      OPENSKY_LINUX_TYPING_NATIVE_FACADE: ${{ inputs.native_screenshot_control && '1' || '0' }}
       OPENSKY_X11_INPUT_RECORD: '1'
       OPENSKY_ATSPI_TEXT_RECORD: '1'
       OPENSKY_LINUX_TEST_NAME_PATTERN: ${{ inputs.test_name_pattern }}
       OPENSKY_AGENT_TASK: 3ef2b351-8a84-4ff2-8724-d86eae9b842e
-      OPENSKY_NATIVE_PACKAGE_SHA256: 2caa7df314ce37e9048359d8e6a4a78e24574a3b54d6bf510f17754b66dda775
+      OPENSKY_NATIVE_PACKAGE_SHA256: ${{ inputs.native_screenshot_control && '9498e417131a278bce35bfff6275d252c0d332f17afc0313e0b782749f4d348a' || '2caa7df314ce37e9048359d8e6a4a78e24574a3b54d6bf510f17754b66dda775' }}
       OPENSKY_NATIVE_PACKAGE_FILE: ${{ github.workspace }}/.native-reference/chatgpt.deb
       OPENSKY_REUSED_DRIVER_RUN: ${{ inputs.driver_artifact_run }}
       OPENSKY_LINUX_OFFICE_ARTIFACT: ${{ github.workspace }}/artifacts/linux-office
@@ -115,6 +120,9 @@ jobs:
           python-version: '3.12'
       - name: Install desktop and scorer
         run: |
+          if [[ "${{ inputs.native_screenshot_control }}" == true ]]; then
+            [[ "${{ inputs.attempt_count }}" == 1 && "$OPENSKY_LINUX_TEST_NAME_PATTERN" == 'CLICK-L01|SHOT-L01' ]]
+          fi
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core python3-gi gir1.2-atspi-2.0 xdotool x11-utils x11-xserver-utils libreoffice-writer libreoffice-gtk3 fonts-liberation tesseract-ocr libpipewire-0.3-0 libei1 libxtst6
           npm ci --ignore-scripts
@@ -126,8 +134,8 @@ jobs:
       - name: Use the frozen native reference package
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
-          name: native-reference-linux-x64
-          run-id: 34310637093
+          name: ${{ inputs.native_screenshot_control && 'native-reference-current-linux-x64' || 'native-reference-linux-x64' }}
+          run-id: ${{ inputs.native_screenshot_control && '37637263448' || '34310637093' }}
           github-token: ${{ github.token }}
           path: .native-reference
       - name: Validate reuse inputs
