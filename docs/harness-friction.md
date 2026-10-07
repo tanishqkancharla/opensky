@@ -4700,3 +4700,10 @@ Original native PR gates use save-if main-only and repeatedly retain cold misses
 ## SET316 — Keep current affected runs visible in bounded status
 
 More than eight active remote checks hide the newest original typing run behind older queued gates. Parent compact status now orders active immutable run IDs newest first before its existing eight-row bound; full source-checked history, failure counts, raw evidence and score/dispatch rules remain untouched. One adversarial registration-order owner plus all original parent owners71pass. Source accounting changes only the existing collector and added owner;3893other frozen sources, installed Mac runtime and actual GUI evidence remain unchanged, and scoped Mac candidate independently verifies. This improves visibility; no claimed CI runtime or paid token gain.
+
+
+## SET317 — Compare the stalled Unicode counterexample against current native input
+
+Exact e0a/SDK91f6084 run37703734400 yields TYPE-L01pass/TYPE-L03fail,9unselected; all2Writer+1native+1X11+1textobserver groups exit. Actual saved TYPE-L03 loses em dash/CJK/emoji, while both whole keyboard maps restore. Complete passive trace retains5temporary mappings and5restoration requests at the same code248; all restoration requests precede the650ms observed Writer resume. This proves cleanup in this run, not application consumption or a complete Unicode repair. Original failed body/oracles remain.
+
+Current native facade comparison is restricted to the same two original typing owners on one desktop, using existing independently pinned current native package9498e417/run37637263448, same fixture/stall/saved-file/map oracles, exact verified e0a driver artifact reuse and isolated app/helper cleanup. No production code, arbitrary delay, extra X request or uncertain input replay. Native setup/input/AX limitations remain distinct from actual text delivery; incomplete native results cannot certify parity. Evaluate shared native friction before another product correction.
