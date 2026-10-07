@@ -81,6 +81,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
           // through its original REPL, without the legacy sky-only agent guard.
           const config: NativeLinuxReplConfig = JSON.parse(await readFile(join(process.env.OPENSKY_LINUX_OFFICE_ARTIFACT!, "native-repl-config.json"), "utf8"));
           config.env.CUA_REPL_ENABLED_SURFACES = "computer";
+          config.env.NODE_REPL_UNTRUSTED_ENV_ALLOWLIST = "CUA_REPL_ENABLED_SURFACES";
           await withNativeLinuxRepl(config, artifacts, async cell => {
             await cell('await import("@oai/cua/tinyskyAlt");');
             await cell(`var app = await cua.getApp({windowId: ${Number(owned.window)}});`);
