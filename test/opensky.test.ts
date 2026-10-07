@@ -511,6 +511,14 @@ describe("OpenSky against cua-driver", () => {
       assert.equal(input.args.window_id, reads[0].args.window_id);
       assert.equal(input.args.element_token, "s00000001:13");
       assert.equal(input.args.button, "left");
+      await linux.press_key({ app: "Calculator", key: "ALT+O" });
+      await linux.press_key({ app: "Calculator", key: "super+shift+f" });
+      const keys = JSON.parse(await readFile(statePath, "utf8")).calls.filter((call: any) => call.tool === "hotkey");
+      assert.deepEqual(keys.map((call: any) => call.args.keys), [["alt", "o"], ["super", "shift", "f"]]);
+      for (const call of keys) {
+        assert.equal(call.args.pid, reads[0].args.pid);
+        assert.equal(call.args.window_id, reads[0].args.window_id);
+      }
     } finally { await linux.close(); }
   });
 

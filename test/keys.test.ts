@@ -27,6 +27,13 @@ describe("parseXdotoolKey", () => {
     assert.deepEqual(toHotkeyKeys(parseXdotoolKey("super+z")), ["cmd", "z"]);
   });
 
+  it("keeps platform modifier aliases and removes repeated aliases", () => {
+    assert.deepEqual(parseXdotoolKey("alt+option+o"), { key: "o", modifiers: ["option"] });
+    assert.deepEqual(parseXdotoolKey("alt+option+o", "linux"), { key: "o", modifiers: ["alt"] });
+    assert.deepEqual(parseXdotoolKey("cmd+super+f", "linux"), { key: "f", modifiers: ["super"] });
+    assert.deepEqual(parseXdotoolKey("alt+o", "win"), { key: "o", modifiers: ["option"] });
+  });
+
   it("parses ctrl+shift+s", () => {
     assert.deepEqual(parseXdotoolKey("ctrl+shift+s"), {
       key: "s",

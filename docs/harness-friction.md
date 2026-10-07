@@ -4561,3 +4561,13 @@ SET276 final native boundary evidence:37644825426 binds the exact independently 
 Parent CI reducer now downloads each explicitly registered named desktop artifact once when terminal, checks its embedded SDK source against the immutable run head, and publishes a compact result/first-failure/cleanup summary into SQLite. Existing retained artifact directories can be summarized without downloading twice. Only complete, source-checked downloads are published; failure keeps terminal status and reports missing evidence. Subsequent cached refreshes perform no remote calls. A summary cannot certify desktop behavior or contribute a benchmark score.
 
 Existing CLICK/SHOT artifact37634656191 summarizes1pass/1fail and2verified owned exits; native37644825426 summarizes0pass/2fail/8skipped and5verified owned exits. Missing cleanup returns unverified; wrong source is refused. Verification receipt `desktop-summary-verification.json` retains these checks. Scope is parent bookkeeping only; no shipping runtime, model prompt, native fallback, paid dispatch or historical score change.
+
+
+## SET279 — Preserve Linux shortcut modifiers at the SDK boundary
+
+All3 current full desktops save `Keep this text.o` in KEY-L01 instead of `Keep this text.`. SDK parseXdotoolKey emits Mac option for Alt; Linux HotkeyTool::is_modifier excludes option, so keys[option,o] becomes an unmodified o. Normalize Linux modifiers to alt/super before both indexed key and hotkey delivery; Mac/Windows retain previous parsing. This is a generic platform translation, not a named-app workaround. Existing Linux native-capture owner checks exact keyed PID/window and canonical modifier arrays, while the original Mac alias owner remains. Whole affected modules, build/typecheck and existing KEY-L01/COORD-L01/SHOT-L02 E2E verification pending. Native whole typing baseline remains unavailable; this correctness repair cannot claim native-relative performance or screenshot acceptance.
+
+
+## SET280 — Remove the facade screenshot fixture it owns
+
+Whole modifier verification passed89tests, but the controller found one `opensky-cua-facade-*` image directory left by the existing screenshot-default case. Register immediate calling-test teardown to remove only its created image directory. Original mock behavior/assertions remain. Initial build also caught the parser using windows instead of the existing win platform type; use OpenSkyTarget. Keep initial logs and failures. Verify affected whole modules and zero owned fixture directories before outer-root cleanup; no desktop evidence manufactured.

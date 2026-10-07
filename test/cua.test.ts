@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { describe, it } from "node:test";
+import { after, describe, it } from "node:test";
 
 import { createCua, CuaTargetClosedError, CuaUnsupportedError } from "../src/cua.js";
 import type { AppState, BrowserTabInventoryEntry, OpenSky } from "../src/types.js";
@@ -464,6 +464,7 @@ describe("native-style cua facade", () => {
   it("matches native observation defaults and returns screenshot bytes", async () => {
     const fake = new FakeOpenSky();
     const dir = await mkdtemp(join(tmpdir(), "opensky-cua-facade-"));
+    after(() => rm(dir, { recursive: true, force: true }));
     const screenshot = join(dir, "screen.png");
     await writeFile(screenshot, Buffer.from([137, 80, 78, 71]));
     fake.screenshotUrl = pathToFileURL(screenshot).href;

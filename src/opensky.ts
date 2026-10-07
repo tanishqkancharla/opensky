@@ -1697,7 +1697,7 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    const parsed = parseXdotoolKey(args.key);
+    const parsed = parseXdotoolKey(args.key, this.target);
     const boundWindow = await this.refreshBoundWindow(resolved);
     if (!boundWindow) {
       throw new OpenSkyError(
