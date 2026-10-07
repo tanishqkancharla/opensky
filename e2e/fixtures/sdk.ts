@@ -130,7 +130,7 @@ export function scrollMarkerTop(png: Uint8Array): number {
 }
 
 export const nativeText = "α 😀 one needle.\nβ 😀 two needle.\n";
-type NativeDocument = { handle: TargetHandle; path: string; editorIndex: number; initialText: string; read(): Promise<string> };
+type NativeDocument = { identity: {pid:number;launchedAt:number}; windowId:number; artifacts:string; handle: TargetHandle; path: string; editorIndex: number; initialText: string; read(): Promise<string> };
 
 export const nativeTest = test.extend<{ document: NativeDocument; documentText: string }>({
   documentText: nativeText,
@@ -145,7 +145,7 @@ export const nativeTest = test.extend<{ document: NativeDocument; documentText: 
         const opened = await sdk.get_app_state({ app: owned.handle, includeScreenshot: false, disableDiff: true });
         await writeFile(join(artifacts, "sdk-initial.txt"), opened.text);
         try {
-          await use({ handle: owned.handle, path, editorIndex: nativeEditorIndex(opened.text), initialText: documentText, read: () => readFile(path, "utf8") });
+          await use({ identity:owned.identity,windowId:owned.windowId,artifacts,handle: owned.handle, path, editorIndex: nativeEditorIndex(opened.text), initialText: documentText, read: () => readFile(path, "utf8") });
         } finally {
           // Observe the public outcome after the test, including when paste
           // reports uncertainty before the test can save. This diagnostic

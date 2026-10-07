@@ -1,4 +1,5 @@
 /** Real clipboard fixture: original items/bytes remain in the private helper process. */
+import {ClipboardReplies} from "./clipboard-replies.js";
 import {spawn} from "node:child_process";
 import {createInterface} from "node:readline";
 import {mkdtemp,writeFile,rm} from "node:fs/promises";
@@ -6,8 +7,8 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {compileMacSwiftHelper} from "./mac-swift-compiler.js";
-type Receipt={ok?:boolean;restored?:boolean;allOriginalItemsAndFormatsVerified?:boolean;markerPreserved?:boolean;error?:string};
-export async function withOwnedMacClipboard<T>(payload:string,rich:boolean,use:(fixture:{markerPreserved():Promise<boolean>})=>Promise<T>):Promise<T>{
+type Receipt={ok?:boolean;restored?:boolean;allOriginalItemsAndFormatsVerified?:boolean;markerPreserved?:boolean;newerMarkerPreserved?:boolean;copied?:boolean;insertionObserved?:boolean;payloadObservedBeforeCopy?:boolean;error?:string};
+export async function withOwnedMacClipboard<T>(payload:string,rich:boolean,use:(fixture:{markerPreserved():Promise<boolean>;prepareCompetingCopy(target:{pid:number;launchedAt:number;windowId:number;path:string}):Promise<void>;copyAfterInsertion():Promise<Receipt>;newerMarkerPreserved():Promise<boolean>})=>Promise<T>):Promise<T>{
   if(process.platform!=="darwin"||process.env.CUA_TEST_ALLOW_CLIPBOARD!=="1")throw Error("Real clipboard fixture requires Mac and explicit CUA_TEST_ALLOW_CLIPBOARD=1");
   const artifacts=await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR??tmpdir(),"mac-clipboard-"));
   const temporary=await mkdtemp(join(tmpdir(),"opensky-clipboard-owner-"));
@@ -19,18 +20,27 @@ export async function withOwnedMacClipboard<T>(payload:string,rich:boolean,use:(
     await writeFile(join(artifacts,"compiler.json"),JSON.stringify(await compileMacSwiftHelper(fileURLToPath(new URL("./mac-clipboard-owner.swift",import.meta.url)),helper),null,2));
     worker=spawn(helper,[],{stdio:["pipe","pipe","pipe"]});
     worker.stderr?.resume();
-    const pending:Array<{resolve:(value:Receipt)=>void;reject:(error:Error)=>void}>=[];
-    createInterface({input:worker.stdout!}).on("line",line=>{const waiter=pending.shift();try{waiter?.resolve(JSON.parse(line));}catch{waiter?.reject(Error("Invalid clipboard fixture response; contents withheld"));}});
-    worker.on("error",()=>{for(const waiter of pending.splice(0))waiter.reject(Error("Clipboard fixture worker failed"));});
-    worker.on("close",()=>{closed=true;for(const waiter of pending.splice(0))waiter.reject(Error("Clipboard fixture worker exited"));});
-    request=async(input)=>{
-      if(closed)throw Error("Clipboard fixture worker is closed");
-      const reply=await new Promise<Receipt>((resolve,reject)=>{pending.push({resolve,reject});worker!.stdin!.write(JSON.stringify(input)+"\n");});
+    const replies=new ClipboardReplies<Receipt>(line=>{worker!.stdin!.write(line);});
+    createInterface({input:worker.stdout!}).on("line",line=>replies.receive(line));
+    worker.stdin?.on("error",()=>replies.close(Error("Clipboard fixture write failed; contents withheld")));
+    worker.on("error",()=>replies.close(Error("Clipboard fixture worker failed")));
+    worker.on("close",()=>{closed=true;replies.close();});
+    request=async input=>{
+      const reply=await replies.request(input);
       if(!reply.ok)throw Error(reply.error??"Clipboard fixture refused; contents withheld");return reply;
     };
     const seeded=await request({op:"seed",marker:"OpenSky owned clipboard keeper marker",payload,multiple:true,rich});
     if(!seeded.markerPreserved)throw Error("Seeded clipboard items/formats were not verified");
-    result=await use({markerPreserved:async()=>Boolean((await request!({op:"status"})).markerPreserved)});
+    result=await use({
+      markerPreserved:async()=>Boolean((await request!({op:"status"})).markerPreserved),
+      prepareCompetingCopy:async target=>{await request!({op:"prepare_copy",...target});},
+      copyAfterInsertion:async()=>{
+        const receipt=await request!({op:"copy_after_insert"});
+        await writeFile(join(artifacts,"competing-copy.json"),JSON.stringify(receipt,null,2));
+        return receipt;
+      },
+      newerMarkerPreserved:async()=>Boolean((await request!({op:"status"})).newerMarkerPreserved),
+    });
   }catch(error){actionError=error;}
   finally{
     try{

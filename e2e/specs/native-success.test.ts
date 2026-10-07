@@ -1,4 +1,6 @@
 import {withOwnedMacClipboard} from "../fixtures/mac-clipboard-owner.js";
+import {writeFile} from "node:fs/promises";
+import {join} from "node:path";
 import { expect } from "vitest";
 import { nativeEditorIndex, nativeTest as test, nativeText } from "../fixtures/sdk.js";
 
@@ -14,6 +16,36 @@ test("PASTE-N01: pastes multiline text into the native document", async ({ sdk, 
 
   await expect.poll(() => document.read()).toBe("First native line\nSecond native line\n");
   expect(await clipboard.markerPreserved()).toBe(true);
+  });
+});
+
+test("PASTE-N04: preserves a competing copy after actual text insertion", async ({sdk,document}) => {
+  const payload="Owned competing writer first line\nOwned competing writer second line\n";
+  const state=await sdk.get_app_state({app:document.handle,includeScreenshot:false,disableDiff:true});
+  await sdk.press_key({app:document.handle,element_index:nativeEditorIndex(state.text),key:"super+a"});
+  await withOwnedMacClipboard(payload,false,async clipboard=>{
+    await clipboard.prepareCompetingCopy({...document.identity,windowId:document.windowId,path:document.path});
+    // Start the separate real writer before one public paste. Catch immediately
+    // so a watcher failure cannot produce an unhandled rejection during paste.
+    const copy=clipboard.copyAfterInsertion().then(receipt=>({receipt}),error=>({error}));
+    let pasteError:unknown;
+    try { await sdk.paste({app:document.handle,text:payload,format:"text"}); }
+    catch(error) { pasteError=error; }
+    const copied=await copy;
+    if("error" in copied)throw copied.error;
+    expect(copied.receipt).toMatchObject({copied:true,insertionObserved:true,payloadObservedBeforeCopy:true});
+    const details=(pasteError as {details?:Record<string,unknown>}|undefined)?.details;
+    // Early external copy may invalidate the driver's board-token observation.
+    // Keep that uncertainty honest; actual insertion is proved independently.
+    if(pasteError)expect(details).toMatchObject({status:"unknown",effect:"unknown",clipboard_policy:"restore",clipboard_restore_status:"unverified_input",clipboard_restored:false,do_not_replay:true});
+    await writeFile(join(document.artifacts,"competing-paste-outcome.json"),JSON.stringify({
+      publicPasteReturned:!pasteError,driverOutcome:details??null,competingCopy:copied.receipt,
+      insertionOracle:"explicit save and exact file contents",pasteReplayed:false,
+    },null,2));
+    expect(await clipboard.newerMarkerPreserved()).toBe(true);
+    await sdk.press_key({app:document.handle,key:"super+s"});
+    await expect.poll(()=>document.read()).toBe(payload);
+    expect(await clipboard.newerMarkerPreserved()).toBe(true);
   });
 });
 
