@@ -51,13 +51,13 @@ export function recordDriverCalls(driver: DriverClient, artifacts: string): void
   let sequence = 0;
   const fields = ["pid", "window_id", "target_id", "snapshot_id", "capture_id", "frame",
     "screenshot_width", "screenshot_height", "screenshot_frame_valid", "coordinate_frame",
-    "path", "hit", "screen_point", "window_point", "delivery_mode", "effect", "verified",
+    "path", "hit", "screen_point", "window_point", "window_bounds", "delivery_mode", "delivery", "route", "summary", "effect", "verified",
     "focus_before", "focus_after", "focus_restored", "focus_guard", "code", "reason"];
   const select = (value: unknown): Record<string, unknown> => {
     if (!value || typeof value !== "object") return {};
     const record = value as Record<string, unknown>;
     return Object.fromEntries(fields.filter(key => record[key] !== undefined)
-      .map(key => [key, record[key]]));
+      .map(key => [key, key === "summary" && typeof record[key] === "string" ? record[key].slice(0, 2000) : record[key]]));
   };
   driver.call = async (tool, args = {}) => {
     const request = ++sequence;
@@ -85,7 +85,7 @@ export function recordDriverCalls(driver: DriverClient, artifacts: string): void
           return Object.fromEntries(["pid", "window_id", "title", "bounds", "z_index", "is_on_screen", "on_current_space", "layer"]
             .filter(key => row[key] !== undefined).map(key => [key, row[key]]));
         }) } : {}),
-        text: result?.text.slice(0, 2000),
+        // Observation text can contain AX trees/images; retain only selected metadata.
         ...(error !== undefined ? { error: String(error).slice(0, 2000), code: (error as { code?: unknown })?.code, refusal: select((error as { details?: unknown })?.details) } : {}),
       }) + "\n");
     }
