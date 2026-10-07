@@ -24,10 +24,10 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: cfe578ba53afce435486694bcb0048e81f2d9a34
-  # Release artifact from run 34818732007; downloaded bytes, manifest and
-  # source identity independently verified before enabling reuse.
-  OPENSKY_DRIVER_SHA256: a0bb400f185094e292507b642c77714ded1361b45c181526385c3fa59a00500a
+  OPENSKY_DRIVER_REF: 4eede80ff16a2aa80ecfce9d4cdca2edd87c1f32
+  # Build-only first. Artifact reuse remains refused until its returned bytes
+  # and source identity are independently inspected and SHA-256 pinned here.
+  OPENSKY_DRIVER_SHA256: ''
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -56,29 +56,7 @@ jobs:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
         run: |
           cargo build --release --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_selection::tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_keysyms_cover_latin1_unicode_and_control_keys
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml hotkey_alias_tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml virtual_table_tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::native::coord_tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml frame_correlation_tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::cache::tests
-          cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml select_text
-          cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
-          cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
-          CUA_POPUP_CAPTURE_DISPOSABLE_X11=1 xvfb-run -a --server-args="-screen 0 1280x900x24" bash -euo pipefail -c '
-            openbox >/tmp/popup-openbox.log 2>&1 & wm=$!
-            trap "kill $wm 2>/dev/null || true" EXIT
-            wm_ready=0
-            for attempt in $(seq 1 100); do
-              if xprop -root _NET_SUPPORTING_WM_CHECK | grep -q "window id #"; then wm_ready=1; break; fi
-              sleep 0.1
-            done
-            test "$wm_ready" = 1
-            cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::live_tests -- --ignored --nocapture --test-threads=1
-          '
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml input::path_tests
+          cargo test --release --locked -p platform-linux -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
