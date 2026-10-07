@@ -248,7 +248,9 @@ async function getWindowState(state, args) {
   const source = elementsForWindow(app, window).filter((element) =>
     args.max_depth === undefined || Number(element.depth ?? 0) <= args.max_depth
   );
-  const elements = source.map((element) => ({
+  const timedOut = state.timeoutNativeWalk && args.max_depth === undefined &&
+    (state.timeoutNativeWalkAlways || args.timeout_ms !== 5000);
+  const elements = (timedOut ? source.slice(0, 2) : source).map((element) => ({
     ...element,
     element_token: `${snapshotId}:${element.element_index}`,
   }));
@@ -284,7 +286,9 @@ async function getWindowState(state, args) {
     elements,
     frame: window.frame,
     screenshot_file_path: args.screenshot_out_file ?? undefined,
-    elements_complete: !(
+    ...(timedOut ? {truncated: true, truncation_reason: "timeout", nodes_pending: source.length - 2,
+      timeout_ms: args.timeout_ms ?? 1000} : {}),
+    elements_complete: !(timedOut ||
       (state.saturateDefault && args.max_depth === undefined) ||
       state.unprovenIncomplete
     ),

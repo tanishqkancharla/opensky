@@ -2310,7 +2310,7 @@ export class OpenSky implements OpenSkyApi {
     }
     await mkdirPrivate(this.screenshotDir);
     const screenshotPath = options.screenshotPath ?? join(this.screenshotDir, `${slug(resolved.name)}-${resolved.windowId}.png`);
-    const result = await this.driver.call("get_window_state", {
+    const captureArgs = {
       pid: resolved.pid,
       window_id: resolved.windowId,
       include_screenshot: options.includeScreenshot,
@@ -2318,6 +2318,14 @@ export class OpenSky implements OpenSkyApi {
       screenshot_format: this.screenshotFormat,
       screenshot_scale: this.screenshotScale,
       max_depth: options.maxDepth,
+    };
+    // Full Mac walks use the existing recovery budget directly. The driver
+    // returns as soon as collection finishes; a short initial timeout followed
+    // by the same full walk discards work and publishes an unused snapshot.
+    // Depth-limited reads and other platforms retain their own defaults.
+    const result = await this.driver.call("get_window_state", {
+      ...captureArgs,
+      ...(this.target === "mac" && options.maxDepth === undefined ? { timeout_ms: 5000 } : {}),
     });
     const structured = asRecord(result.structured) ?? {};
     const rawElements = normalizeElements(structured.elements);
@@ -2368,7 +2376,7 @@ export class OpenSky implements OpenSkyApi {
       frame,
       degraded: structured.degraded === true,
       degradedReason: optionalString(structured.degraded_reason),
-      truncated: structured.elements_complete === false || totalElementCount > returnedElementCount,
+      truncated: structured.truncated === true || structured.elements_complete === false || totalElementCount > returnedElementCount,
       rawElementCount: rawElements.length,
       totalElementCount,
       returnedElementCount,
