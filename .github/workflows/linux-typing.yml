@@ -25,9 +25,9 @@ permissions:
 
 env:
   OPENSKY_DRIVER_REF: 4eede80ff16a2aa80ecfce9d4cdca2edd87c1f32
-  # Build-only first. Artifact reuse remains refused until its returned bytes
-  # and source identity are independently inspected and SHA-256 pinned here.
-  OPENSKY_DRIVER_SHA256: ''
+  # Exact release artifact37628999335: manifest, downloaded ELF bytes and
+  # embedded/source identity independently verified before admitting reuse.
+  OPENSKY_DRIVER_SHA256: 271797ab84546d273f242c5b69cc72fa883ea06199e527d90a635e017faf1a1f
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
