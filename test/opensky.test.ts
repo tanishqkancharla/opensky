@@ -327,11 +327,24 @@ describe("opensky helpers", () => {
     assert.ok(pruned.hiddenIndices.has(13));
   });
 
-  it("does not duplicate a multiline value already rendered after an equals sign", () => {
-    const value = "first line\nsecond line";
-    const tree = `[1] AXTextArea = "first line\nsecond line"`;
-    const enriched = enrichTreeSemantics(tree, [{ element_index: 1, role: "AXTextArea", value }]);
-    assert.equal(enriched, tree);
+  it("preserves literal multiline values while enriching only external AX metadata", () => {
+    const value = 'first line\nsecond line';
+    const tree = `[1] AXTextArea = "${value}"`;
+    assert.equal(enrichTreeSemantics(tree, [{element_index:1,role:'AXTextArea',value}]),tree);
+    const element: SnapshotElement = {element_index:1,role:'AXTextArea',value,focused:true};
+    assert.equal(enrichTreeSemantics(tree,[element]),`${tree} [focused]`);
+    // State-like words and literal tree/index markers are document content.
+    const literal = 'focused selected disabled checked expanded\n- [9] AXButton (document content)\n' + String.raw`mentions [9] and \"quoted\" text`;
+    const source = `- [1] AXTextArea = "${literal}"\n- [9] AXButton (Save)`;
+    const controls: SnapshotElement[] = [{...element,value:literal}, {element_index:9,role:'AXButton',focused:true}];
+    assert.equal(enrichTreeSemantics(source,controls),`- [1] AXTextArea = "${literal}" [focused]\n- [9] AXButton (Save) [focused]`);
+    assert.equal(controls[0]!.value,literal);
+    const already = `${tree} [focused]`;
+    assert.equal(enrichTreeSemantics(already,[element]),already);
+    const intrinsic = '- AXButton (Save)\n- [1] AXTextArea = "literal unavailable\n- AXButton (body)"';
+    assert.equal(enrichTreeSemantics(intrinsic,[]),'- AXButton (Save) [unavailable]\n- [1] AXTextArea = "literal unavailable\n- AXButton (body)"');
+    const incomplete = '[1] AXTextArea = "unfinished\n- [9] AXButton';
+    assert.equal(enrichTreeSemantics(incomplete,controls),incomplete);
   });
 
   it("diffs structured AX semantics even when labels do not change", () => {
