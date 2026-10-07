@@ -14,6 +14,11 @@ on:
         description: Existing driver build run; reuse requires a separately pinned release SHA-256
         type: string
         default: ''
+      attempt_count:
+        description: 'One desktop for focused diagnosis; three for complete verification'
+        type: choice
+        options: ['3', '1']
+        default: '3'
       test_name_pattern:
         description: 'Optional focused Vitest name pattern; empty runs all typing cases'
         type: string
@@ -83,7 +88,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        attempt: [1, 2, 3]
+        attempt: ${{ fromJSON(inputs.attempt_count == '1' && '[1]' || '[1,2,3]') }}
     needs: driver
     runs-on: ubuntu-24.04
     env:

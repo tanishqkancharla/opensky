@@ -4488,3 +4488,12 @@ Current clean baseline8 and strengthened9 actual Mac cases pass on unchanged c11
 Existing public Linux typing workflow still pins pre-upgrade cfe578 source and invokes hand-maintained Rust module filters; several old Linux modules no longer exist in0.34, so a green filtered command may run no cases. Pin current final driver4eede80 and run whole affected platform-linux/cua-driver-core libraries instead. Preserve complete existing typing/Unicode/save/dialog/keyboard/owned-cleanup controls and exact native reference. First dispatch is build-only; artifact reuse stays refused until actual downloaded source identity, manifest and bytes are independently inspected and SHA256 pinned. SDK/input/runtime/agent guidance are unchanged.
 
 Native reference artifact34310637093 is currently available and unexpired; no fallback native backend. Separate complete canonical Linux X11 workflow will run unchanged at the exact driver SHA, retaining its full lane selection and preflight/evidence authority. Hosted desktops create no new local VM or Mac app, and no paid agent dispatch or Mac score change. Local type/build/lint and remote build/desktop outcomes pending; build/unit or public SDK smokes do not replace canonical platform certification. Existing issue14 records this selected migration gap; keep draft.
+
+
+## SET270 — Focused desktop diagnosis with binding evidence
+
+**Symptom/layer:** Current driver4eede80 starts all30 independently owned LibreOffice windows, but public SDK lookup rejects `LibreOffice` before input. All30 owned-process cleanups pass. The initial fixtures retain no raw app catalog, so catalog ambiguity is inferred, not proven.
+
+**Implemented:** The existing typing fixture records passive raw app/window inventories and independent owned-process inspection when binding fails, then preserves the original exception. Existing Linux workflow accepts one desktop for a focused diagnostic run; default remains all three desktops and all cases. Existing verified driver artifact reuse avoids rebuilding Rust for SDK-only diagnosis.
+
+**Evidence/validation:** Original complete run37630684460 and its30 failures/cleanup receipts retained. Focused current-source diagnostic pending. Saved text, native reference, keyboard and cleanup oracles are unchanged. No input behavior fix or real-driver acceptance yet. A focused green result cannot stand in for complete verification.
