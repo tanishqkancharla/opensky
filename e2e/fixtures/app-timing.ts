@@ -6,6 +6,7 @@ import type { App } from "../../src/cua.js";
 export function recordAppTiming(app: App, artifacts: string): App {
   const measured = new Set(["getScreenshot", "getAXState", "getAXStateAndScreenshot", "click", "drag", "typeText", "pressKey", "selectText", "paste"]);
   let observationSequence = 0;
+  let screenshotSequence = 0;
   return new Proxy(app, {
     get(target, key) {
       const value = Reflect.get(target, key, target);
@@ -15,15 +16,24 @@ export function recordAppTiming(app: App, artifacts: string): App {
         const started = performance.now();
         let passed = false;
         let observation: string | undefined;
-        const sequence = key === "getAXState" ? ++observationSequence : undefined;
+        let screenshot: Uint8Array | undefined;
+        const sequence = key === "getAXState" || key === "getAXStateAndScreenshot" ? ++observationSequence : undefined;
+        const imageSequence = key === "getScreenshot" || key === "getAXStateAndScreenshot" ? ++screenshotSequence : undefined;
         try {
           const result = await value.apply(target, args);
           if (key === "getAXState" && typeof result === "string") observation = result;
+          if (key === "getScreenshot" && result instanceof Uint8Array) screenshot = result;
+          if (key === "getAXStateAndScreenshot" && result && typeof result === "object") {
+            if (typeof result.state === "string") observation = result.state;
+            if (result.screenshot instanceof Uint8Array) screenshot = result.screenshot;
+          }
           passed = true;
           return result;
         } finally {
           const elapsedMs = performance.now() - started;
           await appendFile(join(artifacts, "method-timing.jsonl"), JSON.stringify({ method: key, elapsedMs, passed }) + "\n");
+          // Retain returned bytes/state after timing, without another UI read.
+          if (screenshot !== undefined) await writeFile(join(artifacts, `screenshot-${String(imageSequence).padStart(3, "0")}.png`), screenshot);
           // Retain the exact public observation for before/after fidelity checks.
           // Artifact writes occur after measuring the original method duration.
           if (observation !== undefined) await writeFile(join(artifacts, `observation-${String(sequence).padStart(3, "0")}.txt`), observation);
