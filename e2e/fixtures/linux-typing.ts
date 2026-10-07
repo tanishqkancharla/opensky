@@ -37,7 +37,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
         sdk = createOpenSky({ transport, homeDir: join(temporary, "sdk"), autoLaunch: false,
           driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
         const cua = createCua(sdk);
-        const app = recordAppTiming(await cua.getApp("LibreOffice").catch(async (error) => {
+        const app = recordAppTiming(await cua.getApp("LibreOffice Writer").catch(async (error) => {
           // Keep the original failure. Passive inventory and the independently
           // owned process/window let a focused retry distinguish catalog lookup
           // from startup, permissions or stale window identity.
@@ -48,8 +48,8 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
           ]);
           await writeFile(join(artifacts, "binding-failure.json"), JSON.stringify({
             error: String(error), owned: { pid: owned.pid, window: owned.window, startTicks: owned.startTicks },
-            diagnostics: diagnostics.map((result) => result.status === "fulfilled"
-              ? { status: result.status, value: result.value }
+            diagnostics: diagnostics.map((result, index) => result.status === "fulfilled"
+              ? { status: result.status, value: index < 2 ? (result.value as { structured: unknown }).structured : result.value }
               : { status: result.status, reason: String(result.reason) }),
           }, null, 2)).catch(() => undefined);
           throw error;
