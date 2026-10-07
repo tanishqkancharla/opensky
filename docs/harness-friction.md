@@ -4514,3 +4514,8 @@ Actual corrected full SDK run37633414153 passes8/30 cases, fails22 and verifies 
 
 
 Process bookkeeping: parent `outputs/remote_check_status.py` refreshes live immutable run sources once, caches terminal observations, preserves prior status on observation errors, and updates the registered SQLite change. It never dispatches/cancels/certifies jobs. Current actual observations exercise that reducer; no score or cleanup receipt is rewritten. Pending source accounting keeps the changed Linux candidate out of paid dispatch; earlier Mac acceptance remains historical for its unchanged runtime.
+
+
+## SET273 — Automatic unit-fixture teardown
+
+Shared makeHarness creates a private directory/mock driver but previously registered no teardown. Add a calling-test after hook that closes the mock session and removes only the directory it created, including after assertion failures. All three existing consumers (SDK core, CLI, async REPL) run in a separately owned short temporary root; inspect remaining fixture directories before controller cleanup. This changes only test resource lifecycle, not SDK/GUI behavior. Never bulk-delete older unknown temp directories or count this as native app acceptance. Actual whole-owner result and zero remaining fixture-directory evidence are retained in fixture-cleanup-existing-owners.json.
