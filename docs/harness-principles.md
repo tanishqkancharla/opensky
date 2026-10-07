@@ -167,3 +167,5 @@ not enter the evaluated model's context. Ship a readable skill with the package
 and keep its capability descriptions aligned with the public API.
 
 - Capture decisive state before teardown changes it. Freeze the original failure boundary so recovery actions cannot obscure the failed action or replace its primary error.
+
+- Shorten feedback at the failing boundary. During implementation select the affected existing outcome checks, reuse only independently verified immutable artifacts, and collect failure evidence before teardown. Broaden verification after focused checks pass; keep complete release gates and historical failures.
