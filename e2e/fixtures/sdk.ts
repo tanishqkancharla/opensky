@@ -5,6 +5,7 @@ import { test as base } from "vitest";
 import { PNG } from "pngjs";
 import { createCua, createOpenSky, type CuaFacade, type Tab, type TargetHandle } from "opensky-cua";
 import { editorPage, servePage, type Site } from "./site.js";
+import { DriverDiagnostics } from "../../evals/parity/driver-diagnostics.js";
 import { verifyDriverRuntime } from "../../evals/parity/driver-runtime.js";
 import { withSdkOwnedMacDocument } from "./mac-sdk-document.js";
 
@@ -31,13 +32,17 @@ export const test = base.extend<BrowserFixtures>({
       screenshotFormat: "png",
       driverOptions: { binaryPath, socket, autoInstall: false, autoStart: false },
     });
+    const diagnostics = process.env.OPENSKY_E2E_DRIVER_DIAGNOSTICS === "1" ? new DriverDiagnostics() : undefined;
     if (process.platform === "darwin" && process.env.OPENSKY_E2E_ARTIFACT_DIR) {
       // Retain actual launch/window observations for intermittent opening
       // failures. This forwards every call unchanged; it never supplies results.
       const call = sdk.driver.call.bind(sdk.driver);
       sdk.driver.call = async (tool, args = {}) => {
         const startedAt = new Date().toISOString();
-        const result = await call(tool, args);
+        const timing = diagnostics?.begin(tool, args);
+        let result: Awaited<ReturnType<typeof call>>;
+        try { result = await call(tool, args); if (timing) diagnostics!.end(timing, result); }
+        catch (error) { if (timing) diagnostics!.end(timing, undefined, error); throw error; }
         if (tool === "launch_app" || (tool === "list_windows" && args.pid)) {
           await appendFile(join(homeDir, "native-window-calls.jsonl"), JSON.stringify({
             startedAt, tool, args, structured: result.structured,
@@ -53,6 +58,10 @@ export const test = base.extend<BrowserFixtures>({
       finally {
         // Keep recovery state even when another fixture (for example native
         // window teardown) failed while SDK session shutdown itself succeeded.
+        if (diagnostics) {
+          try { await writeFile(join(homeDir, "driver-diagnostics.json"), JSON.stringify(diagnostics.artifact(), null, 2)); }
+          catch (error) { console.error("Could not retain passive driver diagnostics:", error); }
+        }
         console.info(`SDK E2E recovery/artifact directory: ${homeDir}`);
       }
     }
@@ -121,7 +130,7 @@ export function scrollMarkerTop(png: Uint8Array): number {
 }
 
 export const nativeText = "α 😀 one needle.\nβ 😀 two needle.\n";
-type NativeDocument = { handle: TargetHandle; path: string; editorIndex: number; initialText: string; read(): Promise<string> };
+type NativeDocument = { identity: {pid:number;launchedAt:number}; windowId:number; artifacts:string; handle: TargetHandle; path: string; editorIndex: number; initialText: string; read(): Promise<string> };
 
 export const nativeTest = test.extend<{ document: NativeDocument; documentText: string }>({
   documentText: nativeText,
@@ -136,7 +145,7 @@ export const nativeTest = test.extend<{ document: NativeDocument; documentText: 
         const opened = await sdk.get_app_state({ app: owned.handle, includeScreenshot: false, disableDiff: true });
         await writeFile(join(artifacts, "sdk-initial.txt"), opened.text);
         try {
-          await use({ handle: owned.handle, path, editorIndex: nativeEditorIndex(opened.text), initialText: documentText, read: () => readFile(path, "utf8") });
+          await use({ identity:owned.identity,windowId:owned.windowId,artifacts,handle: owned.handle, path, editorIndex: nativeEditorIndex(opened.text), initialText: documentText, read: () => readFile(path, "utf8") });
         } finally {
           // Observe the public outcome after the test, including when paste
           // reports uncertainty before the test can save. This diagnostic

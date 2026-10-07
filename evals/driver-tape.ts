@@ -40,10 +40,16 @@ export type ReplayCompatibility = {
   /** Replay-only bridge for v1 calls recorded before OpenSky supplied its base session explicitly. */
   kind: "v1_implicit_base_session";
   baseSession: string;
+  /** Explicit inert replay bridge for the Mac isolated-launch saved-state flag. */
+  macIgnoreSavedState?: true;
+  /** Historical Mac full reads omitted the current explicit bounded walk budget. */
+  macFullCaptureTimeoutMs?: 5000;
 };
 
 export type ReplayCompatibilityReceipt = ReplayCompatibility & {
   appliedCallIndices: number[];
+  launchArgumentCallIndices?: number[];
+  captureBudgetCallIndices?: number[];
 };
 
 /** Records the unmodified DriverClient result while canonicalizing volatile call arguments. */
@@ -100,6 +106,8 @@ export class RecordingDriverClient implements DriverClient {
 export class ReplayDriverClient implements DriverClient {
   private cursor = 0;
   private readonly appliedCompatibilityCalls: number[] = [];
+  private readonly launchArgumentCalls: number[] = [];
+  private readonly captureBudgetCalls: number[] = [];
 
   constructor(
     readonly tape: DriverTape,
@@ -109,14 +117,18 @@ export class ReplayDriverClient implements DriverClient {
       throw new Error(`Unsupported driver tape version ${String(tape.version)}.`);
     }
     if (options.compatibility &&
-        (options.compatibility.kind !== "v1_implicit_base_session" || !options.compatibility.baseSession)) {
+        (options.compatibility.kind !== "v1_implicit_base_session" || !options.compatibility.baseSession ||
+         (options.compatibility.macIgnoreSavedState !== undefined && options.compatibility.macIgnoreSavedState !== true) ||
+         (options.compatibility.macFullCaptureTimeoutMs !== undefined && options.compatibility.macFullCaptureTimeoutMs !== 5000))) {
       throw new Error("Replay compatibility requires a non-empty deterministic baseSession.");
     }
   }
 
   get compatibilityReceipt(): ReplayCompatibilityReceipt | undefined {
     const compatibility = this.options.compatibility;
-    return compatibility ? { ...compatibility, appliedCallIndices: [...this.appliedCompatibilityCalls] } : undefined;
+    return compatibility ? { ...compatibility, appliedCallIndices: [...this.appliedCompatibilityCalls],
+      ...(compatibility.macIgnoreSavedState ? { launchArgumentCallIndices: [...this.launchArgumentCalls] } : {}),
+      ...(compatibility.macFullCaptureTimeoutMs ? { captureBudgetCallIndices: [...this.captureBudgetCalls] } : {}) } : undefined;
   }
 
   async call(tool: string, args: Record<string, unknown> = {}): Promise<DriverResult> {
@@ -127,7 +139,8 @@ export class ReplayDriverClient implements DriverClient {
     }
     const actualArgs = canonicalizeDriverArgs(args);
     const exactArgs = stableJson(expected.args) === stableJson(actualArgs);
-    const compatibleBaseSession = !exactArgs && this.matchesImplicitBaseSession(expected.args, actualArgs);
+    const compatibility = !exactArgs ? this.matchesImplicitBaseSession(tool, expected.args, actualArgs) : undefined;
+    const compatibleBaseSession = compatibility !== undefined;
     if (expected.tool !== tool || (!exactArgs && !compatibleBaseSession)) {
       throw new Error(
         [
@@ -147,11 +160,19 @@ export class ReplayDriverClient implements DriverClient {
       const replayed = new OpenSkyError(expected.error, metadata.code,
         metadata.details === undefined ? undefined : boundedErrorDetails(metadata.details));
       replayed.name = metadata.name;
-      if (compatibleBaseSession) this.appliedCompatibilityCalls.push(index);
+      if (compatibleBaseSession) {
+        this.appliedCompatibilityCalls.push(index);
+        if (compatibility === "mac_saved_state") this.launchArgumentCalls.push(index);
+        if (compatibility === "mac_capture_budget") this.captureBudgetCalls.push(index);
+      }
       this.cursor += 1;
       throw replayed;
     }
-    if (compatibleBaseSession) this.appliedCompatibilityCalls.push(index);
+    if (compatibleBaseSession) {
+      this.appliedCompatibilityCalls.push(index);
+      if (compatibility === "mac_saved_state") this.launchArgumentCalls.push(index);
+      if (compatibility === "mac_capture_budget") this.captureBudgetCalls.push(index);
+    }
     this.cursor += 1;
     if (expected.error !== undefined) throw new Error(expected.error);
     if (!expected.result) throw new Error(`Driver tape call ${index} has neither result nor error.`);
@@ -173,15 +194,29 @@ export class ReplayDriverClient implements DriverClient {
   }
 
   private matchesImplicitBaseSession(
+    tool: string,
     expectedArgs: Record<string, unknown>,
     actualArgs: Record<string, unknown>,
-  ): boolean {
+  ): "base_session" | "mac_saved_state" | "mac_capture_budget" | undefined {
     const compatibility = this.options.compatibility;
-    if (!compatibility || compatibility.kind !== "v1_implicit_base_session") return false;
-    if (Object.prototype.hasOwnProperty.call(expectedArgs, "session")) return false;
-    if (actualArgs.session !== compatibility.baseSession) return false;
+    if (!compatibility || compatibility.kind !== "v1_implicit_base_session") return undefined;
+    if (Object.prototype.hasOwnProperty.call(expectedArgs, "session")) return undefined;
+    if (actualArgs.session !== compatibility.baseSession) return undefined;
     const { session: _baseSession, ...withoutSession } = actualArgs;
-    return stableJson(expectedArgs) === stableJson(withoutSession);
+    if (stableJson(expectedArgs) === stableJson(withoutSession)) return "base_session";
+    if (compatibility.macFullCaptureTimeoutMs === 5000 && tool === "get_window_state" &&
+        !Object.prototype.hasOwnProperty.call(expectedArgs, "timeout_ms") &&
+        !Object.prototype.hasOwnProperty.call(expectedArgs, "max_depth") &&
+        actualArgs.timeout_ms === 5000) {
+      const { timeout_ms: _budget, ...historicalRead } = withoutSession;
+      if (stableJson(expectedArgs) === stableJson(historicalRead)) return "mac_capture_budget";
+    }
+    if (!compatibility.macIgnoreSavedState || tool !== "launch_app" ||
+        expectedArgs.creates_new_application_instance !== true ||
+        Object.prototype.hasOwnProperty.call(expectedArgs, "additional_arguments") ||
+        stableJson(actualArgs.additional_arguments) !== stableJson(["-ApplePersistenceIgnoreState", "YES"])) return undefined;
+    const { additional_arguments: _launchArguments, ...historicalLaunch } = withoutSession;
+    return stableJson(expectedArgs) === stableJson(historicalLaunch) ? "mac_saved_state" : undefined;
   }
 }
 

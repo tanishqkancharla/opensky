@@ -648,7 +648,11 @@ export class OpenSky implements OpenSkyApi {
     const launchArgs = {
       ...launchArgsFor(args.app, match),
       urls: args.targets,
-      ...(requestFreshNativeInstance ? { creates_new_application_instance: true } : {}),
+      ...(requestFreshNativeInstance ? {
+        creates_new_application_instance: true,
+        // A fresh, owned instance must not resurrect unrelated saved windows.
+        additional_arguments: ["-ApplePersistenceIgnoreState", "YES"],
+      } : {}),
     };
     let launched = await this.driver.call("launch_app", launchArgs);
     let structured = asRecord(launched.structured) ?? {};
@@ -1508,25 +1512,31 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    if ((this.target === "linux" || this.target === "mac") && format === "text" && resolved && !resolved.browser) {
+    if ((this.target === "mac" || (this.target === "linux" && format === "text")) && resolved && !resolved.browser) {
       this.assertTargetUsable(resolved);
       await this.requireUsableInputWindow(resolved);
       // The compound driver operation checks exact live focus and sends one
       // paste. Never split this into clipboard writes plus a key, or replay
-      // an uncertain delivery. Linux restores supported prior clipboard
-      // contents; macOS deliberately leaves this payload on the clipboard.
+      // an uncertain delivery. Both platforms preserve supported prior clipboard
+      // contents. Mac reports restoration separately and keeps an observed newer copy. Rich Mac
+      // content is converted before mutation; the driver verifies exact plain
+      // text insertion, while callers observe the resulting rich formatting.
       try {
         const result = await this.driver.call("native_paste", {
           pid: resolved.pid,
           window_id: resolved.windowId,
           text: args.text,
           format,
-          ...(this.target === "mac" ? { clipboard_policy: "leave", delivery_mode: "foreground" } : {}),
+          ...(this.target === "mac" ? { clipboard_policy: "restore", delivery_mode: "foreground" } : {}),
         });
         const outcome = asRecord(result.structured);
         const verified = this.target === "linux"
           ? outcome?.status === "completed" && outcome.transfer_verified === true
-          : outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false;
+          : outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false &&
+            outcome.clipboard_policy === "restore" && (
+              (outcome.clipboard_restore_status === "restored" && outcome.clipboard_restored === true) ||
+              (outcome.clipboard_restore_status === "newer_writer_preserved" && outcome.clipboard_restored === false)
+            );
         if (!verified) {
           throw new OpenSkyError(
             "Native paste receipt did not verify the required platform-specific outcome. " +
@@ -1543,9 +1553,10 @@ export class OpenSky implements OpenSkyApi {
       return;
     }
     throw new OpenSkyError(
-      "paste is temporarily unavailable because safe paste requires a compound desktop-helper primitive " +
-        "that cannot overwrite a concurrent user clipboard change. No clipboard, app, window, tab, or input was touched. " +
-        "Use type_text only when typing semantics are acceptable; OpenSky does not silently substitute it for paste.",
+      `Native paste is unsupported for target ${this.target} with format ${format}, or no exact native target is bound. ` +
+        "Mac supports text/html/md; Linux supports text. No clipboard, app, window, tab, or input was touched. " +
+        "This is a capability limitation, not an observed clipboard race; retrying the same request will not enable it.",
+      "unsupported_native_paste",
     );
   }
 
