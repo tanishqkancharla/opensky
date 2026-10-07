@@ -3911,21 +3911,40 @@ function remapTreeIndices(tree: string, elements: SnapshotElement[]): string {
   });
 }
 
+/** Physical newlines inside quoted AX values remain part of one literal row. */
+function quotedTreeRows(tree: string): Array<{line: string; closed: boolean}> {
+  const rows: Array<{line: string; closed: boolean}> = [];
+  let start = 0, quoted = false, escaped = false;
+  for (let cursor = 0; cursor < tree.length; cursor++) {
+    const char = tree[cursor]!;
+    if (escaped) { escaped = false; continue; }
+    if (quoted && char === "\\") { escaped = true; continue; }
+    if (char === '"') quoted = !quoted;
+    if (char === "\n" && !quoted) {
+      rows.push({line: tree.slice(start, cursor), closed: true}); start = cursor + 1;
+    }
+  }
+  rows.push({line: tree.slice(start), closed: !quoted});
+  return rows;
+}
+
 /** Merge structured-only AX state into the readable tree without app-specific rules. */
 export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): string {
   const byIndex = new Map(elements.map((element) => [element.element_index, element]));
-  return tree
-    .split("\n")
-    .map((line) => {
-      const rawIndex = line.match(/\[(\d+)\]/)?.[1];
+  return quotedTreeRows(tree)
+    .map(({line, closed}) => {
+      // An unterminated value cannot safely acquire generated metadata.
+      if (!closed) return line;
+      const metadata = line.replace(/"(?:[^"\\]|\\.)*"/gs, '""');
+      const rawIndex = line.match(/^\s*(?:-\s*)?\[(\d+)\](?:\s|$)/)?.[1];
       if (rawIndex !== undefined) {
         const element = byIndex.get(Number(rawIndex));
         if (!element) return line;
         const additions: string[] = [];
         const renderedValue = element.value === undefined ? undefined : JSON.stringify(element.value);
         if (isLikelyEditableText(element, element.role ?? "", line, element.actions ?? [])) {
-          if (!/\b(?:editable|settable)\b/i.test(line)) additions.push("editable");
-          if (!/\btype-directly\b/i.test(line)) additions.push("type-directly");
+          if (!/\b(?:editable|settable)\b/i.test(metadata)) additions.push("editable");
+          if (!/\btype-directly\b/i.test(metadata)) additions.push("type-directly");
         }
         if (
           element.value !== undefined &&
@@ -3935,15 +3954,15 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
         ) {
           additions.push(`value=${JSON.stringify(element.value)}`);
         }
-        if (element.enabled === false && !/\bdisabled\b/i.test(line)) additions.push("disabled");
-        if (element.selected === true && element.value === undefined && !/\bselected\b/i.test(line)) {
+        if (element.enabled === false && !/\bdisabled\b/i.test(metadata)) additions.push("disabled");
+        if (element.selected === true && element.value === undefined && !/\bselected\b/i.test(metadata)) {
           additions.push("selected");
         }
-        if (element.checked !== undefined && !/\bchecked\b/i.test(line)) {
+        if (element.checked !== undefined && !/\bchecked\b/i.test(metadata)) {
           additions.push(`checked=${element.checked}`);
         }
-        if (element.focused === true && !/\bfocused\b/i.test(line)) additions.push("focused");
-        if (element.expanded !== undefined && !/\bexpanded\b/i.test(line)) {
+        if (element.focused === true && !/\bfocused\b/i.test(metadata)) additions.push("focused");
+        if (element.expanded !== undefined && !/\bexpanded\b/i.test(metadata)) {
           additions.push(`expanded=${element.expanded}`);
         }
         return additions.length > 0 ? `${line} [${additions.join(" ")}]` : line;
@@ -3952,7 +3971,7 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
       // Surface that generic state so the model does not mistake them for active controls.
       if (
         /^\s*-\s+AX(?:Button|MenuButton|RadioButton|CheckBox|Switch|PopUpButton|ComboBox|Slider)\b/.test(line) &&
-        !/\b(?:disabled|unavailable)\b/i.test(line)
+        !/\b(?:disabled|unavailable)\b/i.test(metadata)
       ) {
         return `${line} [unavailable]`;
       }
