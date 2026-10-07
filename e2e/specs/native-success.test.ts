@@ -1,3 +1,4 @@
+import {withOwnedMacClipboard} from "../fixtures/mac-clipboard-owner.js";
 import { expect } from "vitest";
 import { nativeEditorIndex, nativeTest as test, nativeText } from "../fixtures/sdk.js";
 
@@ -7,10 +8,13 @@ test("PASTE-N01: pastes multiline text into the native document", async ({ sdk, 
   const state = await sdk.get_app_state({ app: document.handle, includeScreenshot: false, disableDiff: true });
   const editor = nativeEditorIndex(state.text);
   await sdk.press_key({ app: document.handle, element_index: editor, key: "super+a" });
+  await withOwnedMacClipboard("First native line\nSecond native line\n",false,async clipboard=>{
   await sdk.paste({ app: document.handle, text: "First native line\nSecond native line\n", format: "text" });
   await sdk.press_key({ app: document.handle, key: "super+s" });
 
   await expect.poll(() => document.read()).toBe("First native line\nSecond native line\n");
+  expect(await clipboard.markerPreserved()).toBe(true);
+  });
 });
 
 test("SELECT-N01: replaces the disambiguated second occurrence after Unicode text", async ({ sdk, document }) => {

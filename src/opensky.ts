@@ -648,7 +648,11 @@ export class OpenSky implements OpenSkyApi {
     const launchArgs = {
       ...launchArgsFor(args.app, match),
       urls: args.targets,
-      ...(requestFreshNativeInstance ? { creates_new_application_instance: true } : {}),
+      ...(requestFreshNativeInstance ? {
+        creates_new_application_instance: true,
+        // A fresh, owned instance must not resurrect unrelated saved windows.
+        additional_arguments: ["-ApplePersistenceIgnoreState", "YES"],
+      } : {}),
     };
     let launched = await this.driver.call("launch_app", launchArgs);
     let structured = asRecord(launched.structured) ?? {};
@@ -1521,12 +1525,16 @@ export class OpenSky implements OpenSkyApi {
           window_id: resolved.windowId,
           text: args.text,
           format,
-          ...(this.target === "mac" ? { clipboard_policy: "leave", delivery_mode: "foreground" } : {}),
+          ...(this.target === "mac" ? { clipboard_policy: "restore", delivery_mode: "foreground" } : {}),
         });
         const outcome = asRecord(result.structured);
         const verified = this.target === "linux"
           ? outcome?.status === "completed" && outcome.transfer_verified === true
-          : outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false;
+          : outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false &&
+            outcome.clipboard_policy === "restore" && (
+              (outcome.clipboard_restore_status === "restored" && outcome.clipboard_restored === true) ||
+              (outcome.clipboard_restore_status === "newer_writer_preserved" && outcome.clipboard_restored === false)
+            );
         if (!verified) {
           throw new OpenSkyError(
             "Native paste receipt did not verify the required platform-specific outcome. " +

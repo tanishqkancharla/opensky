@@ -683,6 +683,7 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(launches.length, 1);
     assert.deepEqual(launches[0].args.urls, ["/tmp/delayed-target.txt"]);
     assert.equal(launches[0].args.creates_new_application_instance, true);
+    assert.deepEqual(launches[0].args.additional_arguments, ["-ApplePersistenceIgnoreState", "YES"]);
   });
 
   it("does not loop or recommend unsafe input after a refused target dispatch", async () => {
@@ -883,6 +884,36 @@ describe("OpenSky against cua-driver", () => {
 
     const after = JSON.parse(await readFile(statePath, "utf8"));
     assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "scroll").length, 1);
+  });
+
+  it("requires separate Mac clipboard preservation evidence without replaying paste", async () => {
+    const completed = {status:"completed", target_value_verified:true, transfer_verified:false,
+      clipboard_policy:"restore", clipboard_restore_status:"restored", clipboard_restored:true};
+    const cases = [
+      {outcome:completed, accepted:true},
+      {outcome:{...completed,clipboard_restore_status:"newer_writer_preserved",clipboard_restored:false},accepted:true},
+      ...[
+        {clipboard_restore_status:"restored",clipboard_restored:false},
+        {clipboard_restore_status:"newer_writer_preserved",clipboard_restored:true},
+        {clipboard_restore_status:"failed",clipboard_restored:false},
+        {clipboard_restore_status:"unverified_input",clipboard_restored:false},
+        {clipboard_policy:"leave",clipboard_restored:false},
+        {clipboard_restore_status:undefined,clipboard_restored:undefined},
+        {target_value_verified:false}, {transfer_verified:true}, {status:"unknown"},
+      ].map(delta=>({outcome:{...completed,...delta},accepted:false})),
+    ];
+    for (const {outcome,accepted} of cases) {
+      const {opensky}=await makeHarness();const observed=await opensky.get_app_state({app:"TextEdit",includeScreenshot:false});
+      const original=opensky.driver.call.bind(opensky.driver);const calls:Array<{tool:string,args:Record<string,unknown>}>=[];
+      opensky.driver.call=async(tool,args={})=>{calls.push({tool,args});if(tool==="native_paste")return {structured:outcome,text:"receipt",content:[]};return original(tool,args);};
+      const action=opensky.paste({app:observed.targetHandle,text:"one paste",format:"text"});
+      if(accepted)await action;else await assert.rejects(action,/Observe before retrying; do not replay automatically/);
+      const inputs=calls.filter(c=>c.tool==="native_paste");assert.equal(inputs.length,1);
+      assert.equal(inputs[0].args.clipboard_policy,"restore");assert.equal(inputs[0].args.delivery_mode,"foreground");
+      assert.equal(inputs[0].args.pid,900);assert.equal(inputs[0].args.window_id,2001);
+      assert.ok(!calls.some(c=>["type_text","hotkey","clipboard_set"].includes(c.tool)));
+      await opensky.close();
+    }
   });
 
   it("refuses paste before resolving a target or touching the global clipboard", async () => {
