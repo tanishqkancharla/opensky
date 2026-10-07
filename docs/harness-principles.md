@@ -17,6 +17,8 @@ desirable contracts, not executable OpenSky APIs.
 
 2. Return useful evidence with completed work. Include the context needed to interpret it, not just a pointer or warning that context is missing.
 
+   Preserve the identity and route of the original request and result when diagnosing a failure. Repeating an observation can change the state you need to explain.
+
    ```text
    result = run_tests()
    if result.failed:

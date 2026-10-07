@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createOpenSky, createCua } from "../../src/index.js";
 import type { App } from "../../src/cua.js";
 import { withNativeLinuxRepl, type NativeLinuxReplConfig } from "../../evals/parity/native-linux-repl.js";
-import { recordAppTiming } from "./app-timing.js";
+import { recordAppTiming, recordDriverCalls } from "./app-timing.js";
 import { assertDisposableLinuxDesktop, withOwnedLinuxApp } from "../../evals/parity/linux-app.js";
 import { withX11InputRecord } from "./x11-input-record.js";
 import { withTextEvents } from "./text-events.js";
@@ -149,6 +149,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
         } else {
           sdk = createOpenSky({ transport, homeDir: join(temporary, "sdk"), autoLaunch: false,
             driverOptions: { binaryPath: process.env.OPENSKY_DRIVER_BINARY, socket: process.env.OPENSKY_DRIVER_SOCKET, autoStart: false, autoInstall: false } });
+          recordDriverCalls(sdk.driver, artifacts);
           const cua = createCua(sdk);
           const app = recordAppTiming(await cua.getApp("LibreOffice Writer").catch(async (error) => {
             // Keep the original failure. Passive inventory and the independently
