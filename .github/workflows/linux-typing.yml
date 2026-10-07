@@ -38,8 +38,8 @@ permissions:
 
 env:
   OPENSKY_DRIVER_REF: 96d7c850353471af107b73fbfc3517747261bf3a
-  # Fresh candidate: verify its returned ELF and identity before admitting reuse.
-  OPENSKY_DRIVER_SHA256: ''
+  # Exact build37668932755: whole native owners passed; returned ELF/source/identity verified.
+  OPENSKY_DRIVER_SHA256: c35e4abc7a7edd52116b734fc80b27dd0d7f93a31c07f61c45e3282abea6bb66
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
