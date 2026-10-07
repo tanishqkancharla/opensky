@@ -10,7 +10,7 @@ import { withSdkOwnedMacDocument } from "./mac-sdk-document.js";
 
 export type PublicSdk = Parameters<typeof createCua>[0];
 
-type BrowserFixtures = { sdk: PublicSdk; cua: CuaFacade; html: string; site: Site; tab: Tab };
+type BrowserFixtures = { sdk: ReturnType<typeof createOpenSky>; cua: CuaFacade; html: string; site: Site; tab: Tab };
 
 export const test = base.extend<BrowserFixtures>({
   html: editorPage,

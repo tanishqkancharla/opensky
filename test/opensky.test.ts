@@ -26,6 +26,34 @@ import {
 import type { SnapshotElement } from "../src/types.js";
 import { makeHarness } from "./harness.ts";
 
+describe("unadvertised native primary button routing", () => {
+  it("selects one exact foreground click while preserving advertised and other gestures", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const app = fixture.apps.find((item: { name: string }) => item.name === "Calculator");
+    app.elements = [
+      { element_index: 0, role: "AXWindow", label: "Buttons" },
+      { element_index: 1, role: "AXButton", label: "Unadvertised", actions: [] },
+      { element_index: 2, role: "AXButton", label: "Advertised", actions: ["press"] },
+      { element_index: 3, role: "AXButton", label: "AX advertised", actions: ["AXPress"] },
+    ];
+    await writeFile(statePath, JSON.stringify(fixture));
+    await opensky.get_app_state({ app: "Calculator", includeScreenshot: false });
+    await opensky.click({ app: "Calculator", element_index: 1 });
+    await opensky.click({ app: "Calculator", element_index: 2 });
+    await opensky.click({ app: "Calculator", element_index: 3 });
+    await opensky.click({ app: "Calculator", element_index: 1, mouse_button: "right" });
+    await opensky.click({ app: "Calculator", element_index: 1, click_count: 2 });
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const inputs = after.calls.filter((call: { tool: string }) => ["click", "right_click", "double_click"].includes(call.tool));
+    assert.equal(inputs.length, 5, "one dispatch per gesture; no preliminary refusal or replay");
+    assert.ok(inputs.every((call: any) => call.args.pid === app.pid && call.args.window_id === app.windows[0].window_id));
+    assert.equal(inputs[0].args.delivery_mode, "foreground");
+    assert.ok(inputs.slice(1).every((call: any) => call.args.delivery_mode === undefined));
+  });
+});
+
 describe("opensky helpers", () => {
   it("does not reuse ambiguous public indices for repeated controls", () => {
     const previous: SnapshotElement[] = [

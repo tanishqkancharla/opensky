@@ -1329,6 +1329,15 @@ export class OpenSky implements OpenSkyApi {
     if (args.element_index !== undefined) {
       Object.assign(payload, this.elementTarget(resolved, args.element_index));
       if (button === "left" && args.click_count !== 2) payload.action = "press";
+      const element = this.memory.trees[windowKey(resolved)]?.elements
+        .find(item => item.element_index === args.element_index);
+      // Unadvertised primary buttons require the driver's guarded foreground
+      // pointer route. Advertised or unknown actions keep existing delivery.
+      if (this.target === "mac" && button === "left" && (args.click_count ?? 1) === 1
+        && element?.role === "AXButton" && Array.isArray(element.actions)
+        && !element.actions.some(action => action === "AXPress" || action === "press")) {
+        payload.delivery_mode = "foreground";
+      }
     }
     if (args.x !== undefined) payload.x = args.x;
     if (args.y !== undefined) payload.y = args.y;
