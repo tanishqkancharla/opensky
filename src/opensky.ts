@@ -1332,7 +1332,7 @@ export class OpenSky implements OpenSkyApi {
     };
     if (args.element_index !== undefined) {
       Object.assign(payload, this.elementTarget(resolved, args.element_index));
-      if (button === "left" && args.click_count !== 2) payload.action = "press";
+      if (this.target !== "linux" && button === "left" && args.click_count !== 2) payload.action = "press";
     }
     if (args.x !== undefined) payload.x = args.x;
     if (args.y !== undefined) payload.y = args.y;

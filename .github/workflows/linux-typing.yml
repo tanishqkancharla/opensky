@@ -14,6 +14,19 @@ on:
         description: Existing driver build run; reuse requires a separately pinned release SHA-256
         type: string
         default: ''
+      attempt_count:
+        description: 'One desktop for focused diagnosis; three for complete verification'
+        type: choice
+        options: ['3', '1']
+        default: '3'
+      screenshot_reduction:
+        description: 'Use the same single-character key preparation to isolate the two save targets'
+        type: boolean
+        default: false
+      native_screenshot_control:
+        description: 'Compare CLICK/SHOT against the separately pinned current native window facade'
+        type: boolean
+        default: false
       test_name_pattern:
         description: 'Optional focused Vitest name pattern; empty runs all typing cases'
         type: string
@@ -24,10 +37,10 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: cfe578ba53afce435486694bcb0048e81f2d9a34
-  # Release artifact from run 34818732007; downloaded bytes, manifest and
-  # source identity independently verified before enabling reuse.
-  OPENSKY_DRIVER_SHA256: a0bb400f185094e292507b642c77714ded1361b45c181526385c3fa59a00500a
+  OPENSKY_DRIVER_REF: 4eede80ff16a2aa80ecfce9d4cdca2edd87c1f32
+  # Exact release artifact37628999335: manifest, downloaded ELF bytes and
+  # embedded/source identity independently verified before admitting reuse.
+  OPENSKY_DRIVER_SHA256: 271797ab84546d273f242c5b69cc72fa883ea06199e527d90a635e017faf1a1f
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
@@ -56,29 +69,7 @@ jobs:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
         run: |
           cargo build --release --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_selection::tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml text_keysyms_cover_latin1_unicode_and_control_keys
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml hotkey_alias_tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml virtual_table_tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::native::coord_tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml frame_correlation_tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml atspi::cache::tests
-          cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml select_text
-          cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml element_token::tests
-          cargo test --release --locked -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml every_known_legacy_action_path_normalizes
-          CUA_POPUP_CAPTURE_DISPOSABLE_X11=1 xvfb-run -a --server-args="-screen 0 1280x900x24" bash -euo pipefail -c '
-            openbox >/tmp/popup-openbox.log 2>&1 & wm=$!
-            trap "kill $wm 2>/dev/null || true" EXIT
-            wm_ready=0
-            for attempt in $(seq 1 100); do
-              if xprop -root _NET_SUPPORTING_WM_CHECK | grep -q "window id #"; then wm_ready=1; break; fi
-              sleep 0.1
-            done
-            test "$wm_ready" = 1
-            cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::live_tests -- --ignored --nocapture --test-threads=1
-          '
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml capture::popup::tests
-          cargo test --release --locked -p platform-linux --lib --manifest-path libs/cua-driver/rust/Cargo.toml input::path_tests
+          cargo test --release --locked -p platform-linux -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
@@ -105,7 +96,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        attempt: [1, 2, 3]
+        attempt: ${{ fromJSON(inputs.attempt_count == '1' && '[1]' || '[1,2,3]') }}
     needs: driver
     runs-on: ubuntu-24.04
     env:
@@ -114,11 +105,13 @@ jobs:
       OPENSKY_DISPOSABLE_DESKTOP: '1'
       OPENSKY_LINUX_OFFICE_BACKEND: opensky
       OPENSKY_LINUX_TYPING_TEST: '1'
+      OPENSKY_LINUX_SCREENSHOT_REDUCTION: ${{ inputs.screenshot_reduction && '1' || '0' }}
+      OPENSKY_LINUX_TYPING_NATIVE_FACADE: ${{ inputs.native_screenshot_control && '1' || '0' }}
       OPENSKY_X11_INPUT_RECORD: '1'
       OPENSKY_ATSPI_TEXT_RECORD: '1'
       OPENSKY_LINUX_TEST_NAME_PATTERN: ${{ inputs.test_name_pattern }}
       OPENSKY_AGENT_TASK: 3ef2b351-8a84-4ff2-8724-d86eae9b842e
-      OPENSKY_NATIVE_PACKAGE_SHA256: 2caa7df314ce37e9048359d8e6a4a78e24574a3b54d6bf510f17754b66dda775
+      OPENSKY_NATIVE_PACKAGE_SHA256: ${{ (inputs.native_screenshot_control || inputs.screenshot_reduction) && '9498e417131a278bce35bfff6275d252c0d332f17afc0313e0b782749f4d348a' || '2caa7df314ce37e9048359d8e6a4a78e24574a3b54d6bf510f17754b66dda775' }}
       OPENSKY_NATIVE_PACKAGE_FILE: ${{ github.workspace }}/.native-reference/chatgpt.deb
       OPENSKY_REUSED_DRIVER_RUN: ${{ inputs.driver_artifact_run }}
       OPENSKY_LINUX_OFFICE_ARTIFACT: ${{ github.workspace }}/artifacts/linux-office
@@ -132,6 +125,9 @@ jobs:
           python-version: '3.12'
       - name: Install desktop and scorer
         run: |
+          if [[ "${{ inputs.native_screenshot_control }}" == true || "${{ inputs.screenshot_reduction }}" == true ]]; then
+            [[ "${{ inputs.attempt_count }}" == 1 && "$OPENSKY_LINUX_TEST_NAME_PATTERN" == 'CLICK-L01|SHOT-L01' ]]
+          fi
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends xvfb xauth dbus-x11 openbox at-spi2-core python3-gi gir1.2-atspi-2.0 xdotool x11-utils x11-xserver-utils libreoffice-writer libreoffice-gtk3 fonts-liberation tesseract-ocr libpipewire-0.3-0 libei1 libxtst6
           npm ci --ignore-scripts
@@ -143,8 +139,8 @@ jobs:
       - name: Use the frozen native reference package
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
-          name: native-reference-linux-x64
-          run-id: 34310637093
+          name: ${{ (inputs.native_screenshot_control || inputs.screenshot_reduction) && 'native-reference-current-linux-x64' || 'native-reference-linux-x64' }}
+          run-id: ${{ (inputs.native_screenshot_control || inputs.screenshot_reduction) && '37637263448' || '34310637093' }}
           github-token: ${{ github.token }}
           path: .native-reference
       - name: Validate reuse inputs
