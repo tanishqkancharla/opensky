@@ -4519,3 +4519,10 @@ Process bookkeeping: parent `outputs/remote_check_status.py` refreshes live immu
 ## SET273 — Automatic unit-fixture teardown
 
 Shared makeHarness creates a private directory/mock driver but previously registered no teardown. Add a calling-test after hook that closes the mock session and removes only the directory it created, including after assertion failures. All three existing consumers (SDK core, CLI, async REPL) run in a separately owned short temporary root; inspect remaining fixture directories before controller cleanup. This changes only test resource lifecycle, not SDK/GUI behavior. Never bulk-delete older unknown temp directories or count this as native app acceptance. Actual whole-owner result and zero remaining fixture-directory evidence are retained in fixture-cleanup-existing-owners.json.
+
+
+## SET274 — Native baseline surface discovery before screenshot classification
+
+Frozen Linux reference package26.903.61454/@oai/sky0.6.26 exposes desktop pixels but no window/AX indices; it cannot establish SHOT-L01 index-preservation parity. Current installed Mac official @oai/cua0.2.5 ships a Linux facade whose screenshot path reads fresh AX/window state, unlike OpenSky's capture-only path. That local source is evidence about the implementation, not real Linux acceptance. Official Linux preview docs still do not claim supported Computer Use.
+
+Add an explicit discovery-only mode to the existing official Linux package snapshot: retain current package digest, package/window-facade inventory and bounded shipped source modules without executing/admitting it. Use a separate artifact name; original frozen baseline/default digest and all historical runs remain unchanged. Inspect actual returned current Linux bytes/API before deciding whether the failed screenshot owner matches native. SDK runtime and installed Mac driver unchanged by this discovery change; native acceptance pending.
