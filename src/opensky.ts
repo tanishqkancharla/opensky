@@ -3023,6 +3023,10 @@ export function diffTrees(
 ): string {
   const prev = new Map(previousElements.map((item) => [item.element_index, item]));
   const next = new Map(nextElements.map((item) => [item.element_index, item]));
+  const previousParents = indexedTreeParents(previousTree, previousElements);
+  const nextParents = indexedTreeParents(nextTree, nextElements);
+  const reparented = new Set([...nextParents].flatMap(([index, parent]) =>
+    prev.has(index) && previousParents.has(index) && previousParents.get(index) !== parent ? [index] : []));
   const added: string[] = [];
   const changed: string[] = [];
   const removed: string[] = [];
@@ -3034,6 +3038,7 @@ export function diffTrees(
       continue;
     }
     if (
+      reparented.has(index) ||
       before.label !== element.label ||
       before.value !== element.value ||
       before.role !== element.role ||
@@ -3098,6 +3103,7 @@ export function diffTrees(
           .filter((element) => {
             const before = prev.get(element.element_index);
             return before && (
+              reparented.has(element.element_index) ||
               before.label !== element.label ||
               before.value !== element.value ||
               before.role !== element.role ||
@@ -3110,7 +3116,9 @@ export function diffTrees(
               before.expanded !== element.expanded
             );
           })
-          .map((element) => `~ ${formatElement(element)}`)
+          .map((element) => reparented.has(element.element_index)
+            ? `~ ${formatRetainedElement(nextTree, element)} [parent=${nextParents.get(element.element_index) ?? "root"}]`
+            : `~ ${formatElement(element)}`)
           .join("\n")
       : "",
     displayDiff.join("\n"),
@@ -3118,6 +3126,40 @@ export function diffTrees(
     .filter(Boolean)
     .join("\n");
 }
+function formatRetainedElement(tree: string, element: SnapshotElement): string {
+  const marker = new RegExp(`^\\s*-\\s+\\[${element.element_index}\\]\\s+${element.role}(?:\\s|$)`);
+  const rows = quotedTreeRows(tree).filter(({line, closed}) => closed && marker.test(line));
+  return rows.length === 1 ? rows[0]!.line.trim().replace(/^-\s+/, "") : formatElement(element);
+}
+
+/** Observe nearest indexed parents only where both public rows and structured
+ * controls bind uniquely. Unbound/duplicate rows never supply a relationship. */
+function indexedTreeParents(tree: string, elements: SnapshotElement[]): Map<number, number | null> {
+  const structured = new Map<number, SnapshotElement>();
+  const duplicate = new Set<number>();
+  for (const element of elements) {
+    if (structured.has(element.element_index)) duplicate.add(element.element_index);
+    structured.set(element.element_index, element);
+  }
+  const rows = quotedTreeRows(tree).flatMap(({line, closed}) => {
+    if (!closed) return [];
+    const match = line.match(/^(\s*)-\s+(?:\[(\d+)\]\s+)?(AX\w+)(?:[\s\S]*)$/);
+    return match ? [{indent:match[1]!.length, index:match[2] === undefined ? undefined : Number(match[2]), role:match[3]!}] : [];
+  });
+  const counts = new Map<number, number>();
+  for (const row of rows) if (row.index !== undefined) counts.set(row.index, (counts.get(row.index) ?? 0) + 1);
+  const bound = (row:typeof rows[number]) => row.index !== undefined && Number.isSafeInteger(row.index) &&
+    !duplicate.has(row.index) && counts.get(row.index) === 1 && structured.get(row.index)?.role === row.role;
+  const stack: typeof rows = [], parents = new Map<number, number | null>();
+  for (const row of rows) {
+    while (stack.length && stack[stack.length - 1]!.indent >= row.indent) stack.pop();
+    const parent = [...stack].reverse().find(ancestor => ancestor.index !== undefined);
+    if (bound(row) && (!parent || bound(parent))) parents.set(row.index!, parent?.index ?? null);
+    stack.push(row);
+  }
+  return parents;
+}
+
 function displayOnlyRows(tree: string): Map<string, string> {
   const rows = new Map<string, string>();
   const stack: Array<{ indent: number; key: string }> = [];
