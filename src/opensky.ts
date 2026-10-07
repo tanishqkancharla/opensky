@@ -3052,7 +3052,33 @@ export function diffTrees(
     if (!next.has(index)) removed.push(formatElement(element));
   }
 
-  if (added.length === 0 && changed.length === 0 && removed.length === 0) {
+  // Structured elements intentionally describe input-addressable controls.
+  // Read-only values (for example a calculator result) still belong in the
+  // observation diff. Anchor their display positions to indexed ancestors;
+  // these keys never become element IDs or input authority.
+  const previousDisplay = displayOnlyRows(previousTree);
+  const nextDisplay = displayOnlyRows(nextTree);
+  const displayDiff: string[] = [];
+  for (const [key, line] of nextDisplay) {
+    const before = previousDisplay.get(key);
+    if (before !== line) displayDiff.push(`${before === undefined ? "+" : "~"} ${line}`);
+  }
+  let removedDescendantRows = 0;
+  for (const [key, line] of previousDisplay) {
+    if (nextDisplay.has(key)) continue;
+    // Descendants of a removed indexed control are already covered by its
+    // removal ID. Retain values removed under surviving or unbound parents.
+    const parent = key.match(/^index:(\d+)(?:\/|$)/)?.[1];
+    if (parent !== undefined && prev.has(Number(parent)) && !next.has(Number(parent))) {
+      removedDescendantRows += 1;
+    } else displayDiff.push(`Removed display row: ${line}`);
+  }
+  if (removedDescendantRows) {
+    displayDiff.push(`Removed display rows: ${removedDescendantRows} (within removed elements)`);
+  }
+
+
+  if (added.length === 0 && changed.length === 0 && removed.length === 0 && displayDiff.length === 0) {
     return "No accessibility changes.";
   }
   const removedIndices = previousElements
@@ -3087,10 +3113,32 @@ export function diffTrees(
           .map((element) => `~ ${formatElement(element)}`)
           .join("\n")
       : "",
+    displayDiff.join("\n"),
   ]
     .filter(Boolean)
     .join("\n");
 }
+function displayOnlyRows(tree: string): Map<string, string> {
+  const rows = new Map<string, string>();
+  const stack: Array<{ indent: number; key: string }> = [];
+  const siblings = new Map<string, number>();
+  for (const { line } of quotedTreeRows(tree)) {
+    const match = line.match(/^(\s*)-\s+(?:\[(\d+)\]\s+)?(AX\w+)([\s\S]*)$/);
+    if (!match) continue;
+    const indent = match[1]!.length;
+    while (stack.length && stack[stack.length - 1]!.indent >= indent) stack.pop();
+    const parent = stack[stack.length - 1]?.key ?? "root";
+    const role = match[3]!;
+    const siblingKey = `${parent}/${role}`;
+    const ordinal = siblings.get(siblingKey) ?? 0;
+    siblings.set(siblingKey, ordinal + 1);
+    const key = match[2] === undefined ? `${siblingKey}:${ordinal}` : `index:${match[2]}`;
+    stack.push({ indent, key });
+    if (match[2] === undefined && match[4]!.trim()) rows.set(key, `${role}${match[4]}`);
+  }
+  return rows;
+}
+
 
 function treeLineForIndex(tree: string, index: number): string | undefined {
   const marker = `[${index}]`;

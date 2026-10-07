@@ -27,6 +27,42 @@ import type { SnapshotElement } from "../src/types.js";
 import { makeHarness } from "./harness.ts";
 
 describe("opensky helpers", () => {
+  it("diffs unindexed display values without creating input authority", () => {
+    const controls: SnapshotElement[] = [{element_index: 7, role: "AXGroup"}, {element_index: 9, role: "AXButton", label: "Clear"}];
+    const before = '- [7] AXGroup\n  - AXStaticText = "0" (Edit field)\n  - AXStaticText = "Stable [42] label"\n- [9] AXButton (Clear)';
+    const after = before.replace('"0"', '"213"');
+    const diff = diffTrees(before, controls, after, controls);
+    assert.match(diff, /^~ AXStaticText = "213" \(Edit field\)$/m);
+    assert.ok(!diff.includes('Stable [42] label'));
+    assert.ok(!diff.includes('[7] AXStaticText'));
+    assert.equal(diffTrees(after, controls, after, controls), "No accessibility changes.");
+    const removed = diffTrees(after, controls, '- [9] AXButton (Clear)', [controls[1]!]);
+    assert.match(removed, /Removed display rows: 2 \(within removed elements\)/);
+    assert.ok(!removed.includes('AXStaticText = "213"'), "discarded subtree contents are already covered by removed IDs");
+    const added = diffTrees('- [9] AXButton (Clear)', [controls[1]!], after, controls);
+    assert.match(added, /^\+ AXStaticText = "213"/m);
+    const reparented = after.replace('[7]', '[10]');
+    const moved = diffTrees(after, controls, reparented, [{...controls[0]!, element_index: 10}, controls[1]!]);
+    assert.match(moved, /Removed display rows: 2/);
+    assert.match(moved, /^\+ AXStaticText/m);
+    assert.equal(controls.length, 2);
+    const retainedParent = diffTrees(after, controls, '- [7] AXGroup\n- [9] AXButton (Clear)', controls);
+    assert.match(retainedParent, /Removed display row: AXStaticText = "213"/);
+    const unboundParent = diffTrees(after, [controls[1]!], '- [9] AXButton (Clear)', [controls[1]!]);
+    assert.match(unboundParent, /Removed display row: AXStaticText = "213"/);
+    const rootRemoval = diffTrees('- AXStaticText = "root result"', [], '', []);
+    assert.match(rootRemoval, /Removed display row: AXStaticText = "root result"/);
+    const inventory = Array.from({length:75},(_,n)=>`  - [${n+20}] AXRow\n    - AXStaticText = "old title ${n}"\n    - AXStaticText = "old snippet ${n}"\n    - AXStaticText = "old date ${n}"\n    - AXImage (move)\n    - AXStaticText = "archive"`).join('\n');
+    const inventoryElements: SnapshotElement[] = [{element_index:0,role:'AXWindow'}, ...Array.from({length:75},(_,n)=>({element_index:n+20,role:'AXRow'}))];
+    const compact = diffTrees(`- [0] AXWindow\n${inventory}`,inventoryElements,'- [0] AXWindow',[inventoryElements[0]!]);
+    assert.match(compact, /Removed element IDs: 20-94/);
+    assert.match(compact, /Removed display rows: 375 \(within removed elements\)/);
+    assert.ok(!compact.includes('old snippet'));
+    const literal = '- AXStaticText = "literal\n  - [20] AXRow\n    - AXStaticText = content"';
+    const literalRemoval = diffTrees(literal, [{element_index:20,role:'AXRow'}], '', []);
+    assert.ok(literalRemoval.includes('Removed display row: AXStaticText = "literal\n  - [20] AXRow\n    - AXStaticText = content"'), 'quoted content never becomes ancestry');
+  });
+
   it("does not reuse ambiguous public indices for repeated controls", () => {
     const previous: SnapshotElement[] = [
       { element_index: 10, driver_index: 100, role: "AXButton", label: "Expand" },
