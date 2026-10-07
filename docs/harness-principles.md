@@ -165,3 +165,5 @@ those general capabilities. Task names, initial app/document state and outcome
 oracles belong to evaluation fixtures; solving recipes from those fixtures must
 not enter the evaluated model's context. Ship a readable skill with the package
 and keep its capability descriptions aligned with the public API.
+
+- Capture decisive state before teardown changes it. Freeze the original failure boundary so recovery actions cannot obscure the failed action or replace its primary error.
