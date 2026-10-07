@@ -67,8 +67,9 @@ jobs:
         env:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
         run: |
-          cargo build --release --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
+          # Fail at the affected library owners before building the full executable.
           cargo test --release --locked -p platform-linux -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml
+          cargo build --release --locked -p cua-driver --manifest-path libs/cua-driver/rust/Cargo.toml
           mkdir -p driver-artifact
           cp libs/cua-driver/rust/target/release/cua-driver driver-artifact/opensky-driver
           driver-artifact/opensky-driver --opensky-driver-identity > driver-artifact/identity.json
