@@ -1,6 +1,14 @@
 import { expect } from "vitest";
 import { test, prepareSaveDocument, saveButtonIndex } from "../fixtures/linux-typing.js";
 
+function expectCharacterEditableValue(state: string, expected: string) {
+  expect(state).toContain('dialog = "Character"');
+  const values = Array.from(state.matchAll(/^\s*- \[\d+\] text "[^"]*" value="([^"]*)"(?: |$)/gm), match => match[1]);
+  // Diagnose a wrong value without embedding the whole accessibility tree.
+  const detail = `Expected one editable value ${JSON.stringify(expected)}; observed ${JSON.stringify(values.slice(0, 20).map(value => value.slice(0, 80)))}`;
+  expect(values.filter(value => value === expected).length, detail).toBe(1);
+}
+
 test("TYPE-L01: types once into the selected document and saves the actual text", async ({ app, document, keyboard }) => {
   await app.pressKey("CTRL+A");
   await app.typeText("A café near Dublin Zoo — 中文 😀.");
@@ -55,8 +63,7 @@ test("COORD-L01: a screenshot click edits the font dialog rather than the docume
   // separate label. Require one exact editable value; a font-list cell or an
   // appended old value must not satisfy the assertion.
   const edited = await app.getAXState({ disableDiffing: true });
-  expect(edited).toContain('dialog = "Character"');
-  expect(edited.match(/^\s*- \[\d+\] text "[^"]*" value="Liberation Serif"(?: |$)/gm)).toHaveLength(1);
+  expectCharacterEditableValue(edited, "Liberation Serif");
 });
 
 test("SHOT-L01: a screenshot preserves the observed save button target", { timeout: 120_000 }, async ({ app, document }) => {
@@ -83,8 +90,7 @@ test("SHOT-L02: a screenshot of the new dialog targets its font field", { timeou
   // separate label. Require one exact editable value; a font-list cell or an
   // appended old value must not satisfy the assertion.
   const edited = await app.getAXState({ disableDiffing: true });
-  expect(edited).toContain('dialog = "Character"');
-  expect(edited.match(/^\s*- \[\d+\] text "[^"]*" value="Liberation Serif"(?: |$)/gm)).toHaveLength(1);
+  expectCharacterEditableValue(edited, "Liberation Serif");
 });
 
 test("COORD-L02: rejects a point outside the observed dialog and accepts a corrected save click", { timeout: 120_000 }, async ({ app, document }) => {
@@ -139,13 +145,11 @@ test("EDIT-L01: replaces only a selected suffix after Unicode text", { timeout: 
   await app.pressKey("CTRL+A");
   await app.typeText("café 😀 suffix");
   const initial = await app.getAXState({ disableDiffing: true });
-  expect(initial).toContain('dialog = "Character"');
-  expect(initial.match(/^\s*- \[\d+\] text "[^"]*" value="café 😀 suffix"(?: |$)/gm)).toHaveLength(1);
+  expectCharacterEditableValue(initial, "café 😀 suffix");
   await app.pressKey("END");
   // Select the six ASCII suffix characters, leaving the Unicode prefix intact.
   for (let count = 0; count < 6; count++) await app.pressKey("SHIFT+LEFT");
   await app.typeText("中文");
   const edited = await app.getAXState({ disableDiffing: true });
-  expect(edited).toContain('dialog = "Character"');
-  expect(edited.match(/^\s*- \[\d+\] text "[^"]*" value="café 😀 中文"(?: |$)/gm)).toHaveLength(1);
+  expectCharacterEditableValue(edited, "café 😀 中文");
 });
