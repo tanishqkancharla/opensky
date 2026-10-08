@@ -27,6 +27,7 @@ test('BUTTON-N01: one primary click opens a Safari tab when its native button om
   const input=calls.slice(start).filter(c=>['click','double_click','hotkey','press_key'].includes(c.tool));
   await writeFile(join(directory,'acceptance.json'),JSON.stringify({window,afterWindow:raw.window_id,button:buttons[0],input,createdTwoTabs:/Tab bar, 2 tabs/.test(state),raw},null,2));
   expect(input).toHaveLength(1);expect(input[0].tool).toBe('click');expect(input[0].args.window_id).toBe(window);
+  expect(input[0].structured).toMatchObject({route:'synthetic_events',delivery:{mode:'foreground'},effect:'unverifiable'});
   expect(raw.window_id).toBe(window);expect(state).toMatch(/Tab bar, 2 tabs/);
  }finally{sdk.driver.call=call;await writeFile(join(directory,'calls.json'),JSON.stringify(calls,null,2));}
  // The leased outer controller owns all exact Safari app/window cleanup.
