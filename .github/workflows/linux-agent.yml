@@ -44,7 +44,9 @@ concurrency:
 jobs:
   evaluate:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     env:
+      OPENSKY_VSCODE_DOWNLOAD_CACHE: ${{ runner.temp }}/pinned-vscode
       OPENSKY_LINUX_NATIVE_FACADE: '1'
       OPENSKY_LINUX_AGENT_MODE: ${{ inputs.mode || 'setup' }}
       OPENSKY_REPL_CASE: ${{ inputs.repl_case || 'async-typing' }}
@@ -100,7 +102,15 @@ jobs:
             printf '%s\n' 'Refusing an asset cache for a different manifest' >&2
             exit 1
           fi
+      - name: Restore exact VS Code download
+        id: restore-vscode
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.OPENSKY_VSCODE_DOWNLOAD_CACHE }}/code.deb
+          key: linux-vscode-deb-v1-2493226f723f66c8e83b9d806e3fbe83dcc43f381ece51eaa03d88889542b0c0
+          # No restore-keys; the installer checks the exact digest on every hit.
       - name: Install desktop and scorer
+        timeout-minutes: 15
         run: |
           printf 'OPENSKY_REMOTE_BUDGET=%s\n' "$RUNNER_TEMP/opensky-agent-budget/ledger.json" >> "$GITHUB_ENV"
           bash e2e/ci/install-linux-desktop.sh
@@ -110,6 +120,12 @@ jobs:
           if [[ "$OPENSKY_LINUX_AGENT_MODE" == repl && "$OPENSKY_REPL_CASE" == program ]]; then python -m pip install python-xlib==0.33; fi
           python -m pip install -r evals/parity/osworld/requirements.txt
           python evals/parity/osworld/fetch-assets.py
+      - name: Cache the hash-verified VS Code download
+        if: steps.restore-vscode.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.OPENSKY_VSCODE_DOWNLOAD_CACHE }}/code.deb
+          key: linux-vscode-deb-v1-2493226f723f66c8e83b9d806e3fbe83dcc43f381ece51eaa03d88889542b0c0
       - name: Cache all hash-verified benchmark assets
         if: steps.restore-benchmark-assets.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
