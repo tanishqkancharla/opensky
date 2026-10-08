@@ -2572,7 +2572,8 @@ export class OpenSky implements OpenSkyApi {
       currentDocument !== undefined && previousDocument !== currentDocument;
     const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, namedElements, pruned.hiddenIndices.size > 0 || collection.hiddenIndices.size > 0 || nativeWeb.hiddenIndices.size > 0);
     const remappedTree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
-    const tree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
+    const annotatedTree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
+    const tree = this.target === "linux" ? compactLinuxContextActions(annotatedTree, elements) : annotatedTree;
     const snapshotId = optionalString(structured.snapshot_id);
     const filePath =
       optionalString(structured.screenshot_file_path) ??
@@ -4460,6 +4461,32 @@ export function compactTreeActionHints(tree: string, elements: SnapshotElement[]
       return selectable && !compact.endsWith(" [selectable]") ? `${compact} [selectable]` : compact;
     })
     .join("\n");
+}
+
+/** State a universal observed Linux capability once; raw element authority stays exact. */
+export function compactLinuxContextActions(tree: string, elements: SnapshotElement[]): string {
+  const byIndex = new Map(elements.map(element => [element.element_index, element]));
+  const rows = quotedTreeRows(tree);
+  let indexed = 0;
+  const rewritten: string[] = [];
+  for (const { line, closed } of rows) {
+    const control = line.match(/^[ \t]*- \[(\d+)\]\s/);
+    if (!control) { rewritten.push(line); continue; }
+    const element = byIndex.get(Number(control[1]));
+    if (!closed || !element?.actions?.includes("showContextMenu")) return tree;
+    // Mask quoted labels/values while retaining offsets, including literal newlines.
+    const metadata = line.replace(/"(?:[^"\\]|\\.)*"/gs, quoted => " ".repeat(quoted.length));
+    const block = / \[actions=\[([^\]\n]*)\]\]/.exec(metadata);
+    if (!block) return tree;
+    const actions = block[1]!.split(",").map(action => action.trim()).filter(Boolean);
+    if (!actions.includes("showContextMenu")) return tree;
+    const retained = actions.filter(action => action !== "showContextMenu");
+    const replacement = retained.length ? ` [actions=[${retained.join(",")}]]` : "";
+    rewritten.push(line.slice(0, block.index) + replacement + line.slice(block.index + block[0].length));
+    indexed++;
+  }
+  if (indexed < 2) return tree;
+  return "Every indexed control in this view also supports showContextMenu.\n" + rewritten.join("\n");
 }
 
 /** Only the trailing, observed metadata block can contain a private ID. */

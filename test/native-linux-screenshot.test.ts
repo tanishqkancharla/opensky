@@ -109,3 +109,34 @@ test("Mac screenshot retains its existing capture-only route and button binding"
     assert.equal(h.inputs.length, 1);
   } finally { await h.opensky.close(); }
 });
+
+
+test("Linux shared context action is stated once without dropping controls or fresh tokens", async () => {
+  const { driver, dir } = await makeHarness();
+  const original = driver.call.bind(driver);
+  const source = '- [0] frame "Calculator" [actions=[showContextMenu]]\n  - [13] push button "7 [actions=[showContextMenu]]" [actions=[press,showContextMenu]]';
+  let current = "";
+  driver.call = async (tool, args) => {
+    if (tool === "click") assert.equal(args?.snapshot_id, current);
+    const result = await original(tool, args);
+    if (tool === "get_window_state" && args?.probe_only !== true) {
+      const state = result.structured as Record<string, any>;
+      current = state.snapshot_id;
+      const button = state.elements.find((e: any) => e.element_index === 13);
+      state.tree_markdown = source;
+      state.elements = [
+        { ...state.elements[0], element_index: 0, role: "frame", label: "Calculator", actions: ["showContextMenu"] },
+        { ...button, role: "push button", label: "7 [actions=[showContextMenu]]", actions: ["press", "showContextMenu"] },
+      ];
+    }
+    return result;
+  };
+  const opensky = createOpenSky({ driver, target: "linux", homeDir: join(dir, "shared-context"), settleDelayMs: 0 });
+  try {
+    const app = await createCua(opensky).getApp("Calculator", { emit: false });
+    const state = await app.getAXState({ disableDiffing: true, emit: false });
+    assert.match(state, /Every indexed control in this view also supports showContextMenu/);
+    assert.match(state, /\[13\] push button "7 \[actions=\[showContextMenu\]\]" \[actions=\[press\]\]/, "literal label remains untouched");
+    await app.click(13);
+  } finally { await opensky.close(); }
+});
