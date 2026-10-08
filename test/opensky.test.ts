@@ -60,6 +60,22 @@ describe("unadvertised native primary button routing", () => {
 });
 
 describe("opensky helpers", () => {
+  it("summarizes a removed display inventory while retaining current content and control changes", () => {
+    const beforeControls: SnapshotElement[] = [{ element_index: 0, role: "AXWindow" }, { element_index: 7, role: "AXTextField", value: "set" }, { element_index: 9, role: "AXButton", label: "Old action" }];
+    const afterControls: SnapshotElement[] = [{ ...beforeControls[0]! }, { ...beforeControls[1]!, value: "lantern" }, { element_index: 12, role: "AXButton", label: "Current action" }];
+    const labels = Array.from({ length: 112 }, (_, n) => `    - AXStaticText = "obsolete lookup ${n}"`).join("\n");
+    const previous = `- [0] AXWindow\n  - AXGroup\n${labels}\n  - [7] AXTextField = "set"\n  - [9] AXButton "Old action"`;
+    const next = '- [0] AXWindow\n  - AXGroup\n  - [7] AXTextField = "lantern"\n  - [12] AXButton "Current action"\n  - AXStaticText = "Current lamp definition"';
+    const diff = diffTrees(previous, beforeControls, next, afterControls);
+    assert.match(diff, /Removed display rows: 112 \(outside removed elements; AXStaticText: 112\)/);
+    assert.ok(!diff.includes("obsolete lookup"), "previous inventory labels need not be repeated after their removal");
+    assert.match(diff, /Removed element IDs: 9/);
+    assert.match(diff, /^~ \[7\] AXTextField "lantern"/m);
+    assert.match(diff, /^\+ \[12\] AXButton "Current action"/m);
+    assert.match(diff, /^\+ AXStaticText = "Current lamp definition"/m);
+    assert.equal(diffTrees(next, afterControls, next, afterControls), "No accessibility changes.");
+  });
+
   it("diffs unindexed display values without creating input authority", () => {
     const controls: SnapshotElement[] = [{element_index: 7, role: "AXGroup"}, {element_index: 9, role: "AXButton", label: "Clear"}];
     const before = '- [7] AXGroup\n  - AXStaticText = "0" (Edit field)\n  - AXStaticText = "Stable [42] label"\n- [9] AXButton (Clear)';
