@@ -113,6 +113,9 @@ test("COORD-L03: a fresh document observation replaces the old dialog's coordina
   await app.getScreenshot();
   await app.click([450, 172]);
   await expect(app.getAXState({ disableDiffing: true })).resolves.not.toContain("Use Word 2007 Format");
+  // AX-only reads do not grant pixel authority. Observe the document image
+  // after the dialog closes; its bounds must replace the old dialog image.
+  await app.getScreenshot();
   await app.click([400, 500]);
   await app.pressKey("CTRL+END");
   await app.typeText(" Still editable.");
