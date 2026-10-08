@@ -66,7 +66,7 @@ export async function withNativeLinuxRepl<T>(config: NativeLinuxReplConfig, arti
       if (observed.isError) throw new Error(JSON.stringify(observed));
       return observed;
     });
-    result = { passed: true, agentEvaluation: false, serverInfo: initialized.serverInfo, tools: tools.tools.map((tool: { name: string }) => tool.name) };
+    result = { passed: true, agentEvaluation: false, ...(config.env.CUA_REPL_ENABLED_SURFACES === "computer" ? { interface: "current-cua-facade" } : {}), serverInfo: initialized.serverInfo, tools: tools.tools.map((tool: { name: string }) => tool.name) };
     return value;
   } catch (error) {
     result.error = String(error);
@@ -94,6 +94,10 @@ export async function withNativeLinuxRepl<T>(config: NativeLinuxReplConfig, arti
 /** Exercise the real agent-facing native MCP transport without a model call. */
 export async function verifyNativeLinuxRepl(config: NativeLinuxReplConfig, artifacts: string) {
   await withNativeLinuxRepl(config, artifacts, async cell => {
+    if (config.env.CUA_REPL_ENABLED_SURFACES === "computer") {
+      await cell('await import("@oai/cua/tinyskyAlt");');
+      await cell('await cua.listWindows();');
+    }
     await cell('globalThis.sky = (await import("@oai/sky")).sky;');
     const observed = await cell('var images = await sky.get_screenshot(); await nodeRepl.emitImage(images[0].data_url);');
     const images = observed.content?.filter(item => item.type === "image") ?? [];

@@ -1,7 +1,7 @@
 import { parse } from "acorn";
 import { LexicalState, type LexicalSnapshot, type BindingAuthority, type ImportKind } from "./lexical-state.js";
 
-export type DesktopProgramScope = { backend: "native" | "opensky"; appSelectors: string[]; isolatedDesktop?: "linux" };
+export type DesktopProgramScope = { backend: "native" | "opensky"; appSelectors: string[]; isolatedDesktop?: "linux"; nativeFacade?: boolean };
 export const nativeMethods = new Set(["get_app_state", "click", "drag", "press_key", "type_text", "select_text", "paste", "scroll", "set_value", "perform_secondary_action"]);
 const nativeLinuxMethods = new Set(["get_screenshot", "click", "move", "drag", "press_key", "type_text", "scroll"]);
 const forbidden = new Set(["constructor", "prototype", "__proto__", "process", "require", "globalThis", "cua", "sky", "nodeRepl", "eval", "Function", "Promise", "setTimeout"]);
@@ -69,7 +69,8 @@ export class DesktopProgramPolicy {
       const imported = (node: any, source: string) => node?.type === "AwaitExpression" && node.argument?.type === "ImportExpression" && !node.argument.options && node.argument.source?.value === source;
       const importedSky = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "sky" && imported(node.object, "@oai/sky");
       const importedMember = (node: any, source: string, method: string) => node?.type === "MemberExpression" && !node.computed && node.property?.name === method && imported(node.object, source);
-      const scopedApp = (node: any) => this.scope.backend === "opensky" &&
+      const nativeFacade = this.scope.backend === "native" && this.scope.isolatedDesktop === "linux" && this.scope.nativeFacade === true;
+      const scopedApp = (node: any) => (this.scope.backend === "opensky" || nativeFacade) &&
         ((node?.type === "AwaitExpression" && member(node.argument?.callee, "cua", "getApp")) ||
          (node?.type === "Identifier" && apps.has(node.name)));
       const screenshotURL = (node: any) => node?.type === "MemberExpression" && !node.computed && node.property?.name === "url" && node.object?.type === "MemberExpression" && !node.object.computed && node.object.property?.name === "screenshot" && states.has(node.object.object?.name);
@@ -101,7 +102,7 @@ export class DesktopProgramPolicy {
         if (!node) return false;
         if (node.type === "Literal") return !node.regex;
         if (node.type === "Identifier") return bindings.has(node.name) || node.name === "undefined";
-        if (node.type === "AwaitExpression") return value(node.argument);
+        if (node.type === "AwaitExpression") return nativeFacade && imported(node, "@oai/cua/tinyskyAlt") || value(node.argument);
         if (node.type === "UnaryExpression") return ["-", "+", "!"].includes(node.operator) && value(node.argument);
         // Agents calculate coordinates and derive text from observations in
         // their real REPL. Expressions do not introduce a new capability:
@@ -137,7 +138,19 @@ export class DesktopProgramPolicy {
         if (!node.arguments.every(value)) return false;
         if (member(node.callee, "JSON", "stringify")) return node.arguments.length === 1;
         if (member(node.callee, "nodeRepl") && ["write", "emitImage"].includes(node.callee.property.name)) return node.arguments.length === 1;
-        if (this.scope.backend === "opensky") {
+        if (nativeFacade && member(node.callee, "cua") && ["getState", "listWindows", "listApps"].includes(node.callee.property.name)) {
+          return node.arguments.length === 0 || node.arguments.length === 1 && node.arguments[0].type === "ObjectExpression";
+        }
+        if (this.scope.backend === "opensky" || nativeFacade) {
+          if (nativeFacade && member(node.callee, "cua", "getApp")) {
+            // The current genuine Linux facade requires a window ID. The
+            // desktop is independently disposable/owned, as for legacy sky
+            // desktop input; ordinary host scopes never gain this route.
+            const selector = node.arguments[0];
+            const property = selector?.type === "ObjectExpression" && selector.properties.length === 1 && selector.properties[0];
+            return node.arguments.length === 1 && property?.type === "Property" && !property.computed &&
+              (property.key.name ?? property.key.value) === "windowId";
+          }
           // Ordinary extra options must reach the public SDK's own behavior.
           // They cannot change the literal authorized app selector; `value`
           // above has already rejected executable/property-mutating options.

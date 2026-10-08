@@ -22,7 +22,12 @@ output.on("line", line => {
     if (message.error || message.result?.isError) policy.executionFailed();
     pending.delete(message.id);
   }
-  process.stdout.write(`${line}\n`);
+  if (policy.scope.nativeFacade && message.result?.tools) {
+    for (const tool of message.result.tools) if (tool.name === "js") {
+      tool.description += '\nComputer use on this isolated Linux desktop: initialize with await import("@oai/cua/tinyskyAlt"); then use cua and the genuine returned app handles. The module returns its API documentation. Use only the already open fixture app.';
+    }
+    process.stdout.write(`${JSON.stringify(message)}\n`);
+  } else process.stdout.write(`${line}\n`);
   if (completed) completed();
 });
 child.on("exit", code => {

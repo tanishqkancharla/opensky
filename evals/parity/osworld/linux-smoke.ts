@@ -14,7 +14,8 @@ import { prepareLinuxBenchmarkApp } from "../linux-benchmark-app.js";
 import { verifyScoringProfile } from "../scoring-profile.js";
 import { runProfile } from "../run-profile.js";
 import { captureLinuxFinalObservation } from "../linux-final-observation.js";
-import { buildOpenSkyEvaluationPrompt, loadOpenSkySkill, writeOpenSkySkillReceipt } from "../opensky-skill.js";
+import { matchedLinuxPrompt } from "../linux-prompt.js";
+import { withNativeLinuxRepl } from "../native-linux-repl.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -72,41 +73,50 @@ let error: unknown;
 let score: Record<string, any> | undefined;
 try {
   const launch = await prepareLinuxBenchmarkApp({ category: task.category, document, temporary, artifacts, vscodePath: process.env.OPENSKY_EVAL_VSCODE });
-  await withOwnedLinuxApp(launch.options, async () => {
-    let sdk: ReturnType<typeof createOpenSky> | undefined;
-    try {
-      let screenshot: () => Promise<Uint8Array>;
-      if (backend === "opensky") {
-        sdk = createOpenSky({ homeDir: join(temporary, "readiness-sdk"), autoLaunch: false,
-          driverOptions: { binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
-        const app = await createCua(sdk).getApp(launch.appName);
-        screenshot = () => app.getScreenshot({ emit: false });
-      } else {
-        const packageRoot = process.env.OPENSKY_NATIVE_PROBE_PACKAGE!;
-        const metadata = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
-        const { sky } = await import(pathToFileURL(join(packageRoot, metadata.main)).href);
-        screenshot = async () => (await sky.get_screenshot())[0].bytes;
-      }
+  await withOwnedLinuxApp(launch.options, async (owned) => {
+    const verifyReady = async (screenshot: () => Promise<Uint8Array>, name: string) => {
       let ready = false;
       const deadline = Date.now() + 20_000;
       for (let sequence = 1; Date.now() < deadline; sequence++) {
-        const path = join(artifacts, `readiness-${sequence}.${backend === "opensky" ? "png" : "jpg"}`);
+        const path = join(artifacts, `readiness-${name}-${sequence}.png`);
         await writeFile(path, await screenshot());
         const text = (await exec("tesseract", [path, "stdout", "--psm", "11"], {
-          timeout: 10_000,
-          env: { ...process.env, OMP_THREAD_LIMIT: "1" },
+          timeout: 10_000, env: { ...process.env, OMP_THREAD_LIMIT: "1" },
         })).stdout;
         await writeFile(`${path}.txt`, text);
         if (launch.menus.every(menu => new RegExp(`\\b${menu}\\b`).test(text))) { ready = true; break; }
         await delay(250);
       }
-      if (!ready) throw new Error("Editor controls did not become visible; agent not dispatched");
-    } finally { await sdk?.close(); }
+      if (!ready) throw new Error(`${name} editor controls did not become visible; agent not dispatched`);
+    };
+    if (backend === "opensky" || backend === "setup") {
+      const sdk = createOpenSky({ homeDir: join(temporary, "readiness-sdk"), autoLaunch: false,
+        driverOptions: { binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
+      try {
+        const app = await createCua(sdk).getApp(launch.appName);
+        await verifyReady(() => app.getScreenshot({ emit: false }), "opensky");
+      } finally { await sdk.close(); }
+    }
+    if (backend === "native" || backend === "setup") {
+      if (nativeTransport.interface !== "current-cua-facade") throw new Error("Current native CUA facade was not verified; no legacy reference is substituted");
+      const directory = join(artifacts, "native-readiness"); await mkdir(directory);
+      const configuration = JSON.parse(await readFile(nativeConfig, "utf8"));
+      await withNativeLinuxRepl(configuration, directory, async cell => {
+        await cell('await import("@oai/cua/tinyskyAlt");');
+        await cell(`var app = await cua.getApp({windowId: ${Number(owned.window)}});`);
+        await verifyReady(async () => {
+          const result = await cell('await app.getScreenshot();');
+          const item = result.content?.find(item => item.type === "image");
+          if (!item?.data) throw new Error("Current native owned-window screenshot returned no image");
+          return Buffer.from(item.data, "base64");
+        }, "native");
+      });
+    }
     if (backend === "setup") {
       await captureLinuxFinalObservation(artifacts, process.env.OPENSKY_NATIVE_PROBE_PACKAGE);
       return;
     }
-    const scope = { backend: backend as "native" | "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" as const };
+    const scope = { backend: backend as "native" | "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" as const, ...(backend === "native" ? { nativeFacade: true } : {}) };
     // The agent transport receives only the live desktop/runtime values it
     // needs; in particular, it never inherits or fabricates a CI identity.
     const runtimeEnvironment = Object.fromEntries(
@@ -125,14 +135,12 @@ try {
       },
       enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
     };
-    const prompt = backend === "native"
-      ? `Task: ${task.instruction}\nYou are using Ubuntu Linux. The document ${task.inputFile} is already open in ${launch.appName}. Save your changes to this same file, preserving its existing format and unrelated content. Use only this owned ${launch.appName} instance. Do not open other documents/apps, run macros/commands, access network services, use the clipboard, or quit the app. Cleanup is handled afterward.\n${await readFile(join(root, "../native-linux-guide.md"), "utf8")}\nFinish when saved, or report the specific blocker.`
-      : await (async () => {
-        const skill = await loadOpenSkySkill(repo);
-        await writeOpenSkySkillReceipt(artifacts, skill);
-        return buildOpenSkyEvaluationPrompt({ taskInstruction: task.instruction, platform: "Ubuntu Linux", inputFile: task.inputFile,
-          appName: launch.appName, authorizedApp: launch.appName, skill, completion: "Finish when saved, or report the specific blocker." }).prompt;
-      })();
+    const prompt = matchedLinuxPrompt({ backend: backend as "native" | "opensky",
+      taskInstruction: task.instruction, inputFile: task.inputFile, appName: launch.appName });
+    await writeFile(join(artifacts, "matched-prompt.json"), JSON.stringify({
+      version: 1, backend, prompt, sha256: createHash("sha256").update(prompt).digest("hex"),
+      guidance: "Shared task and save instruction; only interface label differs. API help comes from real tool documentation.",
+    }, null, 2));
     const result = await runCodex({ codex, model: "gpt-5.6-terra", authentication,
       budgetPath: process.env.OPENSKY_REMOTE_BUDGET, preReservedId: process.env.OPENSKY_REMOTE_RESERVATION,
       artifacts, cwd: join(artifacts, "agent-workspace"), timeoutMs: profile.timeoutMs, maxToolCalls: profile.maxToolCalls,
