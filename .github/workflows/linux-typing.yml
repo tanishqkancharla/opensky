@@ -45,7 +45,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 3b3a9a05384ab0d629e0b14577ede1107574c3c3
+  OPENSKY_DRIVER_REF: 1b380745d6877985663bccfa31b34938b3f8ed45
   # Parent verifies the exact build independently; reuse is bound to its immutable digest input.
   OPENSKY_DRIVER_SHA256: ${{ inputs.driver_artifact_sha256 || '' }}
   CARGO_INCREMENTAL: '0'
