@@ -2501,7 +2501,12 @@ export class OpenSky implements OpenSkyApi {
       ? projectNativeCollectionRows(sanitized, rawElements, structured.native_collections)
       : { tree: sanitized, elements: rawElements, hiddenIndices: new Set<number>() };
     rawElements = collection.elements;
-    const scoped = resolved.contentScope === "web" ? isolatePrimaryWebArea(collection.tree) : collection.tree;
+    const nativeWeb = this.target === "mac" && options.collectionScope !== "all" && options.maxDepth === undefined
+      && resolved.contentScope !== "web" && structured.truncated !== true && structured.degraded !== true && structured.nodes_pending === 0
+      ? projectNativeWebText(collection.tree, rawElements, asRecord(structured.text_selection) ?? undefined)
+      : {tree: collection.tree, elements: rawElements, hiddenIndices: new Set<number>()};
+    rawElements = nativeWeb.elements;
+    const scoped = resolved.contentScope === "web" ? isolatePrimaryWebArea(nativeWeb.tree) : nativeWeb.tree;
     const visibleMenuIndices = new Set(rawElements.filter(element => element.role === "AXMenu"
       && element.enabled !== false && element.frame && element.frame.w > 0 && element.frame.h > 0)
       .map(element => element.element_index));
@@ -2525,7 +2530,7 @@ export class OpenSky implements OpenSkyApi {
     const currentDocument = primaryDocumentFingerprint(namedElements);
     const documentChanged = resolved.contentScope === "web" && previousDocument !== undefined &&
       currentDocument !== undefined && previousDocument !== currentDocument;
-    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, namedElements, pruned.hiddenIndices.size > 0 || collection.hiddenIndices.size > 0);
+    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, namedElements, pruned.hiddenIndices.size > 0 || collection.hiddenIndices.size > 0 || nativeWeb.hiddenIndices.size > 0);
     const remappedTree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
     const tree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
     const snapshotId = optionalString(structured.snapshot_id);
@@ -4563,6 +4568,63 @@ function remapTreeIndices(tree: string, elements: SnapshotElement[]): string {
     const stable = indices.get(Number(raw));
     return stable === undefined ? match : `[${stable}]`;
   });
+}
+
+/** Compact only text proved outside its owning window; document bounds alone are not a viewport. */
+export function projectNativeWebText(tree: string, elements: SnapshotElement[], textSelection?: {role?: unknown}):
+  {tree: string; elements: SnapshotElement[]; hiddenIndices: Set<number>} {
+  const intact = () => ({tree, elements, hiddenIndices: new Set<number>()});
+  // A selected document range may span offscreen nodes without individual AXSelected flags.
+  if (textSelection && !["AXTextField", "AXSearchField", "AXComboBox"].includes(String(textSelection.role))) return intact();
+  const rect = (f: SnapshotElement["frame"]): f is NonNullable<SnapshotElement["frame"]> =>
+    !!f && [f.x, f.y, f.w, f.h].every(Number.isFinite) && f.w > 0 && f.h > 0;
+  const windows = elements.filter(e => e.role === "AXWindow");
+  if (windows.length !== 1 || !rect(windows[0]!.frame)) return intact();
+  const window = windows[0]!, windowFrame = window.frame!;
+  const byIndex = new Map(elements.map(e => [e.element_index, e]));
+  if (byIndex.size !== elements.length) return intact();
+  const rows = quotedTreeRows(tree);
+  if (rows.some(r => !r.closed)) return intact();
+  const parsed = rows.map(({line}, position) => {
+    const m = line.match(/^([ \t]*)- (?:\[(\d+)\] )?(AX[A-Za-z0-9]+)\b/);
+    return m ? {position, depth: m[1]!.length, index: m[2] === undefined ? undefined : Number(m[2]), role: m[3]!} : undefined;
+  }).filter((row): row is NonNullable<typeof row> => row !== undefined);
+  const indices = parsed.flatMap(row => row.index === undefined ? [] : [row.index]);
+  if (new Set(indices).size !== indices.length || parsed.filter(row => row.role === "AXWindow" && row.index === window.element_index).length !== 1) return intact();
+  const ancestors: typeof parsed = [], omitted = new Set<number>(), hiddenIndices = new Set<number>(), counts = new Map<number, number>();
+  for (let n = 0; n < parsed.length; n++) {
+    const row = parsed[n]!;
+    while (ancestors.length && ancestors.at(-1)!.depth >= row.depth) ancestors.pop();
+    const area = [...ancestors].reverse().find(p => p.role === "AXWebArea");
+    const owner = [...ancestors].reverse().find(p => p.role === "AXWindow");
+    const e = row.index === undefined ? undefined : byIndex.get(row.index);
+    const web = area?.index === undefined ? undefined : byIndex.get(area.index);
+    const leaf = !parsed[n + 1] || parsed[n + 1]!.depth <= row.depth;
+    const insideControl = area && ancestors.slice(ancestors.indexOf(area) + 1).some(parent => {
+      const control = parent.index === undefined ? undefined : byIndex.get(parent.index);
+      return !["AXGroup", "AXScrollArea", "AXLayoutArea", "AXStaticText", "AXHeading", "AXParagraph"].includes(parent.role)
+        || control?.settable === true || (control?.actions ?? []).some(action => !["AXShowMenu", "AXScrollToVisible"].includes(action));
+    });
+    if (!insideControl && row.role === "AXStaticText" && e?.role === row.role && leaf && owner?.index === window.element_index
+      && web?.role === "AXWebArea" && rect(web.frame) && rect(e.frame)
+      && e.selected === false && e.focused !== true && e.settable !== true && e.selectionViaParent !== true
+      && (e.actions ?? []).every(action => ["AXShowMenu", "AXScrollToVisible"].includes(action))) {
+      const left = Math.max(windowFrame.x, web.frame.x), top = Math.max(windowFrame.y, web.frame.y);
+      const right = Math.min(windowFrame.x + windowFrame.w, web.frame.x + web.frame.w);
+      const bottom = Math.min(windowFrame.y + windowFrame.h, web.frame.y + web.frame.h);
+      if (right > left && bottom > top && (e.frame.x + e.frame.w <= left || e.frame.x >= right
+        || e.frame.y + e.frame.h <= top || e.frame.y >= bottom)) {
+        omitted.add(row.position); hiddenIndices.add(e.element_index);
+        counts.set(area!.position, (counts.get(area!.position) ?? 0) + 1);
+      }
+    }
+    ancestors.push(row);
+  }
+  if (!hiddenIndices.size) return intact();
+  return {tree: rows.map(({line}, position) => line + (counts.has(position)
+    ? ` [window text viewport: ${counts.get(position)} offscreen text nodes omitted; scroll or request getAXState({collectionScope:"all"}) for complete loaded content.]` : ""))
+    .filter((_, position) => !omitted.has(position)).join("\n"),
+    elements: elements.filter(e => !hiddenIndices.has(e.element_index)), hiddenIndices};
 }
 
 /** Physical newlines inside quoted AX values remain part of one literal row. */
