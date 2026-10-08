@@ -17,6 +17,8 @@ desirable contracts, not executable OpenSky APIs.
 
 2. Return useful evidence with completed work. Include the context needed to interpret it, not just a pointer or warning that context is missing.
 
+   Preserve the identity and route of the original request and result when diagnosing a failure. Repeating an observation can change the state you need to explain.
+
    ```text
    result = run_tests()
    if result.failed:
@@ -165,3 +167,33 @@ those general capabilities. Task names, initial app/document state and outcome
 oracles belong to evaluation fixtures; solving recipes from those fixtures must
 not enter the evaluated model's context. Ship a readable skill with the package
 and keep its capability descriptions aligned with the public API.
+
+Upgrades must verify behavioral contracts of local adaptations, including optional observation metadata. Bind named regression evidence to the exact executable; a successful build or unrelated smoke test does not establish those contracts.
+
+- Missing lifecycle metadata must not turn unknown cleanup into success. Retain exact creation evidence, close only proven objects, and block the next run on unexplained residue.
+
+- Preserve established dispatch priority when adding a new target kind. Reuse explicit fixture recipes so setup and focus do not vary silently between regression runs.
+
+- Preserve the first failure and teardown failures separately. Cleanup must still try every independently safe step; uncertainty blocks the next run while original diagnostic evidence remains inspectable.
+
+
+Test one causal factor at a time against a retained counterexample. Stop at the first failed regression, discard ineffective runtime changes, and reserve expensive end-to-end comparisons for candidates that pass their focused checks. Preserve the exact prior executable to make rollback and counterfactuals cheap.
+
+
+A missing operation in an enumeration is not always proof that the standard operation is unsupported. Use live comparative evidence, preserve exact authority for the user-requested operation, and observe its effects without replaying an uncertain dispatch.
+
+- Keep compact action lineage and decisive observed values beside bounded reviews. Mark missing evidence explicitly; dispatch receipts do not certify an effect. Diagnosis logging should not add agent-visible context or waits between inputs.
+
+
+Retain structured uncertainty and exact dispatch lineage at the original failure boundary. A promising reduced control is a hypothesis until the existing counterexample passes; keep unrelated unavailable facilities explicit instead of hiding the action evidence.
+
+- Verify downstream actions after a successful dispatch acknowledgment: an earlier action can leave latent collateral state. Change one preparatory factor before broadening delivery policies.
+- Give observable task fixtures the same ownership, isolation and teardown lifecycle as the arm; retain observations separately from completion review.
+
+- Carry exact launch ownership into teardown; a missing application inventory entry must neither lose proved ownership nor authorize guessed cleanup. Retain original failures when later teardown is verified.
+
+- Capture decisive state before teardown changes it. Freeze the original failure boundary so recovery actions cannot obscure the failed action or replace its primary error.
+
+- Shorten feedback at the failing boundary. During implementation select the affected existing outcome checks, reuse only independently verified immutable artifacts, and collect failure evidence before teardown. Broaden verification after focused checks pass; keep complete release gates and historical failures.
+
+- Derive compact failure summaries from retained, source-checked artifacts. Keep missing evidence explicit, and cache completed observations so reviewing a failure does not trigger more execution.

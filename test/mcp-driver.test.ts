@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { chmod } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { CuaDriverClient } from "../src/driver.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { before, describe, it } from "node:test";
@@ -79,6 +81,46 @@ describe("persistent stdio MCP driver", () => {
     ]) {
       assert.throws(() => client("normal", options as never), TypeError);
     }
+  });
+
+  it("uses the same token contract on CLI and sets Mac observation bounds only at launch", async () => {
+    const cli = new CuaDriverClient({binaryPath:fixture,autoStart:false,env:{...process.env,MCP_FIXTURE_MODE:"token-only"}});
+    assert.deepEqual((await cli.call("echo", {pid:42,window_id:73,element_index:8,snapshot_id:"s00000001",element_token:"s00000001:8",window_change_timeout_ms:250})).structured?.args,{pid:42,window_id:73,element_token:"s00000001:8"});
+    await assert.rejects(cli.call("echo", {pid:42,window_id:73,element_index:8}), (error: unknown) => error instanceof OpenSkyError && error.code === "invalid_element_target");
+    if(process.platform!=="darwin")return;
+    const directory=await mkdtemp(join(tmpdir(),"opensky-launch-contract-"));
+    try {
+      for (const [name,timeout,poll] of [["default","250","50"],["host","600","75"]]) {
+        const receipt=join(directory,name!+".json");
+        const env={...process.env,MCP_FIXTURE_MODE:"token-only-start",START_RECEIPT:receipt};
+        delete env.CUA_DRIVER_WINDOW_CHANGE_TIMEOUT_MS;delete env.CUA_DRIVER_WINDOW_CHANGE_POLL_MS;
+        if(name==="host")Object.assign(env,{CUA_DRIVER_WINDOW_CHANGE_TIMEOUT_MS:timeout,CUA_DRIVER_WINDOW_CHANGE_POLL_MS:poll});
+        await new CuaDriverClient({binaryPath:fixture,env,startTimeoutMs:2000}).ensureDaemon();
+        assert.deepEqual(JSON.parse(await readFile(receipt,"utf8")),{timeout,poll,args:["serve","--no-overlay"]});
+      }
+    } finally {await rm(directory,{recursive:true,force:true});}
+  });
+
+  it("honors explicit token-only identity without replay or target widening", async () => {
+    const driver = client("token-only");
+    try {
+      const args = {pid: 42, window_id: 73, element_index: 8, snapshot_id: "s00000001", element_token: "s00000001:8", window_change_timeout_ms: 250, action: "press"};
+      const response = await driver.call("echo", args);
+      assert.deepEqual(response.structured, {ok:true, name:"echo", args:{pid:42,window_id:73,element_token:"s00000001:8",action:"press"},sequence:1});
+      assert.equal(args.element_index, 8);
+      await assert.rejects(driver.call("echo", {pid:42,window_id:73,element_index:8}), (error: unknown) => error instanceof OpenSkyError && error.code === "invalid_element_target");
+      assert.equal((await driver.call("echo", {pid:42,window_id:73})).structured?.sequence, 2);
+      const capture = await driver.call("get_window_state", {pid:42,window_id:73,screenshot_format:"png",include_screenshot:true});
+      assert.deepEqual(capture.structured?.args, {pid:42,window_id:73,include_screenshot:true});
+      await assert.rejects(driver.call("get_window_state", {pid:42,window_id:73,screenshot_format:"jpeg"}), (error: unknown) => error instanceof OpenSkyError && error.code === "unsupported_screenshot_format");
+      await assert.rejects(driver.call("get_window_state", {pid:42,window_id:73,screenshot_scale:0.5}), (error: unknown) => error instanceof OpenSkyError && error.code === "unsupported_screenshot_scale");
+      assert.equal((await driver.call("echo")).structured?.sequence, 4);
+    } finally { assert.equal((await driver.closeTransport()).verified, true); }
+    const legacy = client();
+    try {
+      const args = {element_index:8,snapshot_id:"s00000001",window_change_timeout_ms:250};
+      assert.deepEqual((await legacy.call("echo", args)).structured?.args, args);
+    } finally { assert.equal((await legacy.closeTransport()).verified, true); }
   });
 
   it("performs the handshake, accepts split frames/notifications, and serializes calls", async () => {

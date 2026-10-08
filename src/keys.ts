@@ -1,3 +1,5 @@
+import type { OpenSkyTarget } from "./types.js";
+
 export interface ParsedKey {
   key: string;
   modifiers: string[];
@@ -57,7 +59,9 @@ const MODIFIERS: Record<string, string> = {
   fn: "fn",
 };
 
-export function parseXdotoolKey(raw: string): ParsedKey {
+const LINUX_MODIFIERS: Record<string, string> = { option: "alt", cmd: "super" };
+
+export function parseXdotoolKey(raw: string, target: OpenSkyTarget = "mac"): ParsedKey {
   const input = raw.trim();
   if (!input) {
     throw new Error("Invalid params");
@@ -70,7 +74,10 @@ export function parseXdotoolKey(raw: string): ParsedKey {
   for (const token of tokens) {
     const lower = token.toLowerCase();
     if (lower in MODIFIERS) {
-      modifiers.push(MODIFIERS[lower]);
+      // Linux classifies hotkey modifiers before input delivery. Its public
+      // names are alt/super rather than the Mac option/cmd spellings.
+      const modifier = MODIFIERS[lower];
+      modifiers.push(target === "linux" ? (LINUX_MODIFIERS[modifier] ?? modifier) : modifier);
       continue;
     }
     key = normalizeKey(token);
@@ -114,4 +121,17 @@ function normalizeKey(token: string): string {
 
 function unique(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+/** Translate a named symbol to the existing Mac driver's physical US key map. */
+export function toMacDriverKey(parsed: ParsedKey): ParsedKey {
+  if (parsed.key === "plus") {
+    return { key: "=", modifiers: unique([...parsed.modifiers, "shift"]) };
+  }
+  if (parsed.key === "asterisk") {
+    return { key: "8", modifiers: unique([...parsed.modifiers, "shift"]) };
+  }
+  if (parsed.key === "minus") return { key: "-", modifiers: parsed.modifiers };
+  if (parsed.key === "slash") return { key: "/", modifiers: parsed.modifiers };
+  return parsed;
 }

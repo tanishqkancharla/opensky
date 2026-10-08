@@ -40,6 +40,7 @@ export function operationTimeoutMs(value: number | null | undefined): number | n
 export class CuaDriverClient implements DriverClient {
   readonly sessionOwnership = { kind: "cli-explicit" } as const;
   private daemonReady = false;
+  private tokenOnlyArguments = false;
   private verifiedBinary?: { path: string; promise: Promise<string> };
 
   private readonly callTimeoutMs: number | null;
@@ -50,7 +51,7 @@ export class CuaDriverClient implements DriverClient {
 
   async call(tool: string, args: Record<string, unknown> = {}): Promise<DriverResult> {
     await this.ensureDaemon();
-    const payload = { ...args };
+    const payload = this.prepareArguments(args, tool);
     if (this.options.session && payload.session === undefined) {
       payload.session = this.options.session;
     }
@@ -102,6 +103,31 @@ export class CuaDriverClient implements DriverClient {
     return parsed.result;
   }
 
+  /** Normalize only retired aliases when the verified helper explicitly declares them. */
+  prepareArguments(args: Record<string, unknown>, tool?: string): Record<string, unknown> {
+    const payload = { ...args };
+    if (!this.tokenOnlyArguments) return payload;
+    if (payload.element_index !== undefined && typeof payload.element_token !== "string") {
+      throw driverError("This Driver requires a fresh element_token; observe again before acting on an index.", "invalid_element_target");
+    }
+    if (typeof payload.element_token === "string") {
+      delete payload.element_index;
+      delete payload.snapshot_id;
+    }
+    if (tool === "get_window_state") {
+      if (payload.screenshot_format !== undefined && payload.screenshot_format !== "png") {
+        throw driverError("This Driver publishes native window screenshots as PNG only.", "unsupported_screenshot_format");
+      }
+      if (payload.screenshot_scale !== undefined) {
+        throw driverError("This Driver does not accept a native window screenshot scale override.", "unsupported_screenshot_scale");
+      }
+      delete payload.screenshot_format;
+    }
+    // The newer driver owns observation timing through its launch settings.
+    delete payload.window_change_timeout_ms;
+    return payload;
+  }
+
   async status(): Promise<{ running: boolean; text: string }> {
     const binary = await this.resolveBinary();
     if (!binary) {
@@ -141,6 +167,7 @@ export class CuaDriverClient implements DriverClient {
       if (result.code !== 0 || !identity || identity.product !== "opensky-driver" || identity.protocolVersion !== 1) {
         throw driverError(`The helper at ${JSON.stringify(binary)} is not a compatible OpenSky Driver. Upstream Cua Driver and pre-rename local builds are not supported. ${INSTALL_HELP}`);
       }
+      this.tokenOnlyArguments = identity.inputCompatibility === "token-only-v1";
       return binary;
     })();
     this.verifiedBinary = { path: binary, promise };
@@ -194,7 +221,10 @@ export class CuaDriverClient implements DriverClient {
       // instances when multiple first-run commands arrive together.
       const opened = appPath ? await this.exec(
         "/usr/bin/open",
-        ["-g", appPath, "--args", ...this.withSocket(serveArgs)],
+        ["-g", appPath,
+          ...["CUA_DRIVER_WINDOW_CHANGE_TIMEOUT_MS", "CUA_DRIVER_WINDOW_CHANGE_POLL_MS"].flatMap(name =>
+            this.driverEnv()[name] === undefined ? [] : ["--env", `${name}=${this.driverEnv()[name]}`]),
+          "--args", ...this.withSocket(serveArgs)],
         3_000,
       ) : undefined;
       if (!opened || opened.code !== 0) {
@@ -265,6 +295,11 @@ export class CuaDriverClient implements DriverClient {
     const current = env.PATH ?? "";
     if (!current.split(delimiter).includes(localBin)) {
       env.PATH = current ? `${localBin}${delimiter}${current}` : localBin;
+    }
+    if (this.tokenOnlyArguments && detectTarget() === "mac") {
+      // Trusted host launch configuration, never a tool-controlled override.
+      env.CUA_DRIVER_WINDOW_CHANGE_TIMEOUT_MS ??= "250";
+      env.CUA_DRIVER_WINDOW_CHANGE_POLL_MS ??= "50";
     }
     return env;
   }

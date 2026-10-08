@@ -23,6 +23,34 @@ if [[ -n "${OPENSKY_NATIVE_PACKAGE_SHA256:-}" ]]; then
 fi
 dpkg-deb --field "$scratch/chatgpt.deb" Package Version Architecture > "$artifact/package.txt"
 dpkg-deb --extract "$scratch/chatgpt.deb" "$scratch/app"
+if [[ "${OPENSKY_NATIVE_DISCOVERY_ONLY:-}" == 1 ]]; then
+  cp "$scratch/chatgpt.deb" "$artifact/chatgpt.deb"
+  python3 - "$scratch/app" "$artifact" <<'PY_DISCOVER'
+import hashlib, json, pathlib, sys
+root, out = map(pathlib.Path, sys.argv[1:])
+packages = []
+for p in root.rglob('package.json'):
+    if p.parent.name not in ('cua', 'sky') or p.parent.parent.name != '@oai':
+        continue
+    metadata = json.loads(p.read_text())
+    packages.append({'path': str(p.parent.relative_to(root)), 'name': metadata.get('name'),
+        'version': metadata.get('version'), 'main': metadata.get('main'), 'exports': metadata.get('exports')})
+report = {'candidateOnly': True, 'executed': False, 'nativeComparisonReady': False,
+    'packages': packages, 'linuxBinaries': [str(p.relative_to(root)) for p in root.rglob('sky_linux_x64') if p.is_file()],
+    'nodeRepl': [str(p.relative_to(root)) for p in root.rglob('node_repl') if p.is_file()],
+    'packageSHA256': hashlib.sha256((out/'chatgpt.deb').read_bytes()).hexdigest()}
+(out/'current-availability.json').write_text(json.dumps(report, indent=2)+'\n')
+# Read the shipped facade implementation; never emulate an absent native API.
+modules = []
+for name in ('bind_linux_app.js', 'create_tinysky_alt.js', 'load_options.js', 'package_bin.js'):
+    for p in root.rglob(name):
+        if '@oai/cua/' not in str(p) or p.stat().st_size > 128_000:
+            continue
+        modules.append({'path': str(p.relative_to(root)), 'sha256': hashlib.sha256(p.read_bytes()).hexdigest(), 'source': p.read_text()})
+(out/'current-api-modules.json').write_text(json.dumps(modules, indent=2)+'\n')
+PY_DISCOVER
+  exit 0
+fi
 python3 - "$scratch/app" "$artifact" <<'PY'
 import json,pathlib,sys
 root=pathlib.Path(sys.argv[1]);out=pathlib.Path(sys.argv[2])

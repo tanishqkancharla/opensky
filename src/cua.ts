@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import { OpenSkyError } from "./errors.js";
-import { opensky as defaultOpenSky } from "./opensky.js";
+import { opensky as defaultOpenSky, normalizeMouseButton } from "./opensky.js";
 import type {
   App as LegacyAppInfo,
   AppState,
@@ -21,6 +21,8 @@ export type NativeSelectionType = "text" | "cursor_before" | "cursor_after";
 export interface ObservationOptions { emit?: boolean }
 export interface StateOptions extends ObservationOptions {
   disableDiffing?: boolean;
+  /** Native Mac extension: request all loaded collection rows instead of the visible viewport. */
+  collectionScope?: "visible" | "all";
   /** OpenSky extension: fresh matches with bounded evidence neighborhoods when supported, not complete page-wide order. */
   query?: string;
   /** OpenSky browser extension: bounded surrounding content from the same stored snapshot, not a fresh capture. */
@@ -175,10 +177,25 @@ const BROWSERS = Object.freeze({
   edge: { id: "edge", app: "Microsoft Edge", name: "Microsoft Edge", family: "chromium" },
 });
 
+const APP_DOCUMENTATION =
+  "Native app handle API:\n" +
+  "getAXState({disableDiffing?, emit?}), getScreenshot({emit?}), getAXStateAndScreenshot({disableDiffing?, emit?})\n" +
+  "click(index | [x,y], {mouseButton?, clickCount?}), typeText(text), paste(text, {format?}), pressKey(key)\n" +
+  "setValue(index, value), selectText(index, text, {prefix?, suffix?, selectionType?}), performSecondaryAction(index, action)\n" +
+  "scroll(index | [x,y], direction, pages?), drag([fromX,fromY], [toX,toY])\n" +
+  "Use fresh indices and the control's advertised capabilities. Finish an action batch with getAXState(). " +
+  "Prefer default AX diffs for routine checks; request a full tree or screenshot only for missing context. " +
+  "setValue replaces the control value; establish field focus before sending keys intended for that field. " +
+  "Mac pressKey supports named symbols plus, asterisk, minus, and slash; use names in key combinations. " +
+  "Paste format is \"text\" | \"html\" | \"md\" (default text). Mac renders HTML/CommonMark; Linux native supports text only. " +
+  "Mac paste preserves prior clipboard; newer observed copies are kept. Verify rich styles and saving. " +
+  "Creation and observations emit automatically; emit:false suppresses observation output.";
+
 export class CuaFacade {
   private readonly tabs = new Map<string, BoundTabRecord>();
   private readonly browserSessionNames = new Map<string, string>();
   private readonly documentedBrowsers = new Set<string>();
+  private appDocumentationEmitted = false;
   private readonly unobservedNavigations = new Map<TargetHandle, number>();
   private readonly navigationVersions = new Map<TargetHandle, number>();
   private navigationSequence = 0;
@@ -208,9 +225,15 @@ export class CuaFacade {
 
   async getApp(app: string): Promise<App> {
     if (!app?.trim()) throw new OpenSkyError("Invalid params: app is required", "invalid_params");
-    const state = await this.opensky.get_app_state({ app, scope: "app", disableDiff: true, includeScreenshot: false });
+    // Names follow the app's focused window; an opaque document handle stays exact.
+    const appScope = !app.trim().toLowerCase().startsWith("tgt_");
+    const state = await this.opensky.get_app_state({ app, ...(appScope ? { scope: "app" as const } : {}), disableDiff: true, includeScreenshot: false });
+    if (this.options.emit && !this.appDocumentationEmitted) {
+      this.options.emit(APP_DOCUMENTATION);
+      this.appDocumentationEmitted = true;
+    }
     this.options.emit?.(state.text);
-    return new BoundApp(this, state.targetHandle);
+    return new BoundApp(this, state.targetHandle, appScope);
   }
 
   async listBrowsers(options: ObservationOptions = {}): Promise<BrowserInfo[]> {
@@ -402,6 +425,7 @@ export class CuaFacade {
       ...(appScope ? { scope: "app" as const } : {}),
       disableDiff: navigation !== undefined && !storedContext ? true : options.disableDiffing,
       includeScreenshot: screenshot,
+      ...(options.collectionScope === undefined ? {} : { collectionScope: options.collectionScope }),
       ...(!accessibilityTree ? { includeAccessibilityTree: false } : {}),
       ...(options.query === undefined ? {} : { query: options.query }),
       ...(options.context === undefined ? {} : { context_element_index: options.context }),
@@ -527,8 +551,12 @@ export class CuaFacade {
 
 abstract class BoundTarget implements Target {
   private screenshotBounds?: { handle: TargetHandle; width: number; height: number };
+  private nativeScreenshot = false;
+  private lastAXHandle: TargetHandle;
 
-  protected constructor(protected readonly facade: CuaFacade, private observedHandle: TargetHandle) {}
+  protected constructor(protected readonly facade: CuaFacade, private observedHandle: TargetHandle) {
+    this.lastAXHandle = observedHandle;
+  }
 
   get targetHandle(): TargetHandle { return this.observedHandle; }
 
@@ -536,12 +564,22 @@ abstract class BoundTarget implements Target {
     // A new observation can follow a dialog or reveal a resized window. Never
     // retain image coordinates across an observation that supplies no image.
     this.screenshotBounds = undefined;
-    const state = await this.facade.state(this.targetHandle, options, screenshot, this instanceof BoundApp, accessibilityTree);
+    this.nativeScreenshot = false;
+    const state = await this.facade.state(this.targetHandle, options, screenshot, this instanceof BoundApp && this.appScope, accessibilityTree);
     this.observedHandle = state.targetHandle;
+    if (accessibilityTree) {
+      // App scope can follow a different physical window with the same title
+      // and outline. Keep the cue pending through screenshot-only reads.
+      if (this instanceof BoundApp && this.appScope && state.targetHandle !== this.lastAXHandle) {
+        state.text = `App window changed; use the indices in this state.\n${state.text}`;
+      }
+      this.lastAXHandle = state.targetHandle;
+    }
     const { width, height } = state.screenshot ?? {};
     if (this instanceof BoundApp && typeof width === "number" && typeof height === "number" &&
         Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
       this.screenshotBounds = { handle: state.targetHandle, width, height };
+      this.nativeScreenshot = !state.browserConnection && state.screenshot?.coordinateSpace !== "viewport_css_px";
     }
     return state;
   }
@@ -592,11 +630,21 @@ abstract class BoundTarget implements Target {
   async click(target: number | Vec2, options: ClickOptions = {}): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
     const translated = typeof target === "number" ? { element_index: target } : this.screenshotPoint(target);
+    const nativePixel = typeof target !== "number" && this.nativeScreenshot && this.facade.opensky.target === "mac";
+    const contextMenu = nativePixel && normalizeMouseButton(options.mouseButton) === "right" && (options.clickCount ?? 1) === 1;
+    // A context menu must remain available for the next observation. Activate
+    // this exact window once, then use one guarded foreground right-click;
+    // the generic foreground assist restores focus and dismisses AppKit menus.
+    if (contextMenu) await this.facade.opensky.bring_to_front({ app: this.targetHandle });
     await this.facade.opensky.click({
       app: this.targetHandle,
       ...translated,
       mouse_button: options.mouseButton,
       click_count: options.clickCount,
+      // Native Mac vision clicks use the driver's exact-window foreground
+      // route once. PID background events can be accepted without an effect.
+      ...(nativePixel ? { delivery_mode: "foreground" as const } : {}),
+      ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 250 } : {}),
     });
   }
 
@@ -618,7 +666,9 @@ abstract class BoundTarget implements Target {
       throw new OpenSkyError("Invalid params: use pressKey(key, elementIndex?) with an index from the latest observation", "invalid_params");
     }
     this.facade.prepareAction(this.targetHandle);
-    await this.facade.opensky.press_key({ app: this.targetHandle, key, ...(elementIndex !== undefined ? { element_index: elementIndex } : {}) });
+    await this.facade.opensky.press_key({ app: this.targetHandle, key,
+      ...(this.facade.opensky.target === "mac" && this instanceof BoundApp && this.appScope && elementIndex === undefined ? { scope: "app" as const } : {}),
+      ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 250 } : {}), ...(elementIndex !== undefined ? { element_index: elementIndex } : {}) });
   }
 
   async scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void> {
@@ -641,22 +691,26 @@ abstract class BoundTarget implements Target {
 
   async setValue(elementIndex: number, value: string): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
-    await this.facade.opensky.set_value({ app: this.targetHandle, element_index: elementIndex, value });
+    await this.facade.opensky.set_value({ app: this.targetHandle, element_index: elementIndex, value,
+      ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 50 } : {}) });
   }
 
   async typeText(text: string): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
-    await this.facade.opensky.type_text({ app: this.targetHandle, text });
+    await this.facade.opensky.type_text({ app: this.targetHandle, text,
+      ...(this.facade.opensky.target === "mac" && this instanceof BoundApp && this.appScope ? { scope: "app" as const } : {}),
+      ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 50 } : {}) });
   }
 
   async performSecondaryAction(elementIndex: number, action: string): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
-    await this.facade.opensky.perform_secondary_action({ app: this.targetHandle, element_index: elementIndex, action });
+    await this.facade.opensky.perform_secondary_action({ app: this.targetHandle, element_index: elementIndex, action,
+      ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 250 } : {}) });
   }
 }
 
 class BoundApp extends BoundTarget implements App {
-  constructor(facade: CuaFacade, handle: TargetHandle) { super(facade, handle); }
+  constructor(facade: CuaFacade, handle: TargetHandle, readonly appScope = false) { super(facade, handle); }
 }
 
 class BoundTab extends BoundTarget implements Tab {

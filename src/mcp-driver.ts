@@ -198,7 +198,7 @@ export class StdioMcpDriverClient implements DriverClient {
     // cancelled when close synchronously stops admission.
     await this.ensureTransport();
 
-    const payload = { ...args };
+    const payload = this.helper.prepareArguments(args, tool);
     if (this.session && payload.session === undefined) payload.session = this.session;
 
     let parsed = await this.callTool(tool, payload);

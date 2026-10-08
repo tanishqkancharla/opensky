@@ -6,6 +6,9 @@ import { describe, it } from "node:test";
 
 import {
   createOpenSky,
+  inlineItemEditObservation,
+  projectActiveMenu,
+  projectClosedMenuActions,
   diffTrees,
   compactTreeActionHints,
   enrichTreeSemantics,
@@ -21,12 +24,106 @@ import {
   pickWindowId,
   pruneMenuSubtrees,
   sanitizeTreeText,
+  nameAnonymousContainers,
   stabilizeElementIndices,
 } from "../src/opensky.js";
 import type { SnapshotElement } from "../src/types.js";
+import { OpenSkyError } from "../src/errors.js";
 import { makeHarness } from "./harness.ts";
 
+describe("unadvertised native primary button routing", () => {
+  it("selects one exact foreground click while preserving advertised and other gestures", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const app = fixture.apps.find((item: { name: string }) => item.name === "Calculator");
+    app.elements = [
+      { element_index: 0, role: "AXWindow", label: "Buttons" },
+      { element_index: 1, role: "AXButton", label: "Unadvertised", actions: [] },
+      { element_index: 2, role: "AXButton", label: "Advertised", actions: ["press"] },
+      { element_index: 3, role: "AXButton", label: "AX advertised", actions: ["AXPress"] },
+    ];
+    await writeFile(statePath, JSON.stringify(fixture));
+    await opensky.get_app_state({ app: "Calculator", includeScreenshot: false });
+    await opensky.click({ app: "Calculator", element_index: 1 });
+    await opensky.click({ app: "Calculator", element_index: 2 });
+    await opensky.click({ app: "Calculator", element_index: 3 });
+    await opensky.click({ app: "Calculator", element_index: 1, mouse_button: "right" });
+    await opensky.click({ app: "Calculator", element_index: 1, click_count: 2 });
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const inputs = after.calls.filter((call: { tool: string }) => ["click", "right_click", "double_click"].includes(call.tool));
+    assert.equal(inputs.length, 5, "one dispatch per gesture; no preliminary refusal or replay");
+    assert.ok(inputs.every((call: any) => call.args.pid === app.pid && call.args.window_id === app.windows[0].window_id));
+    assert.equal(inputs[0].args.delivery_mode, "foreground");
+    assert.ok(inputs.slice(1).every((call: any) => call.args.delivery_mode === undefined));
+  });
+});
+
 describe("opensky helpers", () => {
+  it("diffs unindexed display values without creating input authority", () => {
+    const controls: SnapshotElement[] = [{element_index: 7, role: "AXGroup"}, {element_index: 9, role: "AXButton", label: "Clear"}];
+    const before = '- [7] AXGroup\n  - AXStaticText = "0" (Edit field)\n  - AXStaticText = "Stable [42] label"\n- [9] AXButton (Clear)';
+    const after = before.replace('"0"', '"213"');
+    const diff = diffTrees(before, controls, after, controls);
+    assert.match(diff, /^~ AXStaticText = "213" \(Edit field\)$/m);
+    assert.ok(!diff.includes('Stable [42] label'));
+    assert.ok(!diff.includes('[7] AXStaticText'));
+    assert.equal(diffTrees(after, controls, after, controls), "No accessibility changes.");
+    const removed = diffTrees(after, controls, '- [9] AXButton (Clear)', [controls[1]!]);
+    assert.match(removed, /Removed display rows: 2 \(within removed elements\)/);
+    assert.ok(!removed.includes('AXStaticText = "213"'), "discarded subtree contents are already covered by removed IDs");
+    const added = diffTrees('- [9] AXButton (Clear)', [controls[1]!], after, controls);
+    assert.match(added, /^\+ AXStaticText = "213"/m);
+    const reparented = after.replace('[7]', '[10]');
+    const moved = diffTrees(after, controls, reparented, [{...controls[0]!, element_index: 10}, controls[1]!]);
+    assert.match(moved, /Removed display rows: 2/);
+    assert.match(moved, /^\+ AXStaticText/m);
+    assert.equal(controls.length, 2);
+    const retainedParent = diffTrees(after, controls, '- [7] AXGroup\n- [9] AXButton (Clear)', controls);
+    assert.match(retainedParent, /Removed display row: AXStaticText = "213"/);
+    const unboundParent = diffTrees(after, [controls[1]!], '- [9] AXButton (Clear)', [controls[1]!]);
+    assert.match(unboundParent, /Removed display row: AXStaticText = "213"/);
+    const rootRemoval = diffTrees('- AXStaticText = "root result"', [], '', []);
+    assert.match(rootRemoval, /Removed display row: AXStaticText = "root result"/);
+    const inventory = Array.from({length:75},(_,n)=>`  - [${n+20}] AXRow\n    - AXStaticText = "old title ${n}"\n    - AXStaticText = "old snippet ${n}"\n    - AXStaticText = "old date ${n}"\n    - AXImage (move)\n    - AXStaticText = "archive"`).join('\n');
+    const inventoryElements: SnapshotElement[] = [{element_index:0,role:'AXWindow'}, ...Array.from({length:75},(_,n)=>({element_index:n+20,role:'AXRow'}))];
+    const compact = diffTrees(`- [0] AXWindow\n${inventory}`,inventoryElements,'- [0] AXWindow',[inventoryElements[0]!]);
+    assert.match(compact, /Removed element IDs: 20-94/);
+    assert.match(compact, /Removed display rows: 375 \(within removed elements\)/);
+    assert.ok(!compact.includes('old snippet'));
+    const literal = '- AXStaticText = "literal\n  - [20] AXRow\n    - AXStaticText = content"';
+    const literalRemoval = diffTrees(literal, [{element_index:20,role:'AXRow'}], '', []);
+    assert.ok(literalRemoval.includes('Removed display row: AXStaticText = "literal\n  - [20] AXRow\n    - AXStaticText = content"'), 'quoted content never becomes ancestry');
+    const retained: SnapshotElement = {element_index:289,role:'AXRow',identifier:'ICMNoteListCell, Note[id=owned]'};
+    const oldParent: SnapshotElement = {element_index:288,role:'AXCell'};
+    const newParent: SnapshotElement = {element_index:300,role:'AXCell'};
+    const child = '- [289] AXRow [id=ICMNoteListCell, Note[id=owned]]';
+    const oldTree = `- [288] AXCell\n  ${child}`;
+    const newTree = `- [300] AXCell\n  - AXGroup\n    ${child}`;
+    const relation = diffTrees(oldTree,[oldParent,retained],newTree,[newParent,retained]);
+    assert.match(relation,/^~ \[289\] AXRow \[id=ICMNoteListCell, Note\[id=owned\]\] \[parent=300\]$/m);
+    assert.equal(relation.split('\n').filter(line=>line.startsWith('~ [289]')).length,1);
+    assert.ok(!relation.includes('+ [289]'), 'retained input identity stays retained');
+    assert.match(relation,/Removed element IDs: 288/);
+    const rootMove=diffTrees(oldTree,[oldParent,retained],child,[retained]);
+    assert.match(rootMove,/\[parent=root\]/);
+    const alsoChanged=diffTrees(oldTree,[oldParent,retained],newTree,[newParent,{...retained,selected:true}]);
+    assert.equal(alsoChanged.split('\n').filter(line=>line.startsWith('~ [289]')).length,1);
+    for (const [tree,elements] of [
+      [newTree,[retained]], // The new parent is not in structured input data.
+      [newTree,[newParent,retained,retained]],
+      [newTree,[{...newParent,role:'AXButton'},retained]],
+      [`${newTree}\n${child}`,[newParent,retained]],
+      [`${newTree}\n- [300] AXCell`,[newParent,retained]],
+      [`- [300] AXCell\n  - AXStaticText = "literal\n    ${child} content"`,[newParent,retained]],
+      [`- [300] AXCell\n  ${child} "unterminated`,[newParent,retained]],
+    ] as Array<[string,SnapshotElement[]]>) {
+      assert.ok(!diffTrees(oldTree,[oldParent,retained],tree,elements).includes('[parent='), 'ambiguous/unbound/literal/partial rows provide no relation');
+    }
+    assert.ok(!diffTrees('',[oldParent,retained],newTree,[newParent,retained]).includes('[parent='), 'missing prior row is unknown');
+    assert.ok(!diffTrees(newTree,[newParent,retained],newTree,[newParent,retained]).includes('[parent='));
+  });
+
   it("does not reuse ambiguous public indices for repeated controls", () => {
     const previous: SnapshotElement[] = [
       { element_index: 10, driver_index: 100, role: "AXButton", label: "Expand" },
@@ -68,6 +165,21 @@ describe("opensky helpers", () => {
     assert.equal(pickAppWindowId([{ ...visible, window_id: 1, is_on_screen: undefined }], 7), undefined);
   });
 
+  it("app observation follows the verified focused control surface while retaining exact eligibility", () => {
+    const main = {pid: 7, window_id: 1, is_on_screen: true, z_index: 10, frame: {width: 1200, height: 900}};
+    const panel = {pid: 7, window_id: 2, is_on_screen: true, z_index: 11, frame: {width: 403, height: 84}};
+    const choose = (windows: Record<string, unknown>[], control: unknown) => pickAppWindowId(windows, 7, 1, undefined, control);
+    assert.equal(choose([main, panel], 2), 2);
+    assert.equal(choose([main, panel], undefined), 1);
+    assert.equal(choose([main, panel], "2"), 1);
+    assert.equal(choose([main, {...panel, pid: 8}], 2), 1);
+    assert.equal(choose([main, {...panel, is_on_screen: false}], 2), 1);
+    assert.equal(choose([main, {...panel, on_current_space: false}], 2), 1);
+    assert.equal(choose([main, {...panel, layer: 1}], 2), 1);
+    assert.equal(choose([main, {...panel, frame: {width: 50, height: 50}}], 2), 1);
+    assert.equal(choose([main, panel, panel], 2), 1);
+  });
+
   it("app observation prefers exact eligible focus when it differs from stacking order", () => {
     const visible = { pid: 7, is_on_screen: true, frame: { width: 500, height: 200 } };
     const windows = [{ ...visible, window_id: 1, z_index: 418 }, { ...visible, window_id: 2, z_index: 263 }];
@@ -77,6 +189,21 @@ describe("opensky helpers", () => {
     assert.equal(pickAppWindowId(windows, 7, 999), 1);
     assert.equal(pickAppWindowId([{ ...windows[1], pid: 8 }, windows[0]!], 7, 2), 1);
     assert.equal(pickAppWindowId([{ ...windows[1], on_current_space: false }, windows[0]!], 7, 2), 1);
+  });
+
+  it("observes a focused sheet through its exact eligible parent and refuses invalid parent metadata", () => {
+    const original = {pid: 7, window_id: 1, is_on_screen: true, z_index: 1, frame: {width: 900, height: 700}};
+    const sibling = {...original, window_id: 2, z_index: 20};
+    const sheet = {...original, window_id: 3, z_index: 21, frame: {width: 320, height: 92}};
+    const choose = (windows: Record<string, unknown>[], parent: unknown) => pickAppWindowId(windows, 7, 3, undefined, undefined, parent);
+    assert.equal(choose([original, sibling, sheet], 1), 1);
+    for (const parent of ["1", 0, -1, 999]) assert.equal(choose([original, sibling, sheet], parent), undefined);
+    for (const altered of [{...original, pid: 8}, {...original, is_on_screen: false},
+      {...original, on_current_space: false}, {...original, layer: 1}, {...original, frame: {width: 50, height: 50}}]) {
+      assert.equal(choose([altered, sibling, sheet], 1), undefined);
+    }
+    assert.equal(choose([original, original, sibling, sheet], 1), undefined);
+    assert.equal(choose([original, sibling, sheet], null), 3);
   });
 
   it("maps list_apps records onto the opensky App shape", () => {
@@ -297,11 +424,113 @@ describe("opensky helpers", () => {
     assert.ok(pruned.hiddenIndices.has(13));
   });
 
-  it("does not duplicate a multiline value already rendered after an equals sign", () => {
-    const value = "first line\nsecond line";
-    const tree = `[1] AXTextArea = "first line\nsecond line"`;
-    const enriched = enrichTreeSemantics(tree, [{ element_index: 1, role: "AXTextArea", value }]);
-    assert.equal(enriched, tree);
+  it("displays derived container labels without naming ambiguous or editable descendants", () => {
+    const tree = '- [1] AXRow\n  - [2] AXCell\n    - AXStaticText = "Documents"';
+    const elements = [{element_index:1,role:"AXRow"},{element_index:2,role:"AXCell"}];
+    const named = nameAnonymousContainers(tree, elements);
+    const text = enrichTreeSemantics(tree, named);
+    assert.match(text, /\[1\] AXRow \[label="Documents"\]/);
+    assert.match(text, /\[2\] AXCell \[label="Documents"\]/);
+    assert.equal(enrichTreeSemantics(text, named), text);
+    for (const suffix of ['\n    - AXStaticText = "Other"', '\n    - [3] AXTextField = "Documents"', '\n⚠️ AX tree truncated']) {
+      assert.doesNotMatch(enrichTreeSemantics(tree + suffix, nameAnonymousContainers(tree + suffix, elements)), /label=/);
+    }
+    assert.deepEqual(elements, [{element_index:1,role:"AXRow"},{element_index:2,role:"AXCell"}]);
+  });
+
+  it("compacts implicit selection and private IDs without losing indices, useful actions or content", () => {
+    const elements: SnapshotElement[] = [
+      {element_index:1,role:"AXRow",actions:["AXShowDefaultUI","AXShowAlternateUI","Details"],identifier:"_NS:9"},
+      {element_index:2,role:"AXCell",actions:["AXOpen"],identifier:"StableCell"},
+      {element_index:3,role:"AXTextField",value:'literal [id=_NS:3 actions=[open]]',identifier:"_NS:3",actions:["AXConfirm"]},
+      {element_index:4,role:"AXTextArea",value:'first [id=_NS:4]\nsecond',identifier:"_NS:4",actions:["AXShowMenu"]},
+    ];
+    const tree = '- [1] AXRow [id=_NS:9 actions=[showdefaultui,showalternateui,details]]\n' +
+      '  - [2] AXCell [id=StableCell actions=[open]]\n' +
+      '- [3] AXTextField = "literal [id=_NS:3 actions=[open]]" [id=_NS:3 actions=[confirm]]\n' +
+      '- [4] AXTextArea = "first [id=_NS:4]\nsecond" [id=_NS:4 actions=[showmenu]]';
+    const compact = compactTreeActionHints(tree,elements);
+    assert.equal(compact,'- [1] AXRow [actions=[details]] [selectable]\n' +
+      '  - [2] AXCell [id=StableCell actions=[open]]\n' +
+      '- [3] AXTextField = "literal [id=_NS:3 actions=[open]]" [actions=[confirm]]\n' +
+      '- [4] AXTextArea = "first [id=_NS:4]\nsecond" [id=_NS:4 actions=[showmenu]]');
+    assert.deepEqual([...compact.matchAll(/^-?\s*-? \[(\d+)\]/gm)].map(m=>m[1]), [...tree.matchAll(/^-?\s*-? \[(\d+)\]/gm)].map(m=>m[1]));
+    assert.deepEqual(elements[0]?.actions,["AXShowDefaultUI","AXShowAlternateUI","Details"]);
+    assert.equal(elements[0]?.identifier,"_NS:9");
+    assert.equal(compactTreeActionHints(tree,[]),tree);
+    const literal = '- [1] AXRow = "literal [actions=[showdefaultui,showalternateui]]" [id=_NS:9 actions=[showdefaultui,showalternateui,details]]';
+    assert.equal(compactTreeActionHints(literal,elements),'- [1] AXRow = "literal [actions=[showdefaultui,showalternateui]]" [actions=[details]] [selectable]');
+  });
+
+  it("flattens verified first and subsequent custom actions without changing content or raw capabilities", () => {
+    const custom = "Name:customize info and appearance\nTarget:0x0\nSelector:(null)";
+    const second = "Name:close tab\nTarget:0x123\nSelector:_closeButtonClicked:";
+    const elements: SnapshotElement[] = [
+      {element_index:12,role:"AXCell",actions:[custom,"Pin List",custom,"Pin List"],selected:true},
+      {element_index:13,role:"AXButton",actions:["AXPress",second,"AXShowMenu"]},
+    ];
+    const raw = `- [12] AXCell (Reminders) [actions=[${custom.toLowerCase()},pin list,${custom.toLowerCase()},pin list]]\n` +
+      `- [13] AXButton (Tab) [help="keep" actions=[press,${second.toLowerCase()},showmenu]]`;
+    const clean = sanitizeTreeText(raw,elements);
+    assert.equal(clean,'- [12] AXCell (Reminders) [actions=[customize info and appearance,pin list]]\n' +
+      '- [13] AXButton (Tab) [help="keep" actions=[press,close tab,showmenu]]');
+    assert.match(enrichTreeSemantics(clean,elements), /actions=\[customize info and appearance,pin list\]\] \[selected\]/);
+    assert.equal(sanitizeTreeText(clean,elements),clean);
+    assert.deepEqual(elements[0]?.actions,[custom,"Pin List",custom,"Pin List"]);
+    const content = `- [19] AXTextArea = "actions=[${custom.toLowerCase()},pin list]]" [actions=[showmenu]]`;
+    assert.equal(sanitizeTreeText(content,[{element_index:19,role:"AXTextArea",actions:["AXShowMenu"]}]),content);
+    assert.equal(sanitizeTreeText(raw,[{...elements[0]!,element_index:99}]),raw);
+  });
+
+
+  it("diffs display-only styling and reversion while retaining raw values", () => {
+    const raw = "Copper title\nRegular body.";
+    const previous: SnapshotElement[] = [{ element_index: 7, role: "AXTextArea", label: raw, value: raw }];
+    const next: SnapshotElement[] = [{ ...previous[0]!, formattedValue: "**Copper title**\nRegular body." }];
+    const bold = diffTrees("", previous, "", next);
+    assert.match(bold, /^~ \[7\] AXTextArea/m);
+    assert.ok(bold.includes("**Copper title**"));
+    assert.equal(bold.split("Regular body.").length, 2, "render display once");
+    assert.equal(next[0]!.value, raw);
+    const plain = diffTrees("", next, "", previous);
+    assert.match(plain, /^~ \[7\] AXTextArea/m);
+    assert.ok(plain.includes("Copper title"));
+    assert.ok(!plain.includes("**Copper title**"));
+    assert.equal(diffTrees("", next, "", next), "No accessibility changes.");
+    const labelled = diffTrees("", [{...previous[0]!, label: "Compose"}], "", [{...next[0]!, label: "Compose"}]);
+    assert.ok(labelled.includes('"Compose"'));
+    assert.ok(labelled.includes('value="**Copper title**'));
+  });
+
+
+  it("shows attested collection labels without inventing labels for other controls", () => {
+    const row: SnapshotElement = {element_index:7, role:"AXRow", label:"Notes", labelSource:"contents", selected:true, element_token:"exact:7"};
+    const source = '- [7] AXRow [selectable]';
+    assert.equal(enrichTreeSemantics(source,[row]),source+' [label="Notes" selected]');
+    assert.equal(row.element_token,"exact:7");
+    assert.equal(enrichTreeSemantics(source,[{...row,labelSource:undefined,selected:undefined}]),source);
+    assert.equal(enrichTreeSemantics('- [7] AXTextArea = "literal label=Notes"',[{...row,role:"AXTextArea",selected:undefined}]),'- [7] AXTextArea = "literal label=Notes"');
+    assert.equal(enrichTreeSemantics('- [8] AXRow [selectable]',[row]),'- [8] AXRow [selectable]');
+  });
+
+  it("preserves literal multiline values while enriching only external AX metadata", () => {
+    const value = 'first line\nsecond line';
+    const tree = `[1] AXTextArea = "${value}"`;
+    assert.equal(enrichTreeSemantics(tree, [{element_index:1,role:'AXTextArea',value}]),tree);
+    const element: SnapshotElement = {element_index:1,role:'AXTextArea',value,focused:true};
+    assert.equal(enrichTreeSemantics(tree,[element]),`${tree} [focused]`);
+    // State-like words and literal tree/index markers are document content.
+    const literal = 'focused selected disabled checked expanded\n- [9] AXButton (document content)\n' + String.raw`mentions [9] and \"quoted\" text`;
+    const source = `- [1] AXTextArea = "${literal}"\n- [9] AXButton (Save)`;
+    const controls: SnapshotElement[] = [{...element,value:literal}, {element_index:9,role:'AXButton',focused:true}];
+    assert.equal(enrichTreeSemantics(source,controls),`- [1] AXTextArea = "${literal}" [focused]\n- [9] AXButton (Save) [focused]`);
+    assert.equal(controls[0]!.value,literal);
+    const already = `${tree} [focused]`;
+    assert.equal(enrichTreeSemantics(already,[element]),already);
+    const intrinsic = '- AXButton (Save)\n- [1] AXTextArea = "literal unavailable\n- AXButton (body)"';
+    assert.equal(enrichTreeSemantics(intrinsic,[]),'- AXButton (Save) [unavailable]\n- [1] AXTextArea = "literal unavailable\n- AXButton (body)"');
+    const incomplete = '[1] AXTextArea = "unfinished\n- [9] AXButton';
+    assert.equal(enrichTreeSemantics(incomplete,controls),incomplete);
   });
 
   it("diffs structured AX semantics even when labels do not change", () => {
@@ -352,6 +581,69 @@ describe("OpenSky against cua-driver", () => {
     assert.doesNotMatch(second.text, /No accessibility changes/);
   });
 
+  it("uses the full Mac walk budget once and acts only with that capture token", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.timeoutNativeWalk = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.match(state.text, /Scientific/);
+    assert.doesNotMatch(state.text, /^Accessibility projection:/);
+    await opensky.click({ app: "Calculator", element_index: 13 });
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const reads = after.calls.filter((call: { tool: string; args: {probe_only?: boolean} }) => call.tool === "get_window_state" && !call.args.probe_only);
+    assert.equal(reads.length, 1);
+    assert.equal(reads[0].args.timeout_ms, 5000);
+    assert.equal(reads[0].args.pid, fixture.apps[0].pid);
+    assert.equal(reads[0].args.window_id, fixture.apps[0].windows[0].window_id);
+    const input = after.calls.find((call: { tool: string }) => call.tool === "click");
+    assert.equal(input.args.snapshot_id, "s00000001");
+    assert.equal(input.args.element_token, "s00000001:13");
+  });
+
+  it("bounds an exhausted full Mac walk to one read and retains its partial state", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    fixture.timeoutNativeWalk = true; fixture.timeoutNativeWalkAlways = true;
+    await writeFile(statePath, JSON.stringify(fixture));
+    const state = await opensky.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+    assert.doesNotMatch(state.text, /Scientific/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const reads = after.calls.filter((call: { tool: string; args: {probe_only?: boolean} }) => call.tool === "get_window_state" && !call.args.probe_only);
+    assert.equal(reads.length, 1); assert.equal(reads[0].args.timeout_ms, 5000);
+  });
+
+  it("keeps the native capture default for Linux", async () => {
+    const { driver, dir, statePath } = await makeHarness();
+    const linux = createOpenSky({ driver, target: "linux", homeDir: join(dir, "linux-home"), settleDelayMs: 0 });
+    try {
+      await linux.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+      const after = JSON.parse(await readFile(statePath, "utf8"));
+      const reads = after.calls.filter((call: any) => call.tool === "get_window_state");
+      assert.equal(reads.length, 1); assert.equal(reads[0].args.timeout_ms, undefined);
+      await linux.click({ app: "Calculator", element_index: 13 });
+      const changed = await linux.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+      assert.match(changed.text, /\[13\] AXButton 7 value="7"/);
+      const inputState = JSON.parse(await readFile(statePath, "utf8"));
+      const input = inputState.calls.find((call: any) => call.tool === "click");
+      assert.equal(input.args.action, undefined, "Linux's closed click schema has no action field");
+      assert.equal(input.args.pid, reads[0].args.pid);
+      assert.equal(input.args.window_id, reads[0].args.window_id);
+      assert.equal(input.args.element_token, "s00000001:13");
+      assert.equal(input.args.button, "left");
+      await linux.press_key({ app: "Calculator", key: "ALT+O" });
+      await linux.press_key({ app: "Calculator", key: "super+shift+f" });
+      const keys = JSON.parse(await readFile(statePath, "utf8")).calls.filter((call: any) => call.tool === "hotkey");
+      assert.deepEqual(keys.map((call: any) => call.args.keys), [["alt", "o"], ["super", "shift", "f"]]);
+      for (const call of keys) {
+        assert.equal(call.args.pid, reads[0].args.pid);
+        assert.equal(call.args.window_id, reads[0].args.window_id);
+      }
+    } finally { await linux.close(); }
+  });
+
   it("projects a saturated native tree shallowly so later controls stay visible", async () => {
     const { opensky, statePath } = await makeHarness();
     await opensky.list_apps();
@@ -367,6 +659,8 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(observations.length, 2);
     assert.equal(observations[0].args.max_depth, undefined);
     assert.equal(observations[1].args.max_depth, 3);
+    assert.equal(observations[0].args.timeout_ms, 5000);
+    assert.equal(observations[1].args.timeout_ms, undefined);
   });
 
   it("keeps one native snapshot when every returned element is represented", async () => {
@@ -529,6 +823,7 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(launches.length, 1);
     assert.deepEqual(launches[0].args.urls, ["/tmp/delayed-target.txt"]);
     assert.equal(launches[0].args.creates_new_application_instance, true);
+    assert.deepEqual(launches[0].args.additional_arguments, ["-ApplePersistenceIgnoreState", "YES"]);
   });
 
   it("does not loop or recommend unsafe input after a refused target dispatch", async () => {
@@ -731,12 +1026,42 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "scroll").length, 1);
   });
 
+  it("requires separate Mac clipboard preservation evidence without replaying paste", async () => {
+    const completed = {status:"completed", target_value_verified:true, transfer_verified:false,
+      clipboard_policy:"restore", clipboard_restore_status:"restored", clipboard_restored:true};
+    const cases = [
+      {outcome:completed, accepted:true},
+      {outcome:{...completed,clipboard_restore_status:"newer_writer_preserved",clipboard_restored:false},accepted:true},
+      ...[
+        {clipboard_restore_status:"restored",clipboard_restored:false},
+        {clipboard_restore_status:"newer_writer_preserved",clipboard_restored:true},
+        {clipboard_restore_status:"failed",clipboard_restored:false},
+        {clipboard_restore_status:"unverified_input",clipboard_restored:false},
+        {clipboard_policy:"leave",clipboard_restored:false},
+        {clipboard_restore_status:undefined,clipboard_restored:undefined},
+        {target_value_verified:false}, {transfer_verified:true}, {status:"unknown"},
+      ].map(delta=>({outcome:{...completed,...delta},accepted:false})),
+    ];
+    for (const {outcome,accepted} of cases) {
+      const {opensky}=await makeHarness();const observed=await opensky.get_app_state({app:"TextEdit",includeScreenshot:false});
+      const original=opensky.driver.call.bind(opensky.driver);const calls:Array<{tool:string,args:Record<string,unknown>}>=[];
+      opensky.driver.call=async(tool,args={})=>{calls.push({tool,args});if(tool==="native_paste")return {structured:outcome,text:"receipt",content:[]};return original(tool,args);};
+      const action=opensky.paste({app:observed.targetHandle,text:"one paste",format:"text"});
+      if(accepted)await action;else await assert.rejects(action,/Observe before retrying; do not replay automatically/);
+      const inputs=calls.filter(c=>c.tool==="native_paste");assert.equal(inputs.length,1);
+      assert.equal(inputs[0].args.clipboard_policy,"restore");assert.equal(inputs[0].args.delivery_mode,"foreground");
+      assert.equal(inputs[0].args.pid,900);assert.equal(inputs[0].args.window_id,2001);
+      assert.ok(!calls.some(c=>["type_text","hotkey","clipboard_set"].includes(c.tool)));
+      await opensky.close();
+    }
+  });
+
   it("refuses paste before resolving a target or touching the global clipboard", async () => {
     const { opensky, logPath } = await makeHarness();
 
     await assert.rejects(
       () => opensky.paste({ app: "TextEdit", text: "do not dispatch" }),
-      /safe paste requires.*No clipboard, app, window, tab, or input was touched/s,
+      /Native paste is unsupported.*No clipboard, app, window, tab, or input was touched/s,
     );
     const calls = await readFile(logPath, "utf8").catch(() => "");
     assert.equal(calls, "");
@@ -1098,5 +1423,528 @@ describe("OpenSky against cua-driver", () => {
     assert.ok(snapshot.screenshot?.url.startsWith("file:"));
     assert.equal(snapshot.degraded, true);
     assert.match(snapshot.degradedReason ?? "", /ax_window_unresolved/);
+  });
+});
+
+
+describe("Remaining verified campaign contracts", () => {
+it("advertises only primary Press for a proven closed menu bar and preserves open/unknown menu actions", () => {
+    const item: SnapshotElement = {element_index: 4, role: "AXMenuBarItem", label: "File", selected: false, actions: ["AXCancel", "AXPress", "AXPick"]};
+    const tree = '- [4] AXMenuBarItem "File" [actions=[cancel,press,pick]]';
+    const projected = projectClosedMenuActions(tree, [item]);
+    assert.equal(projected.tree, '- [4] AXMenuBarItem "File" [actions=[press]]');
+    assert.deepEqual(projected.elements[0]!.actions, ["AXPress"]);
+    assert.deepEqual(item.actions, ["AXCancel", "AXPress", "AXPick"]);
+    for (const selected of [true, undefined]) {
+      const open = projectClosedMenuActions(tree, [{...item, selected}]);
+      assert.equal(open.tree, tree); assert.deepEqual(open.elements[0]!.actions, item.actions);
+    }
+    const menuItem = {...item, role:"AXMenuItem"};
+    assert.deepEqual(projectClosedMenuActions(tree, [menuItem]).elements, [menuItem]);
+    const unknownPrimary = {...item, actions:["AXPick"]};
+    assert.deepEqual(projectClosedMenuActions(tree, [unknownPrimary]).elements, [unknownPrimary]);
+    assert.equal(projectClosedMenuActions('- [5] AXTextArea = "actions=[cancel,press,pick]"', [item]).tree, '- [5] AXTextArea = "actions=[cancel,press,pick]"');
+  });
+
+it("distinguishes a live root item-name editor from a file label without changing capabilities", () => {
+    const label: SnapshotElement = {element_index: 8, role: "AXTextField", value: "Drafts", url: "file:///owned/Drafts/", actions: ["AXOpen", "AXConfirm"], settable: true, enabled: true};
+    const source = '- [8] AXTextField = "Drafts" [actions=[open,confirm] settable]';
+    const rendered = enrichTreeSemantics(source, [label]);
+    assert.match(rendered, /file item label/);
+    assert.doesNotMatch(rendered, /type-directly/);
+    assert.match(rendered, /actions=\[open,confirm\].*settable/);
+    assert.deepEqual(label.actions, ["AXOpen", "AXConfirm"]);
+    const editor: SnapshotElement = {element_index: 9, role: "AXTextField", identifier: "ShrinkToFit Text Field", value: "Drafts", settable: true, enabled: true};
+    const tree = '- [9] AXTextField = "Drafts" [id=ShrinkToFit Text Field]\n- [10] AXWindow "Documents"';
+    assert.match(inlineItemEditObservation(tree, [editor]), /editor \[9\].*Return finishes/);
+    assert.equal(inlineItemEditObservation('- [10] AXWindow "Documents"\n  '+tree, [editor]), "");
+    assert.equal(inlineItemEditObservation(tree, [{...editor, enabled:false}]), "");
+    assert.equal(inlineItemEditObservation(tree, [{...editor, url:label.url}]), "");
+    assert.equal(inlineItemEditObservation(tree, [editor, {...editor, element_index:11}]), "");
+    assert.match(enrichTreeSemantics('- [9] AXTextField [settable]', [editor]), /type-directly/);
+  });
+
+it("chooses exact foreground for native buttons missing primary-action enumeration, without replay", async () => {
+    const {opensky,statePath}=await makeHarness();
+    await opensky.list_apps();
+    const fixture=JSON.parse(await readFile(statePath,"utf8"));
+    fixture.apps[0].elements=[
+      {element_index:14,role:"AXButton",label:"Toolbar button",actions:["Name:Move next\nTarget:0x0"]},
+      {element_index:15,role:"AXButton",label:"Standard button",actions:["AXPress"]},
+    ];
+    await writeFile(statePath,JSON.stringify(fixture));
+    const observed=await opensky.get_app_state({app:"Calculator",disableDiff:true,includeScreenshot:false});
+    await opensky.click({app:observed.targetHandle,element_index:14});
+    await opensky.click({app:observed.targetHandle,element_index:15});
+    const after=JSON.parse(await readFile(statePath,"utf8"));
+    const inputs=after.calls.filter((c:any)=>c.tool==='click');
+    assert.equal(inputs.length,2);assert.equal(inputs[0].args.delivery_mode,'foreground');
+    assert.equal(inputs[1].args.delivery_mode,undefined);
+    assert.ok(inputs.every((c:any)=>c.args.window_id===fixture.apps[0].windows[0].window_id&&c.args.element_token));
+    const original=opensky.driver.call.bind(opensky.driver);let attempts=0;
+    opensky.driver.call=async(tool,args={})=>{
+      if(tool==='click'){attempts++;throw new OpenSkyError('AX action outcome unknown','delivery_unknown');}
+      return original(tool,args);
+    };
+    await assert.rejects(()=>opensky.click({app:observed.targetHandle,element_index:14}),/outcome unknown/);
+    assert.equal(attempts,1);
+  });
+
+it("keeps parent-selection separate from native actions and reports capability removal", async () => {
+    const {opensky,statePath}=await makeHarness();await opensky.list_apps();
+    const fixture=JSON.parse(await readFile(statePath,"utf8"));
+    fixture.apps[0].elements=[{element_index:14,role:"AXGroup",label:"Page 2",selection_via_parent:true,actions:[]}];
+    await writeFile(statePath,JSON.stringify(fixture));
+    const observed=await opensky.get_app_state({app:"Calculator",disableDiff:true,includeScreenshot:false});
+    assert.match(observed.text,/selectable via parent/);
+    await opensky.click({app:observed.targetHandle,element_index:14});
+    for(const options of [{mouse_button:"right" as const},{click_count:2},{mouse_button:"middle" as const}])
+      await assert.rejects(()=>opensky.click({app:observed.targetHandle,element_index:14,...options}),/one left indexed click/);
+    const result=JSON.parse(await readFile(statePath,"utf8"));
+    const inputs=result.calls.filter((c:any)=>["click","right_click","double_click"].includes(c.tool));
+    assert.equal(inputs.length,1);assert.equal(inputs[0].args.action,"select_collection_item");
+    assert.equal(inputs[0].args.window_id,fixture.apps[0].windows[0].window_id);assert.ok(inputs[0].args.element_token);
+    const original=opensky.driver.call.bind(opensky.driver);let attempts=0;
+    opensky.driver.call=async(tool,args={})=>{
+      if(tool==='click'){attempts++;throw new OpenSkyError('selection outcome unknown','background_unavailable');}
+      return original(tool,args);
+    };
+    await assert.rejects(()=>opensky.click({app:observed.targetHandle,element_index:14}),/selection outcome unknown/);
+    assert.equal(attempts,1,'an uncertain parent-selection setter must never be replayed');
+    const previous:SnapshotElement[]=[{element_index:14,role:"AXGroup",selectionViaParent:true}];
+    const removed:SnapshotElement[]=[{element_index:14,role:"AXGroup"}];
+    const diff=diffTrees('',previous,'',removed);
+    assert.match(diff,/^~ \[14\] AXGroup ""$/m);assert.doesNotMatch(diff,/selectable via parent/);
+  });
+
+it("keeps proven repeated native controls while retaining unique semantic fallback for recreated wrappers", () => {
+    const previous: SnapshotElement[] = [
+      { element_index: 10, role: "AXStaticText", label: "Repeated event", nativeObjectId: "a", element_token: "old:a" },
+      { element_index: 11, role: "AXStaticText", label: "Repeated event", nativeObjectId: "b", element_token: "old:b" },
+      { element_index: 12, role: "AXCell", label: "Documents", nativeObjectId: "row-old", element_token: "old:row" },
+    ];
+    const current = [
+      { ...previous[1]!, element_index: 50, element_token: "new:b" },
+      { ...previous[0]!, element_index: 51, element_token: "new:a" },
+      { ...previous[2]!, element_index: 52, nativeObjectId: "row-new", element_token: "new:row" },
+    ];
+    const stable = stabilizeElementIndices(previous, current);
+    assert.deepEqual(stable.map(e => e.element_index), [11, 10, 12]);
+    assert.deepEqual(stable.map(e => e.driver_index), [50, 51, 52]);
+    assert.deepEqual(stable.map(e => e.element_token), ["new:b", "new:a", "new:row"]);
+    const replacements = current.slice(0, 2).map(e => ({ ...e, nativeObjectId: `new:${e.nativeObjectId}` }));
+    assert.ok(stabilizeElementIndices(previous, replacements).every(e => e.element_index > 12));
+  });
+
+it("does not let semantic fallback consume a live renamed native control or native alias", () => {
+    const previous: SnapshotElement[] = [
+      { element_index: 10, role: "AXButton", label: "Save", nativeObjectId: "a" },
+      { element_index: 11, role: "AXButton", label: "Close", nativeObjectId: "b" },
+    ];
+    const renamed = [
+      { element_index: 50, role: "AXButton", label: "Save", nativeObjectId: "new-object" },
+      { element_index: 51, role: "AXButton", label: "Save as", nativeObjectId: "a" },
+    ];
+    assert.deepEqual(stabilizeElementIndices(previous, renamed).map(e => e.element_index), [12, 10]);
+    const aliases = [
+      { element_index: 50, role: "AXButton", label: "Save", nativeObjectId: "alias" },
+      { element_index: 51, role: "AXButton", label: "Close", nativeObjectId: "alias" },
+    ];
+    assert.ok(stabilizeElementIndices(previous, aliases).every(e => e.element_index > 11));
+    assert.ok(stabilizeElementIndices(aliases, previous).every(e => e.element_index > 51));
+  });
+
+it("keeps native object slots through mutable identifiers without borrowing duplicate or replacement identities", () => {
+    const previous:SnapshotElement[]=[
+      {element_index:5,role:"AXRadioButton",label:"Same title",identifier:"Tab?isActive=false",value:"0",nativeObjectId:"epoch:object-a",element_token:"old:a"},
+      {element_index:6,role:"AXRadioButton",label:"Same title",identifier:"Tab?isActive=true",value:"1",nativeObjectId:"epoch:object-b",element_token:"old:b"},
+    ];
+    const current:SnapshotElement[]=[
+      {...previous[0]!,element_index:99,identifier:"Tab?isActive=true",value:"1",element_token:"new:a"},
+      {...previous[1]!,element_index:100,identifier:"Tab?isActive=false",value:"0",element_token:"new:b"},
+    ];
+    const stable=stabilizeElementIndices(previous,current);
+    assert.deepEqual(stable.map(e=>e.element_index),[5,6]);
+    assert.deepEqual(stable.map(e=>e.driver_index),[99,100]);
+    assert.deepEqual(stable.map(e=>e.element_token),["new:a","new:b"]);
+    const diff=diffTrees('',previous,'',stable);
+    assert.match(diff,/~ \[5\] AXRadioButton[^\n]*value="1"/);
+    assert.match(diff,/~ \[6\] AXRadioButton[^\n]*value="0"/);
+    for(const replacement of [
+      current.map(e=>({...e,nativeObjectId:"duplicate"})),
+      current.map(e=>({...e,nativeObjectId:"new-window:"+e.nativeObjectId})),
+      current.map(e=>({...e,readOnly:true})),
+      current.map(e=>({...e,role:"AXCheckBox"})),
+    ])assert.ok(stabilizeElementIndices(previous,replacement).every(e=>e.element_index!==5&&e.element_index!==6));
+    const aliases=[current[0]!,{...current[0]!,element_index:101}];
+    assert.ok(stabilizeElementIndices(previous,aliases).every(e=>e.element_index!==5));
+  });
+
+it("rejects invalid native observation budgets before resolving or mutating a target", async () => {
+    const {opensky,statePath}=await makeHarness();
+    for(const timeout of [0,-1,250.5,1001,NaN]) {
+      await assert.rejects(()=>opensky.press_key({app:"Calculator",key:"Return",window_change_timeout_ms:timeout}),/window_change_timeout_ms/);
+      await assert.rejects(()=>opensky.click({app:"Calculator",element_index:1,window_change_timeout_ms:timeout}),/window_change_timeout_ms/);
+      await assert.rejects(()=>opensky.set_value({app:"Calculator",element_index:1,value:"17",window_change_timeout_ms:timeout}),/window_change_timeout_ms/);
+      await assert.rejects(()=>opensky.perform_secondary_action({app:"Calculator",element_index:1,action:"press",window_change_timeout_ms:timeout}),/window_change_timeout_ms/);
+    }
+    // The fake driver creates this file on its first dispatch.
+    await assert.rejects(() => stat(statePath), { code: "ENOENT" });
+  });
+
+it("preserves identified windows and uniquely anonymous editable fields across changing values", () => {
+    const previous: SnapshotElement[] = [
+      {element_index: 0,role:"AXWindow",identifier:"_NS:127",label:"Dictionary – 4 found",labelSource:"title"},
+      {element_index: 30,role:"AXTextField",label:"atlas",value:"atlas",labelSource:"value",element_token:"old:30"},
+    ];
+    const current: SnapshotElement[] = [
+      {element_index: 4,role:"AXWindow",identifier:"_NS:127",label:"Dictionary – 5 found",labelSource:"title"},
+      {element_index: 50,role:"AXTextField",label:"cedar",value:"cedar",labelSource:"value",element_token:"new:50"},
+    ];
+    const result=stabilizeElementIndices(previous,current);
+    assert.deepEqual(result.map(e=>e.element_index),[0,30]);
+    assert.equal(result[1]!.driver_index,50);assert.equal(result[1]!.element_token,"new:50");
+    assert.equal(result[1]!.label,"cedar");assert.equal(result[1]!.value,"cedar");
+    // A repeated anonymous editor must never borrow either prior index.
+    const duplicated=[...previous,{...previous[1]!,element_index:31,value:"other",label:"other"}];
+    assert.notEqual(stabilizeElementIndices(duplicated,current)[1]!.element_index,30);
+    assert.notEqual(stabilizeElementIndices(duplicated,current)[1]!.element_index,31);
+    // Missing provenance keeps the existing conservative behavior. Named
+    // fields and display-only content still use their semantic labels.
+    assert.notEqual(stabilizeElementIndices(previous,[{...current[1]!,labelSource:undefined}])[0]!.element_index,30);
+    assert.notEqual(stabilizeElementIndices([{...previous[1]!,labelSource:"description"}],[{...current[1]!,labelSource:"description"}])[0]!.element_index,30);
+    assert.notEqual(stabilizeElementIndices([{...previous[1]!,role:"AXStaticText"}],[{...current[1]!,role:"AXStaticText"}])[0]!.element_index,30);
+  });
+
+it("names only single-label anonymous containers and keeps duplicate identity conservative", () => {
+    const tree = '- [0] AXOutline (sidebar)\n  - [1] AXRow\n    - [2] AXCell\n      - AXStaticText = "Documents"\n  - [3] AXRow\n    - [4] AXCell\n      - AXStaticText = "Downloads"';
+    const before=nameAnonymousContainers(tree,[{element_index:1,role:"AXRow"},{element_index:2,role:"AXCell"},{element_index:3,role:"AXRow"},{element_index:4,role:"AXCell"}]);
+    assert.deepEqual(before.map(e=>e.label),["Documents","Documents","Downloads","Downloads"]);
+    const current=nameAnonymousContainers(tree.replaceAll('[1]','[21]').replaceAll('[2]','[22]').replaceAll('[3]','[23]').replaceAll('[4]','[24]'),before.map(e=>({element_index:e.element_index+20,role:e.role,element_token:`new:${e.element_index+20}`})));
+    const stable=stabilizeElementIndices(before,current);assert.deepEqual(stable.map(e=>e.element_index),[1,2,3,4]);assert.equal(stable[1]!.driver_index,22);assert.equal(stable[1]!.element_token,"new:22");
+    // Sibling labels cannot name an empty preceding cell; repeated names,
+    // multiple labels, editable descendants and malformed strings are unsafe.
+    const empty={element_index:2,role:"AXCell"};
+    for(const descendants of ['', '\n      - AXTextField = "Documents"', '\n      - AXStaticText = "Documents"\n      - AXStaticText = "Other"', '\n      - AXStaticText = "broken']) {
+      assert.equal(nameAnonymousContainers('- [2] AXCell'+descendants+'\n- AXStaticText = "neighbor"',[empty])[0]!.label,undefined);
+    }
+    const reused=stabilizeElementIndices(before,[{...current[1]!,label:"Documents"},{...current[1]!,element_index:99,label:"Documents"}]);assert.ok(reused.every(e=>e.element_index!==2));
+    assert.equal(nameAnonymousContainers(tree+"\n⚠️ AX tree truncated",[empty])[0]!.label,undefined);
+    const named={...empty,label:"Authoritative",identifier:"native-id"};assert.deepEqual(nameAnonymousContainers(tree,[named])[0],named);
+  });
+
+it("projects a positively selected visible menu without exposing underlying public rows", () => {
+    const tree='- [0] AXWindow "Notes"\n  - [1] AXRow "Owned note"\n  - [2] AXTextArea = "Title"\n- [3] AXMenuBar\n  - [4] AXMenuBarItem "File"\n  - [5] AXMenuBarItem "View"\n    - [6] AXMenu\n      - [7] AXMenuItem "Hide Sidebar"';
+    const rows:SnapshotElement[]=[{element_index:0,role:"AXWindow"},{element_index:1,role:"AXRow"},{element_index:2,role:"AXTextArea"},{element_index:3,role:"AXMenuBar"},{element_index:4,role:"AXMenuBarItem",label:"File"},{element_index:5,role:"AXMenuBarItem",label:"View",selected:true,element_token:"new:5"},{element_index:6,role:"AXMenu"},{element_index:7,role:"AXMenuItem"}];
+    const active=projectActiveMenu(tree,rows,new Set([6]),new Set([99]));assert.equal(active.active,true);
+    assert.ok(active.tree.startsWith('- [5] AXMenuBarItem "View"'));assert.ok(active.tree.includes('[7] AXMenuItem'));assert.ok(!active.tree.includes('Owned note'));
+    assert.deepEqual([...active.hiddenIndices].sort((a,b)=>a-b),[0,1,2,3,4,99]);
+    assert.equal(projectActiveMenu(tree,rows,new Set()).active,false);
+    assert.equal(projectActiveMenu(tree,rows.map(e=>({...e,selected:false})),new Set([6])).tree,tree);
+    const ambiguous=tree.replace('  - [4] AXMenuBarItem "File"','  - [4] AXMenuBarItem "File"\n    - [8] AXMenu');
+    assert.equal(projectActiveMenu(ambiguous,rows.map(e=>e.element_index===4?{...e,selected:true}:e),new Set([6,8])).active,false);
+    // Current tokens survive presentation; no underlying row is in the input map.
+    const presented=stabilizeElementIndices(rows.map(e=>({...e,element_token:`old:${e.element_index}`})),rows.filter(e=>!active.hiddenIndices.has(e.element_index)));
+    assert.equal(presented.find(e=>e.element_index===5)?.element_token,"new:5");assert.ok(!presented.some(e=>e.element_index===1));
+  });
+
+it("app observation skips a visible auxiliary window without a matching AX window", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const calculator = fixture.apps.find((app: { name: string }) => app.name === "Calculator");
+    calculator.windows.push({
+      window_id: 10726, pid: calculator.pid, title: "", z_index: 30,
+      is_on_screen: true, on_current_space: true, axUnresolved: true,
+      frame: { x: 40, y: 80, width: 600, height: 300 },
+    });
+    await writeFile(statePath, JSON.stringify(fixture));
+
+    const state = await opensky.get_app_state({ app: "Calculator", scope: "app", includeScreenshot: false });
+    assert.match(state.text, /Calculator/);
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const probes = after.calls.filter((call: { tool: string; args: Record<string, unknown> }) =>
+      call.tool === "get_window_state" && call.args.probe_only === true);
+    assert.deepEqual(probes.map((call: { args: { window_id: number } }) => call.args.window_id), [10726, 10725]);
+    assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "get_window_state").at(-1).args.window_id, 10725);
+  });
+
+it("diffs placeholder and description changes independently of editable values", () => {
+    const empty: SnapshotElement = { element_index: 3, role: 'AXTextField', label: 'Search',
+      value: '', placeholder: 'Find a place', description: 'Search' };
+    const populated = { ...empty, value: '  typed value  ' };
+    const diff = diffTrees('', [empty], '', [populated]);
+    assert.ok(diff.includes('value="  typed value  "'));
+    assert.ok(diff.includes('placeholder="Find a place"'));
+    assert.ok(!diff.includes('description="Search"'), 'do not repeat the label');
+    const changed = { ...empty, placeholder: 'New hint', description: 'Find locations' };
+    const metadata = diffTrees('', [empty], '', [changed]);
+    assert.ok(metadata.includes('placeholder="New hint"'));
+    assert.ok(metadata.includes('description="Find locations"'));
+    assert.ok(metadata.includes('value=""'));
+    assert.equal(diffTrees('', [changed], '', [changed]), 'No accessibility changes.');
+    const cleared = diffTrees('', [populated], '', [empty]);
+    assert.ok(cleared.includes('value=""'));
+    assert.ok(!cleared.includes('value="Find a place"'));
+  });
+
+it("omits generated diff metadata while retaining resource URLs, semantic IDs and literal content", () => {
+    const before: SnapshotElement[] = [{element_index:0,role:'AXWindow',label:'Untitled',identifier:'_NS:31'}];
+    const after: SnapshotElement[] = [{...before[0]!,label:'Owned.rtf',url:'file:///tmp/Owned.rtf'}];
+    const changed=diffTrees('',before,'',after);
+    assert.ok(changed.includes(' url="file:///tmp/Owned.rtf"'));
+    assert.ok(!changed.includes(' id="_NS:31"'));
+    assert.equal(after[0]!.identifier,'_NS:31');
+    const body='literal id="_NS:31"\n- [99] AXButton (content)';
+    const editor: SnapshotElement={element_index:1,role:'AXTextArea',value:body,identifier:'_NS:42',actions:['showmenu']};
+    const added=diffTrees('',[],'',[editor]);
+    assert.ok(added.includes(JSON.stringify(body)));
+    assert.ok(!added.includes(' id="_NS:42"'));
+    assert.ok(added.includes('actions=[showmenu]'));
+    assert.equal(editor.identifier,'_NS:42');
+    const semantic=diffTrees('',[], '',[{...editor,identifier:'First Text View'}]);
+    assert.ok(semantic.includes(' id="First Text View"'));
+  });
+
+it("keeps complete added multiline fields and separates literal markers from controls", () => {
+    const raw = 'Copper title\nBody line.\n- [9] AXButton (document content)';
+    const elements: SnapshotElement[] = [
+      {element_index: 7, role: "AXTextArea", label: raw, value: raw,
+       formattedValue: '**Copper title**\nBody line.\n- [9] AXButton (document content)', actions: ['showmenu'], settable: true},
+      {element_index: 9, role: 'AXButton', label: 'Save', actions: ['press']},
+    ];
+    const tree = `- [7] AXTextArea = "${raw}"\n- [9] AXButton (Save) [help="Save document" actions=[press]]`;
+    const diff = diffTrees('', [], tree, elements);
+    assert.match(diff, /^\+ \[7\] AXTextArea/m);
+    assert.ok(diff.includes(JSON.stringify(elements[0]!.formattedValue)));
+    assert.ok(diff.includes('[actions=[showmenu]] [settable]'));
+    assert.match(diff, /^\+ \[9\] AXButton "Save" \[actions=\[press\]\]/m);
+    assert.ok(!diff.includes('+ [9] AXButton (document content)'));
+    assert.equal(elements[0]!.value, raw);
+    const plain = diffTrees('', [], '- AXStaticText = "mentions [9]"\n- [9] AXButton (Save) [help="Save document" actions=[press]]', [elements[1]!]);
+    assert.match(plain, /^\+ \[9\] AXButton \(Save\) \[help="Save document"/m);
+  });
+
+it("uses explicit native writability with AX-prefixed actions and preserves readonly or unknown fields", () => {
+    const tree = [
+      '- [1] AXTextField (Search) [settable actions=[press]]',
+      '- [2] AXTextField (Readonly) [actions=[press]]',
+      '- [3] AXTextField (Unknown) [actions=[press]]',
+    ].join("\n");
+    const text = enrichTreeSemantics(tree, [
+      { element_index: 1, role: "AXTextField", actions: ["AXPress"], settable: true },
+      { element_index: 2, role: "AXTextField", actions: ["AXPress"], settable: false },
+      { element_index: 3, role: "AXTextField", actions: ["AXPress"] },
+    ]);
+    assert.match(text, /Search.*settable.*type-directly/);
+    assert.doesNotMatch(text, /Readonly.*editable|Readonly.*type-directly|Readonly.*settable/);
+    assert.doesNotMatch(text, /Unknown.*editable|Unknown.*type-directly|Unknown.*settable/);
+  });
+
+it("compacts private slider metadata without changing values or input bindings", () => {
+    const element: SnapshotElement={element_index:72,role:"AXSlider",label:"resize icon",identifier:"_NS:86",value:"24",actions:["increment","decrement"],settable:true,element_token:"fresh:72"};
+    const row='- [72] AXSlider (resize icon) [id=_NS:86 actions=[increment,decrement] settable] [value="24"]';
+    assert.equal(compactTreeActionHints(row,[element]),'- [72] AXSlider (resize icon) [actions=[increment,decrement] settable] [value="24"]');
+    assert.equal(element.identifier,"_NS:86");assert.equal(element.element_token,"fresh:72");
+    assert.equal(compactTreeActionHints(row.replace('[value="24"]','[unknown="24"]'),[element]),row.replace('[value="24"]','[unknown="24"]'));
+  });
+
+it("retains a visible menu while hiding closed submenus and other menu trees", () => {
+    const tree = ['- [0] AXWindow "App"', '- [10] AXMenuBar',
+      '  - [11] AXMenuBarItem "File"', '    - [12] AXMenu',
+      '      - [13] AXMenuItem "New"', '      - [14] AXMenuItem "Open With"',
+      '        - [15] AXMenu', '          - [16] AXMenuItem "Hidden child"',
+      '      - [17] AXMenuItem "Close"', '  - [18] AXMenuBarItem "Edit"',
+      '    - [19] AXMenu', '      - [20] AXMenuItem "Hidden edit"'].join("\n");
+    const open = pruneMenuSubtrees(tree, new Set([12]));
+    assert.match(open.tree, /AXMenuItem "New"/);
+    assert.match(open.tree, /AXMenuItem "Close"/);
+    assert.doesNotMatch(open.tree, /Hidden child|Hidden edit/);
+    assert.ok(!open.hiddenIndices.has(13));
+    assert.ok(open.hiddenIndices.has(16));
+    assert.doesNotMatch(pruneMenuSubtrees(tree).tree, /AXMenuItem/);
+  });
+
+it("reopens a closed cached app only on an explicit named app binding", async () => {
+    const { opensky, statePath } = await makeHarness();
+    const initial = await opensky.get_app_state({app:"Calculator",scope:"app",includeScreenshot:false});
+    const fixture = JSON.parse(await readFile(statePath,"utf8"));
+    fixture.apps.find((app: any) => app.name === "Calculator").windows = [];
+    await writeFile(statePath, JSON.stringify(fixture));
+    await assert.rejects(opensky.get_app_state({app:initial.targetHandle,scope:"app",includeScreenshot:false}), /no unambiguous/);
+    const before = JSON.parse(await readFile(statePath,"utf8"));
+    assert.equal(before.calls.filter((c:any)=>c.tool==="launch_app").length,0);
+    const reopened = await opensky.get_app_state({app:"Calculator",scope:"app",includeScreenshot:false});
+    assert.match(reopened.text,/AXWindow/);
+    assert.notEqual(reopened.targetHandle, initial.targetHandle);
+    const after = JSON.parse(await readFile(statePath,"utf8"));
+    const launches=after.calls.filter((c:any)=>c.tool==="launch_app");
+    assert.equal(launches.length,1);
+    assert.deepEqual(launches[0].args,{bundle_id:"com.apple.calculator",session:"opensky"});
+  });
+
+it("does not reopen an app's off-Space window or reveal during an exact observation", async () => {
+    const { opensky, statePath } = await makeHarness();
+    const initial = await opensky.get_app_state({app:"Calculator",scope:"app",includeScreenshot:false});
+    const fixture = JSON.parse(await readFile(statePath,"utf8"));
+    const window=fixture.apps.find((app:any)=>app.name==="Calculator").windows[0];
+    window.is_on_screen=false;window.on_current_space=false;
+    await writeFile(statePath,JSON.stringify(fixture));
+    await assert.rejects(opensky.get_app_state({app:"Calculator",scope:"app",includeScreenshot:false}),/no unambiguous/);
+    await assert.rejects(opensky.get_app_state({app:initial.targetHandle,scope:"app",includeScreenshot:false}),/no unambiguous/);
+    const after=JSON.parse(await readFile(statePath,"utf8"));
+    assert.equal(after.calls.filter((c:any)=>c.tool==="launch_app").length,0);
+  });
+
+it("respects disabled app launch after an already observed window closes", async () => {
+    const { driver, statePath, dir } = await makeHarness();
+    const observer=createOpenSky({driver,homeDir:join(dir,"read-only-home"),autoLaunch:false,target:"mac",settleDelayMs:0});
+    const initial=await observer.get_app_state({app:"Calculator",scope:"app",includeScreenshot:false});
+    const fixture=JSON.parse(await readFile(statePath,"utf8"));
+    fixture.apps.find((app:any)=>app.name==="Calculator").windows=[];
+    await writeFile(statePath,JSON.stringify(fixture));
+    await assert.rejects(observer.get_app_state({app:"Calculator",scope:"app",includeScreenshot:false}),/no unambiguous/);
+    await assert.rejects(observer.get_app_state({app:initial.targetHandle,scope:"app",includeScreenshot:false}),/no unambiguous/);
+    const after=JSON.parse(await readFile(statePath,"utf8"));
+    assert.equal(after.calls.filter((c:any)=>c.tool==="launch_app").length,0);
+  });
+
+it("routes plain Mac collection clicks through their exact foreground window", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const app = fixture.apps.find((item: { name: string }) => item.name === "Calculator");
+    app.elements = [
+      { element_index: 0, role: "AXWindow", label: "Collection" },
+      { element_index: 1, role: "AXRow", label: "Row", actions: ["press"] },
+      { element_index: 2, role: "AXCell", label: "Cell", actions: ["open"] },
+      { element_index: 3, role: "AXButton", label: "Button", actions: ["press"] },
+    ];
+    await writeFile(statePath, JSON.stringify(fixture));
+    const observed = await opensky.get_app_state({ app: "Calculator", includeScreenshot: false });
+    await opensky.click({ app: observed.targetHandle, element_index: 1 });
+    await opensky.click({ app: observed.targetHandle, element_index: 2 });
+    await opensky.click({ app: observed.targetHandle, element_index: 3 });
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const clicks = after.calls.filter((call: { tool: string }) => call.tool === "click");
+    assert.deepEqual(clicks.map((call: { args: Record<string, unknown> }) => ({
+      pid: call.args.pid, window: call.args.window_id, index: call.args.element_index, mode: call.args.delivery_mode,
+    })), [
+      { pid: app.pid, window: app.windows[0].window_id, index: 1, mode: "foreground" },
+      { pid: app.pid, window: app.windows[0].window_id, index: 2, mode: "foreground" },
+      { pid: app.pid, window: app.windows[0].window_id, index: 3, mode: undefined },
+    ]);
+  });
+
+it("routes native Mac index/pixel right-clicks through the context-menu tool and refuses hidden windows", async () => {
+    const { opensky, statePath } = await makeHarness();
+    await opensky.list_apps();
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const app = fixture.apps.find((item: { name: string }) => item.name === "Calculator");
+    app.elements = [
+      { element_index: 0, role: "AXWindow", label: "Collection" },
+      { element_index: 1, role: "AXCell", label: "List", actions: ["press"] },
+    ];
+    await writeFile(statePath, JSON.stringify(fixture));
+    const observed = await opensky.get_app_state({ app: "Calculator", includeScreenshot: false });
+    await opensky.click({ app: observed.targetHandle, element_index: 1, mouse_button: "right" });
+    await opensky.click({ app: observed.targetHandle, element_index: 1, mouse_button: "middle" });
+    const after = JSON.parse(await readFile(statePath, "utf8"));
+    const right = after.calls.filter((call: { tool: string }) => call.tool === "right_click");
+    assert.equal(right.length, 1);
+    assert.equal(right[0].args.pid, app.pid);
+    assert.equal(right[0].args.window_id, app.windows[0].window_id);
+    assert.equal(right[0].args.element_index, 1);
+    assert.equal(typeof right[0].args.element_token, "string");
+    assert.equal(typeof right[0].args.snapshot_id, "string");
+    assert.ok(after.calls.some((call: { tool: string; args: Record<string, unknown> }) =>
+      call.tool === "click" && call.args.button === "middle"));
+    await assert.rejects(opensky.click({ app: observed.targetHandle, element_index: 999, mouse_button: "right" }),
+      /not present in the latest accessibility snapshot/);
+    const current = after.apps.find((item: { pid: number }) => item.pid === app.pid);
+    current.windows[0].is_on_screen = false;
+    await writeFile(statePath, JSON.stringify(after));
+    await assert.rejects(opensky.click({ app: observed.targetHandle, element_index: 1, mouse_button: "right" }),
+      /off the current desktop.*no input was sent/);
+    const final = JSON.parse(await readFile(statePath, "utf8"));
+    assert.equal(final.calls.filter((call: { tool: string }) => call.tool === "right_click").length, 1);
+    current.windows[0].is_on_screen = true;
+    await writeFile(statePath, JSON.stringify(after));
+    await opensky.click({ app: observed.targetHandle, x: 20, y: 30, mouse_button: "r", delivery_mode: "background" });
+    const pixel = JSON.parse(await readFile(statePath, "utf8")).calls.filter((call: {tool:string})=>call.tool==="right_click").at(-1);
+    assert.deepEqual({pid:pixel.args.pid,window:pixel.args.window_id,x:pixel.args.x,y:pixel.args.y,mode:pixel.args.delivery_mode},
+      {pid:app.pid,window:app.windows[0].window_id,x:20,y:30,mode:"background"});
+    assert.equal(pixel.args.element_index,undefined);
+  });
+
+it("keeps indexed right-click on the existing Linux and Windows routes", async () => {
+    for (const target of ["linux", "win"] as const) {
+      const { driver, dir, statePath } = await makeHarness();
+      const sdk = createOpenSky({ driver, target, homeDir: join(dir, target), autoLaunch: true,
+        settleDelayMs: 0, screenshotDir: join(dir, "shots") });
+      const observed = await sdk.get_app_state({ app: "Calculator", includeScreenshot: false });
+      await sdk.click({ app: observed.targetHandle, element_index: 13, mouse_button: "right" });
+      const after = JSON.parse(await readFile(statePath, "utf8"));
+      assert.ok(after.calls.some((call: { tool: string; args: Record<string, unknown> }) =>
+        call.tool === "click" && call.args.button === "right"));
+      assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "right_click").length, 0);
+    }
+  });
+
+it("requests zero-delay Mac foreground typing while retaining indexed and non-Mac routes", async () => {
+    const { opensky, statePath } = await makeHarness();
+    const observed = await opensky.get_app_state({ app: "TextEdit", includeScreenshot: false });
+    await opensky.type_text({ app: observed.targetHandle, text: "α 😀 packet" });
+    await opensky.type_text({ app: observed.targetHandle, text: "indexed", element_index: 2 });
+    for (const target of ["linux", "win"] as const) {
+      const separate = await makeHarness();
+      const other = createOpenSky({ driver: separate.driver, target, homeDir: join(separate.dir, target), settleDelayMs: 0 });
+      const state = await other.get_app_state({ app: "TextEdit", includeScreenshot: false });
+      await other.type_text({ app: state.targetHandle, text: target });
+      const fixture = JSON.parse(await readFile(separate.statePath, "utf8"));
+      const call = fixture.calls.find((c: { tool: string }) => c.tool === "type_text");
+      assert.equal(call.args.delay_ms, undefined);
+      assert.equal(call.args.delivery_mode, undefined);
+      await other.close();
+    }
+    const fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const calls = fixture.calls.filter((c: { tool: string }) => c.tool === "type_text");
+    assert.equal(calls[0].args.delivery_mode, "foreground");
+    assert.equal(calls[0].args.delay_ms, 0);
+    assert.equal(calls[0].args.window_id, 2001);
+    assert.equal(calls[1].args.delay_ms, undefined);
+  });
+
+it("explicit app keyboard scope follows a new front window without moving exact input", async () => {
+    const {opensky,statePath}=await makeHarness();
+    const initial=await opensky.get_app_state({app:"TextEdit",includeScreenshot:false});
+    const state=JSON.parse(await readFile(statePath,"utf8"));
+    const app=state.apps.find((a:any)=>a.name==="TextEdit");
+    const observedWindow=state.calls.filter((c:any)=>c.tool==="get_window_state").at(-1).args.window_id;
+    const original=app.windows.find((w:any)=>w.window_id===observedWindow);
+    assert.ok(original);
+    const next={...original,window_id:original.window_id+5000,title:"New sibling",z_index:100};
+    app.windows.push(next);await writeFile(statePath,JSON.stringify(state));
+    await opensky.press_key({app:initial.targetHandle,key:"super+l",scope:"app"});
+    await opensky.type_text({app:initial.targetHandle,text:"new window",scope:"app"});
+    await opensky.press_key({app:initial.targetHandle,key:"Return"});
+    const after=JSON.parse(await readFile(statePath,"utf8"));
+    const inputs=after.calls.filter((c:any)=>["hotkey","press_key","type_text"].includes(c.tool));
+    assert.deepEqual(inputs.map((c:any)=>c.args.window_id),[next.window_id,next.window_id,original.window_id]);
+    assert.ok(inputs.every((c:any)=>c.args.pid===app.pid&&c.args.delivery_mode==="foreground"));
+    assert.equal(after.calls.some((c:any)=>c.tool==="launch_app"),false);
+    assert.equal(after.calls.some((c:any)=>c.tool==="get_window_state"&&c.args.probe_only!==true&&c.args.window_id===next.window_id),false);
+  });
+
+it("app keyboard scope rejects stale observed targets and missing current windows before input", async () => {
+    const {opensky,statePath}=await makeHarness();
+    const initial=await opensky.get_app_state({app:"TextEdit",includeScreenshot:false});
+    await assert.rejects(opensky.press_key({app:initial.targetHandle,key:"Return",scope:"app",element_index:2}),/cannot carry an observed/);
+    await assert.rejects(opensky.type_text({app:initial.targetHandle,text:"no",scope:"app",x:10,y:10}),/cannot carry an observed/);
+    const fixture=JSON.parse(await readFile(statePath,"utf8"));fixture.apps.find((a:any)=>a.name==="TextEdit").windows=[];
+    await writeFile(statePath,JSON.stringify(fixture));
+    await assert.rejects(opensky.press_key({app:initial.targetHandle,key:"super+n",scope:"app"}),/no unambiguous/);
+    const after=JSON.parse(await readFile(statePath,"utf8"));
+    assert.equal(after.calls.some((c:any)=>["hotkey","press_key","type_text","launch_app"].includes(c.tool)),false);
   });
 });

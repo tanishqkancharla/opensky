@@ -32,11 +32,18 @@ selection. Verify the intended region through available state or a screenshot.
 - **Exact browser tabs:** `text`, `html`, or `md`. Markdown is literal source,
   not rendered formatting. Establish editor focus from fresh state. Paste leaves
   the supplied content on the clipboard.
-- **macOS native:** plaintext up to 16 KiB, with a supporting driver and an exact
-  focused control exposing readable AX text and selection. Leaves plaintext on
-  the clipboard. A completed receipt verifies expected AX text, not that the
-  document was saved. Rich text or controls without those AX capabilities are
-  unsupported.
+- **macOS native:** `text`, `html`, or `md` (CommonMark), up to 16 KiB of source,
+  with a driver supporting the restore policy and an exact focused control
+  exposing readable AX text and selection. AppKit imports HTML; CommonMark
+  renders to HTML first. Rich data is RTF plus its plain string (converted
+  limits: 64 KiB text, 256 KiB RTF). After verified insertion, supported prior
+  clipboard items/formats are restored; observed newer copies are preserved.
+  Prior data must be readable and stable, with at most 64 items,128 types per
+  item and32 MiB total. Unreadable/oversized snapshots refuse before mutation.
+  Unknown input skips restoration and is never replayed. NSPasteboard has no
+  atomic compare-and-restore, so its final ownership check/write can still race.
+  A completed receipt proves text insertion and a separate preservation outcome,
+  not every visual style or saving. Observe rich formatting and verify saving.
 - **Linux X11 native:** plaintext up to 16 KiB into the exact observed, focused
   window. Supported prior formats are restored only if no newer clipboard owner
   took over. INCR transfers, rich-text input, clipboard managers, and deferred

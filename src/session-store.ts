@@ -56,6 +56,9 @@ export interface LegacyPersistedSession {
 export interface StoredSnapshot {
   tree: string;
   elements: SnapshotElement[];
+  /** A silent pre-input recovery refreshes tokens without consuming the next
+   * public observation's diff. Retain just the last emitted baseline. */
+  observationBaseline?: Pick<StoredSnapshot, "tree" | "elements" | "viewKind">;
   snapshotId?: string;
   /** A context window is not comparable to a fresh full-page observation. */
   viewKind?: "context";
