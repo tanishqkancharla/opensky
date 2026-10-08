@@ -39,3 +39,11 @@ test("a foreign or missing resolved target cannot inherit authorized app scope",
       .rejects.toThrow(/authorized fixture target/);
   }
 });
+
+
+test("running Electron records with the same inventory ID identify one app", async () => {
+  const code = { id: "code", displayName: "Visual Studio Code", isRunning: true };
+  const proof = await verifiedLinuxAppSelectors(fixture([code, { ...code }, { ...code, id: "inactive-code", isRunning: false }]), code.displayName);
+  expect(proof.appSelectors).toEqual([code.displayName, code.id]);
+  expect(proof.namedTargetHandle).toBe(proof.identifiedTargetHandle);
+});

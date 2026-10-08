@@ -99,7 +99,9 @@ try {
         driverOptions: { binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
       try {
         const cua = createCua(sdk);
-        const selectors = await verifiedLinuxAppSelectors(cua, launch.appName);
+        const selectors = await verifiedLinuxAppSelectors(cua, launch.appName, async apps => {
+          await writeFile(join(artifacts, "app-selector-inventory.json"), JSON.stringify(apps, null, 2), { flag: "wx" });
+        });
         appSelectors = selectors.appSelectors;
         await writeFile(join(artifacts, "app-selector-proof.json"), JSON.stringify(selectors, null, 2), { flag: "wx" });
         const app = await cua.getApp(launch.appName);

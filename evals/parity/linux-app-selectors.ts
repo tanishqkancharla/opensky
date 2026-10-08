@@ -8,11 +8,15 @@ interface SelectorFacade {
   getApp(selector: string): Promise<{ readonly targetHandle: string }>;
 }
 
-export async function verifiedLinuxAppSelectors(cua: SelectorFacade, appName: string) {
+export async function verifiedLinuxAppSelectors(cua: SelectorFacade, appName: string, recordInventory?: (apps: InventoryApp[]) => Promise<void>) {
   const inventory = await cua.getState({ emit: false });
-  const matches = inventory.apps.filter(app => app.displayName === appName);
+  await recordInventory?.(inventory.apps);
+  const matches = inventory.apps.filter(app => app.displayName === appName && app.isRunning === true);
+  // list_apps reports running processes; Electron children can share one app ID.
+  // Distinct running IDs remain ambiguous even when their names match.
+  const ids = new Set(matches.map(app => app.id));
   const observed = matches[0];
-  if (matches.length !== 1 || observed.isRunning !== true || !observed.id?.trim()
+  if (ids.size !== 1 || !observed?.id?.trim()
       || observed.id !== observed.id.trim() || observed.id.toLowerCase().startsWith("tgt_")) {
     throw new Error("Owned fixture app has no unique running inventory ID");
   }
