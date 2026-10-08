@@ -8,9 +8,12 @@ import { assertDisposableLinuxDesktop } from "./linux-app.js";
 export type NativeLinuxReplConfig = { command: string; args: string[]; env: Record<string, string> };
 export type NativeLinuxReplResult = { isError?: boolean; content?: Array<{ type: string; text?: string; data?: string; mimeType?: string }> };
 /** Own the actual native transport; deterministic callers supply public calls only. */
-export async function withNativeLinuxRepl<T>(config: NativeLinuxReplConfig, artifacts: string,
-  use: (cell: (code: string) => Promise<NativeLinuxReplResult>) => Promise<T>): Promise<T> {
+export async function withLinuxRepl<T>(config: NativeLinuxReplConfig, artifacts: string,
+  use: (cell: (code: string) => Promise<NativeLinuxReplResult>) => Promise<T>,
+  options: { toolName?: "js" | "cua_repl"; artifactPrefix?: "native-repl" | "opensky-agent-repl" } = {}): Promise<T> {
   assertDisposableLinuxDesktop();
+  const toolName = options.toolName ?? "js";
+  const artifactPrefix = options.artifactPrefix ?? "native-repl";
   const child = spawn(config.command, config.args, { env: { ...evaluationEnvironment(), ...config.env }, detached: true, stdio: ["pipe", "pipe", "pipe"] });
   const signals: string[] = [];
   const signal = (value: "SIGTERM" | "SIGKILL") => {
@@ -57,12 +60,12 @@ export async function withNativeLinuxRepl<T>(config: NativeLinuxReplConfig, arti
     const initialized = await request("initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "opensky-linux-transport-probe", version: "1" } });
     child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);
     const tools = await request("tools/list", {});
-    if (!tools.tools?.some((tool: { name: string }) => tool.name === "js")) throw new Error("Native REPL did not expose js");
+    if (!tools.tools?.some((tool: { name: string }) => tool.name === toolName)) throw new Error(`Desktop REPL did not expose ${toolName}`);
     const value = await use(async code => {
       const started = Date.now();
-      const observed = await request("tools/call", { name: "js", arguments: { code, title: "Verify the owned Linux document through native computer use" } });
+      const observed = await request("tools/call", { name: toolName, arguments: { code, title: "Verify the owned Linux document through native computer use" } });
       // Images stay in normal MCP receipts; no summary substitutes the response.
-      await appendFile(join(artifacts, "native-repl-calls.jsonl"), JSON.stringify({ code, elapsedMs: Date.now() - started, result: observed }) + "\n");
+      await appendFile(join(artifacts, `${artifactPrefix}-calls.jsonl`), JSON.stringify({ code, elapsedMs: Date.now() - started, result: observed }) + "\n");
       if (observed.isError) throw new Error(JSON.stringify(observed));
       return observed;
     });
@@ -84,11 +87,17 @@ export async function withNativeLinuxRepl<T>(config: NativeLinuxReplConfig, arti
       if (!groupGone()) { signal("SIGKILL"); await new Promise(done => setTimeout(done, 100)); }
     }
     const groupExited = groupGone();
-    await writeFile(join(artifacts, "native-repl-cleanup.json"), JSON.stringify({ pid: child.pid, groupExited, signals }, null, 2));
-    await writeFile(join(artifacts, "native-repl-probe.json"), JSON.stringify(result, null, 2));
-    await writeFile(join(artifacts, "native-repl-stderr.log"), stderr);
+    await writeFile(join(artifacts, `${artifactPrefix}-cleanup.json`), JSON.stringify({ pid: child.pid, groupExited, signals }, null, 2));
+    await writeFile(join(artifacts, `${artifactPrefix}-probe.json`), JSON.stringify(result, null, 2));
+    await writeFile(join(artifacts, `${artifactPrefix}-stderr.log`), stderr);
     if (!groupExited) throw new Error("Owned native REPL process group remains alive after close");
   }
+}
+
+/** Preserve the original native helper API and artifact names. */
+export function withNativeLinuxRepl<T>(config: NativeLinuxReplConfig, artifacts: string,
+  use: (cell: (code: string) => Promise<NativeLinuxReplResult>) => Promise<T>): Promise<T> {
+  return withLinuxRepl(config, artifacts, use);
 }
 
 /** Exercise the real agent-facing native MCP transport without a model call. */

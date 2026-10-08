@@ -15,7 +15,7 @@ import { verifyScoringProfile } from "../scoring-profile.js";
 import { runProfile } from "../run-profile.js";
 import { captureLinuxFinalObservation } from "../linux-final-observation.js";
 import { matchedLinuxPrompt } from "../linux-prompt.js";
-import { withNativeLinuxRepl } from "../native-linux-repl.js";
+import { withNativeLinuxRepl, withLinuxRepl } from "../native-linux-repl.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -90,6 +90,26 @@ try {
       if (!ready) throw new Error(`${name} editor controls did not become visible; agent not dispatched`);
     };
     if (backend === "opensky" || backend === "setup") {
+      const directory = join(artifacts, "opensky-agent-readiness"); await mkdir(directory);
+      await withLinuxRepl({
+        command: process.execPath,
+        args: ["--import", join(repo, "node_modules/tsx/dist/loader.mjs"), join(root, "../opensky-mcp.ts")],
+        // Match the real isolated agent environment. No GitHub identity or
+        // credentials are inherited by the MCP verifier child.
+        env: { ...Object.fromEntries(["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"]
+          .flatMap(key => process.env[key] === undefined ? [] : [[key, process.env[key]!]])),
+          OPENSKY_HOME: join(directory, "sdk"), OPENSKY_DRIVER_BINARY: driver,
+          OPENSKY_DRIVER_SOCKET: process.env.OPENSKY_DRIVER_SOCKET!,
+          OPENSKY_OWNED_DRIVER_PID: process.env.OPENSKY_OWNED_DRIVER_PID!,
+          OPENSKY_VERIFIED_LINUX_DRIVER: JSON.stringify(runtime.linuxIdentity),
+          PARITY_DESKTOP_SCOPE: JSON.stringify({ backend: "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" }) },
+      }, directory, async cell => {
+        await cell(`var app = await cua.getApp(${JSON.stringify(launch.appName)});`);
+        const observed = await cell('await app.getScreenshot();');
+        const image = observed.content?.find(item => item.type === "image" && item.data);
+        if (!image) throw new Error("Genuine OpenSky agent transport did not deliver the owned document screenshot");
+        await writeFile(join(directory, "owned-window-image.bin"), Buffer.from(image.data!, "base64"));
+      }, { toolName: "cua_repl", artifactPrefix: "opensky-agent-repl" });
       const sdk = createOpenSky({ homeDir: join(temporary, "readiness-sdk"), autoLaunch: false,
         driverOptions: { binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
       try {
@@ -147,6 +167,7 @@ try {
         PARITY_DESKTOP_SCOPE: JSON.stringify(scope), OPENSKY_HOME: join(artifacts, "agent-sdk"),
         OPENSKY_DRIVER_BINARY: driver, OPENSKY_DRIVER_SOCKET: process.env.OPENSKY_DRIVER_SOCKET!,
         OPENSKY_OWNED_DRIVER_PID: process.env.OPENSKY_OWNED_DRIVER_PID!,
+        OPENSKY_VERIFIED_LINUX_DRIVER: JSON.stringify(runtime.linuxIdentity),
         OPENSKY_NATIVE_REPL_CONFIG: nativeConfig,
       },
       enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
