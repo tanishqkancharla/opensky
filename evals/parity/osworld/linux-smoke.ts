@@ -15,6 +15,7 @@ import { verifyScoringProfile } from "../scoring-profile.js";
 import { runProfile } from "../run-profile.js";
 import { captureLinuxFinalObservation } from "../linux-final-observation.js";
 import { verifiedLinuxAppSelectors } from "../linux-app-selectors.js";
+import { effectiveLinuxTaskInstruction } from "../linux-task-instruction.js";
 import { matchedLinuxPrompt } from "../linux-prompt.js";
 import { withNativeLinuxRepl, withLinuxRepl } from "../native-linux-repl.js";
 
@@ -34,6 +35,8 @@ const artifacts = resolve(output);
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const task = manifest.tasks.find((task: { id: string }) => task.id === taskId);
 if (!task) throw new Error("Unknown Linux benchmark task");
+const taskInstruction = effectiveLinuxTaskInstruction(task, JSON.parse(await readFile(join(root, "task-revisions.json"), "utf8")));
+await writeFile(join(artifacts, "effective-task-instruction.json"), JSON.stringify({ taskId, upstreamInstruction: task.instruction, instruction: taskInstruction }, null, 2), { flag: "wx" });
 const isCode = task.category === "vs_code";
 if (isCode && !process.env.OPENSKY_EVAL_VSCODE) throw new Error("Provide OPENSKY_EVAL_VSCODE for editor tasks");
 const environment = JSON.parse(await readFile(join(artifacts, "environment.json"), "utf8"));
@@ -182,7 +185,7 @@ try {
       enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
     };
     const prompt = matchedLinuxPrompt({ backend: backend as "native" | "opensky",
-      taskInstruction: task.instruction, inputFile: task.inputFile, appName: launch.appName });
+      taskInstruction, inputFile: task.inputFile, appName: launch.appName });
     await writeFile(join(artifacts, "matched-prompt.json"), JSON.stringify({
       version: 1, backend, prompt, sha256: createHash("sha256").update(prompt).digest("hex"),
       guidance: "Shared task and save instruction; only interface label differs. API help comes from real tool documentation.",

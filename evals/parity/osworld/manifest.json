@@ -50,7 +50,7 @@
     },
     {
       "id": "0b17a146-2934-46c7-8727-73ff6b6483e8",
-      "instruction": "Change the 2 in every occurrence of H2O in this document to subscript.",
+      "instruction": "Help me change the 2 in \"H2O\" to a subscript.",
       "inputFile": "H2O_Factsheet_WA.docx",
       "evaluator": [
         "compare_docx_files",
@@ -65,9 +65,7 @@
           "file": "H2O_Factsheet_WA_Gold.docx",
           "sha256": "489dcf67cd13dc13a8e37152b6db1f4931e49030ba67aca47c573345ce9fdc00"
         }
-      ],
-      "upstreamInstruction": "Help me change the 2 in \"H2O\" to a subscript.",
-      "instructionRevision": 2
+      ]
     },
     {
       "id": "72b810ef-4156-4d09-8f08-a0cf57e7cefe",
