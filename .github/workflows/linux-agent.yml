@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      OPENSKY_VSCODE_DOWNLOAD_CACHE: ${{ runner.temp }}/pinned-vscode
+      OPENSKY_VSCODE_DOWNLOAD_CACHE: ${{ github.workspace }}/.ci-vscode-download
       OPENSKY_LINUX_NATIVE_FACADE: '1'
       OPENSKY_LINUX_AGENT_MODE: ${{ inputs.mode || 'setup' }}
       OPENSKY_REPL_CASE: ${{ inputs.repl_case || 'async-typing' }}
