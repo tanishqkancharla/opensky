@@ -14,8 +14,13 @@ on:
       repl_case:
         description: 'Deterministic public-interface regression; used only in repl mode'
         type: choice
-        options: [async-typing, dropdown, program, clipboard]
+        options: [async-typing, dropdown, program, clipboard, dialog]
         default: async-typing
+      dialog_backend:
+        description: 'Model-free dialog control backend; used only for repl_case dialog'
+        type: choice
+        options: [opensky, native]
+        default: opensky
       setup_task:
         description: 'Benchmark task to validate without a model in setup mode'
         type: string
@@ -43,6 +48,7 @@ jobs:
       OPENSKY_LINUX_NATIVE_FACADE: '1'
       OPENSKY_LINUX_AGENT_MODE: ${{ inputs.mode || 'setup' }}
       OPENSKY_REPL_CASE: ${{ inputs.repl_case || 'async-typing' }}
+      OPENSKY_DIALOG_BACKEND: ${{ inputs.dialog_backend || 'opensky' }}
       OPENSKY_AGENT_TASK: ${{ inputs.setup_task || '3ef2b351-8a84-4ff2-8724-d86eae9b842e' }}
       OPENSKY_EVAL_SCORING_PROFILE: ${{ github.workspace }}/.scoring-profile/profile.json
       OPENSKY_EVAL_SCORING_PROFILE_SHA256: 15218ca4acdfd6bf4deebe2a9c582aa302cd987b4b26dda615599ac0ab46ecf8

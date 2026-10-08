@@ -16,7 +16,7 @@ import { withAppStall } from "./app-stall.js";
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
-type TypingApp = Pick<App, "pressKey" | "typeText" | "click" | "getAXState" | "getScreenshot" | "getAXStateAndScreenshot">;
+type TypingApp = Pick<App, "pressKey" | "typeText" | "click" | "getAXState" | "getScreenshot" | "getAXStateAndScreenshot" | "performSecondaryAction">;
 type Fixture = { app: TypingApp; document: { readText(): Promise<string> }; keyboard: { unchanged(): Promise<boolean> } };
 export const test = base.extend<Fixture & { fixture: Fixture }>({
   fixture: async ({ task }, use) => {
@@ -140,6 +140,7 @@ export const test = base.extend<Fixture & { fixture: Fixture }>({
             await driveApp({
               pressKey: async key => { await call("pressKey", [key]); },
               typeText: async text => { await call("typeText", [text]); },
+              performSecondaryAction: async (index, action) => { await call("performSecondaryAction", [index, action]); },
               click: async (target, options) => { await call("click", options ? [target, options] : [target]); },
               getAXState: state,
               getScreenshot: async () => image(await call("getScreenshot", [])),
