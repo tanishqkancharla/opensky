@@ -5062,3 +5062,14 @@ Fresh Mac controls140:11serial context-free gpt-5.6-terra CLI arms produce5revie
 ## SET329 — Reviewed task labels lag completed pairs
 
 Fresh iteration140 arms mark selected tasks attempted, but parent review marks only run rows complete; the generic finalizer previously left the five task labels attempted after validating all pairs. This made a later fresh-selection initializer reject already tested tasks. Reconcile the task labels only after the existing latest-run/prompt/state/raw-proof/cleanup/source guards pass in finalization, before the shared commit. Failed run rows remain untouched. Nine existing finalization/retained-pair owners pass; iteration140's five labels are reconciled from their original reviewed pairs. This is database bookkeeping only, with no agent prompt, input, score formula, task proof or permission change.
+
+
+## SET330 — Native Linux guard rejection hides initialization recovery
+
+First current serial Terra pilot141 native1308/GitHub37825668923 completes its model turn but all nine cells are rejected before any native backend action. The agent uses module destructuring and invented getAppState/getApps APIs; generic guard errors omit the documented side-effect initialization despite the tool description containing it. The retained DOCX is byte-identical to the input and the original saved-file grader fails; its false success answer is excluded. App, two native helpers and temporary profile cleanup pass; actual usage costs an estimated $0.225708 and is reconciled into the existing cumulative ledger.
+
+For the existing isolated native Linux facade only, append the documented initialization cell and global-cua explanation to guard rejections. It retrieves genuine native API help, adds no task advice, changes no task prompt, permitted code, backend execution, oracle, budget or ordinary Mac behavior. Relevant existing policy contracts, actual current setup and the single unchanged task retry are pending. This is evaluation recovery friction on the native baseline, not an OpenSky product improvement or comparative score.
+
+SET330 recovery keeper: matched model-free/native readiness now uses the exact native agent guard, first submits the original rejected destructuring/API cell, requires its actionable initialization error, then obtains the real native API help and observes the exact owned document screenshot. This tests recovery through the actual shipped native REPL without model spending or input changes. App/helper cleanup and original menu visibility assertions remain mandatory; current hosted acceptance pending.
+
+SET330 local verification: all six existing relevant policy/admission/budget files pass, with whole E2E typecheck. A first filter invocation used two nonexistent historical filenames and ran only the other four files (26passed); retained original log, then verified all six current paths exist and ran the complete affected set. No GUI acceptance from local contracts.

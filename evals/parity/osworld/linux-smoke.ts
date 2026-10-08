@@ -101,7 +101,23 @@ try {
       if (nativeTransport.interface !== "current-cua-facade") throw new Error("Current native CUA facade was not verified; no legacy reference is substituted");
       const directory = join(artifacts, "native-readiness"); await mkdir(directory);
       const configuration = JSON.parse(await readFile(nativeConfig, "utf8"));
-      await withNativeLinuxRepl(configuration, directory, async cell => {
+      // Exercise the same guarded transport used by the native agent. A
+      // rejected bootstrap must explain how to obtain the original API help,
+      // and must not prevent the next genuine initialization/observation.
+      const guardedConfiguration = {
+        command: process.execPath,
+        args: ["--import", join(repo, "node_modules/tsx/dist/loader.mjs"), join(root, "../native-mcp.ts")],
+        env: { ...configuration.env, OPENSKY_NATIVE_REPL_CONFIG: nativeConfig,
+          PARITY_DESKTOP_SCOPE: JSON.stringify({ backend: "native", appSelectors: [launch.appName], isolatedDesktop: "linux", nativeFacade: true }) },
+      };
+      await withNativeLinuxRepl(guardedConfiguration, directory, async cell => {
+        let refused = false;
+        try { await cell('const { cua } = await import("@oai/cua/tinyskyAlt"); await cua.getAppState();'); }
+        catch (error) {
+          if (!String(error).includes('Initialize this isolated Linux interface')) throw error;
+          refused = true;
+        }
+        if (!refused) throw new Error("Invalid native initialization was not rejected with recovery help");
         await cell('await import("@oai/cua/tinyskyAlt");');
         await cell(`var app = await cua.getApp({windowId: ${Number(owned.window)}});`);
         await verifyReady(async () => {

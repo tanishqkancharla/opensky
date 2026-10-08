@@ -43,7 +43,7 @@ input.on("line", line => {
   // assignments cannot lend screenshot-read authority to stale REPL values.
   queue = queue.then(async () => {
     if (message.params?.name !== "js" || !policy.accepts(message.params.arguments?.code)) {
-      process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: message.id, result: { isError: true, content: [{ type: "text", text: "Evaluation scope: use native desktop calls for the fixture app only. Expressions, if statements, for/for-of/while loops, and top-level named async helpers called with await are supported. No callbacks, document-file access, network, or other apps." }] } })}\n`);
+      process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: message.id, result: { isError: true, content: [{ type: "text", text: "Evaluation scope: use native desktop calls for the fixture app only. Expressions, if statements, for/for-of/while loops, and top-level named async helpers called with await are supported. No callbacks, document-file access, network, or other apps." + (policy.scope.nativeFacade ? ' Initialize this isolated Linux interface with a cell containing only: await import("@oai/cua/tinyskyAlt"); This returns the genuine API documentation and initializes global cua. Use that global cua; do not destructure it from the module.' : "") }] } })}\n`);
       return;
     }
     const limit = admission?.admit();
