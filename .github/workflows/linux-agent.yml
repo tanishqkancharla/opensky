@@ -144,7 +144,8 @@ jobs:
       - name: Verify grading references before admitting model spending
         run: |
           mkdir -p artifacts/linux-office
-          python evals/parity/osworld/scoring_profile.py verify \
+          xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
+            python evals/parity/osworld/scoring_profile.py verify \
             --profile "$OPENSKY_EVAL_SCORING_PROFILE" \
             --libreoffice /usr/lib/libreoffice/program/soffice > artifacts/linux-office/profile-admission.json
           python - <<'PYTHON'
@@ -171,7 +172,8 @@ jobs:
           test -f "$OPENSKY_EVAL_CONTROL_ARTIFACTS/2b94c692-6abb-48ae-ab0b-b3e8a19cb340/completed/completed.pptx"
           npm ci --ignore-scripts --prefix e2e
           npm run typecheck --prefix e2e
-          npm test --prefix e2e -- specs/linux-parity-policy.test.ts specs/linux-current-facade-policy.test.ts specs/desktop-control-flow-policy.test.ts specs/desktop-expression-policy.test.ts specs/lexical-state-policy.test.ts specs/parity-admission.test.ts specs/parity-budget.test.ts specs/scoring-profile.test.ts specs/osworld-score.test.ts --bail=0 --reporter=verbose --reporter=json --outputFile.json="$PWD/artifacts/linux-office/comparison-contracts.json"
+          xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
+            npm test --prefix e2e -- specs/linux-parity-policy.test.ts specs/linux-current-facade-policy.test.ts specs/desktop-control-flow-policy.test.ts specs/desktop-expression-policy.test.ts specs/lexical-state-policy.test.ts specs/parity-admission.test.ts specs/parity-budget.test.ts specs/scoring-profile.test.ts specs/osworld-score.test.ts --bail=0 --reporter=verbose --reporter=json --outputFile.json="$PWD/artifacts/linux-office/comparison-contracts.json"
       - name: Use the frozen native reference package
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
