@@ -1,3 +1,4 @@
+import { projectNativeCollectionRows } from "./native-collection-viewport.js";
 import { randomUUID } from "node:crypto";
 import { chmod, readFile, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -358,6 +359,7 @@ export class OpenSky implements OpenSkyApi {
   async get_app_state(args: {
     app: string;
     disableDiff?: boolean;
+    collectionScope?: "visible" | "all";
     includeScreenshot?: boolean;
     includeAccessibilityTree?: boolean;
     includeAppChrome?: boolean;
@@ -367,6 +369,7 @@ export class OpenSky implements OpenSkyApi {
     continuation?: string;
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
+    if (args.collectionScope !== undefined && !["visible", "all"].includes(args.collectionScope)) throw invalidParams("collectionScope must be visible or all");
     if (args.includeAccessibilityTree === false && (args.includeScreenshot === false ||
         args.query !== undefined || args.context_element_index !== undefined || args.continuation !== undefined)) {
       throw invalidParams("Screenshot-only observation requires a screenshot and cannot include query/context");
@@ -405,6 +408,7 @@ export class OpenSky implements OpenSkyApi {
       resolved = await this.requireResolved(args.app);
     }
     this.assertTargetUsable(resolved);
+    if (args.collectionScope !== undefined && (this.target !== "mac" || resolved.browser || resolved.contentScope === "web")) throw invalidParams("collectionScope is available only for native Mac observations");
     if (args.includeAccessibilityTree === false && resolved.browser) {
       throw invalidParams("Screenshot-only observation requires a native window; typed browser observations retain their page snapshot mapping");
     }
@@ -462,12 +466,13 @@ export class OpenSky implements OpenSkyApi {
       includeScreenshot: args.includeScreenshot !== false,
       stabilizeBrowser: hadPendingAction,
       query: args.query?.trim(),
+      collectionScope: args.collectionScope,
     });
     const text = args.query !== undefined
       ? `Semantic query ${JSON.stringify(args.query.trim())}; fresh accessibility state:\n${snapshot.tree}`
       : snapshot.documentChanged && previous && !args.disableDiff
       ? `Document changed; fresh accessibility state:\n${snapshot.tree}`
-      : snapshot.degraded || args.disableDiff || !previous || previous.viewKind === "context"
+      : snapshot.degraded || args.disableDiff || args.collectionScope === "all" || !previous || previous.viewKind === "context"
         ? snapshot.tree
         : diffTrees(previous.tree, previous.elements, snapshot.tree, snapshot.elements);
     if (!snapshot.degraded) {
@@ -2294,7 +2299,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotWindow(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number; query?: string },
+    options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number; query?: string; collectionScope?: "visible" | "all" },
   ): Promise<WindowSnapshot> {
     if (!resolved.browser && !resolved.windowId) {
       resolved.windowId = await this.pickWindow(resolved.pid, {});
@@ -2339,13 +2344,18 @@ export class OpenSky implements OpenSkyApi {
       ...(this.target === "mac" && options.maxDepth === undefined ? { timeout_ms: 5000 } : {}),
     });
     const structured = asRecord(result.structured) ?? {};
-    const rawElements = normalizeElements(structured.elements);
+    let rawElements = normalizeElements(structured.elements);
+    const collectedElementCount = rawElements.length;
     const rawTree =
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
       (typeof structured.text === "string" && structured.text) ||
       "";
     const sanitized = sanitizeTreeText(rawTree);
-    const scoped = resolved.contentScope === "web" ? isolatePrimaryWebArea(sanitized) : sanitized;
+    const collection = this.target === "mac" && options.collectionScope !== "all" && options.maxDepth === undefined && resolved.contentScope !== "web"
+      ? projectNativeCollectionRows(sanitized, rawElements, structured.native_collections)
+      : { tree: sanitized, elements: rawElements, hiddenIndices: new Set<number>() };
+    rawElements = collection.elements;
+    const scoped = resolved.contentScope === "web" ? isolatePrimaryWebArea(collection.tree) : collection.tree;
     const pruned = pruneMenuSubtrees(scoped);
     const scopedIndices = resolved.contentScope === "web" ? indicesInTree(pruned.tree) : undefined;
     const visibleElements = pruned.hiddenIndices.size
@@ -2361,7 +2371,7 @@ export class OpenSky implements OpenSkyApi {
     const currentDocument = primaryDocumentFingerprint(visibleElements);
     const documentChanged = resolved.contentScope === "web" && previousDocument !== undefined &&
       currentDocument !== undefined && previousDocument !== currentDocument;
-    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, visibleElements, pruned.hiddenIndices.size > 0);
+    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, visibleElements, pruned.hiddenIndices.size > 0 || collection.hiddenIndices.size > 0);
     const remappedTree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
     const tree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
     const snapshotId = optionalString(structured.snapshot_id);
@@ -2388,7 +2398,7 @@ export class OpenSky implements OpenSkyApi {
       degraded: structured.degraded === true,
       degradedReason: optionalString(structured.degraded_reason),
       truncated: structured.truncated === true || structured.elements_complete === false || totalElementCount > returnedElementCount,
-      rawElementCount: rawElements.length,
+      rawElementCount: collectedElementCount,
       totalElementCount,
       returnedElementCount,
       documentChanged,
@@ -2490,7 +2500,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotSettled(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; stabilizeBrowser?: boolean; query?: string },
+    options: { includeScreenshot: boolean; stabilizeBrowser?: boolean; query?: string; collectionScope?: "visible" | "all" },
   ): Promise<WindowSnapshot> {
     const deadline = Date.now() + this.degradedRetryMs;
     let delayMs = 150;
@@ -2506,6 +2516,7 @@ export class OpenSky implements OpenSkyApi {
       includeScreenshot: stabilizeBrowser ? false : options.includeScreenshot,
       screenshotPath,
       query: options.query,
+      collectionScope: options.collectionScope,
     };
     let snapshot = await this.snapshotWindow(resolved, captureOptions);
     while (snapshot.degraded && Date.now() < deadline) {

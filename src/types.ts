@@ -124,6 +124,8 @@ export interface OpenSky {
   get_app_state(args: {
     app: string;
     disableDiff?: boolean;
+    /** Native Mac rows: visible when attested; all retains loaded offscreen rows. */
+    collectionScope?: "visible" | "all";
     includeScreenshot?: boolean;
     /** Native window capture only when false: retain the last AX observation,
      * skip its extraction, and return no AX text. Requires a screenshot. */
