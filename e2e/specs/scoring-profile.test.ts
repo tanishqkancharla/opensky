@@ -30,7 +30,7 @@ check("a profile from different original assets or grading sources cannot be adm
   await profile.changeSourcePin();
   await expect(profile.admit()).rejects.toThrow("Scoring sources or original assets changed");
 });
-check("scoring exposes raw and adapted image results without altering the saved file", async ({ profile }) => {
+check("scoring exposes differing raw and adapted slide results without altering the saved file", async ({ profile }) => {
   const before = await profile.imageHash();
   await expect(profile.scoreImage()).resolves.toMatchObject({ taskSuccess: true, rawOutcome: { taskSuccess: false }, adaptedOutcome: { taskSuccess: true } });
   await expect(profile.imageHash()).resolves.toBe(before);

@@ -33,13 +33,16 @@ jobs:
         run: |
           mkdir -p artifacts/controls
           export OPENSKY_EVAL_PYTHON="$(command -v python)"
-          npm test --prefix e2e -- specs/osworld-score.test.ts specs/osworld-expanded-score.test.ts specs/impress-export-score.test.ts --bail=0 --reporter=verbose --reporter=json --outputFile.json="$PWD/artifacts/results.json"
+          xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
+            npm test --prefix e2e -- specs/osworld-score.test.ts specs/osworld-expanded-score.test.ts specs/impress-export-score.test.ts --bail=0 --reporter=verbose --reporter=json --outputFile.json="$PWD/artifacts/results.json"
       - name: Freeze references for both agent arms
         run: |
-          python evals/parity/osworld/scoring_profile.py freeze \
+          xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
+            python evals/parity/osworld/scoring_profile.py freeze \
             --controls artifacts/controls --output artifacts/scoring-profile \
             --libreoffice /usr/lib/libreoffice/program/soffice > artifacts/scoring-profile-freeze.json
-          python evals/parity/osworld/scoring_profile.py verify \
+          xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
+            python evals/parity/osworld/scoring_profile.py verify \
             --profile artifacts/scoring-profile/profile.json \
             --libreoffice /usr/lib/libreoffice/program/soffice > artifacts/scoring-profile-verified.json
           dpkg-query -W libreoffice-core libreoffice-calc libreoffice-impress libreoffice-writer code > artifacts/app-packages.txt
