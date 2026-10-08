@@ -45,7 +45,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 1b380745d6877985663bccfa31b34938b3f8ed45
+  OPENSKY_DRIVER_REF: 03b213fbb89b1fe594dea0d0d25c0a18bc43b017
   # Parent verifies the exact build independently; reuse is bound to its immutable digest input.
   OPENSKY_DRIVER_SHA256: ${{ inputs.driver_artifact_sha256 || '' }}
   CARGO_INCREMENTAL: '0'
@@ -65,6 +65,8 @@ jobs:
       - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
         with:
           workspaces: 'libs/cua-driver/rust -> target'
+          # Reuse compiled dependencies after a failing owner; tests and binary identity still run.
+          cache-on-failure: true
       - name: Install build dependencies
         run: |
           sudo apt-get update
