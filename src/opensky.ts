@@ -2413,13 +2413,43 @@ export class OpenSky implements OpenSkyApi {
     );
   }
 
-  /** Capture pixels without replacing the last AX read or its element tokens.
-   * The driver retains exact-window ownership and screenshot-to-input mapping. */
+  /** Capture exact-window pixels while preserving the last visible AX diff baseline.
+   * Linux capture-only retires semantic tokens, so collect AX and pixels atomically. */
   private async captureNativeWindowScreenshot(resolved: ResolvedApp): Promise<Screenshot | null> {
     if (!resolved.windowId || resolved.browser) throw invalidParams("Screenshot capture requires an exact native window");
     await mkdirPrivate(this.screenshotDir);
     const screenshotPath = join(this.screenshotDir,
       `${slug(resolved.name)}-${resolved.windowId}-${Date.now()}-${++this.screenshotSequence}.png`);
+    if (this.target === "linux") {
+      const key = windowKey(resolved);
+      const previous = this.memory.trees[key];
+      try {
+        const snapshot = await this.snapshotWindow(resolved, {
+          includeScreenshot: true, screenshotPath, requireValidScreenshot: true,
+        });
+        if (snapshot.degraded || !snapshot.snapshotId || !snapshot.screenshot) {
+          throw new OpenSkyError("The driver could not capture current accessibility bindings with the exact window screenshot");
+        }
+        this.memory.trees[key] = {
+          tree: snapshot.tree, elements: snapshot.elements, snapshotId: snapshot.snapshotId,
+          // A private binding refresh must not consume changes the agent has
+          // yet to see in its next accessibility observation.
+          observationBaseline: previous?.observationBaseline ?? (previous ? {
+            tree: previous.tree, elements: previous.elements, viewKind: previous.viewKind,
+          } : { tree: "", elements: [] }),
+        };
+        return snapshot.screenshot;
+      } catch (error) {
+        // Collection may retire the old driver snapshot before failing. Never
+        // preserve its input authority or replay input after a failed capture.
+        if (this.memory.trees[key] === previous) {
+          delete this.memory.trees[key];
+          resolved.snapshotId = undefined;
+          await this.persist().catch(() => undefined);
+        }
+        throw error;
+      }
+    }
     const result = await this.driver.call("get_window_state", {
       pid: resolved.pid,
       window_id: resolved.windowId,
@@ -2442,7 +2472,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotWindow(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number; query?: string; collectionScope?: "visible" | "all" },
+    options: { includeScreenshot: boolean; requireValidScreenshot?: boolean; screenshotPath?: string; maxDepth?: number; query?: string; collectionScope?: "visible" | "all" },
   ): Promise<WindowSnapshot> {
     if (!resolved.browser && !resolved.windowId) {
       resolved.windowId = await this.pickWindow(resolved.pid, {});
@@ -2487,6 +2517,9 @@ export class OpenSky implements OpenSkyApi {
       ...(this.target === "mac" && options.maxDepth === undefined ? { timeout_ms: 5000 } : {}),
     });
     const structured = asRecord(result.structured) ?? {};
+    if (options.requireValidScreenshot && structured.screenshot_frame_valid === false) {
+      throw new OpenSkyError("The driver could not validate the exact window screenshot", undefined, structured);
+    }
     let rawElements = normalizeElements(structured.elements);
     const rawTree =
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
