@@ -41,9 +41,9 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: e0a87b610912ba8e8fcd2be64a8b5402fabbc5a1
-  # Independently verified ELF from build 37702544906; reuse requires this exact digest.
-  OPENSKY_DRIVER_SHA256: b9262bf383468f8f1331160fe93906741801ca09d513af087ccec74eb422cfe5
+  OPENSKY_DRIVER_REF: 77f3406a4da1430fec4ccd96e7154c6df9303459
+  # Build-only first: independently verify the combined-source ELF before pinning reuse.
+  OPENSKY_DRIVER_SHA256: ''
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
