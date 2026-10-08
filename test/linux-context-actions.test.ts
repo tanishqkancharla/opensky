@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { compactLinuxContextActions } from "../src/opensky.js";
+import { compactLinuxContextActions, diffTrees } from "../src/opensky.js";
 import type { SnapshotElement } from "../src/types.js";
 
 const elements = [
@@ -28,4 +28,14 @@ test("literal multiline values and action-looking text retain every character", 
 test("one indexed control stays verbatim instead of adding an unnecessary legend", () => {
   const one = tree.split('\n')[0]!;
   assert.equal(compactLinuxContextActions(one, elements), one);
+});
+
+
+test("diffs publish a full current view when the shared capability note appears or disappears", () => {
+  const shared = compactLinuxContextActions(tree, elements);
+  const mixed = tree.replace('[actions=[press,showContextMenu]]', '[actions=[press]]');
+  const mixedElements = [elements[0]!, { ...elements[1]!, actions: ["press"] }];
+  assert.equal(diffTrees(shared, elements, mixed, mixedElements), mixed);
+  assert.equal(diffTrees(mixed, mixedElements, shared, elements), shared);
+  assert.equal(diffTrees(shared, elements, shared, elements), "No accessibility changes.");
 });

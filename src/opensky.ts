@@ -3377,6 +3377,9 @@ export function diffTrees(
   nextTree: string,
   nextElements: SnapshotElement[],
 ): string {
+  // A capability legend is part of the current view, not a sticky API default.
+  const note = "Every indexed control in this view also supports showContextMenu.\n";
+  if (previousTree.startsWith(note) !== nextTree.startsWith(note)) return nextTree;
   const prev = new Map(previousElements.map((item) => [item.element_index, item]));
   const next = new Map(nextElements.map((item) => [item.element_index, item]));
   const previousParents = indexedTreeParents(previousTree, previousElements);
