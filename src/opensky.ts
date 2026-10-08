@@ -3383,14 +3383,30 @@ export function diffTrees(
     if (before !== line) displayDiff.push(`${before === undefined ? "+" : "~"} ${line}`);
   }
   let removedDescendantRows = 0;
+  const removedStandaloneRows: string[] = [];
   for (const [key, line] of previousDisplay) {
     if (nextDisplay.has(key)) continue;
     // Descendants of a removed indexed control are already covered by its
-    // removal ID. Retain values removed under surviving or unbound parents.
+    // removal ID. Small removals under surviving or unbound parents keep their
+    // exact values; large obsolete inventories are summarized below.
     const parent = key.match(/^index:(\d+)(?:\/|$)/)?.[1];
     if (parent !== undefined && prev.has(Number(parent)) && !next.has(Number(parent))) {
       removedDescendantRows += 1;
-    } else displayDiff.push(`Removed display row: ${line}`);
+    } else removedStandaloneRows.push(line);
+  }
+  if (removedStandaloneRows.length > 8) {
+    // These are previous-snapshot labels, never current content or input IDs.
+    // Match native removal summaries without repeating a discarded inventory.
+    const roles = new Map<string, number>();
+    for (const line of removedStandaloneRows) {
+      const role = line.match(/^AX\w+/)?.[0] ?? "display";
+      roles.set(role, (roles.get(role) ?? 0) + 1);
+    }
+    const counts = [...roles].sort(([a], [b]) => a.localeCompare(b))
+      .map(([role, count]) => `${role}: ${count}`).join(", ");
+    displayDiff.push(`Removed display rows: ${removedStandaloneRows.length} (outside removed elements; ${counts})`);
+  } else {
+    displayDiff.push(...removedStandaloneRows.map(line => `Removed display row: ${line}`));
   }
   if (removedDescendantRows) {
     displayDiff.push(`Removed display rows: ${removedDescendantRows} (within removed elements)`);
