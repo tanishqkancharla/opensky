@@ -104,6 +104,9 @@ try {
           OPENSKY_VERIFIED_LINUX_DRIVER: JSON.stringify(runtime.linuxIdentity),
           PARITY_DESKTOP_SCOPE: JSON.stringify({ backend: "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" }) },
       }, directory, async cell => {
+        // Keep advertised inventory usable through the actual agent guard,
+        // before selecting and observing the fixture's bound app.
+        await cell('await cua.getState();');
         await cell(`var app = await cua.getApp(${JSON.stringify(launch.appName)});`);
         const observed = await cell('await app.getScreenshot();');
         const image = observed.content?.find(item => item.type === "image" && item.data);

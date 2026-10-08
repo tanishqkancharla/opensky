@@ -138,7 +138,11 @@ export class DesktopProgramPolicy {
         if (!node.arguments.every(value)) return false;
         if (member(node.callee, "JSON", "stringify")) return node.arguments.length === 1;
         if (member(node.callee, "nodeRepl") && ["write", "emitImage"].includes(node.callee.property.name)) return node.arguments.length === 1;
-        if (nativeFacade && member(node.callee, "cua") && ["getState", "listWindows", "listApps"].includes(node.callee.property.name)) {
+        // Inventory is a genuine OpenSky observation. The disposable Linux
+        // runner owns this desktop; observing names does not authorize input
+        // to any app beyond the existing literal selector boundary below.
+        const openskyInventory = this.scope.backend === "opensky" && this.scope.isolatedDesktop === "linux" && member(node.callee, "cua", "getState");
+        if (openskyInventory || nativeFacade && member(node.callee, "cua") && ["getState", "listWindows", "listApps"].includes(node.callee.property.name)) {
           return node.arguments.length === 0 || node.arguments.length === 1 && node.arguments[0].type === "ObjectExpression";
         }
         if (this.scope.backend === "opensky" || nativeFacade) {
