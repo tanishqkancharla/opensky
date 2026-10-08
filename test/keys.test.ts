@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { parseXdotoolKey, toHotkeyKeys } from "../src/keys.js";
+import { parseXdotoolKey, toHotkeyKeys, toMacDriverKey } from "../src/keys.js";
 
 describe("parseXdotoolKey", () => {
   it("maps Return and keypad aliases", () => {
@@ -43,5 +43,37 @@ describe("parseXdotoolKey", () => {
 
   it("rejects empty keys", () => {
     assert.throws(() => parseXdotoolKey("  "), /Invalid params/);
+  });
+});
+
+
+describe("Remaining verified campaign contracts", () => {
+it("translates named plus for both standalone keys and modifier chords", () => {
+    assert.deepEqual(toMacDriverKey(parseXdotoolKey("plus")), {key: "=", modifiers: ["shift"]});
+    assert.deepEqual(toMacDriverKey(parseXdotoolKey("CMD+plus")), {key: "=", modifiers: ["cmd", "shift"]});
+    assert.deepEqual(toHotkeyKeys(toMacDriverKey(parseXdotoolKey("cmd+shift+plus"))), ["cmd", "shift", "="]);
+    assert.deepEqual(parseXdotoolKey("plus"), {key: "plus", modifiers: []});
+  });
+
+it("adds the physical Shift+8 for asterisk while preserving explicit modifiers", () => {
+    assert.deepEqual(toMacDriverKey(parseXdotoolKey("asterisk")), {key: "8", modifiers: ["shift"]});
+    assert.deepEqual(toMacDriverKey(parseXdotoolKey("ctrl+shift+asterisk")), {key: "8", modifiers: ["ctrl", "shift"]});
+  });
+
+it("maps named minus and slash to physical keys while preserving modifiers", () => {
+    assert.deepEqual(toMacDriverKey(parseXdotoolKey("minus")), {key: "-", modifiers: []});
+    assert.deepEqual(toMacDriverKey(parseXdotoolKey("SLASH")), {key: "/", modifiers: []});
+    assert.deepEqual(toMacDriverKey(parseXdotoolKey("ctrl+minus")), {key: "-", modifiers: ["ctrl"]});
+    assert.deepEqual(toMacDriverKey(parseXdotoolKey("super+shift+slash")), {key: "/", modifiers: ["cmd", "shift"]});
+    assert.deepEqual(parseXdotoolKey("minus"), {key: "minus", modifiers: []});
+    assert.deepEqual(parseXdotoolKey("slash"), {key: "slash", modifiers: []});
+  });
+
+it("leaves generic parsing and literal punctuation unchanged", () => {
+    assert.deepEqual(parseXdotoolKey("asterisk"), {key: "asterisk", modifiers: []});
+    for (const key of ["*", "-", "/", "Return", "super+a", "equals", "hyphen"]) {
+      const parsed = parseXdotoolKey(key);
+      assert.deepEqual(toMacDriverKey(parsed), parsed);
+    }
   });
 });

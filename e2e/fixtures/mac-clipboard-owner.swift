@@ -147,7 +147,26 @@ while let line = readLine() {
         result["ok"]=true
         print(String(data:try JSONSerialization.data(withJSONObject:result,options:[.sortedKeys]),encoding:.utf8)!)
     } catch {
-        print("{\"ok\":false,\"error\":\"Clipboard fixture failed; contents withheld\"}")
+        // Export only a fixed fixture stage code. Never stringify NSError:
+        // a system error may contain private clipboard or document data.
+        let failure = error as NSError
+        let stages: [String:Int] = [
+            "Unreadable clipboard format; fixture refused":1,
+            "Clipboard changed during snapshot; fixture refused":2,
+            "Local clipboard item refused":3,
+            "Clipboard write incomplete":4,
+            "Clipboard restoration readback mismatch":5,
+            "Fixture seed refused":6,
+            "Fixture seed verification failed":7,
+            "Unknown fixture command":8,
+            "Competing copy ownership or AX permission refused":9,
+            "Exact owned AX document missing":10,
+            "Unique pre-paste editor not verified":11,
+            "Competing copy not prepared":12,
+            "Owned document identity changed":13,
+        ]
+        let stage = stages[failure.domain] == failure.code ? failure.code : 0
+        print("{\"ok\":false,\"error\":\"Clipboard fixture failed; contents withheld\",\"fixtureStageCode\":\(stage)}")
     }
     fflush(stdout)
 }

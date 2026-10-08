@@ -7,7 +7,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {compileMacSwiftHelper} from "./mac-swift-compiler.js";
-type Receipt={ok?:boolean;restored?:boolean;allOriginalItemsAndFormatsVerified?:boolean;markerPreserved?:boolean;newerMarkerPreserved?:boolean;copied?:boolean;insertionObserved?:boolean;payloadObservedBeforeCopy?:boolean;error?:string};
+type Receipt={ok?:boolean;restored?:boolean;allOriginalItemsAndFormatsVerified?:boolean;markerPreserved?:boolean;newerMarkerPreserved?:boolean;copied?:boolean;insertionObserved?:boolean;payloadObservedBeforeCopy?:boolean;error?:string;fixtureStageCode?:number};
 export async function withOwnedMacClipboard<T>(payload:string,rich:boolean,use:(fixture:{markerPreserved():Promise<boolean>;prepareCompetingCopy(target:{pid:number;launchedAt:number;windowId:number;path:string}):Promise<void>;copyAfterInsertion():Promise<Receipt>;newerMarkerPreserved():Promise<boolean>})=>Promise<T>):Promise<T>{
   if(process.platform!=="darwin"||process.env.CUA_TEST_ALLOW_CLIPBOARD!=="1")throw Error("Real clipboard fixture requires Mac and explicit CUA_TEST_ALLOW_CLIPBOARD=1");
   const artifacts=await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR??tmpdir(),"mac-clipboard-"));
@@ -27,7 +27,13 @@ export async function withOwnedMacClipboard<T>(payload:string,rich:boolean,use:(
     worker.on("close",()=>{closed=true;replies.close();});
     request=async input=>{
       const reply=await replies.request(input);
-      if(!reply.ok)throw Error(reply.error??"Clipboard fixture refused; contents withheld");return reply;
+      if(!reply.ok){
+        // Keep diagnostics independent of clipboard/document payloads.
+        const code=Number.isInteger(reply.fixtureStageCode)&&reply.fixtureStageCode!>=0&&reply.fixtureStageCode!<=13?reply.fixtureStageCode:0;
+        const operation=["seed","status","prepare_copy","copy_after_insert","restore"].includes(String(input.op))?String(input.op):"unknown";
+        await writeFile(join(artifacts,"failure.json"),JSON.stringify({operation,fixtureStageCode:code,contentsLogged:false},null,2));
+        throw Error(`Clipboard fixture failed at ${operation} (stage ${code}); contents withheld`);
+      }return reply;
     };
     const seeded=await request({op:"seed",marker:"OpenSky owned clipboard keeper marker",payload,multiple:true,rich});
     if(!seeded.markerPreserved)throw Error("Seeded clipboard items/formats were not verified");

@@ -43,6 +43,7 @@ class FakeOpenSky {
   }
   async close_target(args: unknown) { this.calls.push({ method: "close_target", args }); }
   async click(args: unknown) { this.calls.push({ method: "click", args }); }
+  async bring_to_front(args: unknown) { this.calls.push({ method: "bring_to_front", args }); }
   async drag(args: unknown) { this.calls.push({ method: "drag", args }); }
   async paste(args: unknown) { this.calls.push({ method: "paste", args }); }
   async press_key(args: unknown) { this.calls.push({ method: "press_key", args }); }
@@ -60,9 +61,9 @@ describe("native-style cua facade", () => {
     fake.calls = [];
     await app.pressKey("Enter"); await app.typeText("domain"); await app.click(7);
     assert.deepEqual(fake.calls, [
-      {method:"press_key",args:{app:"tgt_app",key:"Enter",scope:"app"}},
-      {method:"type_text",args:{app:"tgt_app",text:"domain",scope:"app"}},
-      {method:"click",args:{app:"tgt_app",element_index:7,mouse_button:undefined,click_count:undefined}},
+      {method:"press_key",args:{app:"tgt_app",key:"Enter",scope:"app",window_change_timeout_ms:250}},
+      {method:"type_text",args:{app:"tgt_app",text:"domain",scope:"app",window_change_timeout_ms:50}},
+      {method:"click",args:{app:"tgt_app",element_index:7,mouse_button:undefined,click_count:undefined,window_change_timeout_ms:250}},
     ]);
   });
 
@@ -234,7 +235,8 @@ describe("native-style cua facade", () => {
       { method: "select_text", args: { app: "tgt_app", element_index: 8, text: "needle", prefix: "pre", suffix: "post", selection_type: "cursor_after" } },
       { method: "perform_secondary_action", args: { app: "tgt_app", element_index: 9, action: "Show Menu" } },
     ]);
-    assert.deepEqual(emitted, ["state:tgt_app"]);
+    assert.match(String(emitted[0]), /Native app handle API/);
+    assert.deepEqual(emitted.slice(1), ["state:tgt_app"]);
   });
 
   it("keeps sibling tabs distinct and fails a closed handle before legacy dispatch", async () => {
@@ -519,3 +521,124 @@ function state(handle: string, text: string, screenshotUrl?: string, url?: strin
     } : undefined,
   };
 }
+
+
+describe("Remaining verified campaign contracts", () => {
+it("uses current app scope only for ambient Mac app keyboard calls",async()=>{
+    for(const target of ["mac","linux","win"]){
+      const fake=Object.assign(new FakeOpenSky(),{target});const cua=createCua(fake as unknown as OpenSky);
+      const app=await cua.getApp("Example");
+      await app.pressKey("super+n");await app.typeText("new");await app.pressKey("Return",2);
+      const exact=await cua.getApp("tgt_exact");await exact.pressKey("super+n");await exact.typeText("fixed");
+      const calls=fake.calls.filter(c=>c.method==="press_key"||c.method==="type_text");
+      assert.deepEqual(calls.map(c=>(c.args as {scope?:string}).scope),[target==="mac"?"app":undefined,target==="mac"?"app":undefined,undefined,undefined,undefined]);
+    }
+  });
+
+it("uses foreground only for a fresh Mac native image coordinate click", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "cua-pointer-routing-"));
+    after(() => rm(directory, { recursive: true, force: true }));
+    const path = join(directory, "image.png");
+    await writeFile(path, Buffer.from([137,80,78,71,13,10,26,10]));
+    for (const target of ["mac", "linux", "win"] as const) {
+      const fake = new FakeOpenSky() as FakeOpenSky & {target: string};
+      fake.target = target;
+      const original = fake.get_app_state.bind(fake);
+      let typed = false;
+      fake.get_app_state = async args => {
+        const result = await original(args);
+        if (args.includeScreenshot) result.screenshot = {url: pathToFileURL(path).href,width:100,height:100,format:"png",
+          ...(typed ? {coordinateSpace:"viewport_css_px" as const} : {})};
+        return result;
+      };
+      const app = await createCua(fake as unknown as OpenSky).getApp("Example");
+      await app.getScreenshot({emit:false});await app.click([20,30]);
+      const mode = (fake.calls.at(-1)!.args as {delivery_mode?:string}).delivery_mode;
+      assert.equal(mode,target === "mac" ? "foreground" : undefined);
+      await app.click(2);
+      assert.equal((fake.calls.at(-1)!.args as {delivery_mode?:string}).delivery_mode,undefined);
+      typed = true;await app.getScreenshot({emit:false});await app.click([20,30]);
+      assert.equal((fake.calls.at(-1)!.args as {delivery_mode?:string}).delivery_mode,undefined);
+      await app.getAXState({emit:false});await app.click([20,30]);
+      assert.equal((fake.calls.at(-1)!.args as {delivery_mode?:string}).delivery_mode,undefined);
+    }
+  });
+
+it("retains context-menu focus only for fresh native Mac pixel right-clicks, and stops on uncertain activation", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "cua-menu-routing-"));
+    try {
+      const path = join(directory, "image.png"); await writeFile(path, Buffer.from([137,80,78,71,13,10,26,10]));
+      for (const platform of ["mac", "linux", "win"] as const) {
+        const fake = Object.assign(new FakeOpenSky(), {target: platform});
+        const original = fake.get_app_state.bind(fake); let typed = false;
+        fake.get_app_state = async args => {const result = await original(args);
+          if (args.includeScreenshot) result.screenshot = {url:pathToFileURL(path).href,width:100,height:100,format:"png",
+            ...(typed ? {coordinateSpace:"viewport_css_px" as const} : {})}; return result;};
+        const app = await createCua(fake as unknown as OpenSky).getApp("Example");
+        await app.getScreenshot({emit:false}); await app.click([20,30], {mouseButton:"r"});
+        const actions = fake.calls.filter(c=>c.method==="click" || c.method==="bring_to_front");
+        assert.deepEqual(actions.map(c=>c.method), platform==="mac" ? ["bring_to_front","click"] : ["click"]);
+        assert.equal((actions.at(-1)!.args as {delivery_mode?:string}).delivery_mode,platform==="mac" ? "foreground" : undefined);
+        fake.calls=[]; await app.click(2, {mouseButton:"right"});
+        typed=true; await app.getScreenshot({emit:false}); await app.click([20,30], {mouseButton:"right"});
+        await app.getAXState({emit:false}); await app.click([20,30], {mouseButton:"right"});
+        assert.equal(fake.calls.some(c=>c.method==="bring_to_front"),false);
+        if(platform==="mac") {
+          typed=false; await app.getScreenshot({emit:false}); fake.calls=[];
+          fake.bring_to_front=async()=>{throw Error("Activation uncertain; observe before retrying");};
+          await assert.rejects(app.click([20,30], {mouseButton:"right"}), /Activation uncertain/);
+          assert.equal(fake.calls.some(c=>c.method==="click"),false);
+        }
+      }
+    } finally {await rm(directory,{recursive:true,force:true});}
+  });
+
+it("bounds auxiliary Mac key/text/value/click/secondary observation without changing non-Mac calls", async () => {
+    for (const target of ["mac", "linux"]) {
+      const fake=Object.assign(new FakeOpenSky(),{target});
+      const cua=createCua(fake as unknown as OpenSky,{emit:()=>{}});
+      const app=await cua.getApp("Example");await app.pressKey("super+l");await app.click(2);await app.setValue(2,"Replacement");await app.typeText("Typed");await app.performSecondaryAction(2,"press");
+      for(const call of fake.calls.filter(c=>c.method==="press_key"||c.method==="click"||c.method==="set_value"||c.method==="type_text"||c.method==="perform_secondary_action")){
+        const args=call.args as Record<string,unknown>;
+        assert.equal(args.window_change_timeout_ms,target==="mac"?(["type_text","set_value"].includes(call.method)?50:250):undefined);
+        assert.equal(args.app,"tgt_app");
+      }
+    }
+  });
+
+it("emits bounded app guidance once after a successful binding, preserving every state and driver call", async () => {
+    const fake = new FakeOpenSky();
+    const original = fake.get_app_state.bind(fake);
+    fake.get_app_state = async args => {
+      if (args.app === "Missing") {
+        fake.calls.push({ method: "get_app_state", args });
+        throw new Error("Missing app");
+      }
+      return original(args);
+    };
+    const emitted: unknown[] = [];
+    const cua = createCua(fake as unknown as OpenSky, { emit: value => emitted.push(value) });
+    await assert.rejects(cua.getApp("Missing"), /Missing app/);
+    assert.deepEqual(emitted, []);
+    await cua.getApp("Example");
+    await cua.getApp("Other");
+    assert.equal(emitted.length, 3);
+    assert.match(String(emitted[0]), /getAXState\(\{disableDiffing\?, emit\?\}\)/);
+    assert.ok(String(emitted[0]).length < 1200);
+    assert.deepEqual(emitted.slice(1), ["state:tgt_app", "state:tgt_app"]);
+    assert.deepEqual(fake.calls.map(call => call.method), ["get_app_state", "get_app_state", "get_app_state"]);
+  });
+
+it("keeps explicitly addressed app handles exact across observations", async () => {
+    const fake = new FakeOpenSky();
+    const cua = createCua(fake as unknown as OpenSky);
+    const app = await cua.getApp("tgt_document");
+    await app.getAXState({ emit: false });
+    await cua.target("tgt_other_document").getAXState({ emit: false });
+    const observations = fake.calls.filter(call => call.method === "get_app_state");
+    assert.deepEqual(observations.map(call => (call.args as Record<string, unknown>).app),
+      ["tgt_document", "tgt_document", "tgt_other_document"]);
+    assert.ok(observations.every(call => !("scope" in (call.args as Record<string, unknown>))),
+      "exact handles must never acquire app scope and follow another focused document");
+  });
+});

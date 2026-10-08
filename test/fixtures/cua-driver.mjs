@@ -243,6 +243,11 @@ async function getWindowState(state, args) {
   const app = byPid(state, args.pid);
   const window = app.windows.find((item) => item.window_id === args.window_id) ?? app.windows[0];
   if (!window) throw new Error(`window_id_not_found`);
+  if (args.probe_only === true) {
+    return { pid: args.pid, window_id: args.window_id, probe_only: true,
+      window_matched: !window.axUnresolved,
+      ...(window.axUnresolved ? { degraded_reason: 'ax_window_unresolved: fixture' } : {}) };
+  }
   state.snapshotSeq += 1;
   const snapshotId = `s${String(state.snapshotSeq).padStart(8, "0")}`;
   const source = elementsForWindow(app, window).filter((element) =>
@@ -254,7 +259,7 @@ async function getWindowState(state, args) {
     ...element,
     element_token: `${snapshotId}:${element.element_index}`,
   }));
-  if (state.degradedSnapshots > 0 || state.degradedAlways) {
+  if (window.axUnresolved || state.degradedSnapshots > 0 || state.degradedAlways) {
     state.degradedSnapshots = Math.max(0, (state.degradedSnapshots ?? 0) - 1);
     if (args.screenshot_out_file) {
       await mkdir(dirname(args.screenshot_out_file), { recursive: true });

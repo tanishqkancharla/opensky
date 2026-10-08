@@ -9,9 +9,9 @@ import { DriverDiagnostics } from "../../evals/parity/driver-diagnostics.js";
 import { verifyDriverRuntime } from "../../evals/parity/driver-runtime.js";
 import { withSdkOwnedMacDocument } from "./mac-sdk-document.js";
 
-export type PublicSdk = Parameters<typeof createCua>[0];
+export type PublicSdk = Parameters<typeof createCua>[0] & Pick<ReturnType<typeof createOpenSky>, "driver">;
 
-type BrowserFixtures = { sdk: ReturnType<typeof createOpenSky>; cua: CuaFacade; html: string; site: Site; tab: Tab };
+type BrowserFixtures = { sdk: PublicSdk; cua: CuaFacade; html: string; site: Site; tab: Tab };
 
 export const test = base.extend<BrowserFixtures>({
   html: editorPage,
@@ -130,13 +130,15 @@ export function scrollMarkerTop(png: Uint8Array): number {
 }
 
 export const nativeText = "α 😀 one needle.\nβ 😀 two needle.\n";
-type NativeDocument = { identity: {pid:number;launchedAt:number}; windowId:number; artifacts:string; handle: TargetHandle; path: string; editorIndex: number; initialText: string; read(): Promise<string> };
+type NativeDocument = { handle: TargetHandle; path: string; windowId: number; identity: { pid: number; launchedAt: number }; artifacts:string; editorIndex: number; initialText: string; read(): Promise<string>; windows(): Promise<Array<{ windowId: number; title: string; onScreen: boolean }>> };
 
-export const nativeTest = test.extend<{ document: NativeDocument; documentText: string }>({
+export const nativeTest = test.extend<{ document: NativeDocument; documentText: string; documentCleanupSave: boolean; documentRoot: string }>({
   documentText: nativeText,
-  document: async ({ sdk, documentText }, use) => {
+  documentCleanupSave: true,
+  documentRoot: tmpdir(),
+  document: async ({ sdk, documentText, documentCleanupSave, documentRoot }, use) => {
     if (process.platform !== "darwin") throw new Error("This native fixture requires macOS TextEdit; select browser tests on other platforms.");
-    const directory = await mkdtemp(join(tmpdir(), "opensky-native-e2e-"));
+    const directory = await mkdtemp(join(documentRoot, "opensky-native-e2e-"));
     const artifacts = await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR ?? tmpdir(), "native-document-"));
     const path = join(directory, "sdk-draft.txt");
     await writeFile(path, documentText, "utf8");
@@ -145,7 +147,8 @@ export const nativeTest = test.extend<{ document: NativeDocument; documentText: 
         const opened = await sdk.get_app_state({ app: owned.handle, includeScreenshot: false, disableDiff: true });
         await writeFile(join(artifacts, "sdk-initial.txt"), opened.text);
         try {
-          await use({ identity:owned.identity,windowId:owned.windowId,artifacts,handle: owned.handle, path, editorIndex: nativeEditorIndex(opened.text), initialText: documentText, read: () => readFile(path, "utf8") });
+          await use({ handle: owned.handle, path, windowId: owned.windowId, identity: owned.identity, artifacts,
+            editorIndex: nativeEditorIndex(opened.text), initialText: documentText, read: () => readFile(path, "utf8"), windows: owned.windows });
         } finally {
           // Observe the public outcome after the test, including when paste
           // reports uncertainty before the test can save. This diagnostic
@@ -159,9 +162,11 @@ export const nativeTest = test.extend<{ document: NativeDocument; documentText: 
           // Capture the persisted file before any teardown save. The test's
           // explicit save remains the saved-file oracle; this is recovery only.
           await writeFile(join(artifacts, "saved-before-cleanup.txt"), await readFile(path));
-          try { await sdk.press_key({ app: opened.targetHandle, key: "super+s" }); }
-          catch (error) {
-            await writeFile(join(artifacts, "cleanup-save-error.txt"), String(error));
+          if (documentCleanupSave) {
+            try { await sdk.press_key({ app: opened.targetHandle, key: "super+s" }); }
+            catch (error) {
+              await writeFile(join(artifacts, "cleanup-save-error.txt"), String(error));
+            }
           }
         }
       });

@@ -15,7 +15,7 @@ const bundleId = "com.apple.TextEdit";
 type Identity = { pid: number; bundleId: string; launchedAt: number };
 type Window = { title: string; windowId: number; onScreen: boolean };
 type Inspection = Identity & { finishedLaunching: boolean; activationPolicy: number; windows: Window[] };
-type OwnedDocument = { handle: TargetHandle; path: string; windowId: number; identity: Identity };
+type OwnedDocument = { handle: TargetHandle; path: string; windowId: number; identity: Identity; windows(): Promise<Window[]> };
 
 function sameIdentity(left: Identity, right: Identity): boolean {
   return left.pid === right.pid && left.bundleId === right.bundleId && left.launchedAt === right.launchedAt;
@@ -73,7 +73,13 @@ export async function withSdkOwnedMacDocument<T>(options: {
     }
 
     const identity = matches[0]!.identity;
-    const ownedDocument: OwnedDocument = { handle: opened.targetHandle, path: options.path, windowId: windowId!, identity };
+    const ownedDocument: OwnedDocument = { handle: opened.targetHandle, path: options.path, windowId: windowId!, identity,
+      async windows() {
+        const state = await inspect(identity);
+        if (!sameIdentity(state, identity)) throw new Error("Owned process identity changed before window inspection");
+        return state.windows;
+      },
+    };
     owned = ownedDocument;
     // Persist the public handle and independently observed process/window pair
     // before readiness activation or any test input. This known-owned process

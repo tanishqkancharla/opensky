@@ -14,7 +14,7 @@ import { contextBindings, contextFailure, CONTEXT_OUTLINE_BYTES, isContextToken,
 import { invalidParams, OpenSkyError } from "./errors.js";
 import { displayUrlAttribute } from "./display-url.js";
 import { inferScreenshotScale, readImageMeta } from "./image-meta.js";
-import { parseXdotoolKey, toHotkeyKeys } from "./keys.js";
+import { parseXdotoolKey, toHotkeyKeys, toMacDriverKey } from "./keys.js";
 import { detectTarget, homeDir } from "./platform.js";
 import { mkdirPrivate, writeFilePrivate } from "./secure-fs.js";
 import { SessionStore, sessionFile, type StoredSnapshot } from "./session-store.js";
@@ -36,6 +36,7 @@ import type {
   TargetHandle,
   TargetIdentity,
   TargetRequestIdentity,
+  TextSelection,
   WindowSnapshot,
 } from "./types.js";
 
@@ -97,6 +98,7 @@ export class OpenSky implements OpenSkyApi {
   private readonly screenshotFormat?: "png" | "jpeg";
   private readonly screenshotScale?: number;
   private readonly settleDelayMs: number;
+  private readonly nativeSettleDelayMs: number;
   private readonly degradedRetryMs: number;
   private readonly browserStabilityTimeoutMs: number;
   private readonly session: string;
@@ -182,6 +184,9 @@ export class OpenSky implements OpenSkyApi {
     this.screenshotFormat = options.screenshotFormat;
     this.screenshotScale = options.screenshotScale;
     this.settleDelayMs = options.settleDelayMs ?? 800;
+    // Mac input already waits for exact-window delivery in the driver. Keep
+    // launch retries separate from the shorter post-input observation wait.
+    this.nativeSettleDelayMs = options.settleDelayMs ?? (this.target === "mac" ? 150 : 800);
     this.degradedRetryMs = options.degradedRetryMs ?? 4_000;
     this.browserStabilityTimeoutMs = options.browserStabilityTimeoutMs ?? 2_000;
     this.preferTypedBrowser = options.preferTypedBrowser !== false;
@@ -427,7 +432,7 @@ export class OpenSky implements OpenSkyApi {
     await this.settleAfterAction(resolved);
     if (args.scope === "app") {
       if (resolved.browser || resolved.contentScope === "web") throw invalidParams("App scope requires a native app, not a browser content binding");
-      resolved = await this.observeAppWindow(resolved);
+      resolved = await this.observeAppWindow(resolved, !exactTargetRequested && this.autoLaunch);
     }
     if (resolved.browser) {
       // A typed browser snapshot revalidates its exact target/tab binding. A
@@ -461,7 +466,8 @@ export class OpenSky implements OpenSkyApi {
         target: targetIdentityFor(resolved),
       };
     }
-    const previous = this.memory.trees[windowKey(resolved)];
+    const stored = this.memory.trees[windowKey(resolved)];
+    const previous = stored?.observationBaseline ?? stored;
     const snapshot = await this.snapshotSettled(resolved, {
       includeScreenshot: args.includeScreenshot !== false,
       stabilizeBrowser: hadPendingAction,
@@ -489,7 +495,10 @@ export class OpenSky implements OpenSkyApi {
       app: resolved.launchPath || resolved.name || args.app,
       targetHandle: resolved.handle,
       screenshot: snapshot.screenshot ?? (snapshot.screenshotPath ? { url: pathToFileURL(snapshot.screenshotPath).href } : null),
-      text,
+      text: text + selectionObservation(snapshot.textSelection) +
+        (!snapshot.degraded && this.target === "mac" && !resolved.browser
+          ? inlineItemEditObservation(snapshot.tree, snapshot.elements) : ""),
+      ...(snapshot.textSelection ? { textSelection: snapshot.textSelection } : {}),
       degraded: snapshot.degraded,
       degradedReason: snapshot.degradedReason,
       target: targetIdentityFor(resolved, snapshot),
@@ -1280,10 +1289,21 @@ export class OpenSky implements OpenSkyApi {
     y?: number;
     mouse_button?: MouseButton;
     click_count?: number;
+    /** Mac native coordinate clicks only; omitted keeps legacy background delivery. */
+    delivery_mode?: "background" | "foreground";
+    /** Auxiliary native window-change poll;50–1000ms, legacy default1000. */
+    window_change_timeout_ms?: number;
   }): Promise<void> {
+    const windowObservation = nativeWindowObservationArgs(args?.window_change_timeout_ms);
+
     if (!args?.app) throw invalidParams("app is required");
     const button = normalizeMouseButton(args.mouse_button);
     const resolved = await this.requireResolved(args.app);
+    if (args.delivery_mode !== undefined && (
+      !["background", "foreground"].includes(args.delivery_mode) || this.target !== "mac" ||
+      resolved.browser || args.element_index !== undefined ||
+      typeof args.x !== "number" || typeof args.y !== "number"
+    )) throw invalidParams("delivery_mode requires a Mac native coordinate click");
     if (resolved.browser) {
       const hasX = typeof args.x === "number";
       const hasY = typeof args.y === "number";
@@ -1330,26 +1350,67 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
+    const parentSelection = this.target === "mac" && args.element_index !== undefined
+      && this.memory.trees[windowKey(resolved)]?.elements
+        .find(item => item.element_index === args.element_index)?.selectionViaParent === true;
+    if (parentSelection && (button !== "left" || (args.click_count ?? 1) !== 1)) {
+      throw invalidParams("Parent-backed selection supports one left indexed click; use a fresh screenshot for other pointer gestures.");
+    }
+    if (this.target === "mac" && button === "right" && (args.click_count ?? 1) === 1) {
+      // Use one dedicated context-menu transport for native indices and pixels.
+      // The generic pixel click's focus suppression can dismiss the menu even
+      // when a caller has already activated the exact target window.
+      const exactElement = args.element_index !== undefined
+        ? this.elementTarget(resolved, args.element_index) : undefined;
+      await this.requireUsableInputWindow(resolved);
+      await this.driver.call("right_click", {
+        pid: resolved.pid,
+        ...(exactElement ?? { window_id: resolved.windowId, x: args.x, y: args.y }),
+        ...(args.delivery_mode !== undefined ? { delivery_mode: args.delivery_mode } : {}),
+      });
+      this.markAction(resolved);
+      return;
+    }
     if (args.element_index === undefined) await this.requireUsableInputWindow(resolved);
-    const payload: Record<string, unknown> = {
+    const payload: Record<string, unknown> = { ...windowObservation,
       pid: resolved.pid,
       window_id: resolved.windowId,
     };
     if (args.element_index !== undefined) {
       Object.assign(payload, this.elementTarget(resolved, args.element_index));
-      if (this.target !== "linux" && button === "left" && args.click_count !== 2) payload.action = "press";
+      if (this.target !== "linux" && button === "left" && args.click_count !== 2) payload.action = parentSelection ? "select_collection_item" : "press";
       const element = this.memory.trees[windowKey(resolved)]?.elements
         .find(item => item.element_index === args.element_index);
-      // Unadvertised primary buttons require the driver's guarded foreground
-      // pointer route. Advertised or unknown actions keep existing delivery.
+      // AppKit may accept an inactive collection click without navigating.
+      // Use the guarded exact-window foreground route for native plain row,
+      // cell and editable-control clicks, matching the facade's input intent.
+      if (this.target === "mac" && button === "left" && (args.click_count ?? 1) === 1
+        && /^AX(?:TextField|TextArea|ComboBox|Row|Cell)$/.test(element?.role ?? "")) {
+        payload.delivery_mode = "foreground";
+      }
+      // Buttons without an advertised primary action need the existing exact
+      // foreground route. Advertised AXPress keeps its established delivery.
       if (this.target === "mac" && button === "left" && (args.click_count ?? 1) === 1
         && element?.role === "AXButton" && Array.isArray(element.actions)
         && !element.actions.some(action => action === "AXPress" || action === "press")) {
         payload.delivery_mode = "foreground";
       }
+      // App menus have application ancestry rather than AXWindow ancestry.
+      // Verify the app and exact focused window before dispatching its menu
+      // action. An owned popover above that window does not invalidate a menu.
+      if (this.target === "mac" && /^AXMenu(?:Bar|BarItem|Item)$/.test(element?.role ?? "")) {
+        payload.delivery_mode = "foreground";
+        if (/^AXMenuBar(?:Item)?$/.test(element?.role ?? "")) {
+          // A menu must remain visible for the following observation/action;
+          // temporary activation would close it while restoring another app.
+          await this.driver.call("bring_to_front", { pid: resolved.pid, window_id: resolved.windowId,
+            activation_scope: "app_menu" });
+        }
+      }
     }
     if (args.x !== undefined) payload.x = args.x;
     if (args.y !== undefined) payload.y = args.y;
+    if (args.delivery_mode !== undefined) payload.delivery_mode = args.delivery_mode;
     payload.button = button;
     if (args.click_count !== undefined) payload.count = args.click_count;
     if (args.click_count === 2 && args.element_index !== undefined && button === "left") {
@@ -1361,9 +1422,24 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
+    const clickSnapshot = this.memory.trees[windowKey(resolved)];
     try {
       await this.driver.call("click", payload);
     } catch (error) {
+      // Never replay a parent-selection setter, including uncertain native errors.
+      if (parentSelection) throw error;
+      if (this.target === "mac" && button === "left" && (args.click_count ?? 1) === 1
+        && args.element_index !== undefined && clickSnapshot
+        && error instanceof OpenSkyError
+        && error.message === "Cannot select current click route: current element role unavailable; no input was sent") {
+        const rebound = await this.recoverRecreatedButton(resolved, args.element_index, clickSnapshot);
+        if (!rebound) throw error;
+        // The first call explicitly refused before input. Retry once with
+        // current exact-window tokens; an uncertain second result is final.
+        await this.driver.call("click", { ...payload, ...rebound });
+        this.markAction(resolved);
+        return;
+      }
       const refusedBeforeInput = error instanceof OpenSkyError && error.code === "background_unavailable";
       if ((!refusedBeforeInput && !isFocusRoutingError(error)) || !resolved.windowId) throw error;
       await this.driver.call("click", { ...payload, delivery_mode: "foreground" });
@@ -1578,17 +1654,28 @@ export class OpenSky implements OpenSkyApi {
     app: string;
     element_index: number;
     action: string;
+    /** Auxiliary native window-change poll;50–1000ms, legacy default1000. */
+    window_change_timeout_ms?: number;
   }): Promise<void> {
+    const windowObservation = nativeWindowObservationArgs(args?.window_change_timeout_ms);
     if (!args?.app || typeof args.element_index !== "number" || !args.action) {
       throw invalidParams();
     }
     const resolved = await this.requireResolved(args.app);
     const normalizedAction = args.action.trim().toLowerCase();
     if (normalizedAction === "increment" || normalizedAction === "decrement") {
-      throw new OpenSkyError(
-        `${JSON.stringify(args.action)} is not a supported click action. ` +
-          "Use set_value for an exact slider/stepper value, or press_key with element_index and Left/Right/Up/Down.",
-      );
+      const element = this.memory.trees[windowKey(resolved)]?.elements
+        .find(item => item.element_index === args.element_index);
+      const advertised = element?.actions?.some(action => action.split("\n", 1)[0]!
+        .replace(/^Name:/i, "").replace(/^AX/i, "").trim().toLowerCase() === normalizedAction);
+      if (this.target !== "mac" || resolved.browser || !advertised) {
+        throw new OpenSkyError(
+          `${JSON.stringify(args.action)} is not a supported click action for this target, or is not advertised by this control. ` +
+            "Refresh the control's state; use set_value or a supported indexed key only when the control advertises that capability.",
+        );
+      }
+      // The existing native click route resolves the live advertised AX action
+      // and checks enabled state and exact window ownership before dispatch.
     }
     const mapped = SECONDARY_ACTIONS[normalizedAction];
     if (resolved.browser) {
@@ -1623,12 +1710,29 @@ export class OpenSky implements OpenSkyApi {
         "Use click, type_text, set_value, or an explicitly supported typed-browser action.",
       );
     }
+    if (this.target === "mac" && normalizedAction === "confirm") {
+      const element = this.memory.trees[windowKey(resolved)]?.elements
+        .find(item => item.element_index === args.element_index);
+      if (element && ["AXTextField", "AXTextArea", "AXComboBox"].includes(element.role ?? "")) {
+        // AppKit can accept AXConfirm without committing a programmatic value.
+        // Focus this exact text control and deliver its Return key through the
+        // existing guarded foreground key route; do not retry after delivery.
+        await this.driver.call("press_key", {
+          ...windowObservation,
+          pid: resolved.pid, window_id: resolved.windowId, key: "return", delivery_mode: "foreground",
+          ...this.elementTarget(resolved, args.element_index),
+        });
+        this.markAction(resolved);
+        return;
+      }
+    }
     if (mapped?.kind === "front") {
       await this.bring_to_front({ app: args.app });
       return;
     }
     if (mapped?.kind === "key" && mapped.key) {
       await this.driver.call("press_key", {
+        ...windowObservation,
         pid: resolved.pid,
         window_id: resolved.windowId,
         key: mapped.key,
@@ -1638,10 +1742,25 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
+    if (this.target === "mac" && normalizedAction === "open") {
+      // Finder advertises AXOpen on folder rows, but rejects the AX action
+      // with -25205. The driver's exact-window foreground double-click first
+      // tries AXOpen, then uses its gated pointer route on that refusal.
+      await this.driver.call("double_click", {
+        pid: resolved.pid,
+        window_id: resolved.windowId,
+        delivery_mode: "foreground",
+        ...this.elementTarget(resolved, args.element_index),
+      });
+      this.markAction(resolved);
+      return;
+    }
     await this.driver.call("click", {
+      ...windowObservation,
       pid: resolved.pid,
       window_id: resolved.windowId,
       action: mapped?.action ?? args.action,
+      ...(this.target === "mac" ? { delivery_mode: "foreground" } : {}),
       ...this.elementTarget(resolved, args.element_index),
     });
     this.markAction(resolved);
@@ -1649,12 +1768,17 @@ export class OpenSky implements OpenSkyApi {
 
   async press_key(args: {
     app: string;
-    scope?: "window" | "app";
     key: string;
+    /** Explicit native app keyboard scope follows its current window. */
+    scope?: "window" | "app";
     element_index?: number;
     x?: number;
     y?: number;
+    /** Auxiliary native window-change poll;50–1000ms, legacy default1000. */
+    window_change_timeout_ms?: number;
   }): Promise<void> {
+    const windowObservation = nativeWindowObservationArgs(args?.window_change_timeout_ms);
+
     if (!args?.app || !args.key) throw invalidParams();
     if (args.element_index !== undefined && typeof args.element_index !== "number") {
       throw invalidParams("element_index must be a number");
@@ -1670,9 +1794,7 @@ export class OpenSky implements OpenSkyApi {
     let resolved = await this.requireResolved(args.app);
     if (args.scope === "app") {
       if (this.target !== "mac" || resolved.browser || resolved.contentScope) throw invalidParams("App keyboard scope requires a native Mac app binding");
-      // Keyboard context follows AXFocusedWindow; indexed observations can
-      // independently follow a panel that owns the focused control.
-      resolved = await this.observeAppWindow(resolved, false);
+      resolved = await this.observeAppWindow(resolved, false, false);
     }
     if (resolved.browser) {
       if (hasX) {
@@ -1711,7 +1833,8 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    const parsed = parseXdotoolKey(args.key, this.target);
+    const requestedKey = parseXdotoolKey(args.key, this.target);
+    const parsed = this.target === "mac" ? toMacDriverKey(requestedKey) : requestedKey;
     const boundWindow = await this.refreshBoundWindow(resolved);
     if (!boundWindow) {
       throw new OpenSkyError(
@@ -1729,9 +1852,9 @@ export class OpenSky implements OpenSkyApi {
     }
     if (Object.keys(target).length > 0) {
       if (args.element_index !== undefined) {
-        await this.pressElementKey(resolved, args.element_index, parsed.key, parsed.modifiers);
+        await this.pressElementKey(resolved, args.element_index, parsed.key, parsed.modifiers, windowObservation);
       } else {
-        await this.driver.call("press_key", {
+        await this.driver.call("press_key", { ...windowObservation,
           pid: resolved.pid,
           window_id: resolved.windowId,
           key: parsed.key,
@@ -1744,7 +1867,7 @@ export class OpenSky implements OpenSkyApi {
       return;
     }
     if (parsed.modifiers.length > 0) {
-      await this.driver.call("hotkey", {
+      await this.driver.call("hotkey", { ...windowObservation,
         pid: resolved.pid,
         window_id: resolved.windowId,
         keys: toHotkeyKeys(parsed),
@@ -1753,7 +1876,7 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    await this.driver.call("press_key", {
+    await this.driver.call("press_key", { ...windowObservation,
       pid: resolved.pid,
       window_id: resolved.windowId,
       key: parsed.key,
@@ -1924,7 +2047,8 @@ export class OpenSky implements OpenSkyApi {
     }
   }
 
-  async set_value(args: { app: string; element_index: number; value: string }): Promise<void> {
+  async set_value(args: { app: string; element_index: number; value: string; window_change_timeout_ms?: number }): Promise<void> {
+    const windowObservation = nativeWindowObservationArgs(args?.window_change_timeout_ms);
     if (!args?.app || typeof args.element_index !== "number" || typeof args.value !== "string") {
       throw invalidParams();
     }
@@ -1942,7 +2066,13 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
+    const nativeElement = this.memory.trees[windowKey(resolved)]?.elements
+      .find(item => item.element_index === args.element_index);
+    const focusText = this.target === "mac" && nativeElement
+      && ["AXTextField", "AXTextArea", "AXComboBox"].includes(nativeElement.role ?? "");
     await this.driver.call("set_value", {
+      ...windowObservation,
+      ...(focusText ? { delivery_mode: "foreground" } : {}),
       pid: resolved.pid,
       window_id: resolved.windowId,
       value: args.value,
@@ -1953,12 +2083,16 @@ export class OpenSky implements OpenSkyApi {
 
   async type_text(args: {
     app: string;
-    scope?: "window" | "app";
     text: string;
+    /** Explicit native app keyboard scope follows its current window. */
+    scope?: "window" | "app";
     element_index?: number;
     x?: number;
     y?: number;
+    /** Auxiliary native window-change poll;50–1000ms, legacy default1000. */
+    window_change_timeout_ms?: number;
   }): Promise<void> {
+    const windowObservation = nativeWindowObservationArgs(args?.window_change_timeout_ms);
     if (!args?.app || typeof args.text !== "string") throw invalidParams();
     if (args.element_index !== undefined && typeof args.element_index !== "number") {
       throw invalidParams("element_index must be a number");
@@ -1974,9 +2108,7 @@ export class OpenSky implements OpenSkyApi {
     let resolved = await this.requireResolved(args.app);
     if (args.scope === "app") {
       if (this.target !== "mac" || resolved.browser || resolved.contentScope) throw invalidParams("App keyboard scope requires a native Mac app binding");
-      // Keyboard context follows AXFocusedWindow; indexed observations can
-      // independently follow a panel that owns the focused control.
-      resolved = await this.observeAppWindow(resolved, false);
+      resolved = await this.observeAppWindow(resolved, false, false);
     }
     if (resolved.browser) {
       if (hasX) {
@@ -2001,6 +2133,7 @@ export class OpenSky implements OpenSkyApi {
     }
     if (args.element_index === undefined) await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
+      ...(this.target === "mac" ? windowObservation : {}),
       pid: resolved.pid,
       window_id: resolved.windowId,
       text: args.text,
@@ -2016,6 +2149,7 @@ export class OpenSky implements OpenSkyApi {
     // a refusal that may follow an unreadable AX write.
     if (this.target === "mac" && args.element_index === undefined) {
       payload.delivery_mode = "foreground";
+      payload.delay_ms = 0;
     }
     try {
       await this.driver.call("type_text", payload);
@@ -2354,18 +2488,27 @@ export class OpenSky implements OpenSkyApi {
     });
     const structured = asRecord(result.structured) ?? {};
     let rawElements = normalizeElements(structured.elements);
-    const collectedElementCount = rawElements.length;
     const rawTree =
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
       (typeof structured.text === "string" && structured.text) ||
       "";
-    const sanitized = sanitizeTreeText(rawTree);
+    const menuCapabilities = this.target === "mac"
+      ? projectClosedMenuActions(rawTree, rawElements) : { tree: rawTree, elements: rawElements };
+    rawElements = menuCapabilities.elements;
+    const collectedElementCount = rawElements.length;
+    const sanitized = sanitizeTreeText(menuCapabilities.tree, rawElements);
     const collection = this.target === "mac" && options.collectionScope !== "all" && options.maxDepth === undefined && resolved.contentScope !== "web"
       ? projectNativeCollectionRows(sanitized, rawElements, structured.native_collections)
       : { tree: sanitized, elements: rawElements, hiddenIndices: new Set<number>() };
     rawElements = collection.elements;
     const scoped = resolved.contentScope === "web" ? isolatePrimaryWebArea(collection.tree) : collection.tree;
-    const pruned = pruneMenuSubtrees(scoped);
+    const visibleMenuIndices = new Set(rawElements.filter(element => element.role === "AXMenu"
+      && element.enabled !== false && element.frame && element.frame.w > 0 && element.frame.h > 0)
+      .map(element => element.element_index));
+    const menuPruned = pruneMenuSubtrees(scoped, visibleMenuIndices);
+    const pruned = this.target === "mac"
+      ? projectActiveMenu(menuPruned.tree, rawElements, visibleMenuIndices, menuPruned.hiddenIndices)
+      : menuPruned;
     const scopedIndices = resolved.contentScope === "web" ? indicesInTree(pruned.tree) : undefined;
     const visibleElements = pruned.hiddenIndices.size
       ? rawElements.filter((element) =>
@@ -2377,10 +2520,12 @@ export class OpenSky implements OpenSkyApi {
         : rawElements;
     const previousElements = this.memory.trees[windowKey(resolved)]?.elements ?? [];
     const previousDocument = primaryDocumentFingerprint(previousElements);
-    const currentDocument = primaryDocumentFingerprint(visibleElements);
+    const namedElements = options.maxDepth !== undefined
+      ? visibleElements : nameAnonymousContainers(pruned.tree, visibleElements);
+    const currentDocument = primaryDocumentFingerprint(namedElements);
     const documentChanged = resolved.contentScope === "web" && previousDocument !== undefined &&
       currentDocument !== undefined && previousDocument !== currentDocument;
-    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, visibleElements, pruned.hiddenIndices.size > 0 || collection.hiddenIndices.size > 0);
+    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, namedElements, pruned.hiddenIndices.size > 0 || collection.hiddenIndices.size > 0);
     const remappedTree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
     const tree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
     const snapshotId = optionalString(structured.snapshot_id);
@@ -2401,6 +2546,8 @@ export class OpenSky implements OpenSkyApi {
       snapshotId,
       tree,
       elements,
+      textSelection: !structured.degraded && this.target === "mac"
+        ? parseTextSelection(structured.text_selection, resolved.pid, resolved.windowId!) : undefined,
       screenshotPath: filePath,
       screenshot: screenshot ?? (filePath ? { url: pathToFileURL(filePath).href } : undefined),
       frame,
@@ -2623,10 +2770,11 @@ export class OpenSky implements OpenSkyApi {
   }
 
   private async settleAfterAction(resolved: ResolvedApp): Promise<void> {
-    if (this.settleDelayMs <= 0) return;
+    const delayMs = resolved.browser ? this.settleDelayMs : this.nativeSettleDelayMs;
+    if (delayMs <= 0) return;
     const actionAt = this.lastActionAt.get(windowKey(resolved));
     if (actionAt === undefined) return;
-    const remaining = this.settleDelayMs - (Date.now() - actionAt);
+    const remaining = delayMs - (Date.now() - actionAt);
     if (remaining > 0) await sleep(remaining);
   }
 
@@ -2642,29 +2790,74 @@ export class OpenSky implements OpenSkyApi {
     this.lastActionAt.delete(key);
   }
 
-  private async observeAppWindow(source: ResolvedApp, preferFocusedControl = true): Promise<ResolvedApp> {
-    const listed = await this.driver.call("list_windows", { pid: source.pid });
+  private async observeAppWindow(source: ResolvedApp, revealIfNeeded = false, preferFocusedControl = true): Promise<ResolvedApp> {
+    let listed = await this.driver.call("list_windows", { pid: source.pid });
     let windows = windowsFrom(listed.structured);
+    // An explicit named app binding can request normal macOS reopen semantics.
+    // Existing handle observations never launch or reveal a replacement window.
+    if (revealIfNeeded && this.target === "mac" && !source.browser && !source.contentScope &&
+        !windows.some(window => window.pid === source.pid && isOrdinaryWindow(window) &&
+          (window.is_on_screen === true || window.on_current_space === false))) {
+      const apps = await this.listRawApps();
+      const matches = apps.filter(app => app.bundle_id === source.bundleId && Number(app.pid) > 0);
+      if (!source.bundleId || matches.length !== 1 || Number(matches[0]!.pid) !== source.pid) {
+        throw new OpenSkyError("Cannot uniquely identify the running app to reopen; no lifecycle request or input was sent.");
+      }
+      const launched = asRecord((await this.driver.call("launch_app", { bundle_id: source.bundleId })).structured);
+      if (!launched || launchDispatchRefused(launched) || !launchRequestWasSent(launched) ||
+          Number(launched.pid) !== source.pid || launched.bundle_id !== source.bundleId) {
+        throw new OpenSkyError("App reopen outcome is unproven. Observe the current desktop before another lifecycle request; no keyboard or pointer input was sent.");
+      }
+      // Poll the one request's actual window effects; never replay the launch.
+      const deadline = Date.now() + 1_000;
+      do {
+        listed = await this.driver.call("list_windows", { pid: source.pid });
+        windows = windowsFrom(listed.structured);
+        if (windows.some(window => window.pid === source.pid && isOrdinaryWindow(window) &&
+            window.is_on_screen === true && window.on_current_space !== false) || Date.now() >= deadline) break;
+        await sleep(100);
+      } while (true);
+      source = {
+        handle: newTargetHandle(), openedAt: this.nextOpenedAt(),
+        query: source.query, name: source.name, bundleId: source.bundleId,
+        launchPath: source.launchPath, pid: source.pid,
+      };
+    }
     const focused = this.target === "mac" ? asRecord(listed.structured)?.focused_window_id : undefined;
     const focusedControl = this.target === "mac" && preferFocusedControl ? asRecord(listed.structured)?.focused_element_window_id : undefined;
     const focusedSheetParent = this.target === "mac" ? asRecord(listed.structured)?.focused_sheet_parent_window_id : undefined;
-    let next = pickAppWindowId(windows, source.pid, focused, focusedControl, focusedSheetParent);
-    if (this.target === "mac" && next !== undefined && (next === focusedControl || next === focusedSheetParent)) {
-      const probe = await this.driver.call("get_window_state", {
-        pid: source.pid, window_id: next, probe_only: true, include_screenshot: false,
-      });
-      const metadata = asRecord(probe.structured);
-      if (metadata?.probe_only !== true || typeof metadata.window_matched !== "boolean" ||
-          metadata.pid !== source.pid || metadata.window_id !== next) {
-        throw new OpenSkyError("The desktop helper did not confirm an exact metadata-only focused control window probe. No input was sent.");
-      }
-      if (!metadata.window_matched) {
-        if (next === focusedSheetParent) {
-          throw new OpenSkyError("The focused sheet's exact parent window could not be observed. No input was sent; observe again after the dialog settles.");
+    const multipleVisible = windows.filter((window) =>
+      window.pid === source.pid && window.is_on_screen === true &&
+      window.on_current_space !== false && isOrdinaryWindow(window),
+    ).length > 1;
+    let candidates = windows;
+    let next: number | undefined;
+    while (candidates.length > 0) {
+      const candidate = pickAppWindowId(candidates, source.pid, focused, this.target === "mac" ? source.windowId : undefined, focusedControl, focusedSheetParent);
+      if (candidate === undefined) break;
+      // WindowServer can stack a Safari auxiliary surface above its document
+      // window. An app-wide observation may choose the next visible window,
+      // but only after proving that the top candidate has no matching AXWindow.
+      if (this.target === "mac" && (multipleVisible || candidate === focusedControl || candidate === focusedSheetParent)) {
+        const probe = await this.driver.call("get_window_state", {
+          pid: source.pid, window_id: candidate,
+          probe_only: true, include_screenshot: false,
+        });
+        const metadata = asRecord(probe.structured);
+        if (metadata?.probe_only !== true || typeof metadata.window_matched !== "boolean" ||
+          metadata.pid !== source.pid || metadata.window_id !== candidate) {
+          throw new OpenSkyError("The desktop helper did not confirm an exact metadata-only window probe. Rebuild OpenSky Driver before observing this app with multiple visible windows.");
         }
-        windows = windows.filter(window => window.window_id !== next);
-        next = pickAppWindowId(windows, source.pid, focused);
+        if (!metadata.window_matched) {
+          if (candidate === focusedSheetParent) {
+            throw new OpenSkyError("The focused sheet's exact parent window could not be observed. No input was sent; observe again after the dialog settles.");
+          }
+          candidates = candidates.filter((window) => window.window_id !== candidate);
+          continue;
+        }
       }
+      next = candidate;
+      break;
     }
     if (next === undefined) {
       throw new OpenSkyError("The app has no unambiguous frontmost visible window. No input was sent; reveal the intended window and observe again.");
@@ -2740,6 +2933,44 @@ export class OpenSky implements OpenSkyApi {
     if (element?.element_token) target.element_token = element.element_token;
     if (snapshot?.snapshotId) target.snapshot_id = snapshot.snapshotId;
     return target;
+  }
+
+  private async recoverRecreatedButton(
+    resolved: ResolvedApp, elementIndex: number, previous: StoredSnapshot,
+  ): Promise<Record<string, unknown> | undefined> {
+    const key = windowKey(resolved);
+    const original = previous.elements.find(element => element.element_index === elementIndex);
+    const eligible = (element: SnapshotElement) => element.role === "AXButton"
+      && element.enabled !== false && element.readOnly !== true
+      && element.actions?.includes("AXPress") === true;
+    if (!original?.identifier || !eligible(original) || !resolved.windowId
+      || previous.elements.filter(element => element.identifier === original.identifier).length !== 1
+      || this.memory.trees[key] !== previous) return undefined;
+    await this.requireUsableInputWindow(resolved);
+    const snapshot = await this.snapshotWindow(resolved, { includeScreenshot: false });
+    // Mac currently publishes elements_complete=false even for uncapped
+    // walks. Require all discovered nodes returned and no explicit cap marker;
+    // unknown global AX completeness alone does not prove truncation.
+    if (snapshot.degraded || snapshot.totalElementCount === undefined
+      || snapshot.totalElementCount !== snapshot.returnedElementCount
+      || snapshot.tree.includes("AX tree truncated") || !snapshot.snapshotId
+      || this.memory.trees[key] !== previous) return undefined;
+    const matches = snapshot.elements.filter(element => element.identifier === original.identifier);
+    if (matches.length !== 1) return undefined;
+    const current = matches[0]!;
+    const sameFrame = original.frame && current.frame && original.frame.w > 0 && original.frame.h > 0
+      && ["x", "y", "w", "h"].every(field =>
+        original.frame![field as keyof NonNullable<SnapshotElement["frame"]>] ===
+        current.frame![field as keyof NonNullable<SnapshotElement["frame"]>]);
+    if (!eligible(current) || current.label !== original.label || !sameFrame
+      || current.element_index !== elementIndex || !current.element_token) return undefined;
+    this.memory.trees[key] = {
+      tree: snapshot.tree, elements: snapshot.elements, snapshotId: snapshot.snapshotId,
+      observationBaseline: previous.observationBaseline ?? {
+        tree: previous.tree, elements: previous.elements, viewKind: previous.viewKind,
+      },
+    };
+    return this.elementTarget(resolved, elementIndex);
   }
 
   private browserElement(resolved: ResolvedApp, elementIndex: number, action: string): SnapshotElement {
@@ -2842,9 +3073,10 @@ export class OpenSky implements OpenSkyApi {
     elementIndex: number,
     key: string,
     modifiers: string[] = [],
+    windowObservation: Record<string, unknown> = {},
   ): Promise<void> {
     const target = this.elementTarget(resolved, elementIndex);
-    const payload = {
+    const payload = { ...windowObservation,
       pid: resolved.pid,
       window_id: resolved.windowId,
       key,
@@ -3046,6 +3278,53 @@ export function findWithContext(haystack: string, text: string, prefix?: string,
   return found + (prefix?.length ?? 0);
 }
 
+/** Accept only bounded, coherent observation data for this exact native target. */
+export function parseTextSelection(value: unknown, pid: number, windowId: number): TextSelection | undefined {
+  const selection = asRecord(value);
+  const range = asRecord(selection?.range);
+  if (!selection || selection.pid !== pid || selection.window_id !== windowId || !range ||
+      typeof selection.role !== "string" || !/^AX[A-Za-z]+$/.test(selection.role) || /Secure/.test(selection.role) ||
+      typeof selection.text !== "string" || typeof selection.text_truncated !== "boolean") return undefined;
+  const start = range.start_utf16;
+  const length = range.length_utf16;
+  if (typeof start !== "number" || typeof length !== "number" || !Number.isSafeInteger(start) ||
+      !Number.isSafeInteger(length) || start < 0 || length < 0 || !Number.isSafeInteger(start + length)) return undefined;
+  const text = selection.text;
+  if (text.length > 2048 || (selection.text_truncated ? text.length >= length : text.length !== length)) return undefined;
+  // Reject malformed UTF-16 rather than turning a split surrogate into evidence.
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    if (ch.length === 1 && code >= 0xd800 && code <= 0xdfff) return undefined;
+  }
+  return { role: selection.role, startUTF16: start, lengthUTF16: length, text, textTruncated: selection.text_truncated };
+}
+
+function selectionObservation(selection?: TextSelection): string {
+  if (!selection) return "";
+  const range = `UTF-16 ${selection.startUTF16}+${selection.lengthUTF16}`;
+  return selection.lengthUTF16 === 0
+    ? `\nText selection: none (caret ${selection.startUTF16}, UTF-16).`
+    : `\nSelected text (${range}${selection.textTruncated ? "; text truncated to 2048 UTF-16 units" : ""}): ${JSON.stringify(selection.text)}`;
+}
+
+/** Observation only: the exact native window snapshot starts with AppKit's
+ * detached inline item-name editor. Never infer focus or mint input authority. */
+export function inlineItemEditObservation(tree: string, elements: SnapshotElement[]): string {
+  const root = tree.split("\n").find(line => line.trim());
+  const match = root?.match(/^- \[(\d+)\] AXTextField\b/);
+  if (!match) return "";
+  const editors = elements.filter(element => element.role === "AXTextField" &&
+    element.identifier === "ShrinkToFit Text Field" && element.settable === true &&
+    element.enabled === true && !element.url);
+  if (editors.length !== 1 || editors[0]!.element_index !== Number(match[1])) return "";
+  return `\nInline item-name editor [${editors[0]!.element_index}] is present. Return finishes the edit; observe the item again before opening it.`;
+}
+
+function isNativeFileItemLabel(element: SnapshotElement): boolean {
+  return element.role === "AXTextField" && element.settable === true &&
+    element.url?.startsWith("file:") === true && element.actions?.includes("AXOpen") === true;
+}
+
 export function diffTrees(
   previousTree: string,
   previousElements: SnapshotElement[],
@@ -3072,11 +3351,15 @@ export function diffTrees(
       reparented.has(index) ||
       before.label !== element.label ||
       before.value !== element.value ||
+      before.placeholder !== element.placeholder ||
+      before.description !== element.description ||
+      before.formattedValue !== element.formattedValue ||
       before.role !== element.role ||
       before.identifier !== element.identifier ||
       before.url !== element.url ||
       before.enabled !== element.enabled ||
       before.selected !== element.selected ||
+      before.selectionViaParent !== element.selectionViaParent ||
       before.checked !== element.checked ||
       before.focused !== element.focused ||
       before.expanded !== element.expanded
@@ -3113,7 +3396,6 @@ export function diffTrees(
     displayDiff.push(`Removed display rows: ${removedDescendantRows} (within removed elements)`);
   }
 
-
   if (added.length === 0 && changed.length === 0 && removed.length === 0 && displayDiff.length === 0) {
     return "No accessibility changes.";
   }
@@ -3126,7 +3408,7 @@ export function diffTrees(
     added.length
       ? nextElements
           .filter((element) => !prev.has(element.element_index))
-          .map((element) => `+ ${treeLineForIndex(nextTree, element.element_index) ?? formatElement(element)}`)
+          .map((element) => `+ ${formatAddedElement(nextTree, element)}`)
           .join("\n")
       : "",
     changed.length
@@ -3137,11 +3419,15 @@ export function diffTrees(
               reparented.has(element.element_index) ||
               before.label !== element.label ||
               before.value !== element.value ||
+              before.placeholder !== element.placeholder ||
+              before.description !== element.description ||
+              before.formattedValue !== element.formattedValue ||
               before.role !== element.role ||
               before.identifier !== element.identifier ||
               before.url !== element.url ||
               before.enabled !== element.enabled ||
               before.selected !== element.selected ||
+      before.selectionViaParent !== element.selectionViaParent ||
               before.checked !== element.checked ||
               before.focused !== element.focused ||
               before.expanded !== element.expanded
@@ -3157,6 +3443,8 @@ export function diffTrees(
     .filter(Boolean)
     .join("\n");
 }
+
+
 function formatRetainedElement(tree: string, element: SnapshotElement): string {
   const marker = new RegExp(`^\\s*-\\s+\\[${element.element_index}\\]\\s+${element.role}(?:\\s|$)`);
   const rows = quotedTreeRows(tree).filter(({line, closed}) => closed && marker.test(line));
@@ -3212,10 +3500,24 @@ function displayOnlyRows(tree: string): Map<string, string> {
   return rows;
 }
 
-
 function treeLineForIndex(tree: string, index: number): string | undefined {
-  const marker = `[${index}]`;
-  return tree.split("\n").find((line) => line.includes(marker))?.trim().replace(/^-\s+/, "");
+  const marker = new RegExp(`^\\s*-\\s+\\[${index}\\](?:\\s|$)`);
+  const lines = tree.split("\n").filter(line => marker.test(line));
+  // Literal document content can resemble a tree row. Ambiguous rows must
+  // use the structured control rather than borrow a content line's hints.
+  return lines.length === 1 ? lines[0]!.trim().replace(/^-\s+/, "") : undefined;
+}
+
+function formatAddedElement(tree: string, element: SnapshotElement): string {
+  const multiline = [element.label, element.value, element.formattedValue]
+    .some(value => value?.includes("\n") || value?.includes("\r"));
+  const line = multiline ? undefined : treeLineForIndex(tree, element.element_index);
+  if (line !== undefined) return line;
+  // A rendered line is only the beginning of a multiline field. Serialize
+  // the complete structured value so its body remains evidence, never rows.
+  const actions = element.actions?.length ? ` [actions=[${element.actions.join(",")}]]` : "";
+  const settable = element.settable === true ? " [settable]" : "";
+  return `${formatElement(element)}${actions}${settable}`;
 }
 
 function formatIndexRanges(indices: number[]): string {
@@ -3231,14 +3533,24 @@ function formatIndexRanges(indices: number[]): string {
 }
 
 function formatElement(element: SnapshotElement): string {
-  const primary = JSON.stringify(element.label ?? element.value ?? "");
-  const value = element.value !== undefined && element.value !== element.label
-    ? ` value=${JSON.stringify(element.value)}`
+  const displayValue = element.formattedValue ?? element.value;
+  const primaryValue = element.label === element.value
+    ? displayValue : element.label ?? displayValue;
+  const primary = JSON.stringify(primaryValue ?? "");
+  const value = displayValue !== undefined && displayValue !== primaryValue
+    ? ` value=${JSON.stringify(displayValue)}`
     : "";
-  const identifier = element.identifier ? ` id=${JSON.stringify(element.identifier)}` : "";
+  // This metadata is constructed separately from the serialized body. Omit
+  // only generated IDs here; literal content and raw binding identity remain.
+  const identifier = element.identifier && !/^_NS:\d+$/.test(element.identifier)
+    ? ` id=${JSON.stringify(element.identifier)}` : "";
   const url = displayUrlAttribute(element.url);
   const semantics = semanticAttributes(element);
-  return `[${element.element_index}] ${element.role ?? "AXUnknown"} ${primary}${value}${identifier}${url}${semantics}`;
+  const placeholder = element.placeholder !== undefined
+    ? ` placeholder=${JSON.stringify(element.placeholder)}` : "";
+  const description = element.description !== undefined && element.description !== element.label
+    ? ` description=${JSON.stringify(element.description)}` : "";
+  return `[${element.element_index}] ${element.role ?? "AXUnknown"} ${primary}${value}${identifier}${url}${semantics}${placeholder}${description}`;
 }
 
 function findApp(apps: Record<string, unknown>[], query: string): Record<string, unknown> | undefined {
@@ -3384,7 +3696,7 @@ export function pickOrdinaryWindowId(windows: Record<string, unknown>[]): number
 /** App-wide observations prefer an exact eligible focused window when supplied,
  * then actual stacking order, never title/area scoring.
  * This deliberately differs from opening a specific document window. */
-export function pickAppWindowId(windows: Record<string, unknown>[], pid: number, focusedWindowId?: unknown, focusedControlWindowId?: unknown, focusedSheetParentWindowId?: unknown): number | undefined {
+export function pickAppWindowId(windows: Record<string, unknown>[], pid: number, focusedWindowId?: unknown, retainedWindowId?: number, focusedControlWindowId?: unknown, focusedSheetParentWindowId?: unknown): number | undefined {
   const visible = windows.filter(window => window.pid === pid && window.is_on_screen === true &&
     window.on_current_space !== false && (window.layer === undefined || window.layer === 0) &&
     Number.isSafeInteger(window.window_id) && Number(window.window_id) > 0 && isOrdinaryWindow(window));
@@ -3401,6 +3713,14 @@ export function pickAppWindowId(windows: Record<string, unknown>[], pid: number,
   const focused = Number.isSafeInteger(focusedWindowId) && Number(focusedWindowId) > 0
     ? visible.filter(window => window.window_id === focusedWindowId) : [];
   if (focused.length === 1) return focused[0]!.window_id as number;
+  // A native menu can temporarily remove AXFocusedWindow while its document
+  // remains key. When focus is explicitly unavailable (null), keep the
+  // eligible observed window until focus is reported
+  // again; stale CG stacking must not switch an app handle to its sibling.
+  if (focusedWindowId === null && retainedWindowId !== undefined) {
+    const retained = visible.filter(window => window.window_id === retainedWindowId);
+    if (retained.length === 1) return retainedWindowId;
+  }
   if (visible.length === 1) return visible[0]!.window_id as number;
   if (!visible.length || visible.some(window => typeof window.z_index !== "number" || !Number.isFinite(window.z_index))) return undefined;
   const top = Math.max(...visible.map(window => window.z_index as number));
@@ -3447,13 +3767,19 @@ function normalizeElements(value: unknown): SnapshotElement[] {
         element_index: item.element_index,
         driver_index: item.element_index,
         element_token: optionalString(item.element_token),
+        nativeObjectId: optionalString(item.native_object_id),
         role: optionalString(item.role),
         label: optionalString(item.label),
+        labelSource: optionalString(item.label_source),
         value: scalarText(item.value),
+        placeholder: optionalString(item.placeholder ?? item.placeholder_value),
+        description: optionalString(item.description),
+        formattedValue: optionalString(item.formatted_value),
         identifier: optionalString(item.identifier ?? item.id),
         url: optionalString(item.url ?? item.document_url),
         actions: asArray<string>(item.actions),
         settable: optionalBoolean(item.settable ?? item.is_settable ?? item.value_settable ?? item.is_value_settable ?? item.editable),
+        selectionViaParent: item.selection_via_parent === true ? true : undefined,
         enabled: optionalBoolean(item.enabled ?? item.is_enabled),
         selected: optionalBoolean(item.selected ?? item.is_selected),
         checked: optionalBoolean(item.checked ?? item.is_checked),
@@ -3710,13 +4036,57 @@ export function compactBrowserOutline(outline: string, maxCharacters = 10_000): 
   return { text: kept.join("\n"), omittedLines: lines.length - kept.length, abbreviatedContainers };
 }
 
+/** A closed, unselected Mac menu bar opens through its primary Press.
+ * Pick/Cancel describe an already-open menu; native CU exposes them there.
+ * Keep unknown state and non-menubar actions intact, and never infer openness
+ * from a display title. The original driver metadata is not mutated.
+ */
+export function projectClosedMenuActions(tree: string, elements: SnapshotElement[]): { tree: string; elements: SnapshotElement[] } {
+  let projected = tree;
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const visible = elements.map(element => {
+    if (element.role !== "AXMenuBarItem" || element.selected !== false || !element.actions?.includes("AXPress")) return element;
+    const actions = element.actions.filter(action => action !== "AXPick" && action !== "AXCancel");
+    if (actions.length === element.actions.length) return element;
+    const rendered = element.actions.map(action => action.replace(/^AX/, "").toLowerCase());
+    const readable = actions.map(action => action.replace(/^AX/, "").toLowerCase());
+    const metadata = new RegExp(
+      `(^[ \t]*- \\[${element.element_index}\\] AXMenuBarItem\\b[^\\n]*)` +
+      `actions=\\[${escape(rendered.join(","))}\\]\\](?=\\n|$)`, "gm",
+    );
+    projected = projected.replace(metadata, (_match, prefix: string) => `${prefix}actions=[${readable.join(",")}]]`);
+    return { ...element, actions };
+  });
+  return { tree: projected, elements: visible };
+}
+
 /** Keep top-level menu-bar context while dropping enormous, closed menu trees. */
-export function pruneMenuSubtrees(tree: string): { tree: string; hiddenIndices: Set<number> } {
+export function pruneMenuSubtrees(tree: string, visibleMenus: ReadonlySet<number> = new Set()): { tree: string; hiddenIndices: Set<number> } {
   if (!tree) return { tree, hiddenIndices: new Set() };
   const kept: string[] = [];
   const hiddenIndices = new Set<number>();
   let menuBarIndent: number | undefined;
-  for (const line of tree.split("\n")) {
+  const lines = tree.split("\n");
+  const visibleLines = new Set<number>();
+  for (let start = 0; start < lines.length; start++) {
+    const menu = lines[start]!.match(/^(\s*)- \[(\d+)\] AXMenu\b/);
+    if (!menu || !visibleMenus.has(Number(menu[2]))) continue;
+    const depth = menu[1]!.length;
+    let hiddenSubmenuDepth: number | undefined;
+    visibleLines.add(start);
+    for (let row = start + 1; row < lines.length; row++) {
+      const line = lines[row]!;
+      const structural = /^\s*-\s+/.test(line);
+      const indent = line.match(/^\s*/)?.[0].length ?? 0;
+      if (structural && indent <= depth) break;
+      if (structural && hiddenSubmenuDepth !== undefined && indent <= hiddenSubmenuDepth) hiddenSubmenuDepth = undefined;
+      const child = line.match(/^\s*- (?:\[(\d+)\] )?AXMenu\b/);
+      if (child && !visibleMenus.has(Number(child[1]))) hiddenSubmenuDepth = indent;
+      if (hiddenSubmenuDepth === undefined) visibleLines.add(row);
+    }
+  }
+  for (const [row, line] of lines.entries()) {
+    if (visibleLines.has(row)) { kept.push(line); continue; }
     const indent = line.match(/^\s*/)?.[0].length ?? 0;
     if (/^\s*-\s+(?:\[\d+\]\s+)?AXMenuBar\b/.test(line)) {
       menuBarIndent = indent;
@@ -3741,6 +4111,41 @@ export function pruneMenuSubtrees(tree: string): { tree: string; hiddenIndices: 
     kept.push(line);
   }
   return { tree: kept.join("\n"), hiddenIndices };
+}
+
+/** A selected menubar branch with a visible popup is the active observation.
+ * Underlying app rows remain cached by the driver but are absent from this
+ * presentation and its public input map until the menu is dismissed.
+ */
+export function projectActiveMenu(
+  tree: string,
+  elements: SnapshotElement[],
+  visibleMenus: ReadonlySet<number>,
+  alreadyHidden: ReadonlySet<number> = new Set(),
+): { tree: string; hiddenIndices: Set<number>; active: boolean } {
+  const lines = tree.split("\n");
+  const selected = new Set(elements.filter(e => e.role === "AXMenuBarItem" && e.selected === true).map(e => e.element_index));
+  const branches: Array<{start:number;end:number;indent:number}> = [];
+  for (let start = 0; start < lines.length; start++) {
+    const root = lines[start]!.match(/^(\s*)- \[(\d+)\] AXMenuBarItem\b/);
+    if (!root || !selected.has(Number(root[2]))) continue;
+    const indent = root[1]!.length;let end = start + 1;let visible = false;
+    while (end < lines.length) {
+      const line = lines[end]!;const depth = line.match(/^\s*/)?.[0].length ?? 0;
+      if (/^\s*-\s+/.test(line) && depth <= indent) break;
+      const menu = line.match(/^\s*- \[(\d+)\] AXMenu\b/);
+      if (menu && visibleMenus.has(Number(menu[1]))) visible = true;
+      end++;
+    }
+    if (visible) branches.push({start,end,indent});
+  }
+  const hiddenIndices = new Set(alreadyHidden);
+  if (branches.length !== 1) return {tree,hiddenIndices,active:false};
+  const {start,end,indent} = branches[0]!;
+  const focused = lines.slice(start,end).map(line => line.slice(Math.min(indent,line.match(/^\s*/)?.[0].length ?? 0))).join("\n");
+  const visibleIndices = indicesInTree(focused);
+  for (const element of elements) if (!visibleIndices.has(element.element_index)) hiddenIndices.add(element.element_index);
+  return {tree:focused,hiddenIndices,active:true};
 }
 
 /** Return the largest AXWebArea subtree plus its containing window identity. */
@@ -3910,12 +4315,29 @@ export function formatTargetIdentity(target: TargetIdentity): string {
   return `Target ${target.handle}: ${target.resourceKind} ${subject} [${freshness}; request=${document.requestRelation}; window=${window}${tab}]`;
 }
 
-/** Flatten Cua's multi-line custom-action descriptor into one readable action. */
-export function sanitizeTreeText(tree: string): string {
-  const sanitized = tree.replace(
-    /,name:([^\n\]]+)\ntarget:[^\n]*\nselector:[^\]]*/g,
-    (_match, name: string) => `,${name.trim()}`,
-  );
+/** Flatten only verified action metadata; labels, values and raw tokens stay intact. */
+export function sanitizeTreeText(tree: string, elements: SnapshotElement[] = []): string {
+  let sanitized = tree;
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  for (const element of elements) {
+    if (!element.role || !element.actions?.length) continue;
+    const rendered = element.actions.map(action => action.replace(/^AX/, "").toLowerCase());
+    const readable = rendered.flatMap((action, index) => {
+      if (element.actions!.indexOf(element.actions![index]!) !== index) return [];
+      const descriptor = action.match(/^name:([^\n]+)\ntarget:[^\n]*\nselector:[^\n]*$/);
+      return [descriptor?.[1]?.trim() || action];
+    });
+    if (readable.length === rendered.length && readable.every((action, index) => action === rendered[index])) continue;
+    // The renderer puts actions last in this element's metadata. Require the
+    // complete raw list, current element index and role before rewriting it;
+    // never search-and-replace descriptor-like text inside an editable value.
+    const metadata = new RegExp(
+      `(^[ \\t]*- \\[${element.element_index}\\] ${escape(element.role)}\\b[^\\n]*)` +
+        `actions=\\[${escape(rendered.join(","))}\\]\\](?=\\n|$)`, "gm",
+    );
+    sanitized = sanitized.replace(metadata, (_match, prefix: string) =>
+      `${prefix}actions=[${readable.join(",")}]]`);
+  }
   return sanitized.split("\n").map(compactAuxiliaryHelp).join("\n");
 }
 
@@ -3939,7 +4361,7 @@ function primaryDocumentFingerprint(elements: SnapshotElement[]): string | undef
 }
 
 /**
- * Keep actionable AX hints while omitting Cua's ubiquitous web-node actions.
+ * Keep useful AX hints while compacting implicit selection and private IDs.
  * The structured element map retains every action, so this only reduces the
  * model-facing representation; it does not remove capabilities or provenance.
  */
@@ -3948,30 +4370,86 @@ export function compactTreeActionHints(tree: string, elements: SnapshotElement[]
   return tree
     .split("\n")
     .map((line) => {
-      const rawIndex = line.match(/\[(\d+)\]/)?.[1];
-      if (rawIndex === undefined || !line.includes("actions=[")) return line;
+      const control = line.match(/^[ \t]*- \[(\d+)\] (AX\w+)\b/);
+      const rawIndex = control?.[1];
+      if (rawIndex === undefined) return line;
       const element = byIndex.get(Number(rawIndex));
-      const role = element?.role ?? line.match(/\b(AX\w+)\b/)?.[1] ?? "";
+      const role = element?.role ?? control![2]!;
+      if (role !== control![2]) return line;
+      if ([element?.value, element?.formattedValue, element?.label].some(value => value?.includes("\n"))) return line;
       const rawActions = element?.actions ?? [];
+      let compact = compactGeneratedIdentifier(line, element);
+      const selectable = role === "AXRow" && rawActions.some(action =>
+        /^(?:AX)?Show(?:Default|Alternate)UI$/i.test(action));
       const isEditableText = isLikelyEditableText(element, role, line, rawActions);
-      return line.replace(/\s*\[actions=\[([^\]]*)\]\]/i, (_match, rawActions: string) => {
+      compact = compact.replace(/( \[| )actions=\[([^\]\n]*)\]\]$/i, (_match, opening: string, rawActions: string) => {
         const actions = rawActions
           .split(",")
           .map((action) => action.trim())
           .filter(Boolean)
+          .filter(action => !selectable || !/^show(?:default|alternate)ui$/i.test(action))
           .filter((action) => action.toLowerCase() !== "scrolltovisible")
           .filter((action) => !isEditableText || action.toLowerCase() !== "press")
           .filter((action) => {
             if (action.toLowerCase() !== "showmenu") return true;
             return !isEditableText && /AX(?:MenuButton|PopUpButton|Button)\b/i.test(role);
           });
-        return actions.length > 0 ? ` [actions=[${actions.join(",")}]]` : "";
+        return actions.length > 0 ? `${opening}actions=[${actions.join(",")}]]` : opening === " [" ? "" : "]";
       });
+      return selectable && !compact.endsWith(" [selectable]") ? `${compact} [selectable]` : compact;
     })
     .join("\n");
 }
 
+/** Only the trailing, observed metadata block can contain a private ID. */
+function compactGeneratedIdentifier(line: string, element?: SnapshotElement): string {
+  const id = element?.identifier;
+  if (!id || !/^_NS:\d+$/.test(id)) return line;
+  if ([element.value, element.formattedValue, element.label].some(value => value?.includes("\n"))) return line;
+  const prefix = ` [id=${id}`;
+  const at = line.lastIndexOf(prefix);
+  if (at < 0) return line;
+  const tail = line.slice(at + prefix.length);
+  if (tail === "]") return line.slice(0, at);
+  // Unknown/multiline attribute shapes stay verbatim. Stable semantic IDs and
+  // the raw structured identifier used for binding are never changed.
+  if (!/^ (?:help="[^"\n]*" )?actions=\[[^\]\n]*\](?: settable)?\](?: \[value="(?:[^"\\\n]|\\[^\n])*"\])?$/.test(tail)) return line;
+  return `${line.slice(0, at)} [${tail.trimStart()}`;
+}
+
 /** Reuse only unambiguous public element indices when the helper renumbers its walk. */
+/** A single visible static descendant can name an otherwise anonymous row/cell.
+ * This is a semantic observation hint, not native object identity or authority.
+ * Duplicates still fail the existing uniqueness check; inputs use fresh tokens.
+ */
+export function nameAnonymousContainers(tree: string, elements: SnapshotElement[]): SnapshotElement[] {
+  if (tree.includes("AX tree truncated")) return elements;
+  const rows = tree.split("\n").flatMap(line => {
+    const match = line.match(/^(\s*)- (?:\[(\d+)\] )?(AX\w+)\b(.*)$/);
+    return match ? [{depth: match[1]!.length, index: match[2] === undefined ? undefined : Number(match[2]), role: match[3]!, tail: match[4]!}] : [];
+  });
+  return elements.map(element => {
+    if (!/^AX(?:Row|Cell)$/.test(element.role ?? "") || element.label || element.identifier) return element;
+    const start = rows.findIndex(row => row.index === element.element_index && row.role === element.role);
+    if (start < 0) return element;
+    const labels: string[] = [];
+    for (let n = start + 1; n < rows.length && rows[n]!.depth > rows[start]!.depth; n++) {
+      const row = rows[n]!;
+      // Never name a container from editable data or a multiple-label subtree.
+      if (/^AX(?:TextField|TextArea|ComboBox|SearchField)$/.test(row.role)) return element;
+      if (row.role !== "AXStaticText") continue;
+      const quoted = row.tail.match(/^\s*=\s*("(?:[^"\\]|\\.)*")\s*(?:\[.*\])?$/)?.[1];
+      if (!quoted) return element;
+      try {
+        const label: unknown = JSON.parse(quoted);
+        if (typeof label !== "string" || !label.trim() || label.length > 256) return element;
+        labels.push(label);
+      } catch { return element; }
+    }
+    return labels.length === 1 ? {...element, label: labels[0], labelSource: "contents"} : element;
+  });
+}
+
 export function stabilizeElementIndices(
   previous: SnapshotElement[],
   current: SnapshotElement[],
@@ -3986,21 +4464,37 @@ export function stabilizeElementIndices(
   }
   const previousIdentityCounts = countElementIdentities(previous);
   const currentIdentityCounts = countElementIdentities(current);
+  const previousSemanticCounts = countElementIdentities(previous, semanticElementIdentity);
+  const currentSemanticCounts = countElementIdentities(current, semanticElementIdentity);
   const unused = new Set(previous.map((element) => element.element_index));
   let nextIndex = Math.max(-1, ...previous.map((element) => element.element_index)) + 1;
-  return current.map((element) => {
+  // Reserve every proven native match first. A recreated unique semantic
+  // wrapper must not take the index of a still-live object renamed this read.
+  const matches = current.map((element) => {
     const candidates = previous.filter((prior) => unused.has(prior.element_index) &&
       // Do not transfer a read-only identity onto an actionable row with the same label.
       (prior.readOnly === true) === (element.readOnly === true));
     const identity = elementIdentity(element);
-    // A role/label pair such as "Expand" is not object identity. Reusing one
-    // duplicate's public index after a sibling is inserted or removed silently
-    // retargets every later duplicate. Preserve an index only when the semantic
-    // identity is unique in both snapshots; otherwise issue a fresh one.
+    // Native aliases and duplicate semantic names remain ambiguous.
     const prior = previousIdentityCounts.get(identity) === 1 && currentIdentityCounts.get(identity) === 1
       ? candidates.find((candidate) => elementIdentity(candidate) === identity)
       : undefined;
     if (prior) unused.delete(prior.element_index);
+    return prior;
+  });
+  return current.map((element, index) => {
+    let prior = matches[index];
+    if (!prior && element.role !== "AXRadioButton" &&
+      (!element.nativeObjectId || currentIdentityCounts.get(elementIdentity(element)) === 1)) {
+      const semantic = semanticElementIdentity(element);
+      if (previousSemanticCounts.get(semantic) === 1 && currentSemanticCounts.get(semantic) === 1) {
+        prior = previous.find(candidate => unused.has(candidate.element_index) &&
+          (candidate.readOnly === true) === (element.readOnly === true) &&
+          (!candidate.nativeObjectId || previousIdentityCounts.get(elementIdentity(candidate)) === 1) &&
+          semanticElementIdentity(candidate) === semantic);
+        if (prior) unused.delete(prior.element_index);
+      }
+    }
     return {
       ...element,
       driver_index: element.driver_index ?? element.element_index,
@@ -4009,19 +4503,42 @@ export function stabilizeElementIndices(
   });
 }
 
-function countElementIdentities(elements: SnapshotElement[]): Map<string, number> {
+function countElementIdentities(elements: SnapshotElement[], identityFor = elementIdentity): Map<string, number> {
   const counts = new Map<string, number>();
   for (const element of elements) {
-    const identity = elementIdentity(element);
+    const identity = identityFor(element);
     counts.set(identity, (counts.get(identity) ?? 0) + 1);
   }
   return counts;
 }
 
+function nativeWindowObservationArgs(timeout: number | undefined): Record<string, unknown> {
+  if (timeout === undefined) return {};
+  if (!Number.isInteger(timeout) || timeout < 50 || timeout > 1000) {
+    throw invalidParams("window_change_timeout_ms must be an integer between50 and1000");
+  }
+  return { window_change_timeout_ms: timeout };
+}
+
 function elementIdentity(element: SnapshotElement): string {
+  // A native object can change its label or identifier as selection changes.
+  // Current tokens still authorize input; duplicated object IDs remain
+  // ambiguous under the same uniqueness check as semantic fallback identities.
+  if (element.nativeObjectId) {
+    return [element.role ?? "", "native-object", element.nativeObjectId].join("\u0000");
+  }
+  return semanticElementIdentity(element);
+}
+
+function semanticElementIdentity(element: SnapshotElement): string {
+  // The driver explicitly distinguishes an editable value from a control's
+  // name. Keep anonymous fields anonymous as they are edited; uniqueness in
+  // both snapshots is still required, and current tokens still authorize input.
+  const label = element.labelSource === "value" && /^AX(?:TextField|TextArea|ComboBox|SearchField)$/i.test(element.role ?? "")
+    ? "" : element.label ?? "";
   return element.identifier
     ? [element.role ?? "", "id", element.identifier].join("\u0000")
-    : [element.role ?? "", "label", element.label ?? ""].join("\u0000");
+    : [element.role ?? "", "label", label].join("\u0000");
 }
 
 function remapTreeIndices(tree: string, elements: SnapshotElement[]): string {
@@ -4062,8 +4579,16 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
         const element = byIndex.get(Number(rawIndex));
         if (!element) return line;
         const additions: string[] = [];
+        // These names were derived from exactly one static descendant, not
+        // native identity. Surface the observed hint beside the input index.
+        if (element.labelSource === "contents" && /^AX(?:Row|Cell)$/.test(element.role ?? "")
+          && element.label && !line.includes(`label=${JSON.stringify(element.label)}`)) {
+          additions.push(`label=${JSON.stringify(element.label)}`);
+        }
         const renderedValue = element.value === undefined ? undefined : JSON.stringify(element.value);
-        if (isLikelyEditableText(element, element.role ?? "", line, element.actions ?? [])) {
+        if (isNativeFileItemLabel(element)) {
+          if (!line.includes("file item label")) additions.push("file item label");
+        } else if (isLikelyEditableText(element, element.role ?? "", line, element.actions ?? [])) {
           if (!/\b(?:editable|settable)\b/i.test(metadata)) additions.push("editable");
           if (!/\btype-directly\b/i.test(metadata)) additions.push("type-directly");
         }
@@ -4075,6 +4600,7 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
         ) {
           additions.push(`value=${JSON.stringify(element.value)}`);
         }
+        if (element.selectionViaParent === true && !metadata.includes("selectable via parent")) additions.push("selectable via parent");
         if (element.enabled === false && !/\bdisabled\b/i.test(metadata)) additions.push("disabled");
         if (element.selected === true && element.value === undefined && !/\bselected\b/i.test(metadata)) {
           additions.push("selected");
@@ -4117,6 +4643,8 @@ function isLikelyEditableText(
 
 function semanticAttributes(element: SnapshotElement): string {
   const attributes: string[] = [];
+  if (isNativeFileItemLabel(element)) attributes.push("file item label");
+  if (element.selectionViaParent === true) attributes.push("selectable via parent");
   if (element.enabled === false) attributes.push("disabled");
   if (element.selected === true && element.value === undefined) attributes.push("selected");
   if (element.checked !== undefined) attributes.push(`checked=${element.checked}`);

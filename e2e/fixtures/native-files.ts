@@ -1,5 +1,6 @@
 import { compileMacSwiftHelper } from "./mac-swift-compiler.js";
-import type { PublicSdk as OpenSky } from "./sdk.js";
+import type { createCua } from "opensky-cua";
+type OpenSky = Parameters<typeof createCua>[0];
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";

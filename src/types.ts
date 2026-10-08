@@ -61,6 +61,8 @@ export interface AppState {
   targetHandle: TargetHandle;
   screenshot: Screenshot | null;
   text: string;
+  /** Optional current native selection; observation only, no input authority. */
+  textSelection?: TextSelection;
   /** True when the exact window was observed but its AX tree could not be resolved. */
   degraded?: boolean;
   degradedReason?: string;
@@ -71,6 +73,15 @@ export interface AppState {
     debuggerHttpUrl?: string;
     providerTabId: string;
   };
+}
+
+export interface TextSelection {
+  role: string;
+  /** UTF-16 offsets as reported by the native control. */
+  startUTF16: number;
+  lengthUTF16: number;
+  text: string;
+  textTruncated: boolean;
 }
 
 /** One exact actionable tab returned by existing-browser discovery. */
@@ -124,7 +135,7 @@ export interface OpenSky {
   get_app_state(args: {
     app: string;
     disableDiff?: boolean;
-    /** Native Mac rows: visible when attested; all retains loaded offscreen rows. */
+    /** Native Mac rows: visible by default when attested; all retains loaded offscreen rows. */
     collectionScope?: "visible" | "all";
     includeScreenshot?: boolean;
     /** Native window capture only when false: retain the last AX observation,
@@ -181,6 +192,8 @@ export interface OpenSky {
     y?: number;
     mouse_button?: MouseButton;
     click_count?: number;
+    /** Mac native coordinate clicks only; omitted keeps legacy background delivery. */
+    delivery_mode?: "background" | "foreground";
   }): Promise<void>;
   drag(args: ({
     app: string;
@@ -208,11 +221,14 @@ export interface OpenSky {
     app: string;
     element_index: number;
     action: string;
+    /** Optional native auxiliary window observation budget in milliseconds. */
+    window_change_timeout_ms?: number;
   }): Promise<void>;
   press_key(args: {
     app: string;
-    scope?: "window" | "app";
     key: string;
+    /** Native Mac ambient keyboard actions may explicitly follow app scope. */
+    scope?: "window" | "app";
     element_index?: number;
     x?: number;
     y?: number;
@@ -240,8 +256,9 @@ export interface OpenSky {
   }): Promise<void>;
   type_text(args: {
     app: string;
-    scope?: "window" | "app";
     text: string;
+    /** Native Mac ambient keyboard actions may explicitly follow app scope. */
+    scope?: "window" | "app";
     element_index?: number;
     x?: number;
     y?: number;
@@ -321,6 +338,9 @@ export interface SnapshotElement {
   /** Current helper index; element_index is OpenSky's stable public index. */
   driver_index?: number;
   element_token?: string;
+  /** Optional native object identity within the driver's exact-window cache;
+   * observation continuity only, never input authority. Mac uses CFEqual. */
+  nativeObjectId?: string;
   /** Opaque current-document capability returned by semantic_v2. */
   browser_ref?: string;
   /** Addressable for observation only; never grants browser input capabilities. */
@@ -329,13 +349,24 @@ export interface SnapshotElement {
   browserFrame?: string;
   role?: string;
   label?: string;
+  /** Driver provenance of the display label fallback: title, description, value or identifier. */
+  labelSource?: string;
   value?: string;
+  /** Observed field hint; never substituted for the actual value. */
+  placeholder?: string;
+  /** Native AXDescription, independent of the label fallback and AXValue. */
+  description?: string;
+  /** Display-only native styling; raw value remains the text used for input. */
+  formattedValue?: string;
   identifier?: string;
+  /** Observed resource identity; a document URL does not verify saved edits. */
   url?: string;
   actions?: string[];
   visibility?: string;
   /** Explicit AX value mutability when the helper publishes it. */
   settable?: boolean;
+  /** Mac-only parent AXSelectedChildren capability; not a native AX action or focus guarantee. */
+  selectionViaParent?: boolean;
   enabled?: boolean;
   selected?: boolean;
   checked?: boolean;
@@ -349,6 +380,7 @@ export interface WindowSnapshot {
   windowId: number;
   snapshotId?: string;
   tree: string;
+  textSelection?: TextSelection;
   elements: SnapshotElement[];
   screenshotPath: string | null;
   screenshot?: Screenshot;

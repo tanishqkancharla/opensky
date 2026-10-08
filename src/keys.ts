@@ -122,3 +122,16 @@ function normalizeKey(token: string): string {
 function unique(values: string[]): string[] {
   return [...new Set(values)];
 }
+
+/** Translate a named symbol to the existing Mac driver's physical US key map. */
+export function toMacDriverKey(parsed: ParsedKey): ParsedKey {
+  if (parsed.key === "plus") {
+    return { key: "=", modifiers: unique([...parsed.modifiers, "shift"]) };
+  }
+  if (parsed.key === "asterisk") {
+    return { key: "8", modifiers: unique([...parsed.modifiers, "shift"]) };
+  }
+  if (parsed.key === "minus") return { key: "-", modifiers: parsed.modifiers };
+  if (parsed.key === "slash") return { key: "/", modifiers: parsed.modifiers };
+  return parsed;
+}
