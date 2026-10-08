@@ -529,6 +529,24 @@ describe("OpenSky against cua-driver", () => {
       const after = JSON.parse(await readFile(statePath, "utf8"));
       const reads = after.calls.filter((call: any) => call.tool === "get_window_state");
       assert.equal(reads.length, 1); assert.equal(reads[0].args.timeout_ms, undefined);
+      await linux.click({ app: "Calculator", element_index: 13 });
+      const changed = await linux.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+      assert.match(changed.text, /\[13\] AXButton 7 value="7"/);
+      const inputState = JSON.parse(await readFile(statePath, "utf8"));
+      const input = inputState.calls.find((call: any) => call.tool === "click");
+      assert.equal(input.args.action, undefined, "Linux's closed click schema has no action field");
+      assert.equal(input.args.pid, reads[0].args.pid);
+      assert.equal(input.args.window_id, reads[0].args.window_id);
+      assert.equal(input.args.element_token, "s00000001:13");
+      assert.equal(input.args.button, "left");
+      await linux.press_key({ app: "Calculator", key: "ALT+O" });
+      await linux.press_key({ app: "Calculator", key: "super+shift+f" });
+      const keys = JSON.parse(await readFile(statePath, "utf8")).calls.filter((call: any) => call.tool === "hotkey");
+      assert.deepEqual(keys.map((call: any) => call.args.keys), [["alt", "o"], ["super", "shift", "f"]]);
+      for (const call of keys) {
+        assert.equal(call.args.pid, reads[0].args.pid);
+        assert.equal(call.args.window_id, reads[0].args.window_id);
+      }
     } finally { await linux.close(); }
   });
 

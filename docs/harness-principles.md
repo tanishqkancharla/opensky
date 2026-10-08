@@ -17,6 +17,8 @@ desirable contracts, not executable OpenSky APIs.
 
 2. Return useful evidence with completed work. Include the context needed to interpret it, not just a pointer or warning that context is missing.
 
+   Preserve the identity and route of the original request and result when diagnosing a failure. Repeating an observation can change the state you need to explain.
+
    ```text
    result = run_tests()
    if result.failed:
@@ -191,3 +193,7 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 - Carry exact launch ownership into teardown; a missing application inventory entry must neither lose proved ownership nor authorize guessed cleanup. Retain original failures when later teardown is verified.
 
 - Capture decisive state before teardown changes it. Freeze the original failure boundary so recovery actions cannot obscure the failed action or replace its primary error.
+
+- Shorten feedback at the failing boundary. During implementation select the affected existing outcome checks, reuse only independently verified immutable artifacts, and collect failure evidence before teardown. Broaden verification after focused checks pass; keep complete release gates and historical failures.
+
+- Derive compact failure summaries from retained, source-checked artifacts. Keep missing evidence explicit, and cache completed observations so reviewing a failure does not trigger more execution.

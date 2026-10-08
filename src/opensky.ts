@@ -1337,7 +1337,7 @@ export class OpenSky implements OpenSkyApi {
     };
     if (args.element_index !== undefined) {
       Object.assign(payload, this.elementTarget(resolved, args.element_index));
-      if (button === "left" && args.click_count !== 2) payload.action = "press";
+      if (this.target !== "linux" && button === "left" && args.click_count !== 2) payload.action = "press";
       const element = this.memory.trees[windowKey(resolved)]?.elements
         .find(item => item.element_index === args.element_index);
       // Unadvertised primary buttons require the driver's guarded foreground
@@ -1711,7 +1711,7 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    const parsed = parseXdotoolKey(args.key);
+    const parsed = parseXdotoolKey(args.key, this.target);
     const boundWindow = await this.refreshBoundWindow(resolved);
     if (!boundWindow) {
       throw new OpenSkyError(
