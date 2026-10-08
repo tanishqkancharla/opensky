@@ -14,6 +14,10 @@ on:
         description: Existing driver build run; reuse requires a separately pinned release SHA-256
         type: string
         default: ''
+      driver_artifact_sha256:
+        description: 'Independently verified release SHA-256; required when reusing driver_artifact_run'
+        type: string
+        default: ''
       attempt_count:
         description: 'One desktop for focused diagnosis; three for complete verification'
         type: choice
@@ -42,8 +46,8 @@ permissions:
 
 env:
   OPENSKY_DRIVER_REF: 77f3406a4da1430fec4ccd96e7154c6df9303459
-  # Build-only first: independently verify the combined-source ELF before pinning reuse.
-  OPENSKY_DRIVER_SHA256: ''
+  # Parent verifies the exact build independently; reuse is bound to its immutable digest input.
+  OPENSKY_DRIVER_SHA256: ${{ inputs.driver_artifact_sha256 || '' }}
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
 
