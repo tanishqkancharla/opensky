@@ -20,6 +20,8 @@ export type NativeSelectionType = "text" | "cursor_before" | "cursor_after";
 
 export interface ObservationOptions { emit?: boolean }
 export interface StateOptions extends ObservationOptions {
+  /** Native Mac extension: all loaded rows instead of the attested visible viewport. */
+  collectionScope?: "visible" | "all";
   disableDiffing?: boolean;
   /** OpenSky extension: fresh matches with bounded evidence neighborhoods when supported, not complete page-wide order. */
   query?: string;
@@ -403,6 +405,7 @@ export class CuaFacade {
       ...(appScope ? { scope: "app" as const } : {}),
       disableDiff: navigation !== undefined && !storedContext ? true : options.disableDiffing,
       includeScreenshot: screenshot,
+      ...(options.collectionScope === undefined ? {} : { collectionScope: options.collectionScope }),
       ...(!accessibilityTree ? { includeAccessibilityTree: false } : {}),
       ...(options.query === undefined ? {} : { query: options.query }),
       ...(options.context === undefined ? {} : { context_element_index: options.context }),
