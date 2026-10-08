@@ -14,6 +14,7 @@ import { prepareLinuxBenchmarkApp } from "../linux-benchmark-app.js";
 import { verifyScoringProfile } from "../scoring-profile.js";
 import { runProfile } from "../run-profile.js";
 import { captureLinuxFinalObservation } from "../linux-final-observation.js";
+import { verifiedLinuxAppSelectors } from "../linux-app-selectors.js";
 import { matchedLinuxPrompt } from "../linux-prompt.js";
 import { withNativeLinuxRepl, withLinuxRepl } from "../native-linux-repl.js";
 
@@ -89,7 +90,18 @@ try {
       }
       if (!ready) throw new Error(`${name} editor controls did not become visible; agent not dispatched`);
     };
+    let appSelectors = [launch.appName];
     if (backend === "opensky" || backend === "setup") {
+      const sdk = createOpenSky({ homeDir: join(temporary, "readiness-sdk"), autoLaunch: false,
+        driverOptions: { binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
+      try {
+        const cua = createCua(sdk);
+        const selectors = await verifiedLinuxAppSelectors(cua, launch.appName);
+        appSelectors = selectors.appSelectors;
+        await writeFile(join(artifacts, "app-selector-proof.json"), JSON.stringify(selectors, null, 2), { flag: "wx" });
+        const app = await cua.getApp(launch.appName);
+        await verifyReady(() => app.getScreenshot({ emit: false }), "opensky");
+      } finally { await sdk.close(); }
       const directory = join(artifacts, "opensky-agent-readiness"); await mkdir(directory);
       await withLinuxRepl({
         command: process.execPath,
@@ -102,23 +114,17 @@ try {
           OPENSKY_DRIVER_SOCKET: process.env.OPENSKY_DRIVER_SOCKET!,
           OPENSKY_OWNED_DRIVER_PID: process.env.OPENSKY_OWNED_DRIVER_PID!,
           OPENSKY_VERIFIED_LINUX_DRIVER: JSON.stringify(runtime.linuxIdentity),
-          PARITY_DESKTOP_SCOPE: JSON.stringify({ backend: "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" }) },
+          PARITY_DESKTOP_SCOPE: JSON.stringify({ backend: "opensky", appSelectors, isolatedDesktop: "linux" }) },
       }, directory, async cell => {
         // Keep advertised inventory usable through the actual agent guard,
         // before selecting and observing the fixture's bound app.
         await cell('await cua.getState();');
-        await cell(`var app = await cua.getApp(${JSON.stringify(launch.appName)});`);
+        await cell(`var app = await cua.getApp(${JSON.stringify(appSelectors.at(-1))});`);
         const observed = await cell('await app.getScreenshot();');
         const image = observed.content?.find(item => item.type === "image" && item.data);
         if (!image) throw new Error("Genuine OpenSky agent transport did not deliver the owned document screenshot");
         await writeFile(join(directory, "owned-window-image.bin"), Buffer.from(image.data!, "base64"));
       }, { toolName: "cua_repl", artifactPrefix: "opensky-agent-repl" });
-      const sdk = createOpenSky({ homeDir: join(temporary, "readiness-sdk"), autoLaunch: false,
-        driverOptions: { binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
-      try {
-        const app = await createCua(sdk).getApp(launch.appName);
-        await verifyReady(() => app.getScreenshot({ emit: false }), "opensky");
-      } finally { await sdk.close(); }
     }
     if (backend === "native" || backend === "setup") {
       if (nativeTransport.interface !== "current-cua-facade") throw new Error("Current native CUA facade was not verified; no legacy reference is substituted");
@@ -155,7 +161,7 @@ try {
       await captureLinuxFinalObservation(artifacts, process.env.OPENSKY_NATIVE_PROBE_PACKAGE);
       return;
     }
-    const scope = { backend: backend as "native" | "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" as const, ...(backend === "native" ? { nativeFacade: true } : {}) };
+    const scope = { backend: backend as "native" | "opensky", appSelectors, isolatedDesktop: "linux" as const, ...(backend === "native" ? { nativeFacade: true } : {}) };
     // The agent transport receives only the live desktop/runtime values it
     // needs; in particular, it never inherits or fabricates a CI identity.
     const runtimeEnvironment = Object.fromEntries(
