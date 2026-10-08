@@ -33,6 +33,7 @@ test("WEBTEXT-N01: Dictionary viewport preserves reading, complete recovery and 
  }finally{
   sdk.driver.call=original;
   if(owned){await driver.invoke('close_window',{pid:owned.pid,window_id:owned.window_id});await expect.poll(async()=> (await windows()).some(w=>w.pid===owned!.pid&&w.window_id===owned!.window_id&&w.is_on_screen)).toBe(false);}
-  await writeFile(join(artifacts,'cleanup.json'),JSON.stringify({app:'Dictionary viewport fixture',owned,notes:'Parent GUI controller independently verifies exact app exit.'}));
+  const remaining=(await windows()).filter(w=>w.app_name==='Dictionary'&&w.is_on_screen&&!before.has(`${w.pid}:${w.window_id}`));
+  await writeFile(join(artifacts,'cleanup.json'),JSON.stringify({app:'Dictionary viewport fixture',owned,remaining,safeToContinue:remaining.length===0,notes:'Exact new visible windows are closed; parent GUI controller independently verifies app process exit.'}));
  }
 },120_000);
