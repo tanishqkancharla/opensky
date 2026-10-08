@@ -189,3 +189,5 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 - Give observable task fixtures the same ownership, isolation and teardown lifecycle as the arm; retain observations separately from completion review.
 
 - Carry exact launch ownership into teardown; a missing application inventory entry must neither lose proved ownership nor authorize guessed cleanup. Retain original failures when later teardown is verified.
+
+- Capture decisive state before teardown changes it. Freeze the original failure boundary so recovery actions cannot obscure the failed action or replace its primary error.

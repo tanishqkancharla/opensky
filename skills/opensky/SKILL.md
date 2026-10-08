@@ -84,8 +84,10 @@ before replacing a selection; an AX `selected` flag is not a character range.
 `selectText` also accepts `selectionType: "cursor_before" | "cursor_after"`.
 Repeated matches need unique prefix/suffix context. Native paste requires a
 supporting driver, plaintext ≤16 KiB, and verified focus; macOS also requires
-readable AX text and selection. Browser/macOS paste leaves clipboard content;
-Linux conditionally restores it. See [text input](references/text-input.md) for
+readable AX text and selection. Browser paste leaves clipboard content. Mac native paste requests restoration
+of supported prior items/formats after verified insertion, preserves observed
+newer copies, and requires a driver supporting the restore policy. Unknown
+input skips restoration and is never replayed. Linux conditionally restores it. See [text input](references/text-input.md) for
 platform restrictions or uncertain results.
 
 For tabs, use `goto(url)`, `back()`, `forward()`, `reload()`, and exact `close()`.

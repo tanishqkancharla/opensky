@@ -131,7 +131,18 @@ export async function withSdkOwnedMacDocument<T>(options: {
         }
       }
       let quit: unknown = { skipped: "process_exited_after_document_close" };
-      if (running) quit = JSON.parse((await call(["quit", String(owned.identity.pid), owned.identity.bundleId, String(owned.identity.launchedAt)])).stdout);
+      if (running) {
+        try {
+          quit = JSON.parse((await call(["quit", String(owned.identity.pid), owned.identity.bundleId, String(owned.identity.launchedAt)])).stdout);
+        } catch (error) {
+          if ((await list()).some(candidate => sameIdentity(candidate, owned!.identity))) {
+            quit = {
+              cooperativeError: String(error),
+              fallback: JSON.parse((await call(["stop-disposable", String(owned.identity.pid), owned.identity.bundleId, String(owned.identity.launchedAt)])).stdout),
+            };
+          }
+        }
+      }
       const remaining = await list();
       const verifiedExited = !remaining.some(candidate => sameIdentity(candidate, owned!.identity));
       if (!verifiedExited) throw new Error("Verified SDK-owned TextEdit process remained running after cooperative quit");

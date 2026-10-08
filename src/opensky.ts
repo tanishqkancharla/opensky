@@ -1,3 +1,4 @@
+import { projectNativeCollectionRows } from "./native-collection-viewport.js";
 import { randomUUID } from "node:crypto";
 import { chmod, readFile, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -358,6 +359,7 @@ export class OpenSky implements OpenSkyApi {
   async get_app_state(args: {
     app: string;
     disableDiff?: boolean;
+    collectionScope?: "visible" | "all";
     includeScreenshot?: boolean;
     includeAccessibilityTree?: boolean;
     includeAppChrome?: boolean;
@@ -367,6 +369,7 @@ export class OpenSky implements OpenSkyApi {
     continuation?: string;
   }): Promise<AppState> {
     if (!args?.app) throw invalidParams("app is required");
+    if (args.collectionScope !== undefined && !["visible", "all"].includes(args.collectionScope)) throw invalidParams("collectionScope must be visible or all");
     if (args.includeAccessibilityTree === false && (args.includeScreenshot === false ||
         args.query !== undefined || args.context_element_index !== undefined || args.continuation !== undefined)) {
       throw invalidParams("Screenshot-only observation requires a screenshot and cannot include query/context");
@@ -405,6 +408,7 @@ export class OpenSky implements OpenSkyApi {
       resolved = await this.requireResolved(args.app);
     }
     this.assertTargetUsable(resolved);
+    if (args.collectionScope !== undefined && (this.target !== "mac" || resolved.browser || resolved.contentScope === "web")) throw invalidParams("collectionScope is available only for native Mac observations");
     if (args.includeAccessibilityTree === false && resolved.browser) {
       throw invalidParams("Screenshot-only observation requires a native window; typed browser observations retain their page snapshot mapping");
     }
@@ -462,12 +466,13 @@ export class OpenSky implements OpenSkyApi {
       includeScreenshot: args.includeScreenshot !== false,
       stabilizeBrowser: hadPendingAction,
       query: args.query?.trim(),
+      collectionScope: args.collectionScope,
     });
     const text = args.query !== undefined
       ? `Semantic query ${JSON.stringify(args.query.trim())}; fresh accessibility state:\n${snapshot.tree}`
       : snapshot.documentChanged && previous && !args.disableDiff
       ? `Document changed; fresh accessibility state:\n${snapshot.tree}`
-      : snapshot.degraded || args.disableDiff || !previous || previous.viewKind === "context"
+      : snapshot.degraded || args.disableDiff || args.collectionScope === "all" || !previous || previous.viewKind === "context"
         ? snapshot.tree
         : diffTrees(previous.tree, previous.elements, snapshot.tree, snapshot.elements);
     if (!snapshot.degraded) {
@@ -648,7 +653,11 @@ export class OpenSky implements OpenSkyApi {
     const launchArgs = {
       ...launchArgsFor(args.app, match),
       urls: args.targets,
-      ...(requestFreshNativeInstance ? { creates_new_application_instance: true } : {}),
+      ...(requestFreshNativeInstance ? {
+        creates_new_application_instance: true,
+        // A fresh, owned instance must not resurrect unrelated saved windows.
+        additional_arguments: ["-ApplePersistenceIgnoreState", "YES"],
+      } : {}),
     };
     let launched = await this.driver.call("launch_app", launchArgs);
     let structured = asRecord(launched.structured) ?? {};
@@ -1517,25 +1526,31 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    if ((this.target === "linux" || this.target === "mac") && format === "text" && resolved && !resolved.browser) {
+    if ((this.target === "mac" || (this.target === "linux" && format === "text")) && resolved && !resolved.browser) {
       this.assertTargetUsable(resolved);
       await this.requireUsableInputWindow(resolved);
       // The compound driver operation checks exact live focus and sends one
       // paste. Never split this into clipboard writes plus a key, or replay
-      // an uncertain delivery. Linux restores supported prior clipboard
-      // contents; macOS deliberately leaves this payload on the clipboard.
+      // an uncertain delivery. Both platforms preserve supported prior clipboard
+      // contents. Mac reports restoration separately and keeps an observed newer copy. Rich Mac
+      // content is converted before mutation; the driver verifies exact plain
+      // text insertion, while callers observe the resulting rich formatting.
       try {
         const result = await this.driver.call("native_paste", {
           pid: resolved.pid,
           window_id: resolved.windowId,
           text: args.text,
           format,
-          ...(this.target === "mac" ? { clipboard_policy: "leave", delivery_mode: "foreground" } : {}),
+          ...(this.target === "mac" ? { clipboard_policy: "restore", delivery_mode: "foreground" } : {}),
         });
         const outcome = asRecord(result.structured);
         const verified = this.target === "linux"
           ? outcome?.status === "completed" && outcome.transfer_verified === true
-          : outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false;
+          : outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false &&
+            outcome.clipboard_policy === "restore" && (
+              (outcome.clipboard_restore_status === "restored" && outcome.clipboard_restored === true) ||
+              (outcome.clipboard_restore_status === "newer_writer_preserved" && outcome.clipboard_restored === false)
+            );
         if (!verified) {
           throw new OpenSkyError(
             "Native paste receipt did not verify the required platform-specific outcome. " +
@@ -1552,9 +1567,10 @@ export class OpenSky implements OpenSkyApi {
       return;
     }
     throw new OpenSkyError(
-      "paste is temporarily unavailable because safe paste requires a compound desktop-helper primitive " +
-        "that cannot overwrite a concurrent user clipboard change. No clipboard, app, window, tab, or input was touched. " +
-        "Use type_text only when typing semantics are acceptable; OpenSky does not silently substitute it for paste.",
+      `Native paste is unsupported for target ${this.target} with format ${format}, or no exact native target is bound. ` +
+        "Mac supports text/html/md; Linux supports text. No clipboard, app, window, tab, or input was touched. " +
+        "This is a capability limitation, not an observed clipboard race; retrying the same request will not enable it.",
+      "unsupported_native_paste",
     );
   }
 
@@ -2292,7 +2308,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotWindow(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number; query?: string },
+    options: { includeScreenshot: boolean; screenshotPath?: string; maxDepth?: number; query?: string; collectionScope?: "visible" | "all" },
   ): Promise<WindowSnapshot> {
     if (!resolved.browser && !resolved.windowId) {
       resolved.windowId = await this.pickWindow(resolved.pid, {});
@@ -2337,13 +2353,18 @@ export class OpenSky implements OpenSkyApi {
       ...(this.target === "mac" && options.maxDepth === undefined ? { timeout_ms: 5000 } : {}),
     });
     const structured = asRecord(result.structured) ?? {};
-    const rawElements = normalizeElements(structured.elements);
+    let rawElements = normalizeElements(structured.elements);
+    const collectedElementCount = rawElements.length;
     const rawTree =
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
       (typeof structured.text === "string" && structured.text) ||
       "";
     const sanitized = sanitizeTreeText(rawTree);
-    const scoped = resolved.contentScope === "web" ? isolatePrimaryWebArea(sanitized) : sanitized;
+    const collection = this.target === "mac" && options.collectionScope !== "all" && options.maxDepth === undefined && resolved.contentScope !== "web"
+      ? projectNativeCollectionRows(sanitized, rawElements, structured.native_collections)
+      : { tree: sanitized, elements: rawElements, hiddenIndices: new Set<number>() };
+    rawElements = collection.elements;
+    const scoped = resolved.contentScope === "web" ? isolatePrimaryWebArea(collection.tree) : collection.tree;
     const pruned = pruneMenuSubtrees(scoped);
     const scopedIndices = resolved.contentScope === "web" ? indicesInTree(pruned.tree) : undefined;
     const visibleElements = pruned.hiddenIndices.size
@@ -2359,7 +2380,7 @@ export class OpenSky implements OpenSkyApi {
     const currentDocument = primaryDocumentFingerprint(visibleElements);
     const documentChanged = resolved.contentScope === "web" && previousDocument !== undefined &&
       currentDocument !== undefined && previousDocument !== currentDocument;
-    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, visibleElements, pruned.hiddenIndices.size > 0);
+    const elements = stabilizeElementIndices(documentChanged ? [] : previousElements, visibleElements, pruned.hiddenIndices.size > 0 || collection.hiddenIndices.size > 0);
     const remappedTree = remapTreeIndices(pruned.tree || renderTree(visibleElements), elements);
     const tree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
     const snapshotId = optionalString(structured.snapshot_id);
@@ -2386,7 +2407,7 @@ export class OpenSky implements OpenSkyApi {
       degraded: structured.degraded === true,
       degradedReason: optionalString(structured.degraded_reason),
       truncated: structured.truncated === true || structured.elements_complete === false || totalElementCount > returnedElementCount,
-      rawElementCount: rawElements.length,
+      rawElementCount: collectedElementCount,
       totalElementCount,
       returnedElementCount,
       documentChanged,
@@ -2488,7 +2509,7 @@ export class OpenSky implements OpenSkyApi {
 
   private async snapshotSettled(
     resolved: ResolvedApp,
-    options: { includeScreenshot: boolean; stabilizeBrowser?: boolean; query?: string },
+    options: { includeScreenshot: boolean; stabilizeBrowser?: boolean; query?: string; collectionScope?: "visible" | "all" },
   ): Promise<WindowSnapshot> {
     const deadline = Date.now() + this.degradedRetryMs;
     let delayMs = 150;
@@ -2504,6 +2525,7 @@ export class OpenSky implements OpenSkyApi {
       includeScreenshot: stabilizeBrowser ? false : options.includeScreenshot,
       screenshotPath,
       query: options.query,
+      collectionScope: options.collectionScope,
     };
     let snapshot = await this.snapshotWindow(resolved, captureOptions);
     while (snapshot.degraded && Date.now() < deadline) {
@@ -3032,6 +3054,10 @@ export function diffTrees(
 ): string {
   const prev = new Map(previousElements.map((item) => [item.element_index, item]));
   const next = new Map(nextElements.map((item) => [item.element_index, item]));
+  const previousParents = indexedTreeParents(previousTree, previousElements);
+  const nextParents = indexedTreeParents(nextTree, nextElements);
+  const reparented = new Set([...nextParents].flatMap(([index, parent]) =>
+    prev.has(index) && previousParents.has(index) && previousParents.get(index) !== parent ? [index] : []));
   const added: string[] = [];
   const changed: string[] = [];
   const removed: string[] = [];
@@ -3043,6 +3069,7 @@ export function diffTrees(
       continue;
     }
     if (
+      reparented.has(index) ||
       before.label !== element.label ||
       before.value !== element.value ||
       before.role !== element.role ||
@@ -3061,7 +3088,33 @@ export function diffTrees(
     if (!next.has(index)) removed.push(formatElement(element));
   }
 
-  if (added.length === 0 && changed.length === 0 && removed.length === 0) {
+  // Structured elements intentionally describe input-addressable controls.
+  // Read-only values (for example a calculator result) still belong in the
+  // observation diff. Anchor their display positions to indexed ancestors;
+  // these keys never become element IDs or input authority.
+  const previousDisplay = displayOnlyRows(previousTree);
+  const nextDisplay = displayOnlyRows(nextTree);
+  const displayDiff: string[] = [];
+  for (const [key, line] of nextDisplay) {
+    const before = previousDisplay.get(key);
+    if (before !== line) displayDiff.push(`${before === undefined ? "+" : "~"} ${line}`);
+  }
+  let removedDescendantRows = 0;
+  for (const [key, line] of previousDisplay) {
+    if (nextDisplay.has(key)) continue;
+    // Descendants of a removed indexed control are already covered by its
+    // removal ID. Retain values removed under surviving or unbound parents.
+    const parent = key.match(/^index:(\d+)(?:\/|$)/)?.[1];
+    if (parent !== undefined && prev.has(Number(parent)) && !next.has(Number(parent))) {
+      removedDescendantRows += 1;
+    } else displayDiff.push(`Removed display row: ${line}`);
+  }
+  if (removedDescendantRows) {
+    displayDiff.push(`Removed display rows: ${removedDescendantRows} (within removed elements)`);
+  }
+
+
+  if (added.length === 0 && changed.length === 0 && removed.length === 0 && displayDiff.length === 0) {
     return "No accessibility changes.";
   }
   const removedIndices = previousElements
@@ -3081,6 +3134,7 @@ export function diffTrees(
           .filter((element) => {
             const before = prev.get(element.element_index);
             return before && (
+              reparented.has(element.element_index) ||
               before.label !== element.label ||
               before.value !== element.value ||
               before.role !== element.role ||
@@ -3093,13 +3147,71 @@ export function diffTrees(
               before.expanded !== element.expanded
             );
           })
-          .map((element) => `~ ${formatElement(element)}`)
+          .map((element) => reparented.has(element.element_index)
+            ? `~ ${formatRetainedElement(nextTree, element)} [parent=${nextParents.get(element.element_index) ?? "root"}]`
+            : `~ ${formatElement(element)}`)
           .join("\n")
       : "",
+    displayDiff.join("\n"),
   ]
     .filter(Boolean)
     .join("\n");
 }
+function formatRetainedElement(tree: string, element: SnapshotElement): string {
+  const marker = new RegExp(`^\\s*-\\s+\\[${element.element_index}\\]\\s+${element.role}(?:\\s|$)`);
+  const rows = quotedTreeRows(tree).filter(({line, closed}) => closed && marker.test(line));
+  return rows.length === 1 ? rows[0]!.line.trim().replace(/^-\s+/, "") : formatElement(element);
+}
+
+/** Observe nearest indexed parents only where both public rows and structured
+ * controls bind uniquely. Unbound/duplicate rows never supply a relationship. */
+function indexedTreeParents(tree: string, elements: SnapshotElement[]): Map<number, number | null> {
+  const structured = new Map<number, SnapshotElement>();
+  const duplicate = new Set<number>();
+  for (const element of elements) {
+    if (structured.has(element.element_index)) duplicate.add(element.element_index);
+    structured.set(element.element_index, element);
+  }
+  const rows = quotedTreeRows(tree).flatMap(({line, closed}) => {
+    if (!closed) return [];
+    const match = line.match(/^(\s*)-\s+(?:\[(\d+)\]\s+)?(AX\w+)(?:[\s\S]*)$/);
+    return match ? [{indent:match[1]!.length, index:match[2] === undefined ? undefined : Number(match[2]), role:match[3]!}] : [];
+  });
+  const counts = new Map<number, number>();
+  for (const row of rows) if (row.index !== undefined) counts.set(row.index, (counts.get(row.index) ?? 0) + 1);
+  const bound = (row:typeof rows[number]) => row.index !== undefined && Number.isSafeInteger(row.index) &&
+    !duplicate.has(row.index) && counts.get(row.index) === 1 && structured.get(row.index)?.role === row.role;
+  const stack: typeof rows = [], parents = new Map<number, number | null>();
+  for (const row of rows) {
+    while (stack.length && stack[stack.length - 1]!.indent >= row.indent) stack.pop();
+    const parent = [...stack].reverse().find(ancestor => ancestor.index !== undefined);
+    if (bound(row) && (!parent || bound(parent))) parents.set(row.index!, parent?.index ?? null);
+    stack.push(row);
+  }
+  return parents;
+}
+
+function displayOnlyRows(tree: string): Map<string, string> {
+  const rows = new Map<string, string>();
+  const stack: Array<{ indent: number; key: string }> = [];
+  const siblings = new Map<string, number>();
+  for (const { line } of quotedTreeRows(tree)) {
+    const match = line.match(/^(\s*)-\s+(?:\[(\d+)\]\s+)?(AX\w+)([\s\S]*)$/);
+    if (!match) continue;
+    const indent = match[1]!.length;
+    while (stack.length && stack[stack.length - 1]!.indent >= indent) stack.pop();
+    const parent = stack[stack.length - 1]?.key ?? "root";
+    const role = match[3]!;
+    const siblingKey = `${parent}/${role}`;
+    const ordinal = siblings.get(siblingKey) ?? 0;
+    siblings.set(siblingKey, ordinal + 1);
+    const key = match[2] === undefined ? `${siblingKey}:${ordinal}` : `index:${match[2]}`;
+    stack.push({ indent, key });
+    if (match[2] === undefined && match[4]!.trim()) rows.set(key, `${role}${match[4]}`);
+  }
+  return rows;
+}
+
 
 function treeLineForIndex(tree: string, index: number): string | undefined {
   const marker = `[${index}]`;
@@ -3920,21 +4032,40 @@ function remapTreeIndices(tree: string, elements: SnapshotElement[]): string {
   });
 }
 
+/** Physical newlines inside quoted AX values remain part of one literal row. */
+function quotedTreeRows(tree: string): Array<{line: string; closed: boolean}> {
+  const rows: Array<{line: string; closed: boolean}> = [];
+  let start = 0, quoted = false, escaped = false;
+  for (let cursor = 0; cursor < tree.length; cursor++) {
+    const char = tree[cursor]!;
+    if (escaped) { escaped = false; continue; }
+    if (quoted && char === "\\") { escaped = true; continue; }
+    if (char === '"') quoted = !quoted;
+    if (char === "\n" && !quoted) {
+      rows.push({line: tree.slice(start, cursor), closed: true}); start = cursor + 1;
+    }
+  }
+  rows.push({line: tree.slice(start), closed: !quoted});
+  return rows;
+}
+
 /** Merge structured-only AX state into the readable tree without app-specific rules. */
 export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): string {
   const byIndex = new Map(elements.map((element) => [element.element_index, element]));
-  return tree
-    .split("\n")
-    .map((line) => {
-      const rawIndex = line.match(/\[(\d+)\]/)?.[1];
+  return quotedTreeRows(tree)
+    .map(({line, closed}) => {
+      // An unterminated value cannot safely acquire generated metadata.
+      if (!closed) return line;
+      const metadata = line.replace(/"(?:[^"\\]|\\.)*"/gs, '""');
+      const rawIndex = line.match(/^\s*(?:-\s*)?\[(\d+)\](?:\s|$)/)?.[1];
       if (rawIndex !== undefined) {
         const element = byIndex.get(Number(rawIndex));
         if (!element) return line;
         const additions: string[] = [];
         const renderedValue = element.value === undefined ? undefined : JSON.stringify(element.value);
         if (isLikelyEditableText(element, element.role ?? "", line, element.actions ?? [])) {
-          if (!/\b(?:editable|settable)\b/i.test(line)) additions.push("editable");
-          if (!/\btype-directly\b/i.test(line)) additions.push("type-directly");
+          if (!/\b(?:editable|settable)\b/i.test(metadata)) additions.push("editable");
+          if (!/\btype-directly\b/i.test(metadata)) additions.push("type-directly");
         }
         if (
           element.value !== undefined &&
@@ -3944,15 +4075,15 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
         ) {
           additions.push(`value=${JSON.stringify(element.value)}`);
         }
-        if (element.enabled === false && !/\bdisabled\b/i.test(line)) additions.push("disabled");
-        if (element.selected === true && element.value === undefined && !/\bselected\b/i.test(line)) {
+        if (element.enabled === false && !/\bdisabled\b/i.test(metadata)) additions.push("disabled");
+        if (element.selected === true && element.value === undefined && !/\bselected\b/i.test(metadata)) {
           additions.push("selected");
         }
-        if (element.checked !== undefined && !/\bchecked\b/i.test(line)) {
+        if (element.checked !== undefined && !/\bchecked\b/i.test(metadata)) {
           additions.push(`checked=${element.checked}`);
         }
-        if (element.focused === true && !/\bfocused\b/i.test(line)) additions.push("focused");
-        if (element.expanded !== undefined && !/\bexpanded\b/i.test(line)) {
+        if (element.focused === true && !/\bfocused\b/i.test(metadata)) additions.push("focused");
+        if (element.expanded !== undefined && !/\bexpanded\b/i.test(metadata)) {
           additions.push(`expanded=${element.expanded}`);
         }
         return additions.length > 0 ? `${line} [${additions.join(" ")}]` : line;
@@ -3961,7 +4092,7 @@ export function enrichTreeSemantics(tree: string, elements: SnapshotElement[]): 
       // Surface that generic state so the model does not mistake them for active controls.
       if (
         /^\s*-\s+AX(?:Button|MenuButton|RadioButton|CheckBox|Switch|PopUpButton|ComboBox|Slider)\b/.test(line) &&
-        !/\b(?:disabled|unavailable)\b/i.test(line)
+        !/\b(?:disabled|unavailable)\b/i.test(metadata)
       ) {
         return `${line} [unavailable]`;
       }

@@ -55,6 +55,70 @@ describe("unadvertised native primary button routing", () => {
 });
 
 describe("opensky helpers", () => {
+  it("diffs unindexed display values without creating input authority", () => {
+    const controls: SnapshotElement[] = [{element_index: 7, role: "AXGroup"}, {element_index: 9, role: "AXButton", label: "Clear"}];
+    const before = '- [7] AXGroup\n  - AXStaticText = "0" (Edit field)\n  - AXStaticText = "Stable [42] label"\n- [9] AXButton (Clear)';
+    const after = before.replace('"0"', '"213"');
+    const diff = diffTrees(before, controls, after, controls);
+    assert.match(diff, /^~ AXStaticText = "213" \(Edit field\)$/m);
+    assert.ok(!diff.includes('Stable [42] label'));
+    assert.ok(!diff.includes('[7] AXStaticText'));
+    assert.equal(diffTrees(after, controls, after, controls), "No accessibility changes.");
+    const removed = diffTrees(after, controls, '- [9] AXButton (Clear)', [controls[1]!]);
+    assert.match(removed, /Removed display rows: 2 \(within removed elements\)/);
+    assert.ok(!removed.includes('AXStaticText = "213"'), "discarded subtree contents are already covered by removed IDs");
+    const added = diffTrees('- [9] AXButton (Clear)', [controls[1]!], after, controls);
+    assert.match(added, /^\+ AXStaticText = "213"/m);
+    const reparented = after.replace('[7]', '[10]');
+    const moved = diffTrees(after, controls, reparented, [{...controls[0]!, element_index: 10}, controls[1]!]);
+    assert.match(moved, /Removed display rows: 2/);
+    assert.match(moved, /^\+ AXStaticText/m);
+    assert.equal(controls.length, 2);
+    const retainedParent = diffTrees(after, controls, '- [7] AXGroup\n- [9] AXButton (Clear)', controls);
+    assert.match(retainedParent, /Removed display row: AXStaticText = "213"/);
+    const unboundParent = diffTrees(after, [controls[1]!], '- [9] AXButton (Clear)', [controls[1]!]);
+    assert.match(unboundParent, /Removed display row: AXStaticText = "213"/);
+    const rootRemoval = diffTrees('- AXStaticText = "root result"', [], '', []);
+    assert.match(rootRemoval, /Removed display row: AXStaticText = "root result"/);
+    const inventory = Array.from({length:75},(_,n)=>`  - [${n+20}] AXRow\n    - AXStaticText = "old title ${n}"\n    - AXStaticText = "old snippet ${n}"\n    - AXStaticText = "old date ${n}"\n    - AXImage (move)\n    - AXStaticText = "archive"`).join('\n');
+    const inventoryElements: SnapshotElement[] = [{element_index:0,role:'AXWindow'}, ...Array.from({length:75},(_,n)=>({element_index:n+20,role:'AXRow'}))];
+    const compact = diffTrees(`- [0] AXWindow\n${inventory}`,inventoryElements,'- [0] AXWindow',[inventoryElements[0]!]);
+    assert.match(compact, /Removed element IDs: 20-94/);
+    assert.match(compact, /Removed display rows: 375 \(within removed elements\)/);
+    assert.ok(!compact.includes('old snippet'));
+    const literal = '- AXStaticText = "literal\n  - [20] AXRow\n    - AXStaticText = content"';
+    const literalRemoval = diffTrees(literal, [{element_index:20,role:'AXRow'}], '', []);
+    assert.ok(literalRemoval.includes('Removed display row: AXStaticText = "literal\n  - [20] AXRow\n    - AXStaticText = content"'), 'quoted content never becomes ancestry');
+    const retained: SnapshotElement = {element_index:289,role:'AXRow',identifier:'ICMNoteListCell, Note[id=owned]'};
+    const oldParent: SnapshotElement = {element_index:288,role:'AXCell'};
+    const newParent: SnapshotElement = {element_index:300,role:'AXCell'};
+    const child = '- [289] AXRow [id=ICMNoteListCell, Note[id=owned]]';
+    const oldTree = `- [288] AXCell\n  ${child}`;
+    const newTree = `- [300] AXCell\n  - AXGroup\n    ${child}`;
+    const relation = diffTrees(oldTree,[oldParent,retained],newTree,[newParent,retained]);
+    assert.match(relation,/^~ \[289\] AXRow \[id=ICMNoteListCell, Note\[id=owned\]\] \[parent=300\]$/m);
+    assert.equal(relation.split('\n').filter(line=>line.startsWith('~ [289]')).length,1);
+    assert.ok(!relation.includes('+ [289]'), 'retained input identity stays retained');
+    assert.match(relation,/Removed element IDs: 288/);
+    const rootMove=diffTrees(oldTree,[oldParent,retained],child,[retained]);
+    assert.match(rootMove,/\[parent=root\]/);
+    const alsoChanged=diffTrees(oldTree,[oldParent,retained],newTree,[newParent,{...retained,selected:true}]);
+    assert.equal(alsoChanged.split('\n').filter(line=>line.startsWith('~ [289]')).length,1);
+    for (const [tree,elements] of [
+      [newTree,[retained]], // The new parent is not in structured input data.
+      [newTree,[newParent,retained,retained]],
+      [newTree,[{...newParent,role:'AXButton'},retained]],
+      [`${newTree}\n${child}`,[newParent,retained]],
+      [`${newTree}\n- [300] AXCell`,[newParent,retained]],
+      [`- [300] AXCell\n  - AXStaticText = "literal\n    ${child} content"`,[newParent,retained]],
+      [`- [300] AXCell\n  ${child} "unterminated`,[newParent,retained]],
+    ] as Array<[string,SnapshotElement[]]>) {
+      assert.ok(!diffTrees(oldTree,[oldParent,retained],tree,elements).includes('[parent='), 'ambiguous/unbound/literal/partial rows provide no relation');
+    }
+    assert.ok(!diffTrees('',[oldParent,retained],newTree,[newParent,retained]).includes('[parent='), 'missing prior row is unknown');
+    assert.ok(!diffTrees(newTree,[newParent,retained],newTree,[newParent,retained]).includes('[parent='));
+  });
+
   it("does not reuse ambiguous public indices for repeated controls", () => {
     const previous: SnapshotElement[] = [
       { element_index: 10, driver_index: 100, role: "AXButton", label: "Expand" },
@@ -355,11 +419,24 @@ describe("opensky helpers", () => {
     assert.ok(pruned.hiddenIndices.has(13));
   });
 
-  it("does not duplicate a multiline value already rendered after an equals sign", () => {
-    const value = "first line\nsecond line";
-    const tree = `[1] AXTextArea = "first line\nsecond line"`;
-    const enriched = enrichTreeSemantics(tree, [{ element_index: 1, role: "AXTextArea", value }]);
-    assert.equal(enriched, tree);
+  it("preserves literal multiline values while enriching only external AX metadata", () => {
+    const value = 'first line\nsecond line';
+    const tree = `[1] AXTextArea = "${value}"`;
+    assert.equal(enrichTreeSemantics(tree, [{element_index:1,role:'AXTextArea',value}]),tree);
+    const element: SnapshotElement = {element_index:1,role:'AXTextArea',value,focused:true};
+    assert.equal(enrichTreeSemantics(tree,[element]),`${tree} [focused]`);
+    // State-like words and literal tree/index markers are document content.
+    const literal = 'focused selected disabled checked expanded\n- [9] AXButton (document content)\n' + String.raw`mentions [9] and \"quoted\" text`;
+    const source = `- [1] AXTextArea = "${literal}"\n- [9] AXButton (Save)`;
+    const controls: SnapshotElement[] = [{...element,value:literal}, {element_index:9,role:'AXButton',focused:true}];
+    assert.equal(enrichTreeSemantics(source,controls),`- [1] AXTextArea = "${literal}" [focused]\n- [9] AXButton (Save) [focused]`);
+    assert.equal(controls[0]!.value,literal);
+    const already = `${tree} [focused]`;
+    assert.equal(enrichTreeSemantics(already,[element]),already);
+    const intrinsic = '- AXButton (Save)\n- [1] AXTextArea = "literal unavailable\n- AXButton (body)"';
+    assert.equal(enrichTreeSemantics(intrinsic,[]),'- AXButton (Save) [unavailable]\n- [1] AXTextArea = "literal unavailable\n- AXButton (body)"');
+    const incomplete = '[1] AXTextArea = "unfinished\n- [9] AXButton';
+    assert.equal(enrichTreeSemantics(incomplete,controls),incomplete);
   });
 
   it("diffs structured AX semantics even when labels do not change", () => {
@@ -634,6 +711,7 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(launches.length, 1);
     assert.deepEqual(launches[0].args.urls, ["/tmp/delayed-target.txt"]);
     assert.equal(launches[0].args.creates_new_application_instance, true);
+    assert.deepEqual(launches[0].args.additional_arguments, ["-ApplePersistenceIgnoreState", "YES"]);
   });
 
   it("does not loop or recommend unsafe input after a refused target dispatch", async () => {
@@ -836,12 +914,42 @@ describe("OpenSky against cua-driver", () => {
     assert.equal(after.calls.filter((call: { tool: string }) => call.tool === "scroll").length, 1);
   });
 
+  it("requires separate Mac clipboard preservation evidence without replaying paste", async () => {
+    const completed = {status:"completed", target_value_verified:true, transfer_verified:false,
+      clipboard_policy:"restore", clipboard_restore_status:"restored", clipboard_restored:true};
+    const cases = [
+      {outcome:completed, accepted:true},
+      {outcome:{...completed,clipboard_restore_status:"newer_writer_preserved",clipboard_restored:false},accepted:true},
+      ...[
+        {clipboard_restore_status:"restored",clipboard_restored:false},
+        {clipboard_restore_status:"newer_writer_preserved",clipboard_restored:true},
+        {clipboard_restore_status:"failed",clipboard_restored:false},
+        {clipboard_restore_status:"unverified_input",clipboard_restored:false},
+        {clipboard_policy:"leave",clipboard_restored:false},
+        {clipboard_restore_status:undefined,clipboard_restored:undefined},
+        {target_value_verified:false}, {transfer_verified:true}, {status:"unknown"},
+      ].map(delta=>({outcome:{...completed,...delta},accepted:false})),
+    ];
+    for (const {outcome,accepted} of cases) {
+      const {opensky}=await makeHarness();const observed=await opensky.get_app_state({app:"TextEdit",includeScreenshot:false});
+      const original=opensky.driver.call.bind(opensky.driver);const calls:Array<{tool:string,args:Record<string,unknown>}>=[];
+      opensky.driver.call=async(tool,args={})=>{calls.push({tool,args});if(tool==="native_paste")return {structured:outcome,text:"receipt",content:[]};return original(tool,args);};
+      const action=opensky.paste({app:observed.targetHandle,text:"one paste",format:"text"});
+      if(accepted)await action;else await assert.rejects(action,/Observe before retrying; do not replay automatically/);
+      const inputs=calls.filter(c=>c.tool==="native_paste");assert.equal(inputs.length,1);
+      assert.equal(inputs[0].args.clipboard_policy,"restore");assert.equal(inputs[0].args.delivery_mode,"foreground");
+      assert.equal(inputs[0].args.pid,900);assert.equal(inputs[0].args.window_id,2001);
+      assert.ok(!calls.some(c=>["type_text","hotkey","clipboard_set"].includes(c.tool)));
+      await opensky.close();
+    }
+  });
+
   it("refuses paste before resolving a target or touching the global clipboard", async () => {
     const { opensky, logPath } = await makeHarness();
 
     await assert.rejects(
       () => opensky.paste({ app: "TextEdit", text: "do not dispatch" }),
-      /safe paste requires.*No clipboard, app, window, tab, or input was touched/s,
+      /Native paste is unsupported.*No clipboard, app, window, tab, or input was touched/s,
     );
     const calls = await readFile(logPath, "utf8").catch(() => "");
     assert.equal(calls, "");
