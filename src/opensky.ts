@@ -1710,6 +1710,13 @@ export class OpenSky implements OpenSkyApi {
         "Use click, type_text, set_value, or an explicitly supported typed-browser action.",
       );
     }
+    if (this.target === "linux" && normalizedAction === "press") {
+      // Linux's current click contract has no secondary-action field. An
+      // advertised primary press uses the same exact indexed left-click as
+      // click(), with its fresh token and one dispatch; never replay input.
+      await this.click({ app: args.app, element_index: args.element_index });
+      return;
+    }
     if (this.target === "mac" && normalizedAction === "confirm") {
       const element = this.memory.trees[windowKey(resolved)]?.elements
         .find(item => item.element_index === args.element_index);
