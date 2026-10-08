@@ -64,18 +64,22 @@ export function createCuaReplToolRuntime(
     label: "cua_repl",
     description:
       "Run JavaScript in a persistent, sandboxed native-style Computer Use session. The `cua` object is preloaded. " +
-      "Bind once with `let app = await cua.getApp(name)` or `let tab = await cua.createBrowserTab('chrome', url)`; reuse that binding in later calls. " +
+      "OpenSky names this interface, not an app; cua.getApp(name) takes the requested application's name. " +
+      "On the first invocation, execute exactly one entrypoint call: cua.getState(), cua.getApp(name), cua.getTab(id, options), cua.getBrowser(options), or cua.createBrowserTab(id, url, options), optionally assigning its result to a variable. Do not add other API calls, waits, or snapshots to that invocation. " +
+      "Binding or selecting an app/tab emits documentation and its initial UI state automatically; read that result before continuing. Selecting a browser does not open a tab. Reuse the binding in later calls. " +
       "Browser signatures: cua.getBrowser({id?, url?}) returns a Browser provider, NOT a Tab or Target; it neither navigates nor provides target actions. " +
       "cua.getTab(id, {browser?, emit?}) retrieves an existing exact owned Tab; cua.listTabs({browser?, emit?}) lists owned tab IDs. browser.tabs.new() takes no arguments and opens about:blank; " +
       "browser.tabs.get(id), browser.tabs.list(), browser.tabs.selected(), browser.nameSession(name), browser.documentation(). " +
       "To open a URL use cua.createBrowserTab(id, url, {visible?, sessionName?}) or tab.goto(url). " +
       "Tab inventories include only this facade's owned tabs. An empty list does not establish that the user has no other tabs or windows. " +
       "Bindings persist across calls. Batch deterministic target actions and finish with getAXState(); action methods do not observe automatically. " +
+      "Prefer default getAXState() diffs for routine checks; reserve disableDiffing:true and screenshots for missing context. " +
       "Long batches return a pending cell ID after at most 30 seconds; call cua_repl_wait with that ID until complete. Do not submit new code or replay the batch while pending. " +
       "Target methods: getAXState({disableDiffing?, query?, context?, continuation?, emit?}), getScreenshot({emit?}), getAXStateAndScreenshot({disableDiffing?, query?, emit?}), " +
       "click(index | [x, y]), typeText(text), pressKey(key), scroll(index | [x, y], direction, pages?), " +
       "setValue(index, value), selectText(index, text, options?), drag([fromX, fromY], [toX, toY]), performSecondaryAction(index, action). " +
       "setValue replaces a value without guaranteeing keyboard focus or sending Enter. Later keys go to the focused control; establish focus through a supported action before sending keys intended for that field. " +
+      "For an app AXTextField with no press action, try setValue(index, text) directly; clicking it can fail even when its value can be set. A refused setValue does not establish editability. " +
       "Coordinates are screenshot-pixel [x, y] tuples, not objects. Browser coordinate input requires a fresh exact-tab screenshot from getScreenshot() or getAXStateAndScreenshot(); actions, navigation, and AX-only observations invalidate that mapping. " +
       "Tabs additionally expose goto(url), back(), forward(), reload(), close(). Use numeric indices from fresh AX state; there are no Playwright locators. " +
       "For a browser field that exposes type but not click, use setValue(index, text) to replace its contents directly; do not click a non-clickable field. " +
@@ -83,7 +87,7 @@ export function createCuaReplToolRuntime(
       "Use nodeRepl.write(value) for text or values and await nodeRepl.emitImage(bytes | dataURL | {bytes, mimeType}) for PNG/JPEG/WebP images. " +
       "Expression results are not displayed; emit:false suppresses automatic output. Explicit image emissions are always attached. File/remote image URLs require a host asset resolver and are unavailable here. " +
       "Observations wait for settled state; timers such as setTimeout are unavailable and unnecessary. " +
-      "getAXState({query: 'relevant text'}) captures fresh matches with bounded source-ordered evidence neighborhoods when supported; complete matches do not imply complete surrounding evidence. " +
+      "Browser tabs only: getAXState({query: 'relevant text'}) captures fresh matches with bounded source-ordered evidence neighborhoods when supported; app getAXState does not accept query or context; complete matches do not imply complete surrounding evidence. " +
       "getAXState({context: index}) reads surrounding structure from the same stored browser snapshot. Follow emitted earlier/later recipes with getAXState({continuation: token}); tokens are single-use and bound to that tab/snapshot. Neither option combines with the other, query or screenshots; input or fresh observation invalidates them. " +
       "Context-only anchors are read-only. Group indices read the beginning of a group; enclosing-group indices move outward. Repeating a group restarts it. Heed before/after omissions, unavailable cursors and frame boundaries before inferring first/all/absence. " +
       "Long link destinations are marked urlPreview; use the element index, not a truncated URL. " +
