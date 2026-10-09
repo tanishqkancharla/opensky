@@ -140,12 +140,12 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: sdk-test-driver
-          run-id: 37817163291
+          run-id: 37877302884
           github-token: ${{ github.token }}
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
-          printf '%s\n' '43bcbdd4961f91242c119149f5316d94bec73c215ef9977438693d88f1c01313  .driver/opensky-driver' | sha256sum --check -
+          printf '%s\n' '11ad0b43aa39712745f25ffad3c60ebf1ff9894e6932e5d066ad88c1856d6ed8  .driver/opensky-driver' | sha256sum --check -
           chmod +x .driver/opensky-driver
           .driver/opensky-driver --opensky-driver-identity > artifacts/linux-office/driver-identity.json
           python - <<'PYTHON'
@@ -154,7 +154,7 @@ jobs:
           retained = json.load(open('.driver/identity.json'))
           assert actual == retained
           assert (actual['product'], actual['protocolVersion'], actual['source']) == (
-              'opensky-driver', 1, '03b213fbb89b1fe594dea0d0d25c0a18bc43b017')
+              'opensky-driver', 1, '612355b6aae1fe0b084e461c37c26570d65b430a')
           PYTHON
       - name: Use the single frozen Linux grading profile
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
