@@ -39,6 +39,7 @@ export class DesktopProgramPolicy {
       const clearHelper = (name: string) => { const id = lexical.resolve(name); if (id !== undefined) lexical.writeById(id, { helper: undefined }); };
       const activeHelpers = new Set<unknown>();
       const topLevelStatements = new Set(ast.body);
+      const topLevelExpressions = new Set(ast.body.filter((statement: any) => statement.type === "ExpressionStatement").map((statement: any) => statement.expression));
       const functionScope = (): number => {
         const saved = snapshot(); let frame = saved.scopes.get(saved.currentScopeId)!;
         while (frame.kind === "block") frame = saved.scopes.get(frame.parentId!)!;
@@ -272,7 +273,16 @@ export class DesktopProgramPolicy {
         if (node.type === "UpdateExpression") return update(node);
         if (node.type === "AssignmentExpression" && node.operator === "=" && node.left.type === "Identifier") {
           const name = node.left.name;
-          if (!bindings.has(name) || forbidden.has(name) || imports.has(name) || !value(node.right)) return false;
+          if (forbidden.has(name) || imports.has(name) || !value(node.right)) return false;
+          if (!bindings.has(name)) {
+            // The real persistent REPL permits a first implicit global app
+            // assignment. Admit only a fresh top-level name and the same
+            // scoped factory used by declarations; never promote older data
+            // or hoisted/block bindings to app authority.
+            if (lexical.resolve(name) !== undefined || !topLevelExpressions.has(node) || !scopedApp(node.right)) return false;
+            bindings.add(name); apps.add(name);
+            return true;
+          }
           // Rebinding an existing app to the same authorized capability is
           // normal recovery. A failed assignment leaves only that older,
           // already-scoped app behind. Never promote an older data binding.
