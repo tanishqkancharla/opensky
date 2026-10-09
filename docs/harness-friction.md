@@ -5183,3 +5183,12 @@ Iteration142 closes all five selected pairs,12serial paid arms including two aff
 ## SET339 — Sheet-copy prompt names nonexistent spaced sheets
 
 Preflight before any model run143 finds that task0cecd4f3 asks for Sheet 1 and Sheet 2, while the original workbook contains Sheet1, Sheet2, Sheet3. Original gold has LARS Resources, LARS Resources (Backup), LARS Resources (Offline), Sheet3. Correct only the spaced names in the separately versioned instruction record, retaining exact upstream wording/provenance. Both agents receive the identical revision; immutable manifest/input/gold/grader and all authority boundaries remain unchanged. Existing task-instruction owners and current real Calc setup precede the serial sample. This is task-quality maintenance, not a public SDK or comparative resource improvement.
+
+
+## SET340 — Closing Linux popup terminates the driver
+
+Original SDK1344/GitHub37874595367 reaches the exact Impress Slide Properties dialog and visibly applies named Green, then pointer/observation cell10 loses the daemon. The original driver03b213fb/ELF43bcbdd4 log records fatal BadWindow/opcode15 X_QueryTree; the saved PPTX remains byte-identical to input. Usage and exact app/helper/profile cleanup are retained and settled. Native1343 stopped at the shared cost cap and omitted its modal, so this pair remains unscored.
+
+Driver issue https://github.com/tanishqkancharla/opensky/issues/50 and draft driverPR49 preserve the defect. Actual pre-repair canonical37875782929 fails in a new real public-helper keeper with the same fatal error; relevant helper/test blobs match head34a770812 and actual merge checkout95aff204. Repair612355b6 uses a checked child query on the exact Xlib display, retaining empty-on-missing-window semantics, without a global handler swap, input replay, shipped test hooks or public API change.
+
+Only the isolated Linux typing regression workflow adopts this pending repair source and runs the entire existing click/key owner binaries before broader library/build work. The paid comparison workflow remains pinned to accepted03b213fb/ELF43bcbdd4. Corrected native input owners, all existing public Writer owners with independent saved-file/cleanup evidence, then affected SDK task rerun are required before accepting the new binary. No Mac rebuild/restart, permission change, native reference, task/gold/grader or budget-limit change. Full cross-platform canonical certification and maintainer review remain pending.

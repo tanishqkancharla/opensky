@@ -45,7 +45,7 @@ permissions:
   actions: read
 
 env:
-  OPENSKY_DRIVER_REF: 03b213fbb89b1fe594dea0d0d25c0a18bc43b017
+  OPENSKY_DRIVER_REF: 612355b6aae1fe0b084e461c37c26570d65b430a
   # Parent verifies the exact build independently; reuse is bound to its immutable digest input.
   OPENSKY_DRIVER_SHA256: ${{ inputs.driver_artifact_sha256 || '' }}
   CARGO_INCREMENTAL: '0'
@@ -77,7 +77,10 @@ jobs:
         env:
           CUA_DRIVER_SOURCE_SHA: ${{ env.OPENSKY_DRIVER_REF }}
         run: |
-          # Fail at the affected library owners before building the full executable.
+          # Whole input owners fail before the broader compile and release build.
+          xvfb-run -a --server-args='-screen 0 640x480x24 -noreset' \
+            cargo test --release --locked -p platform-linux --test click_input_x11 --manifest-path libs/cua-driver/rust/Cargo.toml -- \
+              --ignored --nocapture --test-threads=1
           cargo test --release --locked -p platform-linux -p cua-driver-core --lib --manifest-path libs/cua-driver/rust/Cargo.toml
           xvfb-run -a --server-args='-screen 0 640x480x24 -noreset' \
             cargo test --release --locked -p platform-linux --test key_input_x11 --manifest-path libs/cua-driver/rust/Cargo.toml -- \
