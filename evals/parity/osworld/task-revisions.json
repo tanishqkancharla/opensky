@@ -1,0 +1,23 @@
+[
+  {
+    "taskId": "0b17a146-2934-46c7-8727-73ff6b6483e8",
+    "upstreamInstruction": "Help me change the 2 in \"H2O\" to a subscript.",
+    "instruction": "Change the 2 in every occurrence of H2O in this document to subscript.",
+    "revision": 2,
+    "reason": "Original wording was interpreted as title-only; clarify every occurrence without changing the pinned grader or original assets."
+  },
+  {
+    "taskId": "0cecd4f3-74de-457b-ba94-29ad6b5dafb6",
+    "upstreamInstruction": "Rename \"Sheet 1\" to \"LARS Resources\". Then make a copy of it. Place the copy before \"Sheet 2\" and rename it by appending a suffix \"(Backup)\", concatenated by a white space. And Also rename \"Sheet2\" to \"LARS Resources (Offline)\".",
+    "instruction": "Rename \"Sheet1\" to \"LARS Resources\". Then make a copy of it. Place the copy before \"Sheet2\" and rename it by appending a suffix \"(Backup)\", concatenated by a white space. And Also rename \"Sheet2\" to \"LARS Resources (Offline)\".",
+    "revision": 2,
+    "reason": "Original workbook has Sheet1, Sheet2, Sheet3; correct spaced sheet names to the observed names. Original input/gold/scorer/manifest remain unchanged."
+  },
+  {
+    "taskId": "035f41ba-6653-43ab-aa63-c86d449d62e5",
+    "upstreamInstruction": "Help me fill in the Gross profit column by subtracting all the available expenses including discounts, allowances, material and labor charges, and overhead from the actual sale, i.e., the sales after deducting the returns. Then under column A named \"Year_Profit\" in a new sheet \"Sheet2\", display the Year Column in Sheet 1 as text appended by a \"_\" with the corresponding integer digits of Gross Profit value.",
+    "instruction": "Help me fill in the Gross profit column by subtracting all the available expenses including discounts, allowances, material and labor charges, and overhead from the actual sale, i.e., the sales after deducting the returns. Then under column A named \"Year_Profit\" in a new sheet \"Sheet2\", display the Year Column in Sheet1 as text appended by a \"_\" with the corresponding integer digits of Gross Profit value.",
+    "revision": 2,
+    "reason": "Original input and gold use Sheet1, not spaced Sheet 1; correct only the referenced source sheet name before either agent. Input/gold/scorer/immutable manifest unchanged."
+  }
+]

@@ -50,6 +50,11 @@ if [[ "${OPENSKY_LINUX_AGENT_MODE:-}" == repl ]]; then
     dropdown) repl_spec=specs/linux-dropdown-repl.test.ts ;;
     program) repl_spec=specs/linux-program-repl.test.ts; repl_args+=(--bail=0) ;;
     clipboard) repl_spec=specs/linux-sdk-clipboard.test.ts; repl_args+=(--bail=0) ;;
+    dialog)
+      [[ "${OPENSKY_DIALOG_BACKEND:-}" == opensky || "${OPENSKY_DIALOG_BACKEND:-}" == native ]] || exit 2
+      if [[ "$OPENSKY_DIALOG_BACKEND" == native ]]; then export OPENSKY_LINUX_TYPING_NATIVE_FACADE=1; else export OPENSKY_LINUX_TYPING_NATIVE_FACADE=0; fi
+      repl_spec=specs/linux-dialog-transitions.test.ts; repl_args+=(--bail=0) ;;
+
     *) echo 'Unknown public REPL regression'; exit 2 ;;
   esac
   cd e2e

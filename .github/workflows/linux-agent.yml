@@ -14,8 +14,13 @@ on:
       repl_case:
         description: 'Deterministic public-interface regression; used only in repl mode'
         type: choice
-        options: [async-typing, dropdown, program, clipboard]
+        options: [async-typing, dropdown, program, clipboard, dialog]
         default: async-typing
+      dialog_backend:
+        description: 'Model-free dialog control backend; used only for repl_case dialog'
+        type: choice
+        options: [opensky, native]
+        default: opensky
       setup_task:
         description: 'Benchmark task to validate without a model in setup mode'
         type: string
@@ -39,10 +44,13 @@ concurrency:
 jobs:
   evaluate:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     env:
+      OPENSKY_VSCODE_DOWNLOAD_CACHE: ${{ github.workspace }}/.ci-vscode-download
       OPENSKY_LINUX_NATIVE_FACADE: '1'
       OPENSKY_LINUX_AGENT_MODE: ${{ inputs.mode || 'setup' }}
       OPENSKY_REPL_CASE: ${{ inputs.repl_case || 'async-typing' }}
+      OPENSKY_DIALOG_BACKEND: ${{ inputs.dialog_backend || 'opensky' }}
       OPENSKY_AGENT_TASK: ${{ inputs.setup_task || '3ef2b351-8a84-4ff2-8724-d86eae9b842e' }}
       OPENSKY_EVAL_SCORING_PROFILE: ${{ github.workspace }}/.scoring-profile/profile.json
       OPENSKY_EVAL_SCORING_PROFILE_SHA256: 15218ca4acdfd6bf4deebe2a9c582aa302cd987b4b26dda615599ac0ab46ecf8
@@ -94,7 +102,15 @@ jobs:
             printf '%s\n' 'Refusing an asset cache for a different manifest' >&2
             exit 1
           fi
+      - name: Restore exact VS Code download
+        id: restore-vscode
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.OPENSKY_VSCODE_DOWNLOAD_CACHE }}/code.deb
+          key: linux-vscode-deb-v1-2493226f723f66c8e83b9d806e3fbe83dcc43f381ece51eaa03d88889542b0c0
+          # No restore-keys; the installer checks the exact digest on every hit.
       - name: Install desktop and scorer
+        timeout-minutes: 15
         run: |
           printf 'OPENSKY_REMOTE_BUDGET=%s\n' "$RUNNER_TEMP/opensky-agent-budget/ledger.json" >> "$GITHUB_ENV"
           bash e2e/ci/install-linux-desktop.sh
@@ -104,6 +120,12 @@ jobs:
           if [[ "$OPENSKY_LINUX_AGENT_MODE" == repl && "$OPENSKY_REPL_CASE" == program ]]; then python -m pip install python-xlib==0.33; fi
           python -m pip install -r evals/parity/osworld/requirements.txt
           python evals/parity/osworld/fetch-assets.py
+      - name: Cache the hash-verified VS Code download
+        if: steps.restore-vscode.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.OPENSKY_VSCODE_DOWNLOAD_CACHE }}/code.deb
+          key: linux-vscode-deb-v1-2493226f723f66c8e83b9d806e3fbe83dcc43f381ece51eaa03d88889542b0c0
       - name: Cache all hash-verified benchmark assets
         if: steps.restore-benchmark-assets.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -118,12 +140,12 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: sdk-test-driver
-          run-id: 37794063119
+          run-id: 37877302884
           github-token: ${{ github.token }}
           path: .driver
       - name: Verify the exact tested driver binary
         run: |
-          printf '%s\n' '1b9f1381c7a01243169d05c2a768576613eaef4843a8ef3aefefd97d96c6f1d5  .driver/opensky-driver' | sha256sum --check -
+          printf '%s\n' '11ad0b43aa39712745f25ffad3c60ebf1ff9894e6932e5d066ad88c1856d6ed8  .driver/opensky-driver' | sha256sum --check -
           chmod +x .driver/opensky-driver
           .driver/opensky-driver --opensky-driver-identity > artifacts/linux-office/driver-identity.json
           python - <<'PYTHON'
@@ -132,7 +154,7 @@ jobs:
           retained = json.load(open('.driver/identity.json'))
           assert actual == retained
           assert (actual['product'], actual['protocolVersion'], actual['source']) == (
-              'opensky-driver', 1, '77f3406a4da1430fec4ccd96e7154c6df9303459')
+              'opensky-driver', 1, '612355b6aae1fe0b084e461c37c26570d65b430a')
           PYTHON
       - name: Use the single frozen Linux grading profile
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
@@ -173,7 +195,7 @@ jobs:
           npm ci --ignore-scripts --prefix e2e
           npm run typecheck --prefix e2e
           xvfb-run -a --server-args='-screen 0 1280x900x24' dbus-run-session -- \
-            npm test --prefix e2e -- specs/linux-parity-policy.test.ts specs/linux-current-facade-policy.test.ts specs/desktop-control-flow-policy.test.ts specs/desktop-expression-policy.test.ts specs/lexical-state-policy.test.ts specs/parity-admission.test.ts specs/parity-budget.test.ts specs/scoring-profile.test.ts specs/osworld-score.test.ts --bail=0 --reporter=verbose --reporter=json --outputFile.json="$PWD/artifacts/linux-office/comparison-contracts.json"
+            npm test --prefix e2e -- specs/linux-parity-policy.test.ts specs/linux-current-facade-policy.test.ts specs/linux-opensky-inventory-policy.test.ts specs/linux-app-selectors.test.ts specs/linux-task-instruction.test.ts specs/linux-driver-parent-identity.test.ts specs/desktop-control-flow-policy.test.ts specs/desktop-expression-policy.test.ts specs/lexical-state-policy.test.ts specs/parity-admission.test.ts specs/parity-budget.test.ts specs/scoring-profile.test.ts specs/osworld-score.test.ts --bail=0 --reporter=verbose --reporter=json --outputFile.json="$PWD/artifacts/linux-office/comparison-contracts.json"
       - name: Use the frozen native reference package
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:

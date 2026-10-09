@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { AsyncRepl } from "../../src/async-repl.js";
 import { DesktopProgramPolicy } from "../../evals/parity/desktop-program.js";
 
 const native = test.extend<{ policy: DesktopProgramPolicy }>({
@@ -41,3 +42,35 @@ opensky("expressions cannot construct an unauthorized app or executable property
   expect(policy.accepts('await cua.getApp("Other" + " App");')).toBe(false);
   expect(policy.accepts('await app["con" + "structor"]("return process")();')).toBe(false);
 });
+
+for (const backend of ["opensky", "native"] as const) {
+  const scope = { backend, appSelectors: ["Fixture"], isolatedDesktop: "linux" as const, ...(backend === "native" ? { nativeFacade: true } : {}) };
+  const selector = backend === "native" ? '{windowId:123}' : '"Fixture"';
+  test(`${backend}: fresh scoped app assignment follows actual persistent REPL semantics`, async () => {
+    const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
+    repl.installContextFactory("cua", 'return {getApp: async () => ({getAXState: async () => "fixture"})};');
+    const binding = `app = await cua.getApp(${selector});`;
+    await repl.evaluate(binding);
+    expect((await repl.evaluate('return await app.getAXState();')).value).toBe("fixture");
+    const policy = new DesktopProgramPolicy(scope);
+    expect(policy.accepts(binding)).toBe(true);
+    expect(policy.accepts('await app.getAXState();')).toBe(true);
+    policy.executionFailed();
+    expect(policy.accepts(`app = await cua.getApp(${selector});`)).toBe(true);
+  });
+
+  test(`${backend}: implicit app binding does not promote data, scopes or protected globals`, () => {
+    for (const code of [
+      'unobserved = 3;',
+      `process = await cua.getApp(${selector});`,
+      `cua = await cua.getApp(${selector});`,
+      `var data = 3; data = await cua.getApp(${selector});`,
+      `{ hidden = await cua.getApp(${selector}); }`,
+      `app = await cua.getApp(${selector}); let app;`,
+      'app = await cua.getApp("Other");',
+    ]) expect(new DesktopProgramPolicy(scope).accepts(code), code).toBe(false);
+    const policy = new DesktopProgramPolicy(scope);
+    expect(policy.accepts('app = await cua.getApp("Other");')).toBe(false);
+    expect(policy.accepts('await app.getAXState();')).toBe(false);
+  });
+}

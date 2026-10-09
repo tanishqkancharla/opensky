@@ -197,3 +197,5 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 - Shorten feedback at the failing boundary. During implementation select the affected existing outcome checks, reuse only independently verified immutable artifacts, and collect failure evidence before teardown. Broaden verification after focused checks pass; keep complete release gates and historical failures.
 
 - Derive compact failure summaries from retained, source-checked artifacts. Keep missing evidence explicit, and cache completed observations so reviewing a failure does not trigger more execution.
+
+- Validate configuration with its platform’s semantic validator before expensive execution. Generic syntax checks can miss unsupported expression contexts.

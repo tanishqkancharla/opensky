@@ -31,6 +31,30 @@ import type { SnapshotElement } from "../src/types.js";
 import { OpenSkyError } from "../src/errors.js";
 import { makeHarness } from "./harness.ts";
 
+describe("Linux advertised primary action", () => {
+  it("press uses the existing exact indexed click without a retired action field or replay", async () => {
+    const { driver, dir, statePath } = await makeHarness();
+    const linux = createOpenSky({ driver, target: "linux", homeDir: join(dir, "linux-primary-home"), settleDelayMs: 0 });
+    try {
+      const state = await linux.get_app_state({ app: "Calculator", disableDiff: true, includeScreenshot: false });
+      await linux.perform_secondary_action({ app: state.targetHandle, element_index: 13, action: "press" });
+      const after = JSON.parse(await readFile(statePath, "utf8"));
+      const inputs = after.calls.filter((call: any) => call.tool === "click");
+      assert.equal(inputs.length, 1);
+      assert.equal(inputs[0].args.action, undefined, "Linux click rejects the retired action field");
+      const observed = after.calls.find((call: any) => call.tool === "get_window_state");
+      assert.equal(inputs[0].args.pid, observed.args.pid);
+      assert.equal(inputs[0].args.window_id, observed.args.window_id);
+      assert.equal(inputs[0].args.element_token, "s00000001:13");
+      assert.equal(inputs[0].args.button, "left");
+      assert.match((await linux.get_app_state({ app: state.targetHandle, disableDiff: true, includeScreenshot: false })).text, /\[13\] AXButton 7 value="7"/);
+      const count = JSON.parse(await readFile(statePath, "utf8")).calls.filter((call: any) => call.tool === "click").length;
+      await assert.rejects(() => linux.perform_secondary_action({ app: state.targetHandle, element_index: 99999, action: "press" }), /not present in the latest accessibility snapshot/);
+      assert.equal(JSON.parse(await readFile(statePath, "utf8")).calls.filter((call: any) => call.tool === "click").length, count);
+    } finally { await linux.close(); }
+  });
+});
+
 describe("unadvertised native primary button routing", () => {
   it("selects one exact foreground click while preserving advertised and other gestures", async () => {
     const { opensky, statePath } = await makeHarness();

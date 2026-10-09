@@ -14,8 +14,10 @@ import { prepareLinuxBenchmarkApp } from "../linux-benchmark-app.js";
 import { verifyScoringProfile } from "../scoring-profile.js";
 import { runProfile } from "../run-profile.js";
 import { captureLinuxFinalObservation } from "../linux-final-observation.js";
+import { verifiedLinuxAppSelectors } from "../linux-app-selectors.js";
+import { effectiveLinuxTaskInstruction } from "../linux-task-instruction.js";
 import { matchedLinuxPrompt } from "../linux-prompt.js";
-import { withNativeLinuxRepl } from "../native-linux-repl.js";
+import { withNativeLinuxRepl, withLinuxRepl } from "../native-linux-repl.js";
 
 const exec = promisify(execFile);
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -33,6 +35,8 @@ const artifacts = resolve(output);
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const task = manifest.tasks.find((task: { id: string }) => task.id === taskId);
 if (!task) throw new Error("Unknown Linux benchmark task");
+const taskInstruction = effectiveLinuxTaskInstruction(task, JSON.parse(await readFile(join(root, "task-revisions.json"), "utf8")));
+await writeFile(join(artifacts, "effective-task-instruction.json"), JSON.stringify({ taskId, upstreamInstruction: task.instruction, instruction: taskInstruction }, null, 2), { flag: "wx" });
 const isCode = task.category === "vs_code";
 if (isCode && !process.env.OPENSKY_EVAL_VSCODE) throw new Error("Provide OPENSKY_EVAL_VSCODE for editor tasks");
 const environment = JSON.parse(await readFile(join(artifacts, "environment.json"), "utf8"));
@@ -89,19 +93,65 @@ try {
       }
       if (!ready) throw new Error(`${name} editor controls did not become visible; agent not dispatched`);
     };
+    let appSelectors = [launch.appName];
     if (backend === "opensky" || backend === "setup") {
       const sdk = createOpenSky({ homeDir: join(temporary, "readiness-sdk"), autoLaunch: false,
         driverOptions: { binaryPath: driver, socket: process.env.OPENSKY_DRIVER_SOCKET, autoInstall: false, autoStart: false } });
       try {
-        const app = await createCua(sdk).getApp(launch.appName);
+        const cua = createCua(sdk);
+        const selectors = await verifiedLinuxAppSelectors(cua, launch.appName, async apps => {
+          await writeFile(join(artifacts, "app-selector-inventory.json"), JSON.stringify(apps, null, 2), { flag: "wx" });
+        });
+        appSelectors = selectors.appSelectors;
+        await writeFile(join(artifacts, "app-selector-proof.json"), JSON.stringify(selectors, null, 2), { flag: "wx" });
+        const app = await cua.getApp(launch.appName);
         await verifyReady(() => app.getScreenshot({ emit: false }), "opensky");
       } finally { await sdk.close(); }
+      const directory = join(artifacts, "opensky-agent-readiness"); await mkdir(directory);
+      await withLinuxRepl({
+        command: process.execPath,
+        args: ["--import", join(repo, "node_modules/tsx/dist/loader.mjs"), join(root, "../opensky-mcp.ts")],
+        // Match the real isolated agent environment. No GitHub identity or
+        // credentials are inherited by the MCP verifier child.
+        env: { ...Object.fromEntries(["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"]
+          .flatMap(key => process.env[key] === undefined ? [] : [[key, process.env[key]!]])),
+          OPENSKY_HOME: join(directory, "sdk"), OPENSKY_DRIVER_BINARY: driver,
+          OPENSKY_DRIVER_SOCKET: process.env.OPENSKY_DRIVER_SOCKET!,
+          OPENSKY_OWNED_DRIVER_PID: process.env.OPENSKY_OWNED_DRIVER_PID!,
+          OPENSKY_VERIFIED_LINUX_DRIVER: JSON.stringify(runtime.linuxIdentity),
+          PARITY_DESKTOP_SCOPE: JSON.stringify({ backend: "opensky", appSelectors, isolatedDesktop: "linux" }) },
+      }, directory, async cell => {
+        // Keep advertised inventory usable through the actual agent guard,
+        // before selecting and observing the fixture's bound app.
+        await cell('await cua.getState();');
+        await cell(`var app = await cua.getApp(${JSON.stringify(appSelectors.at(-1))});`);
+        const observed = await cell('await app.getScreenshot();');
+        const image = observed.content?.find(item => item.type === "image" && item.data);
+        if (!image) throw new Error("Genuine OpenSky agent transport did not deliver the owned document screenshot");
+        await writeFile(join(directory, "owned-window-image.bin"), Buffer.from(image.data!, "base64"));
+      }, { toolName: "cua_repl", artifactPrefix: "opensky-agent-repl" });
     }
     if (backend === "native" || backend === "setup") {
       if (nativeTransport.interface !== "current-cua-facade") throw new Error("Current native CUA facade was not verified; no legacy reference is substituted");
       const directory = join(artifacts, "native-readiness"); await mkdir(directory);
       const configuration = JSON.parse(await readFile(nativeConfig, "utf8"));
-      await withNativeLinuxRepl(configuration, directory, async cell => {
+      // Exercise the same guarded transport used by the native agent. A
+      // rejected bootstrap must explain how to obtain the original API help,
+      // and must not prevent the next genuine initialization/observation.
+      const guardedConfiguration = {
+        command: process.execPath,
+        args: ["--import", join(repo, "node_modules/tsx/dist/loader.mjs"), join(root, "../native-mcp.ts")],
+        env: { ...configuration.env, OPENSKY_NATIVE_REPL_CONFIG: nativeConfig,
+          PARITY_DESKTOP_SCOPE: JSON.stringify({ backend: "native", appSelectors: [launch.appName], isolatedDesktop: "linux", nativeFacade: true }) },
+      };
+      await withNativeLinuxRepl(guardedConfiguration, directory, async cell => {
+        let refused = false;
+        try { await cell('const { cua } = await import("@oai/cua/tinyskyAlt"); await cua.getAppState();'); }
+        catch (error) {
+          if (!String(error).includes('Initialize this isolated Linux interface')) throw error;
+          refused = true;
+        }
+        if (!refused) throw new Error("Invalid native initialization was not rejected with recovery help");
         await cell('await import("@oai/cua/tinyskyAlt");');
         await cell(`var app = await cua.getApp({windowId: ${Number(owned.window)}});`);
         await verifyReady(async () => {
@@ -116,7 +166,7 @@ try {
       await captureLinuxFinalObservation(artifacts, process.env.OPENSKY_NATIVE_PROBE_PACKAGE);
       return;
     }
-    const scope = { backend: backend as "native" | "opensky", appSelectors: [launch.appName], isolatedDesktop: "linux" as const, ...(backend === "native" ? { nativeFacade: true } : {}) };
+    const scope = { backend: backend as "native" | "opensky", appSelectors, isolatedDesktop: "linux" as const, ...(backend === "native" ? { nativeFacade: true } : {}) };
     // The agent transport receives only the live desktop/runtime values it
     // needs; in particular, it never inherits or fabricates a CI identity.
     const runtimeEnvironment = Object.fromEntries(
@@ -131,12 +181,13 @@ try {
         PARITY_DESKTOP_SCOPE: JSON.stringify(scope), OPENSKY_HOME: join(artifacts, "agent-sdk"),
         OPENSKY_DRIVER_BINARY: driver, OPENSKY_DRIVER_SOCKET: process.env.OPENSKY_DRIVER_SOCKET!,
         OPENSKY_OWNED_DRIVER_PID: process.env.OPENSKY_OWNED_DRIVER_PID!,
+        OPENSKY_VERIFIED_LINUX_DRIVER: JSON.stringify(runtime.linuxIdentity),
         OPENSKY_NATIVE_REPL_CONFIG: nativeConfig,
       },
       enabled_tools: backend === "native" ? ["js"] : ["cua_repl", "cua_repl_wait"],
     };
     const prompt = matchedLinuxPrompt({ backend: backend as "native" | "opensky",
-      taskInstruction: task.instruction, inputFile: task.inputFile, appName: launch.appName });
+      taskInstruction, inputFile: task.inputFile, appName: launch.appName });
     await writeFile(join(artifacts, "matched-prompt.json"), JSON.stringify({
       version: 1, backend, prompt, sha256: createHash("sha256").update(prompt).digest("hex"),
       guidance: "Shared task and save instruction; only interface label differs. API help comes from real tool documentation.",
