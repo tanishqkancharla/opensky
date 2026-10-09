@@ -5,5 +5,12 @@
     "instruction": "Change the 2 in every occurrence of H2O in this document to subscript.",
     "revision": 2,
     "reason": "Original wording was interpreted as title-only; clarify every occurrence without changing the pinned grader or original assets."
+  },
+  {
+    "taskId": "0cecd4f3-74de-457b-ba94-29ad6b5dafb6",
+    "upstreamInstruction": "Rename \"Sheet 1\" to \"LARS Resources\". Then make a copy of it. Place the copy before \"Sheet 2\" and rename it by appending a suffix \"(Backup)\", concatenated by a white space. And Also rename \"Sheet2\" to \"LARS Resources (Offline)\".",
+    "instruction": "Rename \"Sheet1\" to \"LARS Resources\". Then make a copy of it. Place the copy before \"Sheet2\" and rename it by appending a suffix \"(Backup)\", concatenated by a white space. And Also rename \"Sheet2\" to \"LARS Resources (Offline)\".",
+    "revision": 2,
+    "reason": "Original workbook has Sheet1, Sheet2, Sheet3; correct spaced sheet names to the observed names. Original input/gold/scorer/manifest remain unchanged."
   }
 ]
