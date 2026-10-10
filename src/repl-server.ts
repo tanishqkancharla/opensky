@@ -33,6 +33,7 @@ export class ReplServer {
   private server: Server | null = null;
   private token = "";
   private ownsInfo = false;
+  private readonly connections = new Set<Socket>();
   constructor(
     private readonly repl: AsyncRepl,
     private readonly home: string,
@@ -47,6 +48,8 @@ export class ReplServer {
     await mkdirPrivate(this.home);
     this.token = process.env.OPENSKY_REPL_TOKEN || randomBytes(32).toString("base64url");
     this.server = createServer((socket) => {
+      this.connections.add(socket);
+      socket.once("close", () => this.connections.delete(socket));
       this.handle(socket);
     });
     await new Promise<void>((resolve, reject) => {
@@ -71,6 +74,7 @@ export class ReplServer {
     } catch (error) {
       const server = this.server;
       this.server = null;
+      for (const socket of this.connections) socket.destroy();
       await new Promise<void>(resolve => server.close(() => resolve()));
       if (error && typeof error === "object" && "code" in error && error.code === "EEXIST") {
         throw new Error("A REPL server already owns this home; use the existing server or `opensky stop` before starting another.");
@@ -83,6 +87,9 @@ export class ReplServer {
   async stop(): Promise<void> {
     const server = this.server;
     this.server = null;
+    // Close client connections so a pending cell cannot strand shutdown.
+    // The owner still drains admitted OpenSky work before process exit.
+    for (const socket of this.connections) socket.destroy();
     await new Promise<void>((resolve) => {
       if (!server) {
         resolve();
