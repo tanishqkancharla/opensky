@@ -6,6 +6,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 
+import { AsyncRepl } from "../src/async-repl.js";
+import { ReplServer } from "../src/repl-server.js";
+
 import { makeHarness } from "./harness.ts";
 
 const cli = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
@@ -106,6 +109,45 @@ describe("opensky CLI", () => {
     assert.equal(state.ok, true);
     assert.match(state.value.app, /TextEdit/);
     assert.match(state.value.text, /AXTextArea/);
+  });
+
+  it("rejects missing path flag values before selecting another home", async () => {
+    for (const flag of ["--home", "--driver", "--socket"]) {
+      for (const args of [["eval", "return 1", flag], ["eval", flag, "--json", "return 1"]]) {
+        const result = await runCli(args);
+        assert.equal(result.code, 1);
+        assert.match(result.stderr, new RegExp(`${flag} requires`));
+        assert.equal(result.stdout, "");
+      }
+    }
+  });
+
+  it("prints one JSON envelope with identical local and persistent outcomes", async () => {
+    const home = await mkdtemp(join(tmpdir(), "opensky-cli-json-"));
+    const server = new ReplServer(new AsyncRepl({ allowNodeApis: false, awaitTimeoutMs: null }), home);
+    await server.start();
+    try {
+      for (const code of ["return undefined", "return 1n", "const x = {}; x.self = x; return x", "console.log('hello'); return 2", "console.log('before'); throw new Error('failure')"]) {
+        const local = await runCli(["eval", "--no-serve", "--json", "--home", home, code]);
+        const persistent = await runCli(["eval", "--json", "--home", home, code]);
+        assert.equal(local.code, persistent.code, code);
+        assert.deepEqual(JSON.parse(local.stdout), JSON.parse(persistent.stdout), code);
+        assert.equal(local.stderr, "");
+        assert.equal(persistent.stderr, "");
+      }
+    } finally { await server.stop(); await rm(home, { recursive: true, force: true }); }
+  });
+
+  it("reports a missing driver once without a cleanup stack trace", async () => {
+    const home = await mkdtemp(join(tmpdir(), "opensky-cli-missing-driver-"));
+    try {
+      const result = await runCli(["eval", "--no-serve", "--json", "--home", home, "--driver", join(home, "absent"), "await cua.getState()"]);
+      assert.equal(result.code, 1);
+      assert.equal(result.stderr, "");
+      const payload = JSON.parse(result.stdout);
+      assert.equal(payload.ok, false);
+      assert.match(payload.error, /driver|helper/i);
+    } finally { await rm(home, { recursive: true, force: true }); }
   });
 
   it("installs the skill into a temp project", async () => {
