@@ -146,9 +146,9 @@ export class CuaDriverClient implements DriverClient {
     if (existing) return this.verifyBinary(existing);
     const override = this.binaryOverride();
     if (override) {
-      throw driverError(`opensky desktop helper is not installed or executable at the configured path ${JSON.stringify(override)}. ${INSTALL_HELP}`);
+      throw driverError(`opensky desktop helper is not installed or executable at the configured path ${JSON.stringify(override)}. ${INSTALL_HELP}`, "driver_unavailable");
     }
-    throw driverError(`OpenSky Driver is not installed. ${INSTALL_HELP}`);
+    throw driverError(`OpenSky Driver is not installed. ${INSTALL_HELP}`, "driver_unavailable");
   }
 
   /** Check offline product metadata before any daemon start, MCP or GUI call. */

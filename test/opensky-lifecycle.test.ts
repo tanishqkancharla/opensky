@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
+import { CuaDriverClient } from "../src/driver.js";
+import { OpenSkyError } from "../src/errors.js";
+
 import { createOpenSky, type OpenSky } from "../src/opensky.js";
 import type { DriverCall, DriverClient, DriverResult, PersistedSession } from "../src/types.js";
 
@@ -87,6 +90,34 @@ async function removeHomes(...homes: string[]): Promise<void> {
 }
 
 describe("OpenSky library lifecycle", () => {
+  for (const mode of ["first", "prior", "concurrent"] as const) {
+    it(`keeps base ownership conservative for ${mode} missing-executable failure`, async () => {
+      const home = await temporaryHome(`missing-${mode}`);
+      const missing = deferred<void>();
+      const calls: string[] = [];
+      // Concrete transport contract fixture; no helper or GUI is launched.
+      const driver = new CuaDriverClient();
+      driver.call = async (tool, args = {}) => {
+        calls.push(tool);
+        if (tool === "missing") {
+          await missing.promise;
+          throw new OpenSkyError("executable missing before dispatch", "driver_unavailable");
+        }
+        return result(tool === "end_session" ? { session: args.session, active: false } : { apps: [] });
+      };
+      const sky = createOpenSky({ driver, homeDir: home });
+      try {
+        if (mode === "prior") await sky.list_apps();
+        const failure = sky.driver.call("missing");
+        if (mode === "concurrent") await sky.list_apps();
+        missing.resolve();
+        await assert.rejects(failure, isCode("driver_unavailable"));
+        await sky.close();
+        assert.equal(calls.filter(tool => tool === "end_session").length, mode === "first" ? 0 : 1);
+      } finally { missing.resolve(); await sky.close(); await removeHomes(home); }
+    });
+  }
+
   it("closes admission synchronously, drains a held operation, and refuses later nested dispatch", { timeout: 2_000 }, async () => {
     const home = await temporaryHome("drain");
     const driver = new LifecycleContractDriver();

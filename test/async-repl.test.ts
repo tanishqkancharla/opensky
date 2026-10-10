@@ -129,6 +129,37 @@ describe("async REPL wrapper", () => {
     assert.equal(await serverAlive(`${dir}/home`), false);
   });
 
+  it("refuses duplicate servers and never removes another owner's metadata", async () => {
+    const { mkdtemp, readFile, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const home = await mkdtemp(`${tmpdir()}/opensky-server-owner-`);
+    const first = new ReplServer(new AsyncRepl(), home);
+    const duplicate = new ReplServer(new AsyncRepl(), home);
+    try {
+      await first.start();
+      const original = await readFile(`${home}/repl.json`, "utf8");
+      await assert.rejects(duplicate.start(), /already|exists|owned/i);
+      await duplicate.stop();
+      assert.equal(await readFile(`${home}/repl.json`, "utf8"), original);
+      assert.equal((await evalOnServer("return 42", { homeDir: home })).value, 42);
+    } finally { await duplicate.stop(); await first.stop(); await rm(home, { recursive: true, force: true }); }
+  });
+
+  it("waits for a persistent cell longer than the former 15-second client deadline", async () => {
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const home = await mkdtemp(`${tmpdir()}/opensky-server-wait-`);
+    const repl = new AsyncRepl({ awaitTimeoutMs: null });
+    const server = new ReplServer(repl, home);
+    try {
+      await server.start();
+      const response = await evalOnServer("await new Promise(resolve => setTimeout(resolve, 15500)); let finished = true; return finished", { homeDir: home });
+      assert.equal(response.ok, true, response.error);
+      assert.equal(response.value, true);
+      assert.equal((await evalOnServer("return finished", { homeDir: home })).value, true);
+    } finally { await server.stop(); await rm(home, { recursive: true, force: true }); }
+  });
+
   it("seals strict sandboxes against host injection and code-generation escapes", async () => {
     const repl = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
     assert.throws(() => repl.assign({ host: () => process }), /rejects host values/);

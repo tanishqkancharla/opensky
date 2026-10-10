@@ -106,6 +106,7 @@ export class OpenSky implements OpenSkyApi {
   // the driver. Constructing a facade or evaluating pure JavaScript creates no
   // such session and must not resolve or start a driver during finalization.
   private baseSessionDispatchAttempted = false;
+  private baseSessionDispatchSequence = 0;
   private readonly runtimeId: string;
   private readonly browserLeases: BrowserSessionLeaseStore;
   private readonly preferTypedBrowser: boolean;
@@ -162,8 +163,21 @@ export class OpenSky implements OpenSkyApi {
         // Set this before invoking the transport: a timeout, malformed reply,
         // or retryable error can still leave the base session active. Explicit
         // foreign labels remain caller-controlled escape hatches.
-        if (effectiveArgs.session === this.session) this.baseSessionDispatchAttempted = true;
+        const alreadyAttempted = this.baseSessionDispatchAttempted;
+        const baseDispatch = effectiveArgs.session === this.session;
+        const dispatchSequence = baseDispatch ? ++this.baseSessionDispatchSequence : this.baseSessionDispatchSequence;
+        if (baseDispatch) this.baseSessionDispatchAttempted = true;
         try { return await this.rawDriver.call(tool, effectiveArgs); }
+        catch (error) {
+          // Only the concrete CLI transport's missing executable proves no
+          // dispatch. Keep ownership on all ambiguous failures and prior calls.
+          if (baseDispatch && !alreadyAttempted && dispatchSequence === this.baseSessionDispatchSequence &&
+              this.rawDriver instanceof CuaDriverClient &&
+              error instanceof OpenSkyError && error.code === "driver_unavailable") {
+            this.baseSessionDispatchAttempted = false;
+          }
+          throw error;
+        }
         finally {
           for (const target of affected) {
             const remaining = (this.browserMutationsPending.get(target.handle) ?? 1) - 1;
