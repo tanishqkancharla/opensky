@@ -31,7 +31,10 @@ try {
   await driver.call("start_session", { session: "halo-contract" });
   await browserDriver.call("start_session", { session: "halo-browser-contract" });
   const apps = await sdk.list_apps(); await writeFile(join(out, "apps.json"), JSON.stringify(apps, null, 2));
-  const native = apps.find(app => app.pid === Number(process.env.HALO_EDITOR_PID)); assert.ok(native, "GTK editor was discovered");
+  const inventory = (await driver.call("list_apps")).structured;
+  const nativeApps = Array.isArray(inventory) ? inventory : inventory.apps;
+  await writeFile(join(out, "native-process-inventory.json"), JSON.stringify(nativeApps, null, 2));
+  const native = nativeApps.find(app => app.pid === Number(process.env.HALO_EDITOR_PID)); assert.ok(native, "GTK editor was discovered");
   const app = await cua.getApp(native.name);
   await app.getAXState({ emit: false });
   await queue.submit(() => driver.call("hotkey", { scope: "desktop", keys: ["ctrl", "a"] })).wait();

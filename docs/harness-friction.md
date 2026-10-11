@@ -5453,3 +5453,13 @@ socket/PID identities are explicit. Document that the union of global native
 input and origin-scoped browser input is not a joint origin security boundary;
 Halo must authorize focus/global input. No driver policy weakening or sandbox
 bypass. Application effects remain pending the corrected hosted fixture.
+
+
+SET355 original run38177102280 passes259 required embedded SDK owners on exact
+c8db892 and starts both explicit bounded driver endpoints. Its first native
+assertion incorrectly assumes sdk.list_apps returns pid/name; the actual public
+facade returns id/displayName. Original inventory confirms the GTK python3 app
+is running. Fix only the fixture's PID oracle via public DriverClient list_apps,
+then bind by its name through the SDK; no private target-memory injection or
+production discovery change. No application input was dispatched in this failed
+attempt. Preserve inventories, editor buffer/clipboard and daemon logs.

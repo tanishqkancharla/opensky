@@ -208,7 +208,8 @@ pkg-config libdbus-1-dev libx11-dev libxi-dev libxtst-dev libxext-dev
 libxkbcommon-dev libssl-dev curl ca-certificates`, Rust1.97.1 and Node22.
 The artifact records exact package/Chrome/Node versions and binary SHA256.
 
-Use a host-reviewed capability manifest with `--permission-mode bounded
+Use a host-reviewed capability manifest for each authorization domain (see
+[the mixed-grant contract](#mixed-native-and-origin-scoped-browser-grants)) with `--permission-mode bounded
 --capability-manifest grants.yaml --approve-capability-manifest` on daemon
 startup. The fixture grants its exact editor PID/window, Chrome executable window
 observations, isolated browser profiles, the loopback origin and listed
