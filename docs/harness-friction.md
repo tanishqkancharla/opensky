@@ -5442,3 +5442,14 @@ browser_ref_unavailable as not_dispatched; keep ambiguous errors fenced. Add a
 public host validation owner that uses no daemon and proves later admission
 still works after a bad SDK request. This is completion classification only,
 not a rollback guarantee for earlier successful calls in the callback.
+
+
+SET355 original run38176273234 proves258 embedded SDK owners on Node22.23.3 and
+real Xtigervnc/XFCE/GTK startup, then refuses driver startup because immutable
+origin-scoped grants cannot allow global native bypass tools. No GUI input proof.
+Retain original manifest/logs and implement separate persistent native/browser
+bounded-grant endpoints under one DesktopActionQueue on the same desktop. Both
+socket/PID identities are explicit. Document that the union of global native
+input and origin-scoped browser input is not a joint origin security boundary;
+Halo must authorize focus/global input. No driver policy weakening or sandbox
+bypass. Application effects remain pending the corrected hosted fixture.

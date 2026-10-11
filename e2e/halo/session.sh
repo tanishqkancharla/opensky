@@ -6,7 +6,7 @@ mkdir -p "$HALO_ARTIFACTS"
 export XDG_RUNTIME_DIR="$(mktemp -d /tmp/halo-runtime.XXXXXX)"
 chmod 700 "$XDG_RUNTIME_DIR"
 cleanup() {
-  for pid in "${daemon_pid:-}" "${editor_pid:-}" "${wm_pid:-}" "${panel_pid:-}" "${vnc_pid:-}" "${clipboard_pid:-}"; do
+  for pid in "${daemon_pid:-}" "${browser_daemon_pid:-}" "${editor_pid:-}" "${wm_pid:-}" "${panel_pid:-}" "${vnc_pid:-}" "${clipboard_pid:-}"; do
     if [[ -n "$pid" ]]; then kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; fi
   done
   rm -rf "$XDG_RUNTIME_DIR"
@@ -24,7 +24,22 @@ editor_window=$(xdotool search --sync --onlyvisible --name '^Halo Contract Edito
 wmctrl -ia "$editor_window"
 printf 'preserved clipboard sentinel Ελληνικά' | xclip -selection clipboard -loops 0 -quiet & clipboard_pid=$!
 export HALO_EDITOR_PID="$editor_pid" HALO_EDITOR_WINDOW="$editor_window"
-cat > "$HALO_ARTIFACTS/grants.yaml" <<EOF
+cat > "$HALO_ARTIFACTS/native-grants.yaml" <<EOF
+version: 2
+mode: bounded
+expires_after: 1h
+idle_timeout: 30m
+resources:
+  desktop:
+    display: true
+    applications: [$editor_pid]
+    windows:
+      - pid: $editor_pid
+        window_id: $editor_window
+allow:
+  tools: [start_session, end_session, list_apps, list_windows, get_window_state, type_text, hotkey, press_key, bring_to_front]
+EOF
+cat > "$HALO_ARTIFACTS/browser-grants.yaml" <<EOF
 version: 2
 mode: bounded
 expires_after: 1h
@@ -41,14 +56,12 @@ resources:
     origins: ['http://127.0.0.1:8123']
   desktop:
     display: true
-    applications: [$editor_pid]
-    windows:
-      - pid: $editor_pid
-        window_id: $editor_window
 allow:
-  tools: [start_session, end_session, list_apps, list_windows, get_window_state, get_browser_state, browser_prepare, browser_navigate, browser_click, browser_pointer, browser_key, type_text, hotkey, press_key, bring_to_front, close_window]
+  tools: [start_session, end_session, list_apps, list_windows, get_browser_state, browser_prepare, browser_navigate, browser_click, browser_pointer, browser_key, close_window]
 EOF
 export OPENSKY_DRIVER_PATH="$PWD/driver/libs/cua-driver/rust/target/release/cua-driver"
 export HALO_DRIVER_SOCKET="$XDG_RUNTIME_DIR/driver.sock"
-"$OPENSKY_DRIVER_PATH" --socket "$HALO_DRIVER_SOCKET" serve --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/driver.log" 2>&1 & daemon_pid=$!
+"$OPENSKY_DRIVER_PATH" --socket "$HALO_DRIVER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/native.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/native-grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/driver.log" 2>&1 & daemon_pid=$!
+export HALO_BROWSER_SOCKET="$XDG_RUNTIME_DIR/browser.sock"
+"$OPENSKY_DRIVER_PATH" --socket "$HALO_BROWSER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/browser.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/browser-grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/browser-driver.log" 2>&1 & browser_daemon_pid=$!
 node e2e/halo/contract.mjs

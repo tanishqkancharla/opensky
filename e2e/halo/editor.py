@@ -1,4 +1,5 @@
 import gi, json, os, pathlib
+gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
 out = pathlib.Path(os.environ["HALO_ARTIFACTS"])
 win = Gtk.Window(title="Halo Contract Editor")

@@ -222,3 +222,58 @@ PID/window/origin and tool list with Halo's reviewed resources and keep the
 manifest read-only to workers. An environment where Chrome's sandbox cannot
 initialize remains unsupported for this acceptance run; the test must fail
 without changing Chrome sandbox or container privileges.
+
+
+## Mixed native and origin-scoped browser grants
+
+Actual run38176273234 passed258 required embedded SDK owners on Node22.23.3
+and started TigerVNC/XFCE/GTK, but the daemon rejected the first manifest before
+input: origin-scoped manifests cannot also allow raw desktop tools such as
+`type_text`, `hotkey` or `get_window_state`. This is an enforced policy boundary,
+not an application permission prompt. No GUI acceptance was earned by that run.
+
+The dedicated acceptance lane therefore starts two persistent instances of the
+**same pinned binary**, each with its own explicit socket/PID file and reviewed
+immutable manifest: native input/observation and typed browser/origin input.
+One host-side `DesktopActionQueue` serializes both transports on the same
+Xtigervnc/D-Bus desktop. These instances outlive all requests; they are not
+recreated per worker. A single `OpenSkyHost` is for one authorization domain;
+use the public queue for multiple domains:
+
+```js
+import { DesktopActionQueue, CuaDriverClient, createOpenSky, createCua } from 'opensky-cua';
+const queue = new DesktopActionQueue();
+function domain(socket, session) {
+  const driver = new CuaDriverClient({ binaryPath: process.env.OPENSKY_DRIVER_PATH,
+    socket, session, autoStart: false, timeoutMs: null });
+  const sdk = createOpenSky({ driver, target: 'linux', session,
+    homeDir: '/home/halo/.opensky/' + session });
+  return { sdk, cua: createCua(sdk, { emit: () => undefined }) };
+}
+const native = domain(process.env.HALO_NATIVE_SOCKET, 'halo-native');
+const browser = domain(process.env.HALO_BROWSER_SOCKET, 'halo-browser');
+// Registered host tools choose a domain; workers receive only the action ID.
+const action = queue.submit(async () => {
+  const tab = await browser.cua.createBrowserTab('chrome', 'http://127.0.0.1:8123/');
+  await tab.getScreenshot({ emit: false });
+  await tab.click([80, 80], { deliveryMode: 'foreground' });
+  await tab.close();
+});
+await action.wait(); await queue.drain();
+// Server shutdown, after all workers/extensions stop admission:
+await queue.close(); await native.sdk.close(); await browser.sdk.close();
+```
+
+Use one requested input per submission for finer Stop behavior. A callback
+that batches multiple inputs is one active action and may continue the batch
+after Stop. All submissions from one worker can share its AbortSignal so queued
+ones cancel together while the active input remains tracked.
+
+Separate manifests do **not** create a joint origin security boundary if the
+host also exposes global desktop typing: global input can hit the focused Chrome
+window. Halo must authorize global input and hold focus ownership, or restrict
+native tools to reviewed exact native targets. Joint per-tool native/browser
+resource policy in a single origin-scoped manifest is not supported by the
+pinned driver. The acceptance manifest's explicit display input grant is needed
+for the reported `type_text(scope="desktop")` reproduction, not a minimal grant
+for every Halo tool. No unrestricted mode is used in either instance.
