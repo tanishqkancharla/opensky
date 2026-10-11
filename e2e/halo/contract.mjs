@@ -36,7 +36,7 @@ try {
   await writeFile(join(out, "native-process-inventory.json"), JSON.stringify(nativeApps, null, 2));
   const native = nativeApps.find(app => app.pid === Number(process.env.HALO_EDITOR_PID)); assert.ok(native, "GTK editor was discovered");
   const app = await cua.getApp(native.name);
-  const beforeAX = await app.getAXState({ emit: false });
+  const beforeAX = await app.getAXState({ disableDiffing: true, emit: false });
   await writeFile(join(out, "editor-before.ax.txt"), beforeAX);
   assert.match(beforeAX, /replace me/, "real AT-SPI snapshot exposes editor contents");
   await queue.submit(() => driver.call("hotkey", { scope: "desktop", keys: ["ctrl", "a"] })).wait();
@@ -59,7 +59,7 @@ try {
   const following = queue.submit(async () => { await driver.call("hotkey", { scope: "desktop", keys: ["ctrl", "s"] }); await poll(async () => (await readFile(join(out, "saved.txt"), "utf8")) === text); return await readFile(join(out, "saved.txt"), "utf8"); });
   assert.equal(following.query().state, "queued"); await active.wait(); assert.equal(await following.wait(), text); await queue.drain();
   const complete = await state(); assert.equal(complete.text, text);
-  const afterAX = await app.getAXState({ emit: false });
+  const afterAX = await app.getAXState({ disableDiffing: true, emit: false });
   await writeFile(join(out, "editor-after.ax.txt"), afterAX); assert.match(afterAX, /éΩ中🙂/);
   record("cancel-and-completion", { atDeadline, partial, complete, active: active.query(), cancelled: cancelled.query(), following: following.query(), savedExact: true });
   try {

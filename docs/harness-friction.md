@@ -5478,3 +5478,10 @@ workaround. Preserve original app effects and refusal. Tighten fixture evidence
 with saved before/after AX text and active-at-deadline snapshots, plus supervised
 PID exit receipts. Move headless probe profile outside retained artifact root to
 avoid archiving live singleton sockets; original upload warning is retained.
+
+SET355 final evidence run38178452205 passes259 required SDK owners but correctly
+fails the added full-AX assertion: `getApp` already observed the editor, so the
+next default diff is "No accessibility changes." No new native acceptance is
+claimed from this run; prior run38177715210 effects remain retained. The fixture
+now explicitly requests `disableDiffing:true` for both full AX receipts. All
+seven owned supervisor processes exited and artifact upload succeeded.
