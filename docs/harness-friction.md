@@ -5420,3 +5420,16 @@ daemon; launch daemon/client from the same immutable binary. Tests cover ASCII,
 Unicode and no input fallback through public native binding. Actual GTK saved
 content/selected text/clipboard invariance remains a hosted acceptance check;
 Linux successful paste/replacement is explicitly unsupported.
+
+
+SET355 original Bookworm run38175661153 compiled pinned0.34.1/dd5f9f53 with
+Rust1.97.1 and retained binary identity/hash. Whole Node22 SDK diagnostics have
+487 passes,2 failures,2 skips: Node/V8 InternalCallbackScope SIGABRT in the two
+CLI REPL runaway-interruption subprocess owners. Desktop acceptance did not
+start. Preserve the failure, separate CLI-only diagnostics and require embedded
+SDK/lifecycle owners before GUI tests; do not claim the whole Node22 suite green.
+Also document the driver's existing120-second socket deadline: null SDK timeout
+removes the Node wrapper deadline, not that transport limit. No daemon action
+lookup or fence-reset claim. Fixture corrections explicitly install GNOME
+accessibility schemas/backend and sample focus rather than require foreground
+input to always steal it; sandbox flags/filter evidence strengthened.

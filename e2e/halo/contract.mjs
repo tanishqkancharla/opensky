@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { DesktopActionQueue, CuaDriverClient, createOpenSky, createCua } from "../../dist/index.js";
 const out = process.env.HALO_ARTIFACTS;
-const evidence = { sdk: process.env.GITHUB_SHA, driver: process.env.HALO_DRIVER_REF, node: process.version, results: [] };
+const evidence = { sdk: process.env.GITHUB_SHA, driver: process.env.HALO_DRIVER_REF, node: process.version, wholeNode22Suite: process.env.HALO_NODE22_WHOLE_OUTCOME, results: [] };
 const state = async () => JSON.parse(await readFile(join(out, "editor-state.json"), "utf8"));
 const poll = async (predicate, timeout = 10000) => {
   const deadline = Date.now() + timeout; do { try { if (await predicate()) return; } catch (error) { if (error.code !== "ENOENT") throw error; } await sleep(50); } while (Date.now() < deadline);
@@ -86,7 +86,7 @@ try {
   } catch (error) { record("foreground-browser", { verified: false, error: String(error), code: error.code }); throw error; }
 } catch (error) { evidence.error = String(error); process.exitCode = 1; }
 finally {
-  try { if (tab) await queue.submit(() => tab.close()).wait(); await queue.close({ timeoutMs: 30000 }); await sdk.close(); evidence.cleanup = "owned browser/session detached; daemon belongs to session supervisor"; } catch (error) { evidence.cleanupError = String(error); process.exitCode = 1; }
+  try { if (tab) await queue.submit(() => tab.close()).wait(); await queue.close({ timeoutMs: 30000 }); await sdk.close(); await driver.call("end_session", { session: "halo-contract" }); evidence.cleanup = "owned browser/session detached; daemon belongs to session supervisor"; } catch (error) { evidence.cleanupError = String(error); process.exitCode = 1; }
   server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
   await writeFile(join(out, "evidence.json"), JSON.stringify(evidence, null, 2)); console.log(JSON.stringify(evidence.results.map(({name, ...data}) => ({ name, verified: data.verified ?? true })), null, 2));
 }

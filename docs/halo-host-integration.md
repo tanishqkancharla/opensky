@@ -14,6 +14,13 @@ Local validation: 490 SDK tests pass; one Bun-only test skipped, Node24.19.
 These include queued cancellation, active Stop and waiter timeout, unknown
 completion fencing, exact/stale browser forwarding and absent native paste.
 They are contract fixtures, **not application-level Linux acceptance**.
+The first Bookworm/Node22 run compiled the exact driver but the whole suite
+reported487 passes,2 failures,2 skips: both failures are Node/V8 SIGABRT in
+CLI REPL interruption owners, before GUI testing. Original run38175661153 and
+its logs are retained. CLI REPL fixes are outside this SDK request. The hosted
+lane now retains that whole-suite diagnostic independently and requires the
+embedded SDK owners to pass before desktop tests.
+
 Hosted acceptance runs the files in `e2e/halo/` and records original results in
 `artifacts/halo/evidence.json`. A missing or failing hosted result does not
 establish TigerVNC or sandboxed Chrome compatibility.
@@ -63,7 +70,10 @@ no rollback, no replay of uncertain input. Abort/deadline on `wait` only detache
 that waiter; the original request and result remain owned by the host. Multiple
 waiters can use the same ID. The host's underlying input transport has no client
 operation deadline; lifecycle readiness checks still have bounded deadlines.
-Do not configure a 500ms driver timeout for this host.
+Do not configure a 500ms driver timeout for this host. The pinned driver
+still has a 120-second Unix socket response deadline internally; exceeding
+that deadline loses completion proof and fences admission. The host API does
+not remove driver-level transport limits.
 
 | State | Meaning | Conflicting admission |
 |---|---|---|
