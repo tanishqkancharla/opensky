@@ -236,6 +236,7 @@ describe("native-style cua facade", () => {
       { method: "perform_secondary_action", args: { app: "tgt_app", element_index: 9, action: "Show Menu" } },
     ]);
     assert.match(String(emitted[0]), /Native app handle API/);
+    assert.match(String(emitted[0]), /selectionType is "text" \| "cursor_before" \| "cursor_after" \(default text\)/);
     assert.deepEqual(emitted.slice(1), ["state:tgt_app"]);
   });
 

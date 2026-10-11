@@ -183,9 +183,10 @@ const APP_DOCUMENTATION =
   "click(index | [x,y], {mouseButton?, clickCount?}), typeText(text), paste(text, {format?}), pressKey(key)\n" +
   "setValue(index, value), selectText(index, text, {prefix?, suffix?, selectionType?}), performSecondaryAction(index, action)\n" +
   "scroll(index | [x,y], direction, pages?), drag([fromX,fromY], [toX,toY])\n" +
-  "Use fresh indices and the control's advertised capabilities. Finish an action batch with getAXState(). " +
-  "Prefer default AX diffs for routine checks; request a full tree or screenshot only for missing context. " +
-  "setValue replaces the control value; establish field focus before sending keys intended for that field. " +
+  "Use fresh indices and the control's advertised capabilities. Finish batches with getAXState(). " +
+  "Prefer default AX diffs for checks; request a full tree or screenshot only for missing context. " +
+  "setValue replaces the value; focus the intended field before sending keys. " +
+  'selectText selectionType is "text" | "cursor_before" | "cursor_after" (default text). ' +
   "Mac pressKey supports named symbols plus, asterisk, minus, and slash; use names in key combinations. " +
   "Paste format is \"text\" | \"html\" | \"md\" (default text). Mac renders HTML/CommonMark; Linux native supports text only. " +
   "Mac paste preserves prior clipboard; newer observed copies are kept. Verify rich styles and saving. " +
