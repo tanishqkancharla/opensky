@@ -2,28 +2,54 @@
 
 ## Candidate and verification boundary
 
-Base SDK: `5b547875b3ed6bec7c0cd2e11882a9141c069cf3` (OpenSky PR49).
-Driver: **0.34.1**, source `dd5f9f539289f88b942939d0ee077f8c1d2899cd`
-(Cua fork PR49). The SDK changes in this document require this feature branch;
-`opensky-cua@0.1.2` on npm does not identify or include this contract.
-Use an immutable commit, build with `npm ci --ignore-scripts && npm run build`,
-and record `git rev-parse HEAD` and driver `--opensky-driver-identity`.
-Do not substitute the forks' default branches.
+Tested SDK pin: **`acd09e61889797f7f79bd53fe9ae9aeb25f29c82`**
+([draft PR52](https://github.com/tanishqkancharla/opensky/pull/52)), based on latest
+SDK candidate `5b547875b3ed6bec7c0cd2e11882a9141c069cf3` (PR49).
+Driver: **0.34.1**, source **`dd5f9f539289f88b942939d0ee077f8c1d2899cd`**
+(Cua fork PR49), protocol1, tested Linux binary SHA256
+`d205b87bf9d1dd354cd589e38e1261a5c133362b24f2848020242a8070769a67`.
+Neither feature branch is a main/npm release; `opensky-cua@0.1.2` does not
+identify or include this contract. Build an immutable SDK checkout with
+`npm ci --ignore-scripts && npm run build`, then install that built package in
+the Node host. Record the SDK commit and driver `--opensky-driver-identity`;
+do not substitute the forks' default branches or a different running daemon.
 
-Local validation: 491 SDK tests pass; one Bun-only test skipped, Node24.19.
-These include queued cancellation, active Stop and waiter timeout, unknown
-completion fencing, exact/stale browser forwarding and absent native paste.
-They are contract fixtures, **not application-level Linux acceptance**.
-The first Bookworm/Node22 run compiled the exact driver but the whole suite
-reported487 passes,2 failures,2 skips: both failures are Node/V8 SIGABRT in
-CLI REPL interruption owners, before GUI testing. Original run38175661153 and
-its logs are retained. CLI REPL fixes are outside this SDK request. The hosted
-lane now retains that whole-suite diagnostic independently and requires the
-embedded SDK owners to pass before desktop tests.
+[Final application run38179361234](https://github.com/tanishqkancharla/opensky/actions/runs/38179361234)
+used Node22.23.3 in Debian Bookworm, TigerVNC1.12.0, XFWM4.18.0, AT-SPI2.46.0,
+an ordinary uid1001 and two explicit bounded manifests on one shared session
+D-Bus. It verified actual native effects:
 
-Hosted acceptance runs the files in `e2e/halo/` and records original results in
-`artifacts/halo/evidence.json`. A missing or failing hosted result does not
-establish TigerVNC or sandboxed Chrome compatibility.
+| Check | Application evidence |
+|---|---|
+| 500ms host wait deadline and active Stop | 42 of1000 Unicode codepoints visible; query stayed active with stopRequested=true |
+| Completion and serialization | typing finished after16.904s; exactly1000 codepoints/2750 UTF-8 bytes saved; following Save began only at typing completion |
+| Queued Stop | cancelled callback never dispatched; no MUST-NOT-APPEAR input in buffer/saved file |
+| ASCII and Unicode native paste | unsupported_native_paste; original text/selection/clipboard and saved `replace me` unchanged |
+| Real AT-SPI and cleanup | full before/after AX trees contain app text; seven owned supervisor processes exited |
+
+**Sandboxed browser GUI acceptance remains unverified.** Chrome155.0.8059.39
+was launched without sandbox-disabling flags, but the container denied its
+sandbox namespace creation with `Operation not permitted`, before an owned SDK
+browser tab could open. No trusted click/scroll, focus change, default-route
+refusal or renderer sandbox assertion earned runtime acceptance. This is an
+environment limitation, not evidence that Halo's sandboxed Chrome fails. No
+privileged mode, `/dev/uinput` or sandbox-disabling workaround was used. The
+workflow intentionally remains failed; do not interpret native success as full
+production compatibility.
+
+The required embedded SDK contracts passed259/259 on Node22. Local Node24.19
+whole-suite validation passed491, with one Bun-only skip. Foreground exact/stale
+forwarding, unknown-completion fencing and injected-transport capability
+behavior have deterministic contract coverage. Whole Node22 diagnostics retain
+488 passes,2 CLI REPL Node/V8 SIGABRT failures and2 skips; CLI repairs are separate
+from SDK embedding. Ordinary SDK CI passed at the tested pin. Original failed
+attempts remain recorded in the friction ledger.
+
+Reproduce with `linux-benchmark-preflight.yml` on the immutable SDK branch and
+`halo_contract=true`. Files in `e2e/halo/` retain `evidence.json`, saved files,
+full AX snapshots, explicit manifests, package/identity receipts and original
+logs as `halo-bookworm-contract`. A successful unit run or missing browser
+result does not establish sandboxed Chrome compatibility.
 
 ## Ownership and cancellation contract
 
@@ -63,7 +89,10 @@ await host.close();
 ```
 
 `submit` returns immediately. Each callback must await **all** of its SDK work;
-fire-and-forget calls escape the queue contract. Later callbacks stay queued
+fire-and-forget calls escape the queue contract. Propagate driver errors out of
+the callback: catching an uncertain transport error and returning success also
+escapes the contract. Catch/serialize errors outside `action.wait()` in the
+host tool adapter. Later callbacks stay queued
 until the current callback settles. Queue cancellation prevents the callback
 from executing. Active cancellation is a stop request only: **no hard cancel**,
 no rollback, no replay of uncertain input. Abort/deadline on `wait` only detaches
@@ -207,6 +236,33 @@ Google's sandboxed Chrome .deb and dependencies. Build packages: `clang
 pkg-config libdbus-1-dev libx11-dev libxi-dev libxtst-dev libxext-dev
 libxkbcommon-dev libssl-dev curl ca-certificates`, Rust1.97.1 and Node22.
 The artifact records exact package/Chrome/Node versions and binary SHA256.
+
+The daemon, desktop and Node host must share `DISPLAY=:1`, the same
+`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR`, and the X server's `XAUTHORITY`
+when authentication is enabled. Set `XDG_SESSION_TYPE=x11`, enable the AT-SPI
+registry and GTK accessibility bridge (`NO_AT_BRIDGE=0`, `GTK_MODULES=gail:atk-bridge`,
+`org.gnome.desktop.interface toolkit-accessibility=true`). The fixture uses a
+localhost-only unauthenticated VNC server for testing; Halo should keep its own
+server authentication. A persistent HOME stores profiles/settings, but does not
+restore a queue's in-memory action IDs after a Node host crash.
+
+Start each reviewed authorization domain once, as the desktop's ordinary user:
+
+```sh
+/opt/opensky/opensky-driver --socket "$HALO_NATIVE_SOCKET" serve --no-overlay \
+  --permission-mode bounded \
+  --capability-manifest /etc/halo/native-grants.yaml --approve-capability-manifest \
+  --pid-file "$XDG_RUNTIME_DIR/halo-native.pid"
+```
+
+Use the corresponding browser manifest/socket/PID file for the browser daemon.
+Keep manifests immutable to workers. [The reproducible supervisor](../e2e/halo/session.sh)
+contains both concrete manifest templates and exact startup/cleanup commands;
+replace its editor PID/window and loopback origin with host-reviewed resources.
+Readiness and application capability checks are separate from registry checks.
+The example manifests expire after one hour, or after 30 minutes idle. A
+persistent production supervisor must arrange explicitly reviewed grant renewal;
+SDK session revival does not renew or expand daemon permissions.
 
 Use a host-reviewed capability manifest for each authorization domain (see
 [the mixed-grant contract](#mixed-native-and-origin-scoped-browser-grants)) with `--permission-mode bounded

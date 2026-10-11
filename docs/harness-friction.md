@@ -5485,3 +5485,16 @@ next default diff is "No accessibility changes." No new native acceptance is
 claimed from this run; prior run38177715210 effects remain retained. The fixture
 now explicitly requests `disableDiffing:true` for both full AX receipts. All
 seven owned supervisor processes exited and artifact upload succeeded.
+
+SET355/357 final run38179361234 at SDKacd09e61889797f7f79bd53fe9ae9aeb25f29c82
+passes259 required embedded SDK contracts and actual TigerVNC/Node22/AT-SPI
+native acceptance with bounded manifests:42 codepoints at500ms; active Stop
+remains tracked;1000/1000 codepoints saved exactly after16.904s; following Save
+starts at typing end; queued cancellation dispatches no input. ASCII/Unicode
+paste refusals preserve text, selection, clipboard and saved original. Full AX
+before/after receipts now explicitly request disableDiffing:true. All seven
+supervisor PIDs exited. SET356 browser GUI acceptance remains unverified:
+Chrome155 sandbox namespace initialization fails EPERM before SDK launch,
+without sandbox bypass or privileged workaround. Whole Node22 diagnostic keeps
+488passes/2CLI-V8failures/2skips. Ordinary SDK CI passes; workflow correctly fails
+for missing browser acceptance. No paid score/task changes or driver edits.
