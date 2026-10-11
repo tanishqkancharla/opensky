@@ -199,3 +199,6 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 - Derive compact failure summaries from retained, source-checked artifacts. Keep missing evidence explicit, and cache completed observations so reviewing a failure does not trigger more execution.
 
 - Validate configuration with its platform’s semantic validator before expensive execution. Generic syntax checks can miss unsupported expression contexts.
+
+
+- Tie concurrent verification to immutable commits and distinct cancellation scopes. Observe original jobs to completion before updating their branch.
