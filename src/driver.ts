@@ -177,6 +177,16 @@ export class CuaDriverClient implements DriverClient {
     return promise;
   }
 
+  async listTools(): Promise<string[]> {
+    const result = await this.execDriver(["list-tools"], 4_000);
+    if (result.code !== 0) throw driverError("Cannot inspect installed driver registry: " + result.stderr.trim(), "driver_capability_unavailable");
+    const names = result.stdout.split(/\r?\n/).filter(Boolean).map(line => line.split(":", 1)[0]);
+    if (!names.length || names.some(name => !/^[a-z][a-z0-9_]*$/.test(name))) {
+      throw driverError("Installed driver returned an invalid tool registry", "driver_capability_unavailable");
+    }
+    return names;
+  }
+
   async grantPermissions(): Promise<{ stdout: string; stderr: string; code: number }> {
     const binary = await this.ensureHelper();
     return this.exec(binary, this.withSocket(["permissions", "grant"]), 120_000);

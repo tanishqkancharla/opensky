@@ -5384,3 +5384,39 @@ Final ordinary frozen install passes. The cold local Mac production build passes
 [Original primary driver SDK38108229167](https://github.com/tanishqkancharla/cua/actions/runs/38108229167) now passes all16jobs; every original top-level job log names merge f2bdbbe9 with the complete3c922292 candidate tree. Per-job reported Rust counts are795Mac/728Linux/730Windows, each with6ignored and0filtered; other original bindings, language and Spaces owners pass with their explicit skips retained. This is SDK validation, not the full native desktop matrix. All43primary workflows are terminal with7original failures retained. [Original OpenSky CI38111301443](https://github.com/tanishqkancharla/opensky/actions/runs/38111301443) independently passes481whole unit owners and one Bun-only skip; actual merge c6380411 has the complete0f2ae4f6 candidate tree and the real-driver job stays skipped.
 
 All1704certified Mac comparison files, task outcomes, score59.08/native100 and worker estimate70.138006/reserved0/cap75 remain unchanged. The next five-task draft uses unchanged prompts/states and has no workers or iteration rows yet; a new pair still requires the original5USDhold and actual budget authorization.
+
+
+## SET355 — Persistent desktop workers need completion ownership beyond Stop
+
+Halo integration audit against SDK5b547875 and driverdd5f9f53 found that client
+wait deadlines cannot cancel dispatched native input. Add a persistent host
+queue: queued cancellation dispatches nothing; active Stop reports active;
+wait timeout detaches only its waiter; intact transport completion releases
+conflicts. Unknown transport completion permanently fences the queue with no
+replay/reset. Process-local ownership, awaited callbacks, external-client
+arbitration, host-crash limits and application postconditions are explicit.
+New queue/capability/browser fixtures and whole SDK tests pass490/one Bun skip
+on Node24.19. These are contract evidence; TigerVNC/sandboxed Chrome acceptance
+is pending in the new Bookworm/Node22 hosted lane.
+
+## SET356 — Linux foreground browser consent was unreachable in the facade
+
+Current driver already accepts delivery_mode foreground; expose deliveryMode
+on click and the fourth scroll options argument, including legacy methods.
+Foreground chooses trusted input, exact target/tab/session and fresh screenshot
+mapping survive unchanged. No trusted-to-synthetic fallback. Stale exact-tab
+route refusal now has a typed pre-dispatch code so host queues do not confuse
+it with lost transport completion. Visible focus/scroll/click acceptance is
+separate from passing forwarding/staleness fixtures.
+
+## SET357 — Current Linux tool registry contradicts historical paste docs
+
+Driverdd5f9f53 registers native_paste on Mac only. New get_capabilities reports
+selected platform-registry availability and Linux app.paste refuses before
+input/clipboard mutation when absent or unknown. Fix current README/skill;
+retain historical positive Linux evidence against its original older pins.
+Registry introspection is not a permission grant or proof of an arbitrary live
+daemon; launch daemon/client from the same immutable binary. Tests cover ASCII,
+Unicode and no input fallback through public native binding. Actual GTK saved
+content/selected text/clipboard invariance remains a hosted acceptance check;
+Linux successful paste/replacement is explicitly unsupported.

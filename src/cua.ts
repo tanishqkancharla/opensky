@@ -31,7 +31,8 @@ export interface StateOptions extends ObservationOptions {
   continuation?: string;
 }
 export interface PasteOptions { format?: PasteFormat }
-export interface ClickOptions { mouseButton?: MouseButton; clickCount?: number }
+export interface ClickOptions { mouseButton?: MouseButton; clickCount?: number; deliveryMode?: "background" | "foreground" }
+export interface ScrollOptions { deliveryMode?: "background" | "foreground" }
 export interface SelectTextOptions {
   prefix?: string;
   suffix?: string;
@@ -95,7 +96,7 @@ export interface Target {
   click(target: number | Vec2, options?: ClickOptions): Promise<void>;
   drag(from: Vec2, to: Vec2): Promise<void>;
   pressKey(key: string, elementIndex?: number): Promise<void>;
-  scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void>;
+  scroll(target: number | Vec2, direction: NativeDirection, pages?: number, options?: ScrollOptions): Promise<void>;
   selectText(elementIndex: number, text: string, options?: SelectTextOptions): Promise<void>;
   /** Replace a value without guaranteeing keyboard focus or sending Enter. Untargeted keys go to the focused control. */
   setValue(elementIndex: number, value: string): Promise<void>;
@@ -188,7 +189,7 @@ const APP_DOCUMENTATION =
   "setValue replaces the value; focus the intended field before sending keys. " +
   'selectText selectionType is "text" | "cursor_before" | "cursor_after" (default text). ' +
   "Mac pressKey supports named symbols plus, asterisk, minus, and slash; use names in key combinations. " +
-  "Paste format is \"text\" | \"html\" | \"md\" (default text). Mac renders HTML/CommonMark; Linux native supports text only. " +
+  "Paste format is \"text\" | \"html\" | \"md\" (default text). Mac renders HTML/CommonMark; query paste capabilities on Linux. " +
   "Mac paste preserves prior clipboard; newer observed copies are kept. Verify rich styles and saving. " +
   "Creation and observations emit automatically; emit:false suppresses observation output.";
 
@@ -644,7 +645,7 @@ abstract class BoundTarget implements Target {
       click_count: options.clickCount,
       // Native Mac vision clicks use the driver's exact-window foreground
       // route once. PID background events can be accepted without an effect.
-      ...(nativePixel ? { delivery_mode: "foreground" as const } : {}),
+      ...(options.deliveryMode !== undefined ? { delivery_mode: options.deliveryMode } : nativePixel ? { delivery_mode: "foreground" as const } : {}),
       ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 250 } : {}),
     });
   }
@@ -672,10 +673,10 @@ abstract class BoundTarget implements Target {
       ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 250 } : {}), ...(elementIndex !== undefined ? { element_index: elementIndex } : {}) });
   }
 
-  async scroll(target: number | Vec2, direction: NativeDirection, pages?: number): Promise<void> {
+  async scroll(target: number | Vec2, direction: NativeDirection, pages?: number, options: ScrollOptions = {}): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
     const translated = typeof target === "number" ? { element_index: target } : this.screenshotPoint(target);
-    await this.facade.opensky.scroll({ app: this.targetHandle, ...translated, direction, pages });
+    await this.facade.opensky.scroll({ app: this.targetHandle, ...translated, direction, pages, ...(options.deliveryMode !== undefined ? { delivery_mode: options.deliveryMode } : {}) });
   }
 
   async selectText(elementIndex: number, text: string, options: SelectTextOptions = {}): Promise<void> {

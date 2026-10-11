@@ -23,6 +23,7 @@ export type {
   MouseButton,
   NavigationAction,
   OpenSkyOptions,
+  OpenSkyCapabilities,
   OpenSkyTarget,
   SelectionType,
   TargetHandle,
@@ -34,6 +35,7 @@ export type {
   BrowserInfo,
   BrowserState,
   ClickOptions,
+  ScrollOptions,
   CreateBrowserTabOptions,
   CuaFacadeOptions,
   CuaState,
@@ -50,3 +52,6 @@ export type {
 } from "./cua.js";
 
 export type { CuaDriverOptions, OpenSkyDriverOptions } from "./driver.js";
+
+export { createOpenSkyHost, OpenSkyHost, DesktopActionQueue } from "./desktop-host.js";
+export type { DesktopAction, DesktopActionState, DesktopActionSnapshot, DesktopWaitOptions, OpenSkyHostContext, OpenSkyHostOptions } from "./desktop-host.js";

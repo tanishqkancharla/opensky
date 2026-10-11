@@ -129,6 +129,7 @@ export interface TargetIdentity extends TargetRequestIdentity {
 
 export interface OpenSky {
   readonly target: OpenSkyTarget;
+  get_capabilities(): Promise<OpenSkyCapabilities>;
   list_apps(): Promise<App[]>;
   /** Discover and bind the tabs in every exact ordinary window of a running Chromium app. */
   list_browser_tabs(args: { app: string }): Promise<BrowserTabInventoryEntry[]>;
@@ -192,7 +193,7 @@ export interface OpenSky {
     y?: number;
     mouse_button?: MouseButton;
     click_count?: number;
-    /** Mac native coordinate clicks only; omitted keeps legacy background delivery. */
+    /** Explicit typed-browser foreground input, or a Mac native coordinate click. */
     delivery_mode?: "background" | "foreground";
   }): Promise<void>;
   drag(args: ({
@@ -240,6 +241,7 @@ export interface OpenSky {
     y?: number;
     direction: Direction;
     pages?: number;
+    delivery_mode?: "background" | "foreground";
   }): Promise<void>;
   select_text(args: {
     app: string;
@@ -282,6 +284,8 @@ export interface DriverClient {
   /** Wrappers must preserve this metadata; it is correlation, not authority. */
   readonly sessionOwnership?: { kind: "cli-explicit" } | { kind: "mcp-proxy"; instanceId: string };
   call(tool: string, args?: Record<string, unknown>): Promise<DriverResult>;
+  /** Read the installed registry without input or daemon startup. */
+  listTools?(): Promise<string[]>;
   status(): Promise<{ running: boolean; text: string }>;
   ensureDaemon(): Promise<void>;
 }
@@ -395,6 +399,16 @@ export interface WindowSnapshot {
   documentChanged?: boolean;
   contextDomains?: Record<string, string>;
   contextContinuations?: Record<string, import("./browser-context.js").ContextCursor>;
+}
+
+export interface OpenSkyCapabilities {
+  target: OpenSkyTarget;
+  nativePaste: {
+    availability: "supported" | "unavailable" | "unknown";
+    formats: PasteFormat[];
+    reason?: string;
+    clipboard: "preserved-with-receipt" | "untouched" | "unknown";
+  };
 }
 
 export interface OpenSkyOptions {
