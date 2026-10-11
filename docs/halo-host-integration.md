@@ -28,11 +28,10 @@ Cua objects, Node promises or daemon. Terminating a worker is not daemon Stop.
 ```js
 import { createOpenSkyHost } from 'opensky-cua';
 const host = createOpenSkyHost({
-  target: 'linux', homeDir: '/home/halo/.opensky',
+  target: 'linux', homeDir: '/home/halo/.opensky', session: 'halo-desktop',
   driverOptions: {
     binaryPath: '/opt/opensky/opensky-driver',
     socket: '/run/user/1001/opensky.sock', autoStart: false,
-    session: 'halo-desktop',
   },
 });
 const stop = new AbortController();
@@ -60,7 +59,7 @@ await host.close();
 fire-and-forget calls escape the queue contract. Later callbacks stay queued
 until the current callback settles. Queue cancellation prevents the callback
 from executing. Active cancellation is a stop request only: **no hard cancel**,
-no rollback, no automatic input replay. Abort/deadline on `wait` only detaches
+no rollback, no replay of uncertain input. Abort/deadline on `wait` only detaches
 that waiter; the original request and result remain owned by the host. Multiple
 waiters can use the same ID. The host's underlying input transport has no client
 operation deadline; lifecycle readiness checks still have bounded deadlines.
@@ -187,9 +186,11 @@ Chrome sandbox-disabling flags. The fixture's GTK editor uses real AT-SPI;
 its independently sampled buffer/selection/clipboard and Ctrl+S saved file are
 the application oracle. Browser instrumentation records actual click
 `isTrusted`, scroll and focus; it injects no input. Sandbox probe output is
-retained before browser acceptance is attempted.
+retained before browser acceptance is attempted. Owned renderer process evidence
+also checks NoNewPrivs, seccomp enforcement and an extra filter beyond the
+container baseline, while rejecting sandbox-disabling argv flags.
 
-Runtime packages used: `tigervnc-standalone-server xfwm4 xfce4-panel dbus-x11
+Runtime packages used: `tigervnc-standalone-server xfwm4 xfce4-panel dbus-x11 gsettings-desktop-schemas dconf-gsettings-backend
 at-spi2-core libatk-adaptor python3-gi gir1.2-gtk-3.0 x11-utils xdotool wmctrl
 xclip fonts-dejavu fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji` plus
 Google's sandboxed Chrome .deb and dependencies. Build packages: `clang

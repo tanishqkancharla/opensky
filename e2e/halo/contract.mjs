@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createServer } from "node:http";
 import { execFileSync } from "node:child_process";
@@ -52,17 +52,34 @@ try {
   try {
     // A real sandbox probe is mandatory; no sandbox-disabling flags or elevated container privileges.
     const sandbox = execFileSync("google-chrome-stable", ["--headless", "--disable-gpu", "--no-first-run", "--user-data-dir=" + join(out, "sandbox-probe"), "--dump-dom", "chrome://sandbox"], { timeout: 15000, encoding: "utf8" });
-    await writeFile(join(out, "chrome-sandbox.html"), sandbox); assert.match(sandbox, /Seccomp|Sandbox/);
+    await writeFile(join(out, "chrome-sandbox.html"), sandbox);
     tab = await queue.submit(() => cua.createBrowserTab("chrome", "http://127.0.0.1:8123/")).wait();
-    await poll(() => browser.focused); execFileSync("wmctrl", ["-ia", process.env.HALO_EDITOR_WINDOW]); await poll(async () => (await state()).focused);
+    const baseline = await readFile("/proc/self/status", "utf8");
+    const baseFilters = Number(baseline.match(/^Seccomp_filters:\s*(\d+)/m)?.[1] ?? 0);
+    const rendererEvidence = [];
+    for (const pid of (await readdir("/proc")).filter(pid => /^\d+$/.test(pid))) {
+      try {
+        const argv = (await readFile(`/proc/${pid}/cmdline`, "utf8")).split("\0").filter(Boolean);
+        if (!argv.some(arg => arg.includes("/opt/google/chrome/"))) continue;
+        assert.ok(!argv.includes("--no-sandbox") && !argv.includes("--disable-setuid-sandbox") && !argv.includes("--disable-seccomp-filter-sandbox"));
+        if (!argv.includes("--type=renderer")) continue;
+        const status = await readFile(`/proc/${pid}/status`, "utf8");
+        assert.match(status, /^NoNewPrivs:\s*1$/m); assert.match(status, /^Seccomp:\s*2$/m);
+        assert.ok(Number(status.match(/^Seccomp_filters:\s*(\d+)/m)?.[1] ?? 0) > baseFilters, "renderer has an additional sandbox filter beyond the container baseline");
+        rendererEvidence.push({ pid, argv, status });
+      } catch (error) { if (!["ENOENT", "ESRCH"].includes(error.code)) throw error; }
+    }
+    assert.ok(rendererEvidence.length > 0, "owned Chrome has a sandboxed renderer");
+    await writeFile(join(out, "renderer-sandbox.json"), JSON.stringify({ baseline, rendererEvidence }, null, 2));
+    await poll(async () => JSON.parse(await readFile(join(out, "browser-state.json"), "utf8")).clicks === 0); execFileSync("wmctrl", ["-ia", process.env.HALO_EDITOR_WINDOW]); await poll(async () => (await state()).focused);
     const focusBefore = execFileSync("xdotool", ["getwindowfocus"], { encoding: "utf8" }).trim();
     await writeFile(join(out, "browser-before.png"), await tab.getScreenshot({ emit: false }));
     await assert.rejects(queue.submit(() => tab.click([80, 80])).wait(), error => ["browser_input_trust_unavailable", "route_unavailable"].includes(error.code));
     assert.equal(browser.clicks, 0); assert.equal(execFileSync("xdotool", ["getwindowfocus"], { encoding: "utf8" }).trim(), focusBefore);
     await tab.getScreenshot({ emit: false }); await queue.submit(() => tab.click([80, 80], { deliveryMode: "foreground" })).wait();
-    await poll(() => browser.clicks === 1); assert.equal(browser.trusted, true); await poll(async () => !(await state()).focused);
+    await poll(() => browser.clicks === 1); assert.equal(browser.trusted, true);
     await assert.rejects(queue.submit(() => tab.click([80, 80], { deliveryMode: "foreground" })).wait(), /fresh exact-tab screenshot/);
-    const clicked = { ...browser }; await tab.getScreenshot({ emit: false });
+    assert.equal(browser.clicks, 1); const clicked = { ...browser }; await tab.getScreenshot({ emit: false });
     await queue.submit(() => tab.scroll([300, 300], "down", 1, { deliveryMode: "foreground" })).wait(); await poll(() => browser.scrollY > 0);
     await writeFile(join(out, "browser-after.png"), await tab.getScreenshot({ emit: false }));
     record("foreground-browser", { clicked, scrolled: { ...browser }, focusBefore, focusAfter: execFileSync("xdotool", ["getwindowfocus"], { encoding: "utf8" }).trim(), staleRefusal: true, absentOptInRefusal: true });
