@@ -6,8 +6,10 @@ mkdir -p "$HALO_ARTIFACTS"
 export XDG_RUNTIME_DIR="$(mktemp -d /tmp/halo-runtime.XXXXXX)"
 chmod 700 "$XDG_RUNTIME_DIR"
 cleanup() {
+  local status
+  : > "$HALO_ARTIFACTS/supervisor-cleanup.txt"
   for pid in "${daemon_pid:-}" "${browser_daemon_pid:-}" "${editor_pid:-}" "${wm_pid:-}" "${panel_pid:-}" "${vnc_pid:-}" "${clipboard_pid:-}"; do
-    if [[ -n "$pid" ]]; then kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; fi
+    if [[ -n "$pid" ]]; then kill "$pid" 2>/dev/null || true; status=0; wait "$pid" 2>/dev/null || status=$?; printf "owned_pid=%s wait_status=%s exited=yes\n" "$pid" "$status" >> "$HALO_ARTIFACTS/supervisor-cleanup.txt"; fi
   done
   rm -rf "$XDG_RUNTIME_DIR"
 }

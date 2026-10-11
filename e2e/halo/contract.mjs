@@ -36,7 +36,9 @@ try {
   await writeFile(join(out, "native-process-inventory.json"), JSON.stringify(nativeApps, null, 2));
   const native = nativeApps.find(app => app.pid === Number(process.env.HALO_EDITOR_PID)); assert.ok(native, "GTK editor was discovered");
   const app = await cua.getApp(native.name);
-  await app.getAXState({ emit: false });
+  const beforeAX = await app.getAXState({ emit: false });
+  await writeFile(join(out, "editor-before.ax.txt"), beforeAX);
+  assert.match(beforeAX, /replace me/, "real AT-SPI snapshot exposes editor contents");
   await queue.submit(() => driver.call("hotkey", { scope: "desktop", keys: ["ctrl", "a"] })).wait();
   await poll(async () => (await state()).selected === "replace me" && (await state()).clipboard === "preserved clipboard sentinel Ελληνικά");
   const before = await state(); const capability = await sdk.get_capabilities(); assert.equal(capability.nativePaste.availability, "unavailable");
@@ -53,14 +55,16 @@ try {
   const cancelled = queue.submit(() => driver.call("type_text", { scope: "desktop", text: "MUST-NOT-APPEAR" }));
   cancelled.cancel(); await assert.rejects(cancelled.wait(), { code: "desktop_action_cancelled" });
   await assert.rejects(active.wait({ timeoutMs: 500 }), { code: "desktop_wait_timeout" }); stop.abort();
-  const partial = await state(); assert.equal(active.query().state, "active"); assert.ok([...partial.text].length < 1000);
+  const partial = await state(); const atDeadline = active.query(); assert.equal(atDeadline.state, "active"); assert.ok([...partial.text].length < 1000);
   const following = queue.submit(async () => { await driver.call("hotkey", { scope: "desktop", keys: ["ctrl", "s"] }); await poll(async () => (await readFile(join(out, "saved.txt"), "utf8")) === text); return await readFile(join(out, "saved.txt"), "utf8"); });
   assert.equal(following.query().state, "queued"); await active.wait(); assert.equal(await following.wait(), text); await queue.drain();
   const complete = await state(); assert.equal(complete.text, text);
-  record("cancel-and-completion", { partial, complete, active: active.query(), cancelled: cancelled.query(), following: following.query(), savedExact: true });
+  const afterAX = await app.getAXState({ emit: false });
+  await writeFile(join(out, "editor-after.ax.txt"), afterAX); assert.match(afterAX, /éΩ中🙂/);
+  record("cancel-and-completion", { atDeadline, partial, complete, active: active.query(), cancelled: cancelled.query(), following: following.query(), savedExact: true });
   try {
     // A real sandbox probe is mandatory; no sandbox-disabling flags or elevated container privileges.
-    const sandbox = execFileSync("google-chrome-stable", ["--headless", "--disable-gpu", "--no-first-run", "--user-data-dir=" + join(out, "sandbox-probe"), "--dump-dom", "chrome://sandbox"], { timeout: 15000, encoding: "utf8" });
+    const sandbox = execFileSync("google-chrome-stable", ["--headless", "--disable-gpu", "--no-first-run", "--user-data-dir=" + join(process.env.XDG_RUNTIME_DIR, "sandbox-probe"), "--dump-dom", "chrome://sandbox"], { timeout: 15000, encoding: "utf8" });
     await writeFile(join(out, "chrome-sandbox.html"), sandbox);
     tab = await queue.submit(() => browserCua.createBrowserTab("chrome", "http://127.0.0.1:8123/")).wait();
     const baseline = await readFile("/proc/self/status", "utf8");
@@ -93,7 +97,7 @@ try {
     await writeFile(join(out, "browser-after.png"), await tab.getScreenshot({ emit: false }));
     record("foreground-browser", { clicked, scrolled: { ...browser }, focusBefore, focusAfter: execFileSync("xdotool", ["getwindowfocus"], { encoding: "utf8" }).trim(), staleRefusal: true, absentOptInRefusal: true });
   } catch (error) { record("foreground-browser", { verified: false, error: String(error), code: error.code }); throw error; }
-} catch (error) { evidence.error = String(error); process.exitCode = 1; }
+} catch (error) { evidence.error = String(error); evidence.errorCode = error.code; evidence.errorStack = error.stack; process.exitCode = 1; }
 finally {
   try { if (tab) await queue.submit(() => tab.close()).wait(); await queue.close({ timeoutMs: 30000 }); await sdk.close(); await browserSdk.close(); await browserDriver.call("end_session", { session: "halo-browser-contract" }); await driver.call("end_session", { session: "halo-contract" }); evidence.cleanup = "owned browser/session detached; daemon belongs to session supervisor"; } catch (error) { evidence.cleanupError = String(error); process.exitCode = 1; }
   server.closeAllConnections(); await new Promise(resolve => server.close(resolve));

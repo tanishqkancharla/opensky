@@ -5463,3 +5463,18 @@ is running. Fix only the fixture's PID oracle via public DriverClient list_apps,
 then bind by its name through the SDK; no private target-memory injection or
 production discovery change. No application input was dispatched in this failed
 attempt. Preserve inventories, editor buffer/clipboard and daemon logs.
+
+
+SET355/357 actual run38177715210 (SDK7c0d21a, driverdd5f9f53, Node22.23.3,
+TigerVNC1.12.0, XFWM4.18, AT-SPI2.46, Chrome155.0.8059.39) proves native
+capability refusal leaves selected replace-me text and Greek clipboard sentinel
+unchanged after ASCII/Unicode requests, with exact saved original text. The
+500ms host wait deadline observes39/1000 Unicode codepoints; Stop leaves typing
+active and eventual saved UTF8 is exact1000/2750bytes. Cancelled queued text is
+absent; following save starts only when typing callback finishes16.520s later.
+Owned sessions detach successfully. Sandboxed Chrome probe fails namespace
+creation with EPERM; no foreground GUI acceptance and no sandbox/privilege
+workaround. Preserve original app effects and refusal. Tighten fixture evidence
+with saved before/after AX text and active-at-deadline snapshots, plus supervised
+PID exit receipts. Move headless probe profile outside retained artifact root to
+avoid archiving live singleton sockets; original upload warning is retained.
