@@ -5433,3 +5433,12 @@ removes the Node wrapper deadline, not that transport limit. No daemon action
 lookup or fence-reset claim. Fixture corrections explicitly install GNOME
 accessibility schemas/backend and sample focus rather than require foreground
 input to always steal it; sandbox flags/filter evidence strengthened.
+
+
+SET355 completion classification refinement: parameter and browser-ref preflight
+errors previously lacked typed delivery metadata, so the conservative host
+queue could fence even when that call sent no input. Mark invalid_params and
+browser_ref_unavailable as not_dispatched; keep ambiguous errors fenced. Add a
+public host validation owner that uses no daemon and proves later admission
+still works after a bad SDK request. This is completion classification only,
+not a rollback guarantee for earlier successful calls in the callback.

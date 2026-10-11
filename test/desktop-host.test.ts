@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { DesktopActionQueue, createOpenSkyHost } from "../src/desktop-host.js";
 import { OpenSkyError } from "../src/errors.js";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => resolve = yes); return { promise, resolve }; }
 it("cancels queued actions before the operation can produce an effect", async () => {
   const queue = new DesktopActionQueue(), gate = deferred<void>(), started = deferred<void>(); let effects = 0;
@@ -38,4 +41,16 @@ it("pre-aborted submissions never execute and close cancels queued work while re
 });
 it("host factory refuses transport deadlines instead of hiding them", () => {
   assert.throws(() => createOpenSkyHost({ driverOptions: { timeoutMs: 500 } } as never), { code: "invalid_params" });
+});
+
+it("SDK parameter refusals cannot strand the desktop behind an unknown completion fence", async () => {
+  const home = await mkdtemp(join(tmpdir(), "opensky-host-validation-"));
+  const host = createOpenSkyHost({ homeDir: home, driverOptions: { autoStart: false, binaryPath: "/no-driver-is-needed-for-pre-dispatch-validation" } });
+  try {
+  const invalid = host.submit(({ sdk }) => sdk.click({ app: "", x: 0, y: 0 }));
+  await assert.rejects(invalid.wait(), { code: "invalid_params" });
+  assert.equal(invalid.query().state, "failed");
+  assert.equal(await host.submit(() => 42).wait(), 42);
+  await host.drain();
+  } finally { try { await host.close(); } finally { await rm(home, { recursive: true, force: true }); } }
 });

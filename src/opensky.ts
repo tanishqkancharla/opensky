@@ -3065,10 +3065,11 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(
         `Element index ${elementIndex} is not present in the latest semantic browser snapshot for ` +
           `${JSON.stringify(resolved.name)}. Call get_app_state again before acting.`,
+        "browser_ref_unavailable", { delivery: "not_dispatched" },
       );
     }
     if (!element.actions?.includes(action)) {
-      throw new OpenSkyError(`Element index ${elementIndex} does not support browser action ${JSON.stringify(action)}.`);
+      throw new OpenSkyError(`Element index ${elementIndex} does not support browser action ${JSON.stringify(action)}.`, "browser_ref_unavailable", { delivery: "not_dispatched" });
     }
     return element;
   }
@@ -3084,12 +3085,14 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(
         `Element index ${elementIndex} is not present in the latest semantic browser snapshot for ` +
           `${JSON.stringify(resolved.name)}. Call get_app_state again before acting.`,
+        "browser_ref_unavailable", { delivery: "not_dispatched" },
       );
     }
     if (!actions.some((action) => element.actions?.includes(action))) {
       throw new OpenSkyError(
         `Element index ${elementIndex} does not support any of the required browser actions ` +
           `${JSON.stringify(actions)}.`,
+        "browser_ref_unavailable", { delivery: "not_dispatched" },
       );
     }
     return element;

@@ -10,7 +10,7 @@ Use an immutable commit, build with `npm ci --ignore-scripts && npm run build`,
 and record `git rev-parse HEAD` and driver `--opensky-driver-identity`.
 Do not substitute the forks' default branches.
 
-Local validation: 490 SDK tests pass; one Bun-only test skipped, Node24.19.
+Local validation: 491 SDK tests pass; one Bun-only test skipped, Node24.19.
 These include queued cancellation, active Stop and waiter timeout, unknown
 completion fencing, exact/stale browser forwarding and absent native paste.
 They are contract fixtures, **not application-level Linux acceptance**.
@@ -210,8 +210,11 @@ The artifact records exact package/Chrome/Node versions and binary SHA256.
 
 Use a host-reviewed capability manifest with `--permission-mode bounded
 --capability-manifest grants.yaml --approve-capability-manifest` on daemon
-startup. The fixture grants only its exact editor PID/window, owned isolated
-Chrome, loopback origin and listed observation/input/lifecycle tools. Display
+startup. The fixture grants its exact editor PID/window, Chrome executable window
+observations, isolated browser profiles, the loopback origin and listed
+observation/input/lifecycle tools. Chrome executable observations cover all its
+windows in this isolated test desktop; that scope must be explicitly reviewed
+for Halo or replaced with known exact PID/window grants. Display
 input is an explicit grant for the global typing reproduction. No unrestricted
 permission mode, existing-profile grant, filesystem transfer, network-wide
 origin grant or `/dev/uinput` grant is used. For production, replace fixture

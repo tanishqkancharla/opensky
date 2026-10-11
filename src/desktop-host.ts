@@ -37,6 +37,7 @@ function wait<T>(result: Promise<T>, options: DesktopWaitOptions, snapshot: () =
   });
 }
 function uncertain(error: unknown): boolean {
+  if (error instanceof OpenSkyError && typeof error.details === "object" && error.details !== null && "delivery" in error.details && error.details.delivery === "not_dispatched") return false;
   if (error instanceof OpenSkyError) return error.code === undefined || ["driver_transport_timeout", "driver_transport_error", "driver_transport_closed"].includes(error.code) ||
     (typeof error.details === "object" && error.details !== null && "delivery" in error.details && error.details.delivery === "unknown");
   return error instanceof Error && "code" in error && ["EPIPE", "ECONNRESET", "ETIMEDOUT"].includes(String(error.code));
