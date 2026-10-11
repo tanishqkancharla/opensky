@@ -202,3 +202,5 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 
 
 - Tie concurrent verification to immutable commits and distinct cancellation scopes. Observe original jobs to completion before updating their branch.
+
+- Derive validation identities from the same contract producer as the service. Keep exact refusals for incompatible identities.
