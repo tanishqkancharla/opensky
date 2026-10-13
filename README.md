@@ -13,10 +13,15 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g opensky-cua
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.0/opensky-cua-0.2.0.tgz
 opensky doctor
 opensky skill install -g
 ```
+
+[OpenSky 0.2.0](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.0)
+is distributed as the attached npm tarball with a published SHA-256 checksum.
+Registry publication awaits publisher authentication; the command above selects
+the released SDK directly. For a local project, omit `-g`.
 
 Install **OpenSky Driver** from the fork's `main` branch first if `doctor`
 reports it missing:
