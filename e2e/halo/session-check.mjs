@@ -1,5 +1,5 @@
 /** Public CLI/MCP session admission controls, independent of capture/Chrome. */
-import {createOpenSky} from '../../dist/index.js';
+import {createOpenSky,CuaDriverClient} from '../../dist/index.js';
 import {readFile,writeFile,mkdtemp} from 'node:fs/promises';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -9,6 +9,13 @@ const state=async()=>JSON.parse(await readFile(join(out,'editor-state.json'),'ut
 const focus=()=>execFileSync('xdotool',['getactivewindow'],{encoding:'utf8'}).trim();
 const identity=JSON.parse(await readFile(join(out,'identity.json'),'utf8'));
 assert.equal(identity.source,process.env.HALO_DRIVER_REF);
+const readiness=new CuaDriverClient({binaryPath:process.env.OPENSKY_DRIVER_PATH,socket:process.env.HALO_DRIVER_SOCKET,autoStart:false,autoInstall:false});
+let ready=false;
+for(let i=0;i<100;i++){
+ if((await readiness.status()).running){ready=true;break;}
+ await new Promise(resolve=>setTimeout(resolve,50));
+}
+assert.equal(ready,true,'supervised native daemon must be ready before session admission');
 for(const transport of ['cli','mcp'])for(const mode of ['automatic','explicit']){
  const home=await mkdtemp(join(out,`session-${transport}-${mode}-`));
  const sdk=createOpenSky({homeDir:home,target:'linux',transport,autoLaunch:false,
