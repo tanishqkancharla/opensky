@@ -2,13 +2,15 @@
 
 ## Current pins and verification boundary
 
-The latest verified embedded SDK runtime is **`b32be18b6cbfbc2b390996dc1e872d980384eb8e`**;
-Driver **0.35.2**, current capture source **`34f3d150ea7ef86ce171ed7bb3724ce218448e64`**.
-The native typing/paste run below used85afe337; the later source changes only Linux capture.
-Later SDK main changes only the private capture fixture/workflow and evidence,
-not the TypeScript runtime. The public host queue, capability and foreground
-APIs below shipped in SDK0.2.0 and remain in [SDK0.2.5](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.5).
-The new native partial `screenshotError` API is included in0.2.5.
+The latest verified SDK runtime is **`f1b687b7309eacf9036c88ae2283d774038dcae6`**;
+Driver **0.35.2**, capture source **`34f3d150ea7ef86ce171ed7bb3724ce218448e64`**.
+SDK0.2.6 includes the host queue, capabilities, foreground input and partial
+native screenshot contract. This release also replaces SDK-owned legacy async
+hooks in optional strict evaluation and artifact attribution. The original
+native typing/paste run below used SDKb32be18b / Driver85afe337; newer driver
+changes affect Linux capture. Those saved-input effects have not been rerun
+on the0.2.6 candidate. The new actual strict bridge and capture run is recorded
+separately below.
 Registry `opensky-cua@0.1.2` does not identify these features. Use an immutable
 built checkout or the declared GitHub release tarball; record the selected
 binary's `--opensky-driver-identity` and avoid pairing it with another daemon.
@@ -26,11 +28,11 @@ uid1001 and two explicit bounded manifests on one shared session D-Bus.
 | ASCII and Unicode native paste | unsupported_native_paste; exact text, selection and clipboard unchanged; saved document remains `replace me` |
 | Cleanup | both SDK domains detached; all seven owned supervisor processes exited |
 
-All262 required embedded SDK owners pass on Node22; all650 Linux platform units
-pass (10 desktop opt-ins ignored). Whole Node22 diagnostics retain494 passes,
-two AsyncRepl interruption Node/V8 assertion failures and two skips. Those CLI
-failures are separate from SDK embedding; they remain visible rather than being
-reported as successful validation.
+The current actual run38481237185 passes all262 required embedded SDK owners,
+497 whole SDK owners with two skips on Linux Node22, and650 Linux platform units
+with10 desktop opt-ins ignored. Local Node22/24 whole suites pass498 with one
+Bun-only skip. The original Node22 VM crashes are retained in issue56; the
+SDK-owned trigger is corrected, with the external-hook limitation below.
 
 **Sandboxed browser GUI acceptance remains unverified.** The real Chrome probe
 uses its sandbox, but the hosted container denies namespace creation with
@@ -394,3 +396,31 @@ only explicitly authorized foreground input may change focus.
 
 
 [Final capture application run38476505768](https://github.com/tanishqkancharla/opensky/actions/runs/38476505768) verifies both compositor modes on SDK runtime6535e4db4577a5d3673bc5c6b260bb771a1ce9e3 / Driver34f3d150ea7ef86ce171ed7bb3724ce218448e64. Independent root pixels verify foreground text, covered text with compositing, restored and legitimate-dark text frames. Without backing, covered capture returns the precise error while AX and foreground remain intact. Both sets of seven supervisor processes and owned occluders exit, with no forced shutdown. [Before/after capture evidence](linux-covered-capture-53-fixed.json). Version/README/report changes for the release do not modify the tested TypeScript runtime.
+
+
+## Optional strict JavaScript evaluation (SDK0.2.6)
+
+Halo's separate QuickJS workers can continue calling the persistent Node host
+without using OpenSky's optional strict AsyncRepl. For hosts that use it, plain
+Node22/24 now enforce the existing VM timeout, poison the timed-out evaluator
+and retain stale-cell capability refusal without enabling legacy async hooks.
+This is not permission to reuse a poisoned evaluator or replay input.
+
+[Actual run38481237185](https://github.com/tanishqkancharla/opensky/actions/runs/38481237185)
+uses the bounded TigerVNC/shared-bus desktop on the exact SDK/driver pins above.
+Two strict cells retain the exact GTK app handle and read real `replace me`
+AT-SPI text across a realm await; artifact ownership is preserved. Both
+compositor modes pass the existing independent capture oracles; all14 owned
+supervisor processes and both occluders exit without forced shutdown. This
+observation control sends no input and does not establish new typing, browser
+or paired benchmark acceptance. [Evidence](linux-strict-bridge-56.json).
+
+**External legacy `node:async_hooks` remains a Node VM interruption limitation.**
+An embedding host that enables such hooks can still abort on promise runaway
+interruption on Node22 or24. The Node22 async-context-frame startup flag does
+not solve that external-hook case. Issue56 remains open. Keep strict evaluation
+in a separately supervised process if host instrumentation enables legacy hooks;
+do not run it inside a production desktop server that must survive every cell.
+No automatic host-hook detection, process isolation or crash recovery is supplied
+by this SDK. No startup flag or removal of timeout/sandbox enforcement is part
+of the fix. Sandboxed Chrome acceptance remains independently unverified.

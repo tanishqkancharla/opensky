@@ -1,0 +1,81 @@
+{
+  "runId": 38481237185,
+  "url": "https://github.com/tanishqkancharla/opensky/actions/runs/38481237185",
+  "sdk": "f1b687b7309eacf9036c88ae2283d774038dcae6",
+  "driver": "34f3d150ea7ef86ce171ed7bb3724ce218448e64",
+  "node": "22.23.3",
+  "linuxWholeSDK": {
+    "passed": 497,
+    "skipped": 2,
+    "failed": 0
+  },
+  "embeddedSDK": {
+    "passed": 262,
+    "failed": 0
+  },
+  "productionChromeVerified": false,
+  "cases": {
+    "off": {
+      "strictBridge": {
+        "sdk": "f1b687b7309eacf9036c88ae2283d774038dcae6",
+        "node": "v22.23.3",
+        "phases": [
+          "initial-real-AX",
+          "retained-bound-app-after-realm-await"
+        ],
+        "driver": "34f3d150ea7ef86ce171ed7bb3724ce218448e64",
+        "artifactScopePreserved": true,
+        "ownSessionsDetached": true
+      },
+      "captureAcceptance": "actionable exact-window capture refusal with AT-SPI preserved",
+      "occluderExited": true,
+      "supervisorExits": [
+        "owned_pid=23472 wait_status=143 exited=yes forced=no",
+        "owned_pid=23473 wait_status=143 exited=yes forced=no",
+        "owned_pid=23397 wait_status=143 exited=yes forced=no",
+        "owned_pid=23387 wait_status=0 exited=yes forced=no",
+        "owned_pid=23388 wait_status=0 exited=yes forced=no",
+        "owned_pid=23380 wait_status=0 exited=yes forced=no",
+        "owned_pid=23467 wait_status=1 exited=yes forced=no"
+      ],
+      "darkReference": {
+        "mean": 0.165810546875,
+        "matchesDriver": {
+          "whole": 0,
+          "text": 0
+        }
+      }
+    },
+    "on": {
+      "strictBridge": {
+        "sdk": "f1b687b7309eacf9036c88ae2283d774038dcae6",
+        "node": "v22.23.3",
+        "phases": [
+          "initial-real-AX",
+          "retained-bound-app-after-realm-await"
+        ],
+        "driver": "34f3d150ea7ef86ce171ed7bb3724ce218448e64",
+        "artifactScopePreserved": true,
+        "ownSessionsDetached": true
+      },
+      "captureAcceptance": "preserved target pixels",
+      "occluderExited": true,
+      "supervisorExits": [
+        "owned_pid=24783 wait_status=143 exited=yes forced=no",
+        "owned_pid=24784 wait_status=143 exited=yes forced=no",
+        "owned_pid=24725 wait_status=143 exited=yes forced=no",
+        "owned_pid=24715 wait_status=0 exited=yes forced=no",
+        "owned_pid=24716 wait_status=0 exited=yes forced=no",
+        "owned_pid=24708 wait_status=0 exited=yes forced=no",
+        "owned_pid=24778 wait_status=1 exited=yes forced=no"
+      ],
+      "darkReference": {
+        "mean": 0.16500651041666667,
+        "matchesDriver": {
+          "whole": 0,
+          "text": 0
+        }
+      }
+    }
+  }
+}

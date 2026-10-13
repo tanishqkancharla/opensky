@@ -5756,3 +5756,6 @@ new desktop evidence.
 
 
 SET372 candidate whole existing suites now pass498/499 on plain Node22.23.3 and bundled Node24, one Bun-only skip. Build and E2E types pass. This is contract evidence, not desktop acceptance. The bounded TigerVNC supervisor now runs an actual strict CUA bridge with two persistent cells, a retained exact app handle, real AT-SPI text and artifact-owner readback before its existing capture matrix. No input is injected by this bridge observation control. External host async_hooks remain a separately reproduced Node VM limitation.
+
+
+SET372 actual38481237185 passes on SDKf1b687b / Driver34f3d150: two strict CUA cells read real GTK AT-SPI text with a retained bound app across a realm await; artifact ownership is preserved in both compositor modes. Existing independent foreground/covered/dark capture oracles pass. All14 supervisor processes and both occluders exit with no forced termination. Linux Node22 whole owners497 pass/two skips, embedded262 pass; local Node22/24 whole498 pass/one Bun skip. SDK0.2.6 packages this runtime. Original failures remain retained and56 stays open for independently reproduced external legacy host-hook VM aborts. No browser, new saved-input or paired-score acceptance is inferred. Mac normal-desktop readiness still refuses, so current Mac source certification is stale and paid dispatch remains stopped.
