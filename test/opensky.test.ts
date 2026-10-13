@@ -1988,3 +1988,56 @@ it("app keyboard scope rejects stale observed targets and missing current window
     assert.equal(after.calls.some((c:any)=>["hotkey","press_key","type_text","launch_app"].includes(c.tool)),false);
   });
 });
+
+
+describe("Mac app keyboard window observation", () => {
+  it("uses one fresh visible-window read per app input without caching across inputs", async () => {
+    const { opensky, statePath } = await makeHarness();
+    const initial = await opensky.get_app_state({ app: "TextEdit", includeScreenshot: false });
+    let fixture = JSON.parse(await readFile(statePath, "utf8"));
+    const app = fixture.apps.find((a: any) => a.name === "TextEdit");
+    const original = app.windows.find((w: any) => w.window_id === fixture.calls.filter((c: any) => c.tool === "get_window_state").at(-1).args.window_id);
+    assert.ok(original);
+    for (const [offset, operation] of [[5000, "key"], [6000, "text"]] as const) {
+      fixture = JSON.parse(await readFile(statePath, "utf8"));
+      const current = fixture.apps.find((a: any) => a.name === "TextEdit");
+      const windowId = original.window_id + offset;
+      current.windows = [{ ...original, window_id: windowId, is_on_screen: true, on_current_space: true, z_index: 100 }];
+      const start = fixture.calls.length;
+      await writeFile(statePath, JSON.stringify(fixture));
+      if (operation === "key") await opensky.press_key({ app: initial.targetHandle, key: "Return", scope: "app" });
+      else await opensky.type_text({ app: initial.targetHandle, text: "current sibling", scope: "app" });
+      const after = JSON.parse(await readFile(statePath, "utf8"));
+      const calls = after.calls.slice(start);
+      assert.equal(calls.filter((c: any) => c.tool === "list_windows").length, 1);
+      const inputs = calls.filter((c: any) => ["press_key", "hotkey", "type_text"].includes(c.tool));
+      assert.equal(inputs.length, 1);
+      assert.equal(inputs[0].args.pid, current.pid);
+      assert.equal(inputs[0].args.window_id, windowId);
+      assert.equal(inputs[0].args.delivery_mode, "foreground");
+      assert.equal(calls.some((c: any) => c.tool === "launch_app"), false);
+    }
+  });
+
+  it("refuses app keys and text for hidden, other-space and nonordinary current windows", async () => {
+    for (const unusable of [{ is_on_screen: false }, { on_current_space: false }, { layer: 1 }, { frame: { x: 0, y: 0, width: 10, height: 10 } }]) {
+      const { opensky, driver, statePath } = await makeHarness();
+      const initial = await opensky.get_app_state({ app: "TextEdit", includeScreenshot: false });
+      const fixture = JSON.parse(await readFile(statePath, "utf8"));
+      const start = fixture.calls.length;
+      // The file fixture normalizes visibility; inject the actual unusable
+      // list response at the transport boundary rather than changing defaults.
+      const invoke = driver.call.bind(driver);
+      driver.call = async (tool, args = {}, options) => {
+        const result = await invoke(tool, args, options);
+        if (tool !== "list_windows") return result;
+        const state = result.structured as any;
+        return { ...result, structured: { ...state, windows: state.windows.map((w: any) => ({ ...w, ...unusable })) } };
+      };
+      await assert.rejects(opensky.press_key({ app: initial.targetHandle, key: "Return", scope: "app" }), /no unambiguous/);
+      await assert.rejects(opensky.type_text({ app: initial.targetHandle, text: "must not send", scope: "app" }), /no unambiguous/);
+      const after = JSON.parse(await readFile(statePath, "utf8"));
+      assert.equal(after.calls.slice(start).some((c: any) => ["press_key", "hotkey", "type_text", "launch_app"].includes(c.tool)), false);
+    }
+  });
+});

@@ -1877,7 +1877,11 @@ export class OpenSky implements OpenSkyApi {
     }
     const requestedKey = parseXdotoolKey(args.key, this.target);
     const parsed = this.target === "mac" ? toMacDriverKey(requestedKey) : requestedKey;
-    const boundWindow = await this.refreshBoundWindow(resolved);
+    // App scope selected an exact ordinary on-screen/current-Space window
+    // from a fresh list in this operation. Driver dispatch still validates the
+    // exact PID/window; no proof is cached across inputs. Exact-window calls
+    // retain their independent existence check.
+    const boundWindow = args.scope === "app" ? resolved.windowId : await this.refreshBoundWindow(resolved);
     if (!boundWindow) {
       throw new OpenSkyError(
         `Application ${JSON.stringify(resolved.name)} has no exact ordinary window for safe keyboard input. ` +
@@ -2177,7 +2181,9 @@ export class OpenSky implements OpenSkyApi {
       this.markAction(resolved);
       return;
     }
-    if (args.element_index === undefined) await this.requireUsableInputWindow(resolved);
+    // App scope already selected a usable window from this operation's fresh
+    // list. Exact-target input keeps its standalone visibility/Space check.
+    if (args.element_index === undefined && args.scope !== "app") await this.requireUsableInputWindow(resolved);
     const payload: Record<string, unknown> = {
       ...(this.target === "mac" ? windowObservation : {}),
       pid: resolved.pid,

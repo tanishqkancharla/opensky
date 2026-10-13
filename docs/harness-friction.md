@@ -5553,3 +5553,49 @@ body; SDK edit focus or separate-window opening is not certified. Stopwatch
 running/paused/reset and Dictionary scrollbar top/bottom effects are actual
 observations. This is Mac task evidence, not full platform acceptance or a new
 release improvement. No extra E2E run is claimed for unchanged product code.
+
+
+## SET360 — Reuse the current app-keyboard window proof within one input
+
+**Symptom/layer:** Original Mac Calculator SDK run1498 makes32 window-list reads
+for16 inputs. A fresh real public-facade control confirms32 reads/7.235s input
+and the exact requested expression/result99. App keyboard scope selects a fresh,
+ordinary, on-screen/current-Space window, then repeats its existence/visibility
+read before the same input. This is SDK predispatch work; driver polling is a
+separate remaining cost.
+
+**Implemented:** App-scoped native key/text input reuses that operation's selected
+window. Each next input still reads the live app windows and can select a new
+current sibling. Exact-window and indexed routes retain their original checks;
+app scope still rejects explicit observed targets, hidden/off-Space/nonordinary
+windows and ambiguous sheet parents. The driver independently validates the
+exact PID/window at dispatch. No cross-input cache, input replay, permission,
+clipboard, driver binary or observation-bound change is introduced.
+
+**Verification:** The new single-read owner fails against original source and
+passes after the fix. Unusable-window refusal cases and existing exact-window,
+new-sibling, sheet/window/tab/focus owners pass. Whole SDK build/unit validation
+passes493 with one Bun-only skip. Seven actual Mac regression recipes pass:
+TextEdit sheet/focus, window transitions, same-title tabs, Safari renderer input,
+Maps query/card delivery, Chrome Find/named-plus, Notes selection observation.
+All owned cleanup is verified. The unchanged real Calculator control now emits
+16 reads and observes the same expression/result99; measured input6.866s. One
+control does not establish a whole-agent gain; matched paid verification follows.
+Driver observation still contributes most per-key time and was not shortened.
+
+**Feedback repair:** The Safari recipe initially finds no test files and executes
+zero assertions. Its existing private local Safari/Maps owner was untracked and
+absent from the primary SDK; copy it byte-identically into the public test tree,
+then pass both original assertions. The parent recipe now refuses absent selected
+SDK test files before starting any app. Two CPU owners prove early refusal and
+correct selected-root command construction. Original fixture/path assertion
+failures are retained; they do not count as product failures or GUI acceptance.
+
+**Cold-entry scope:** Current-source model-free Calculator and Clock cold app
+entry, TextEdit app entry and an exact owned TextEdit document launch succeed with
+actual accessible windows and exact cleanup. TextEdit app entry makes two driver
+launch requests while restoring saved windows; the document request makes one.
+The original document probe inspected the wrong AppState field; corrected use of
+`AppState.text` verifies the actual file URL/body and unchanged input bytes. These
+successes do not diagnose or close intermittent issue19. Cold native/OpenSky task
+comparisons remain pending, as does broader platform acceptance.
