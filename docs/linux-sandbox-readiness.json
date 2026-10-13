@@ -1,0 +1,58 @@
+{
+  "sdkSource": "ab7b4fa868f0387d13854c34703cd0309a84f041",
+  "node": "v22.23.3",
+  "chrome": "Google Chrome 155.0.8059.79",
+  "uid": 1001,
+  "kernel": "6.17.0-1022-azure",
+  "lsmProfile": "docker-default (enforce)",
+  "kernelSettings": {
+    "kernel/unprivileged_userns_clone": "1",
+    "kernel/apparmor_restrict_unprivileged_userns": "1",
+    "user/max_user_namespaces": "63838"
+  },
+  "namespaceChecks": [
+    {
+      "operation": "clone-user",
+      "created": false,
+      "errno": 1,
+      "childReaped": true,
+      "exitCode": 1
+    },
+    {
+      "operation": "clone-user-pid-net",
+      "created": false,
+      "errno": 1,
+      "childReaped": true,
+      "exitCode": 1
+    },
+    {
+      "operation": "unshare-user",
+      "created": false,
+      "errno": 1,
+      "childReaped": true,
+      "exitCode": 1
+    },
+    {
+      "operation": "unshare-user-pid-net",
+      "created": false,
+      "errno": 1,
+      "childReaped": true,
+      "exitCode": 1
+    }
+  ],
+  "chromeExitCode": -6,
+  "chromeTimedOut": false,
+  "sandboxStartupSucceeded": false,
+  "policyChanged": false,
+  "desktopGUIVerified": false,
+  "ownedProbeLeaderReaped": true,
+  "runId": 38485034979,
+  "rawDiagnosticNote": "Original childReaped=true was emitted even when no child was created; corrected probe distinguishes null from a successful clone child wait. Raw original retained.",
+  "processStatus": {
+    "CapEff": "0000000000000000",
+    "CapBnd": "00000000a80425fb",
+    "NoNewPrivs": "0",
+    "Seccomp": "2",
+    "Seccomp_filters": "1"
+  }
+}

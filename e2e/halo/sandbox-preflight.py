@@ -30,6 +30,7 @@ for operation in ["clone-user", "clone-user-pid-net", "unshare-user", "unshare-u
     result = subprocess.run([str(probe), operation], capture_output=True, text=True, timeout=5)
     if result.returncode not in (0, 1): raise RuntimeError("Namespace probe failed: " + result.stderr)
     item = json.loads(result.stdout); item["exitCode"] = result.returncode
+    item["operationLeaderReaped"] = True
     evidence["namespaceChecks"].append(item)
 with tempfile.TemporaryDirectory(prefix="chrome-sandbox-", dir=out) as profile:
     argv = ["google-chrome-stable", "--headless", "--disable-gpu", "--no-first-run",

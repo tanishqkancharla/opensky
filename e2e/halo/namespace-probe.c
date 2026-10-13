@@ -32,7 +32,8 @@ int main(int argc, char **argv) {
     }
     free(stack);
   } else return 2;
-  printf("{\"operation\":\"%s\",\"created\":%s,\"errno\":%d,\"childReaped\":true}\n",
-         argv[1], result < 0 ? "false" : "true", saved_errno);
+  printf("{\"operation\":\"%s\",\"created\":%s,\"errno\":%d,\"childReaped\":%s}\n",
+         argv[1], result < 0 ? "false" : "true", saved_errno,
+         strncmp(argv[1], "clone-", 6) == 0 && result >= 0 ? "true" : "null");
   return result < 0 ? 1 : 0;
 }

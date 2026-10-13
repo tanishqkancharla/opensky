@@ -424,3 +424,46 @@ do not run it inside a production desktop server that must survive every cell.
 No automatic host-hook detection, process isolation or crash recovery is supplied
 by this SDK. No startup flag or removal of timeout/sandbox enforcement is part
 of the fix. Sandboxed Chrome acceptance remains independently unverified.
+
+
+## Chrome sandbox startup preflight
+
+Run the repository's opt-in probe as Halo's ordinary desktop user before a full
+driver/desktop acceptance build (requires Node, Python3, clang and Google's
+Chrome package):
+
+```sh
+python3 e2e/halo/sandbox-preflight.py --output /tmp/halo-sandbox-readiness --require-ready
+```
+
+It creates and reaps isolated namespace probe processes, launches only a private
+headless Chrome profile with its default sandbox, and records exact syscall
+results, exit status and policy observations. It changes no kernel/LSM/seccomp
+policy and adds no process capabilities. Exit1 means sandbox startup is
+unavailable under the current policy; an OpenSky capability manifest cannot
+grant denied kernel namespace operations. Successful startup is only a
+prerequisite: it does not verify visible tabs, trusted click/scroll, renderer
+isolation, focus behavior or the shared TigerVNC/D-Bus desktop. The full
+`halo_contract=true` lane still owns those application assertions; it now gates
+on this probe before Rust compilation. Capture-only lanes remain independent.
+
+[Actual probe38485034979](https://github.com/tanishqkancharla/opensky/actions/runs/38485034979)
+used SDK sourceab7b4fa868f0387d13854c34703cd0309a84f041, Node22.23.3 and
+Chrome155.0.8059.79 in Bookworm as uid1001 with zero effective capabilities.
+Both clone and unshare for user-only and user/PID/network namespaces return
+EPERM; Chrome exits SIGABRT before an SDK tab or desktop action. The container
+reports one seccomp filter, docker-default AppArmor enforcement, enabled
+unprivileged_userns_clone, and apparmor_restrict_unprivileged_userns=1. These
+observations establish a host/container namespace refusal; they do not isolate
+a single policy layer as its cause. No privileged or unconfined container,
+sandbox-disabling flag or policy relaxation was used. The probe leader was
+reaped and the job's container stopped. [Original diagnostic evidence](linux-sandbox-readiness.json).
+
+Docker documents argument/capability restrictions on namespace calls in its
+[default seccomp profile](https://docs.docker.com/engine/security/seccomp/).
+Halo's operator must provide a reviewed host/container policy under which
+Chrome's normal namespace sandbox can start. This report does not prescribe a
+blanket security relaxation or prove that Halo's already sandboxed Chrome
+shares this hosted runner's restriction. Sandboxed browser GUI acceptance remains
+unverified here; no new native-input or paired benchmark score follows from this
+probe. Dispatch `halo_sandbox_probe=true` for this diagnostic alone.
