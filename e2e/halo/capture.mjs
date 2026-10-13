@@ -112,6 +112,8 @@ print(json.dumps({'covered':comparison(a,b),'restored':comparison(a,c),'sizes':[
     evidence.pixels=JSON.parse(execFileSync("/usr/bin/python3",["-c",script,...["visible","covered","restored"].map(phase=>join(out,`capture-${phase}.png`))],{encoding:"utf8"}));
     assert.ok(evidence.pixels.restored.dimensionsMatch&&evidence.pixels.restored.changedPixelFraction<0.02,"foreground capture is stable within fixture cursor/paint tolerance");
     assert.ok(evidence.pixels.covered.dimensionsMatch&&evidence.pixels.covered.changedPixelFraction<0.02,"covered capture must preserve the owned target pixels; tolerance is fixture-only, not a product darkness heuristic");
+    evidence.pixels.coveredReference=JSON.parse(execFileSync("/usr/bin/python3",["-c",referenceScript,join(out,"capture-foreground-reference.png"),join(out,"capture-covered.png")],{encoding:"utf8"}));
+    assert.ok(evidence.pixels.coveredReference.whole<0.02&&evidence.pixels.coveredReference.text<0.02,"covered capture preserves the independently observed application text, not only its blank background");
     evidence.acceptance="preserved target pixels";
   }else{
     assert.equal(covered.screenshotFrameValid,false);
@@ -123,7 +125,10 @@ print(json.dumps({'covered':comparison(a,b),'restored':comparison(a,c),'sizes':[
   // on exposure/backing, never pixel darkness. GTK applies its own real CSS.
   await writeFile(join(out,"request-dark-theme"),"owned fixture request");
   await poll(async()=>JSON.parse(await readFile(join(out,"editor-state.json"),"utf8")).theme==="dark");await sleep(500);
+  evidence.darkReference=JSON.parse(execFileSync("/usr/bin/python3",["-c",rootScript,join(out,"capture-dark-reference.png"),...[geometry.rootX,geometry.rootY,geometry.width,geometry.height].map(String)],{encoding:"utf8"}));
   const dark=await capture("dark");assert.equal(dark.imageCount,1);
+  evidence.darkReference.matchesDriver=JSON.parse(execFileSync("/usr/bin/python3",["-c",referenceScript,join(out,"capture-dark-reference.png"),join(out,"capture-dark.png")],{encoding:"utf8"}));
+  assert.ok(evidence.darkReference.matchesDriver.whole<0.02&&evidence.darkReference.matchesDriver.text<0.02,"legitimate dark capture preserves independently observed white text too");
   const stats=JSON.parse(execFileSync("/usr/bin/python3",["-c","from PIL import Image,ImageStat;import sys,json;im=Image.open(sys.argv[1]).convert('RGB');print(json.dumps({'mean':sum(ImageStat.Stat(im).mean)/3}))",join(out,"capture-dark.png")],{encoding:"utf8"}));
   assert.ok(stats.mean<10,"GTK fixture actually rendered black; this threshold is never used in the driver");
   evidence.legitimateDarkFrame={captured:true,mean:stats.mean};
