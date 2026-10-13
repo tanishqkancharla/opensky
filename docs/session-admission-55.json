@@ -78,8 +78,58 @@
     "ownedCleanup": "passed"
   },
   "limits": [
-    "Actual CLI/MCP automatic and explicit labels verified on Mac.",
-    "Linux four-control admission verification is being dispatched against this immutable repaired driver; covered-window capture remains separately failing.",
+    "Mac and actual bounded-grant Bookworm Node22 CLI/MCP automatic/explicit base-session controls pass.",
+    "The same Linux workflow separately fails covered-window capture53; that failure remains retained and is not session acceptance failure.",
+    "No full production Chrome or Windows native acceptance is claimed.",
     "No unknown-delivery replay or SDK predicate relaxation."
-  ]
+  ],
+  "linux": {
+    "run": 38458644876,
+    "node": "22.23.3",
+    "environment": "Debian Bookworm, TigerVNC/X11, XFWM4 compositor off, shared D-Bus/AT-SPI, explicit bounded editor grants",
+    "controls": [
+      {
+        "transport": "cli",
+        "mode": "automatic",
+        "sdk": "a789843e5f443aab3eead9e0ce2c9b9d0bbe075f",
+        "driver": "01d4b9e47705289e3b56a848e35e3508de28017f",
+        "inputDispatched": false,
+        "automaticRecovery": true,
+        "editorTextSelectionClipboardPreserved": true,
+        "foregroundPreserved": true
+      },
+      {
+        "transport": "cli",
+        "mode": "explicit",
+        "sdk": "a789843e5f443aab3eead9e0ce2c9b9d0bbe075f",
+        "driver": "01d4b9e47705289e3b56a848e35e3508de28017f",
+        "inputDispatched": false,
+        "automaticRecovery": true,
+        "editorTextSelectionClipboardPreserved": true,
+        "foregroundPreserved": true
+      },
+      {
+        "transport": "mcp",
+        "mode": "automatic",
+        "sdk": "a789843e5f443aab3eead9e0ce2c9b9d0bbe075f",
+        "driver": "01d4b9e47705289e3b56a848e35e3508de28017f",
+        "inputDispatched": false,
+        "automaticRecovery": true,
+        "editorTextSelectionClipboardPreserved": true,
+        "foregroundPreserved": true
+      },
+      {
+        "transport": "mcp",
+        "mode": "explicit",
+        "sdk": "a789843e5f443aab3eead9e0ce2c9b9d0bbe075f",
+        "driver": "01d4b9e47705289e3b56a848e35e3508de28017f",
+        "inputDispatched": false,
+        "automaticRecovery": true,
+        "editorTextSelectionClipboardPreserved": true,
+        "foregroundPreserved": true
+      }
+    ],
+    "supervisorOwnedCleanupPassed": true,
+    "productionChromeVerified": false
+  }
 }
