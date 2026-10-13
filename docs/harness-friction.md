@@ -5599,3 +5599,14 @@ The original document probe inspected the wrong AppState field; corrected use of
 `AppState.text` verifies the actual file URL/body and unchanged input bytes. These
 successes do not diagnose or close intermittent issue19. Cold native/OpenSky task
 comparisons remain pending, as does broader platform acceptance.
+
+
+## SET361 — Iteration164 matched verification and current Linux issue triage
+
+**Status:** Mac verification complete; Linux issues53/54 remain open.
+
+Five fresh serial isolated Terra pairs completed on SDK85b64ff and installed Driver0.34.1 source6bbc64f. Requested application effects, retained TextEdit RTF body/style, retained Finder directories, URL/tab history and exact owned cleanup were reviewed. The aggregate index is59.31 against native100; [per-pair measurements and limitations](mac-parity-164.json) retain whole-agent variation and recovery differences. SET360 halves Calculator input window reads32→16; one control input cell improves7.235→6.866seconds. These counts establish removed redundant work; whole-agent ratios do not prove causal score improvement.
+
+New [issue53](https://github.com/tanishqkancharla/opensky/issues/53) reports black covered GTK captures on noncomposited TigerVNC/XFWM4. New [issue54](https://github.com/tanishqkancharla/opensky/issues/54) reports default synthetic HTML option clicks resolving without selecting. Their reporter used sandboxed Chrome and standard explicit grants; that evidence establishes a working foreground browser control in that environment, independent of the previous hosted namespace failure.
+
+Upstream Driver0.35.2 tagad694f82aaaa12e67257e4510837fc1f6cfc9484 was checked first. Its immutable browser/tools.rs still uses this.click() for the DOM-event route; Linux capture.rs has no Composite/named-pixmap path. Neither report is established as fixed by the new release. Next: reconcile the latest driver with retained fork corrections, then run actual covered-window and native-option controls. Preserve focus and exact/stale target guards; return an actionable refusal when an effect or target pixels cannot be delivered. No black-pixel heuristic, silent foreground activation, synthetic fallback for trusted input, or sandbox bypass is authorized by these fixes.

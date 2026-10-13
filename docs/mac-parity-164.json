@@ -1,0 +1,198 @@
+{
+  "iteration": 164,
+  "recordedAt": "2026-10-13T16:36:57.769021+00:00",
+  "scope": "Five fresh serial isolated gpt-5.6-terra native/OpenSky Mac task pairs; actual outcome and exact owned cleanup reviewed. Descriptive comparison, not causal whole-agent improvement.",
+  "sdkSourceAtRun": "85b64ffedddc8f57a4a2e6f30fb2746eaa052ed3",
+  "sdkVersionAtRun": "0.2.0 plus keyboard observation correction",
+  "driverSourceAtRun": "6bbc64f4b511dee293adb29da707107bd212ae4c",
+  "driverVersion": "0.34.1",
+  "metricDefinition": "Native100; per-pair index100*min(OpenSky/native elapsed time, estimated cost, aggregate input tokens). Only latest complete reviewed pairs included.",
+  "pairs": {
+    "mac-01-10": {
+      "nativeRun": 1505,
+      "openskyRun": 1506,
+      "initialState": "visible",
+      "ratios": {
+        "time": 0.7460671298325564,
+        "cost": 0.8093580509167941,
+        "context": 0.824124797829603
+      },
+      "index": 0.7460671298325564,
+      "limits": [
+        "Both enter requested operands/operators and compute99; native extra trailing plus remains, canonical expression equality unproven. One-read patch verified by actual trace/control; whole-time variation dominates and descriptive index gain is not causal source proof."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 65.18517303466797,
+          "context_tokens": 95835,
+          "estimated_cost_usd": 0.13444679999999998
+        },
+        "opensky": {
+          "elapsed_seconds": 48.63251495361328,
+          "context_tokens": 78980,
+          "estimated_cost_usd": 0.10881560000000001
+        }
+      },
+      "productChange": true
+    },
+    "mac-15-05": {
+      "nativeRun": 1507,
+      "openskyRun": 1508,
+      "initialState": "visible",
+      "ratios": {
+        "time": 1.769976003534514,
+        "cost": 0.8653331286031354,
+        "context": 1.3582121169326367
+      },
+      "index": 0.8653331286031354,
+      "limits": [
+        "Actual requested tabs and running/paused/reset stopwatch states verified. Indexed-click negative control unaffected by keyboard patch; native batching differs, no source gain inferred."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 25.691498041152954,
+          "context_tokens": 113296,
+          "estimated_cost_usd": 0.143278
+        },
+        "opensky": {
+          "elapsed_seconds": 45.4733350276947,
+          "context_tokens": 153880,
+          "estimated_cost_usd": 0.12398320000000002
+        }
+      },
+      "productChange": false
+    },
+    "mac-05-04": {
+      "nativeRun": 1509,
+      "openskyRun": 1510,
+      "initialState": "cold",
+      "ratios": {
+        "time": 2.011933306432939,
+        "cost": 0.7813680525613845,
+        "context": 0.8294193732897414
+      },
+      "index": 0.7813680525613845,
+      "limits": [
+        "Actual newly created saved RTF text/style and end caret verified; cold restoration initially exposed previous retained native document. Single pair descriptive, no causal whole-time gain inferred."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 31.328391790390015,
+          "context_tokens": 153851,
+          "estimated_cost_usd": 0.1790516
+        },
+        "opensky": {
+          "elapsed_seconds": 63.03063488006592,
+          "context_tokens": 127607,
+          "estimated_cost_usd": 0.1399052
+        }
+      },
+      "productChange": true
+    },
+    "mac-08-02": {
+      "nativeRun": 1511,
+      "openskyRun": 1512,
+      "initialState": "finder-fixture-parent",
+      "ratios": {
+        "time": 0.6825405621721357,
+        "cost": 0.5283151221708532,
+        "context": 0.48224155920922646
+      },
+      "index": 0.48224155920922646,
+      "limits": [
+        "Independent retained Drafts/Ready verified; native lost-character/paste recovery and incidental clipping counted; SDK inline-name recovery counted. Single pair descriptive."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 74.11101222038269,
+          "context_tokens": 612413,
+          "estimated_cost_usd": 0.49039520000000003
+        },
+        "opensky": {
+          "elapsed_seconds": 50.58377194404602,
+          "context_tokens": 295331,
+          "estimated_cost_usd": 0.2590832
+        }
+      },
+      "productChange": false
+    },
+    "mac-07-05": {
+      "nativeRun": 1513,
+      "openskyRun": 1514,
+      "initialState": "visible",
+      "ratios": {
+        "time": 0.8909883838921379,
+        "cost": 0.7397793141413815,
+        "context": 1.0233275237967556
+      },
+      "index": 0.7397793141413815,
+      "limits": [
+        "Requested URL history/tab lifecycle verified. Reload exact button and changed tree observed, no instrumented origin request count. Single pair descriptive."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 87.7865846157074,
+          "context_tokens": 223770,
+          "estimated_cost_usd": 0.2964576
+        },
+        "opensky": {
+          "elapsed_seconds": 78.21682715415955,
+          "context_tokens": 228990,
+          "estimated_cost_usd": 0.2193132
+        }
+      },
+      "productChange": false
+    }
+  },
+  "aggregateDashboard": {
+    "total_tasks": 183,
+    "tested_tasks": 173,
+    "active_tasks": 150,
+    "retired_tasks": 33,
+    "scored_pairs": 140,
+    "native_score": 100,
+    "opensky_score": 59.30670318145611,
+    "resource_indexes": {
+      "time": 85.97002614057517,
+      "cost": 71.15954943707122,
+      "context": 66.32668629933434
+    },
+    "current_iteration_attempts": {
+      "native": {
+        "completed": 5,
+        "terminal": 5,
+        "pending": 0
+      },
+      "opensky": {
+        "completed": 5,
+        "terminal": 5,
+        "pending": 0
+      }
+    },
+    "unresolved_run_cleanup": 0,
+    "unresolved_check_cleanup": 0
+  },
+  "batchEstimatedWorkerCostUsd": 2.0947296000000004,
+  "batchIndex100": 72.2957836869537,
+  "cleanup": "All owned apps/windows/helpers and live saved files/folder fixtures cleared; unrelated original Calendar process and window preserved.",
+  "sourceChangeEvidence": {
+    "windowReadsBefore": 32,
+    "windowReadsAfter": 16,
+    "calculatorInputSecondsBefore": 7.235305125,
+    "calculatorInputSecondsAfter": 6.866046083,
+    "sameDriver": true,
+    "actualGuiRecipesPassed": 7,
+    "unitTestsPassed": 493,
+    "unitTestsSkipped": 1
+  },
+  "limits": [
+    "Retired/incomplete arms excluded; their original transcripts and failures retained.",
+    "Aggregate input is a context proxy; costs are estimated, not subscription billing.",
+    "Descriptive control ratios are not causal evidence of a repair. Canonical platform matrix pending.",
+    "Calculator native final history contains an extra trailing plus; requested operands/operators and result99 are verified, canonical expression identity is not.",
+    "TextEdit cold restoration initially exposed prior retained document before a distinct new blank document was created and saved.",
+    "Finder native recovered dropped character, ineffective setValue and misplaced paste; incidental clipping retained. SDK recovered inline rename transitions.",
+    "Safari reload dispatch and changed page tree verified; origin request count not instrumented.",
+    "Whole-agent timing variability prevents causal attribution of batch score gains to the keyboard patch."
+  ]
+}
