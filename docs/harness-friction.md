@@ -5770,3 +5770,8 @@ SET374 focused23 owners pass on Node22/24 (one Bun-only skip). Direct harness ty
 
 
 SET374 final verification: the extended artifact keeper and affected strict/tool owners pass23/24 on both Node22 and24 (one Bun-only skip). Direct typechecking of the actual eval harness/artifact writer and keeper now passes; full E2E types pass. Whole SDK498/499 passes on Node24. The original real65-second pending-cell owner passes unchanged, including refusal of a conflicting start, bounded waits, original completion and explicit replayed output. No model, daemon or app is launched by these checks. This change affects repository evaluation tooling; the SDK0.2.6 package runtime remains unchanged, and no fresh GUI or score acceptance is claimed.
+
+
+## SET375 — Independent Linux and Mac validation feedback
+
+Ordinary source CI uses one Mac runner and global workflow concurrency. Candidatef1b687b validation38481238455 remains queued after20 minutes; later sources remain pending or are superseded without their unit feedback. This observation does not establish the runner's queue root cause. Keep the existing Mac/Node24 owners and add independent Linux/Node22 and24 model-free lanes. Move concurrency to each validation lane (superseded validation may cancel) and separately retain serial, non-cancelling explicitly opted-in real desktop/model jobs. Add the actual eval harness typecheck so agent-library type drift is caught automatically. No GUI/model acceptance, runner permission change or new benchmark cost follows from these lanes. Actionlint and actual fast-lane execution remain required.

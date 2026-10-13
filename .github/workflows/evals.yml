@@ -16,26 +16,46 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: evals-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   validate:
-    runs-on: macos-15
+    # Independent model-free lanes give Linux/Node compatibility feedback even
+    # when the Mac runner is queued. Keep the Mac-specific owner coverage.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: '22'
+          - os: ubuntu-latest
+            node: '24'
+          - os: macos-15
+            node: '24'
+    runs-on: ${{ matrix.os }}
+    concurrency:
+      group: evals-validate-${{ github.ref }}-${{ matrix.os }}-${{ matrix.node }}
+      cancel-in-progress: true
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Check current agent-library integration types
+        run: >-
+          npm exec tsc -- --noEmit --target ES2022 --module Node16
+          --moduleResolution Node16 --strict --skipLibCheck --types node
+          evals/harness.ts evals/artifacts.ts test/eval-artifacts.test.ts
       - run: npm run evals -- browser.eval.ts --list
       - run: npm test
 
   real-driver:
+    # Never cancel a desktop/model job merely because another commit arrived.
+    concurrency:
+      group: evals-desktop-${{ github.ref }}
+      cancel-in-progress: false
     # Scheduled/ordinary runs validate without spending model credits.
     # API-funded evaluations require an explicit manual opt-in; campaign agents
     # remain serial Codex CLI runs under the parent budget/cleanup controller.
