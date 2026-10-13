@@ -1,0 +1,261 @@
+{
+  "iteration": 163,
+  "recordedAt": "2026-10-13T05:22:06.823834+00:00",
+  "scope": "Five fresh serial isolated gpt-5.6-terra native computer-use/OpenSky Mac app task pairs. Observational comparison, not causal release improvement.",
+  "sdkSourceAtRun": "4bae7b25afb6394f91782633b62fbbf50c3221fc",
+  "sdkReleasedRuntime": "183b84be06555e7c933f56b207ca89204e63030e",
+  "sdkVersion": "0.2.0",
+  "driverSourceAtRun": "6bbc64f4b511dee293adb29da707107bd212ae4c",
+  "driverVersion": "0.34.1",
+  "metricDefinition": "Native100; per-pair index100*min(OpenSky/native time, estimated cost, aggregate input tokens). Only latest complete reviewed pairs included.",
+  "pairs": {
+    "mac-16-02": {
+      "nativeRun": 1495,
+      "openskyRun": 1496,
+      "initialState": "visible",
+      "ratios": {
+        "time": 1.5708599856106642,
+        "cost": 0.7512519879010884,
+        "context": 0.47960842092472206
+      },
+      "limits": [
+        "Actual rich AX shows exact text/order and bold replacement for both; unsaved task. Native selection/key recoveries versus SDK cursor_after/batching, no isolated source gain."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 24.055706024169922,
+          "context_tokens": 131672,
+          "estimated_cost_usd": 0.128276
+        },
+        "opensky": {
+          "elapsed_seconds": 37.788146018981934,
+          "context_tokens": 63151,
+          "estimated_cost_usd": 0.09636760000000001
+        }
+      },
+      "productChange": false,
+      "index100": 47.960842092472205,
+      "toolEvidence": {
+        "native": {
+          "completedCells": 6,
+          "toolSeconds": 4.085,
+          "returnedTextBytes": 29469
+        },
+        "opensky": {
+          "completedCells": 3,
+          "toolSeconds": 4.773,
+          "returnedTextBytes": 4952
+        }
+      }
+    },
+    "mac-01-10": {
+      "nativeRun": 1497,
+      "openskyRun": 1498,
+      "initialState": "visible",
+      "ratios": {
+        "time": 2.4019568660407407,
+        "cost": 0.9268338428026628,
+        "context": 1.0278433161702405
+      },
+      "limits": [
+        "Both reconstruct exact requested expression and display99; both recover from final equals-key naming. Shared friction ignored; different recovery/strategies included, no product-change attribution."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 16.420574188232422,
+          "context_tokens": 76715,
+          "estimated_cost_usd": 0.12156439999999999
+        },
+        "opensky": {
+          "elapsed_seconds": 39.441510915756226,
+          "context_tokens": 78851,
+          "estimated_cost_usd": 0.11267
+        }
+      },
+      "productChange": false,
+      "index100": 92.68338428026628,
+      "toolEvidence": {
+        "native": {
+          "completedCells": 3,
+          "toolSeconds": 4.323,
+          "returnedTextBytes": 29011
+        },
+        "opensky": {
+          "completedCells": 4,
+          "toolSeconds": 8.581,
+          "returnedTextBytes": 7230
+        }
+      }
+    },
+    "mac-13-10": {
+      "nativeRun": 1499,
+      "openskyRun": 1500,
+      "initialState": "visible",
+      "ratios": {
+        "time": 1.1083023543130999,
+        "cost": 0.8669814408613706,
+        "context": 0.826747680733299
+      },
+      "limits": [
+        "Actual query/definition sequence and scrollbar0\u21921\u21920 verified for both. Different persisted entry state and scroll counts; SDK explicit viewport pruning, no isolated source-gain claim."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 39.89205813407898,
+          "context_tokens": 153389,
+          "estimated_cost_usd": 0.1637576
+        },
+        "opensky": {
+          "elapsed_seconds": 44.212461948394775,
+          "context_tokens": 126814,
+          "estimated_cost_usd": 0.14197479999999998
+        }
+      },
+      "productChange": false,
+      "index100": 82.6747680733299,
+      "toolEvidence": {
+        "native": {
+          "completedCells": 7,
+          "toolSeconds": 6.548,
+          "returnedTextBytes": 34673
+        },
+        "opensky": {
+          "completedCells": 7,
+          "toolSeconds": 7.217,
+          "returnedTextBytes": 14401
+        }
+      }
+    },
+    "mac-10-07": {
+      "nativeRun": 1501,
+      "openskyRun": 1502,
+      "initialState": "notes-all-google",
+      "ratios": {
+        "time": 1.0457639673122328,
+        "cost": 0.8772381563273159,
+        "context": 0.8343422013037678
+      },
+      "limits": [
+        "Exact freshUUID/fullstyledbody/title-onlybold verified before and after separate reversible same-account archives. Inline row reselection/body readback accepted; SDK edit focus not certified, native additionallyReturn. Different inherited bodies/counts; no isolated source gain."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 69.70785117149353,
+          "context_tokens": 158924,
+          "estimated_cost_usd": 0.174608
+        },
+        "opensky": {
+          "elapsed_seconds": 72.89795899391174,
+          "context_tokens": 132597,
+          "estimated_cost_usd": 0.1531728
+        }
+      },
+      "productChange": false,
+      "index100": 83.43422013037679,
+      "toolEvidence": {
+        "native": {
+          "completedCells": 7,
+          "toolSeconds": 8.087,
+          "returnedTextBytes": 33398
+        },
+        "opensky": {
+          "completedCells": 7,
+          "toolSeconds": 13.322,
+          "returnedTextBytes": 13115
+        }
+      }
+    },
+    "mac-15-05": {
+      "nativeRun": 1503,
+      "openskyRun": 1504,
+      "initialState": "visible",
+      "ratios": {
+        "time": 1.2945163389891705,
+        "cost": 0.8007018365316346,
+        "context": 0.7945535338687607
+      },
+      "limits": [
+        "Actual stopwatch0\u2192running\u2192paused\u2192reset0 and requested tab selection chain verified; no timer/alarm effects. Different elapsed pauses/final full-vs-diff observation, descriptive comparison only."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 49.83604598045349,
+          "context_tokens": 206813,
+          "estimated_cost_usd": 0.1571876
+        },
+        "opensky": {
+          "elapsed_seconds": 64.51357579231262,
+          "context_tokens": 164324,
+          "estimated_cost_usd": 0.12586039999999998
+        }
+      },
+      "productChange": false,
+      "index100": 79.45535338687607,
+      "toolEvidence": {
+        "native": {
+          "completedCells": 10,
+          "toolSeconds": 11.18,
+          "returnedTextBytes": 32276
+        },
+        "opensky": {
+          "completedCells": 10,
+          "toolSeconds": 7.79,
+          "returnedTextBytes": 10739
+        }
+      }
+    }
+  },
+  "aggregateDashboard": {
+    "total_tasks": 183,
+    "tested_tasks": 173,
+    "active_tasks": 150,
+    "retired_tasks": 33,
+    "scored_pairs": 140,
+    "native_score": 100,
+    "opensky_score": 59.18729247793604,
+    "resource_indexes": {
+      "time": 86.0326977783969,
+      "cost": 71.32163519007567,
+      "context": 65.63475651485518
+    },
+    "current_iteration_attempts": {
+      "native": {
+        "completed": 5,
+        "terminal": 5,
+        "pending": 0
+      },
+      "opensky": {
+        "completed": 5,
+        "terminal": 5,
+        "pending": 0
+      }
+    },
+    "unresolved_run_cleanup": 0,
+    "unresolved_check_cleanup": 0
+  },
+  "batchEstimatedWorkerCostUsd": 1.3754391999999998,
+  "cleanup": "All owned apps/windows/helpers absent; two exact new Notes IDs retained by reversible same-account archive moves, styled bodies preserved; unrelated Calendar preserved.",
+  "newProductDefects": [],
+  "newProductChanges": [],
+  "limits": [
+    "Retired/incomplete arms excluded; their original transcripts and failures retained.",
+    "Aggregate input is a context proxy; costs are estimated, not subscription billing.",
+    "Descriptive control ratios are not causal evidence of a repair. Canonical platform matrix pending.",
+    "No saved file required for rich-paste task; style is actual rich AX rendering.",
+    "Notes reopen acceptance is mapped inline row selection and resulting visible styled body. SDK edit focus and separate-window opening are not certified.",
+    "Five pairs and different batching/key recovery/initial persisted preferences do not establish a causal source gain."
+  ],
+  "batchIndex100": 77.24171359266425,
+  "toolTotals": {
+    "native": {
+      "completedCells": 33,
+      "toolSeconds": 34.223,
+      "returnedTextBytes": 158827
+    },
+    "opensky": {
+      "completedCells": 31,
+      "toolSeconds": 41.683,
+      "returnedTextBytes": 50437
+    }
+  }
+}

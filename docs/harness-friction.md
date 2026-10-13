@@ -5527,3 +5527,29 @@ to replay input or automatic task completion. A separate actual body/style and
 live-action review is required. The native agent's directory and Duplicate
 recoveries stay in its metrics; changed last-used Save location limits causal
 comparison with the subsequent SDK run. No product performance gain is claimed.
+
+
+## SET359 — Released SDK Mac comparisons across five app workflows
+
+**Evidence:** Iteration163 completes ten fresh, isolated serial Terra arms on
+SDK0.2.0 and unchanged signed Driver0.34.1. Rich HTML replacement, named
+Calculator operators, Dictionary definition scrolling, Notes title formatting
+and inline row selection, and Clock stopwatch navigation all reach reviewed
+application outcomes. Exact app/window/helper cleanup passes; two fresh Notes
+UUIDs retain their full styled bodies through reversible same-account archive
+moves. The unrelated Calendar remains preserved.
+
+**Comparison/layer:** [Structured measurements](mac-parity-163.json) retain all
+five original pairs, input-token/cost/time ratios, call counts and returned text
+sizes. OpenSky returns less text, but whole-run time is higher in all five pairs.
+Native and SDK both recover from final Calculator equals-key naming; the native
+rich-paste arm also corrects selection/cursor input. These different strategies,
+batching, cached tokens and persisted preferences limit causal attribution.
+No new SDK-only counterexample is established and no product patch is proposed.
+
+**Limits:** Rich-paste styling is verified by actual rich AX, without a requested
+saved file. Notes reopen is exact inline row reselection plus visible styled
+body; SDK edit focus or separate-window opening is not certified. Stopwatch
+running/paused/reset and Dictionary scrollbar top/bottom effects are actual
+observations. This is Mac task evidence, not full platform acceptance or a new
+release improvement. No extra E2E run is claimed for unchanged product code.
