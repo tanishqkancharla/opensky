@@ -45,7 +45,25 @@ try{
   execFileSync("wmctrl",["-ia",process.env.HALO_EDITOR_WINDOW]);
   await sleep(500);
   evidence.backingProbe=JSON.parse(execFileSync("/usr/bin/python3",["e2e/halo/capture-backing.py",String(windowId)],{encoding:"utf8"}));
+  // Independent foreground oracle reads the root screen, not this driver or
+  // its named pixmap. Compare a text ROI too: equal black/blank frames must not
+  // count as preserved application content.
+  const geometry=evidence.backingProbe.ancestors[0].geometry;
+  const rootScript=`from PIL import ImageGrab,ImageStat
+import os,sys,json
+x,y,w,h=map(int,sys.argv[2:]);im=ImageGrab.grab(xdisplay=os.environ['DISPLAY']).crop((x,y,x+w,y+h)).convert('RGB');im.save(sys.argv[1]);print(json.dumps({'mean':sum(ImageStat.Stat(im).mean)/3}))`;
+  evidence.foregroundReference=JSON.parse(execFileSync("/usr/bin/python3",["-c",rootScript,join(out,"capture-foreground-reference.png"),...[geometry.rootX,geometry.rootY,geometry.width,geometry.height].map(String)],{encoding:"utf8"}));
+  assert.ok(evidence.foregroundReference.mean>240,"real foreground GTK editor renders its expected light background");
   const visible=await capture("visible");assert.equal(visible.imageCount,1);
+  const referenceScript=`from PIL import Image,ImageChops
+import sys,json
+a=Image.open(sys.argv[1]).convert('RGB');b=Image.open(sys.argv[2]).convert('RGB')
+assert a.size==b.size
+def compare(x,y):
+ d=ImageChops.difference(x,y);return sum(1 for p in d.getdata() if max(p)>16)/(x.width*x.height)
+print(json.dumps({'whole':compare(a,b),'text':compare(a.crop((0,0,120,24)),b.crop((0,0,120,24)))}))`;
+  evidence.foregroundReference.matchesDriver=JSON.parse(execFileSync("/usr/bin/python3",["-c",referenceScript,join(out,"capture-foreground-reference.png"),join(out,"capture-visible.png")],{encoding:"utf8"}));
+  assert.ok(evidence.foregroundReference.matchesDriver.whole<0.02&&evidence.foregroundReference.matchesDriver.text<0.02,"driver foreground frame matches independent root pixels including the actual text ROI");
   const inventory=(await driver.call("list_apps")).structured;
   const native=(Array.isArray(inventory)?inventory:inventory.apps).find(app=>app.pid===pid);assert.ok(native);
   app=await createCua(sdk,{emit:()=>undefined}).getApp(native.name);
