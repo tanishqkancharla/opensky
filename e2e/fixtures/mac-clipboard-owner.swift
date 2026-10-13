@@ -63,11 +63,21 @@ func axRead(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
     var value: CFTypeRef?
     return AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success ? value : nil
 }
+var copyIdentityFailure: [String:Bool]? = nil
 func validCopyIdentity(_ pid: pid_t, _ launchedAt: Double, _ windowId: Int) -> Bool {
-    guard let app = NSRunningApplication(processIdentifier:pid), app.bundleIdentifier == "com.apple.TextEdit",
-          app.launchDate?.timeIntervalSince1970 == launchedAt else { return false }
-    let windows = CGWindowListCopyWindowInfo(.optionAll,kCGNullWindowID) as? [[String:Any]] ?? []
-    return windows.contains { ($0[kCGWindowOwnerPID as String] as? Int) == Int(pid) && ($0[kCGWindowNumber as String] as? Int) == windowId }
+    let app = NSRunningApplication(processIdentifier:pid)
+    let windowInfo = CGWindowListCopyWindowInfo(.optionAll,kCGNullWindowID) as? [[String:Any]]
+    let checks = ["processPresent":app != nil,
+                  "bundleMatches":app?.bundleIdentifier == "com.apple.TextEdit",
+                  "launchMatches":app?.launchDate?.timeIntervalSince1970 == launchedAt,
+                  "windowListAvailable":windowInfo != nil,
+                  "windowPresent":(windowInfo ?? []).contains {
+                      ($0[kCGWindowOwnerPID as String] as? Int) == Int(pid) &&
+                      ($0[kCGWindowNumber as String] as? Int) == windowId
+                  }]
+    let valid = checks.values.allSatisfy { $0 }
+    if !valid { copyIdentityFailure = checks }
+    return valid
 }
 func prepareCopy(_ request: [String:Any]) throws -> [String:Any] {
     guard active,copyTarget == nil,let pidValue=request["pid"] as? Int,let launch=request["launchedAt"] as? Double,
@@ -166,7 +176,9 @@ while let line = readLine() {
             "Owned document identity changed":13,
         ]
         let stage = stages[failure.domain] == failure.code ? failure.code : 0
-        print("{\"ok\":false,\"error\":\"Clipboard fixture failed; contents withheld\",\"fixtureStageCode\":\(stage)}")
+        var receipt: [String:Any] = ["ok":false,"error":"Clipboard fixture failed; contents withheld","fixtureStageCode":stage]
+        if stage == 9 || stage == 13, let checks = copyIdentityFailure { receipt["identityChecks"] = checks }
+        print(String(data:try! JSONSerialization.data(withJSONObject:receipt,options:[.sortedKeys]),encoding:.utf8)!)
     }
     fflush(stdout)
 }

@@ -1,0 +1,242 @@
+{
+  "sdkRelease": "0.2.3",
+  "sdkReleaseCommit": "d0ef5fe27e635bad0a2abbc88b753d1762fa6d23",
+  "driverInstalledVersion": "0.35.2",
+  "driverInstalledSource": "455a0a9a3223d25c0214ff63e19218f39cbc5a6e",
+  "driverBinarySHA256": "256e1a671c6b159ebd03a293651fbd45f0c1c44e7529775d752c68685c311955",
+  "driverRepositoryMain": "0c147a8e1b1e4d061184a85329456faaee2e2fb2",
+  "driverProductDiffSinceInstalledSource": false,
+  "stableTCCIdentityPreserved": true,
+  "daemonWindowTimingMs": {
+    "timeout": 250,
+    "poll": 50
+  },
+  "stages": [
+    {
+      "control": "mac-affected-feedback",
+      "recipe": "mac-window-transition",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "WINDOW-N01",
+        "WINDOW-N02"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-affected-feedback",
+      "recipe": "mac-tab-identity",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "TAB-N01"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-affected-feedback",
+      "recipe": "mac-chrome-find-and-plus",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "FIND-N01",
+        "KEY-S04"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-affected-feedback",
+      "recipe": "mac-rich-text-diff",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "DIFF-N02",
+        "FORMAT-N04"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-affected-feedback",
+      "recipe": "mac-paste-preservation",
+      "status": "failed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "PASTE-N01"
+      ],
+      "failures": [
+        {
+          "title": "PASTE-N04: preserves a competing copy after actual text insertion",
+          "message": "Error: Clipboard fixture failed at copy_after_insert (stage 13); contents withheld"
+        }
+      ]
+    },
+    {
+      "control": "mac-remaining-feedback",
+      "recipe": "mac-paste-preservation",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "PASTE-N01",
+        "PASTE-N04",
+        "RICH-N01",
+        "RICH-N02",
+        "RICH-N03",
+        "SELECT-N01",
+        "SELECT-N03",
+        "TYPE-N06"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-remaining-feedback",
+      "recipe": "mac-finder-selected-label",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "FINDER-N06"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-remaining-feedback",
+      "recipe": "mac-maps-text-focus",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "CLICK-M02"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-remaining-feedback",
+      "recipe": "mac-safari-web-text-focus",
+      "status": "failed",
+      "cleanupPassed": true,
+      "passedContracts": [],
+      "failures": [
+        {
+          "title": "CLICK-W01: Safari web text click retains focus settling and renderer input",
+          "message": "AssertionError: expected 0.995769667 to be greater than 1.1"
+        }
+      ]
+    },
+    {
+      "control": "mac-final-feedback",
+      "recipe": "mac-safari-web-text-focus",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "CLICK-W01"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-final-feedback",
+      "recipe": "mac-primary-button",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "BUTTON-N01"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-final-feedback",
+      "recipe": "mac-ax-reload-outcome",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "AX-N01"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-final-feedback",
+      "recipe": "mac-calculator-display-diff",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "DIFF-N01"
+      ],
+      "failures": []
+    },
+    {
+      "control": "mac-final-feedback",
+      "recipe": "mac-secondary-action-timing",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "ACT-N01"
+      ],
+      "failures": []
+    },
+    {
+      "control": "clipboard-retry",
+      "recipe": "mac-paste-competing-writer",
+      "status": "failed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "PASTE-N01"
+      ],
+      "failures": [
+        {
+          "title": "PASTE-N04: preserves a competing copy after actual text insertion",
+          "message": "Error: Clipboard fixture failed at copy_after_insert (stage 13); contents withheld"
+        }
+      ]
+    },
+    {
+      "control": "clipboard-identity-diagnostic",
+      "recipe": "mac-paste-competing-writer",
+      "status": "failed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "PASTE-N01"
+      ],
+      "failures": [
+        {
+          "title": "PASTE-N04: preserves a competing copy after actual text insertion",
+          "message": "AssertionError: expected { copied: false, \u2026(3) } to match object { copied: true, \u2026(2) }"
+        }
+      ]
+    },
+    {
+      "control": "clipboard-application-diagnostic",
+      "recipe": "mac-paste-competing-writer",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "PASTE-N01",
+        "PASTE-N04"
+      ],
+      "failures": []
+    }
+  ],
+  "textEditFocusSheets": {
+    "passedContracts": [
+      "FOCUS-N01",
+      "SHEET-N01"
+    ],
+    "cleanupPassed": true
+  },
+  "clipboardEffects": {
+    "savedExactly69Characters": true,
+    "competingWriteAfterInsertion": true,
+    "newerClipboardPreserved": true,
+    "uncertainDeliveryNotReplayed": true,
+    "intermittentWatcherFailuresCauseEstablished": false
+  },
+  "safariTiming": {
+    "historicalFloorSeconds": 1.1,
+    "currentRetainedSettleSeconds": 0.8,
+    "rendererInputObserved": true,
+    "timingFloorAdjustedToUpstreamOverlappingPolling": true
+  },
+  "limits": [
+    "Model-free application effects, not paired benchmark scores.",
+    "Earlier failed controls are retained; no clipboard product fix is claimed.",
+    "Linux53 and exact sandboxed Chrome acceptance remain pending.",
+    "Public signed/notarized driver binary distribution and npm registry publishing remain unavailable."
+  ],
+  "finalOwnedCleanup": true
+}

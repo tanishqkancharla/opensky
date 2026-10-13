@@ -7,7 +7,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {compileMacSwiftHelper} from "./mac-swift-compiler.js";
-type Receipt={ok?:boolean;restored?:boolean;allOriginalItemsAndFormatsVerified?:boolean;markerPreserved?:boolean;newerMarkerPreserved?:boolean;copied?:boolean;insertionObserved?:boolean;payloadObservedBeforeCopy?:boolean;error?:string;fixtureStageCode?:number};
+type Receipt={ok?:boolean;restored?:boolean;allOriginalItemsAndFormatsVerified?:boolean;markerPreserved?:boolean;newerMarkerPreserved?:boolean;copied?:boolean;insertionObserved?:boolean;payloadObservedBeforeCopy?:boolean;error?:string;fixtureStageCode?:number;identityChecks?:Record<string,boolean>};
 export async function withOwnedMacClipboard<T>(payload:string,rich:boolean,use:(fixture:{markerPreserved():Promise<boolean>;prepareCompetingCopy(target:{pid:number;launchedAt:number;windowId:number;path:string}):Promise<void>;copyAfterInsertion():Promise<Receipt>;newerMarkerPreserved():Promise<boolean>})=>Promise<T>):Promise<T>{
   if(process.platform!=="darwin"||process.env.CUA_TEST_ALLOW_CLIPBOARD!=="1")throw Error("Real clipboard fixture requires Mac and explicit CUA_TEST_ALLOW_CLIPBOARD=1");
   const artifacts=await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR??tmpdir(),"mac-clipboard-"));
@@ -31,7 +31,11 @@ export async function withOwnedMacClipboard<T>(payload:string,rich:boolean,use:(
         // Keep diagnostics independent of clipboard/document payloads.
         const code=Number.isInteger(reply.fixtureStageCode)&&reply.fixtureStageCode!>=0&&reply.fixtureStageCode!<=13?reply.fixtureStageCode:0;
         const operation=["seed","status","prepare_copy","copy_after_insert","restore"].includes(String(input.op))?String(input.op):"unknown";
-        await writeFile(join(artifacts,"failure.json"),JSON.stringify({operation,fixtureStageCode:code,contentsLogged:false},null,2));
+        const identityChecks:Record<string,boolean>={};
+        for(const key of ["processPresent","bundleMatches","launchMatches","windowListAvailable","windowPresent"]){
+          const value=reply.identityChecks?.[key];if(typeof value==="boolean")identityChecks[key]=value;
+        }
+        await writeFile(join(artifacts,"failure.json"),JSON.stringify({operation,fixtureStageCode:code,identityChecks,contentsLogged:false},null,2));
         throw Error(`Clipboard fixture failed at ${operation} (stage ${code}); contents withheld`);
       }return reply;
     };

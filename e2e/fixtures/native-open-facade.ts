@@ -5,6 +5,7 @@ type OpenSky = Parameters<typeof createCua>[0];
 export function lifecycleFacade(real: OpenSky, observe: { open(args: Parameters<OpenSky["open_target"]>): ReturnType<OpenSky["open_target"]>; close(args: Parameters<OpenSky["close_target"]>): ReturnType<OpenSky["close_target"]> }): Parameters<typeof createCua>[0] {
   return {
     target: real.target,
+    get_capabilities: () => real.get_capabilities(),
     list_apps: () => real.list_apps(), list_browser_tabs: args => real.list_browser_tabs(args),
     get_app_state: args => real.get_app_state(args),
     open_target: args => observe.open([args]), attach_browser: args => real.attach_browser(args), navigate: args => real.navigate(args),

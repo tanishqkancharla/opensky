@@ -80,7 +80,10 @@ test("CLICK-W01: Safari web text click retains focus settling and renderer input
     await writeFile(join(artifacts, "acceptance.json"), JSON.stringify({ seconds, clicks,
       rendererInputObserved: true, limits: "Actual Safari/WebKit DOM input-handler output observed through native AX; no AXValue-only acceptance." }, null, 2));
     expect(clicks).toHaveLength(1);
-    expect(seconds).toBeGreaterThan(1.1);
+    // Driver0.35.2 overlaps window-change observation with the existing
+    // 800ms post-AX WebKit settle. Incidental transport/polling overhead is
+    // not a minimum-duration contract. Immediate typing above stays unchanged.
+    expect(seconds).toBeGreaterThanOrEqual(0.8);
   } finally { await site.close(); }
   // Cold exact Safari process/window teardown belongs to the controller.
 }, 60_000);

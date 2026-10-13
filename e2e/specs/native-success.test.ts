@@ -33,6 +33,16 @@ test("PASTE-N04: preserves a competing copy after actual text insertion", async 
     try { await sdk.paste({app:document.handle,text:payload,format:"text"}); }
     catch(error) { pasteError=error; }
     const copied=await copy;
+    // Preserve the application oracle even when the independent watcher fails.
+    // All values are owned fixture text; publish comparisons, never contents.
+    await sdk.press_key({app:document.handle,key:"super+s"});
+    const saved=await document.read();
+    await writeFile(join(document.artifacts,"competing-paste-application.json"),JSON.stringify({
+      exactPayloadSaved:saved===payload,originalUnchanged:saved===document.initialText,
+      payloadContained:saved.includes(payload),savedCharacters:saved.length,
+      expectedCharacters:payload.length,publicPasteReturned:!pasteError,
+      watcherFailed:"error" in copied,contentsLogged:false,
+    },null,2));
     if("error" in copied)throw copied.error;
     expect(copied.receipt).toMatchObject({copied:true,insertionObserved:true,payloadObservedBeforeCopy:true});
     const details=(pasteError as {details?:Record<string,unknown>}|undefined)?.details;

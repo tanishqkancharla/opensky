@@ -5632,3 +5632,28 @@ Driver 0.35.2's public ActionResult preserves refusal cause in `error.code` and 
 The parser now reads the projected error and producer summary only after an explicit structured refusal is established. Diagnostics remain bounded; unknown delivery warnings and strict pre-dispatch-only session revival rules remain unchanged. Bare/informational error objects do not classify an outcome or permit replay. The new owner fails before the repair; 497 SDK tests pass afterward (one Bun-only skip).
 
 [Application-level evidence](browser-option-54.json): the old driver's native HTML option click resolves, dispatches one event, and leaves Standard selected. The new common driver route refuses before any click event, and SDK reports `browser_action_unavailable` with the actionable hint. ARIA option click still changes its state. Exact native Chrome activation before the trusted parent-select click and native ArrowDown/Enter selects Express. Both old/new controlled runs clean up their owned apps, profiles and servers. This addresses [issue54](https://github.com/tanishqkancharla/opensky/issues/54) through honest refusal, without silently substituting synthetic input for trusted input. Mac popup control differs from ordinary page key injection. Exact TigerVNC/XFWM4 retesting and covered GTK capture issue53 remain pending.
+
+
+## SET364 — Preserve application evidence through clipboard watcher failure
+
+Layer: real Mac E2E fixture diagnostics. After the Driver0.35.2 import, the independent competing-copy watcher failed twice at its exact process/window identity stage and once without observing insertion. These failures remain in iteration165; no root cause or native paste repair is established. The driver native paste implementation is unchanged by the import. Add only allowlisted boolean identity checks, and preserve an explicit save/file equality oracle even when the watcher fails. Clipboard/document contents remain private; existing ownership, competing-copy, uncertainty/no-replay and restoration assertions remain.
+
+The diagnostic control and subsequent whole clipboard group pass on the installed455a0a9a/256e1a67 Driver0.35.2. The control saves exactly69 characters, observes a real competing write after insertion, preserves that newer board and reports uncertain public delivery without replay. Ten whole-group assertions pass, including rich text, Unicode and selection. Earlier intermittent failures are not erased or treated as causally repaired.
+
+## SET365 — Safari timing owner follows overlapping focus settling
+
+Layer: real Mac E2E timing contract after upstream import. CLICK-W01 actually delivers immediate typing to the page input handler, but its historical total-call lower bound1.1s fails at0.99577s. Driver0.35.2 records the post-AX timestamp before window-change polling and subtracts that elapsed time from the existing800ms WebKit settle; previous code waited both intervals consecutively. The source reconciliation preserves this upstream scheduling improvement.
+
+Align the existing timing owner with the retained800ms minimum instead of requiring extra incidental polling/transport overhead. Keep one exact indexed click, immediate subsequent public typing, real renderer-generated output and exact app cleanup. This is a stale timing assertion correction; no new product delay removal or whole-agent performance claim. The edited owner passes with the real Safari input-handler observation and exact owned cleanup; primary button, Reload, Calculator diff and secondary-action gates also pass.
+
+
+## SET366 — Lifecycle fixture forwards the current capability contract
+
+Layer: E2E facade. Full E2E typechecking catches the lifecycle-only native file wrapper missing the newer mandatory get_capabilities method. Forward the real SDK method unchanged; capability queries do not launch a target or add input/clipboard authority. Extend the existing frozen-SDK lifecycle owner with an inert Linux registry that lacks native_paste: it fails before repair, passes afterward and preserves unavailable/untouched results with no tool dispatch. All three cleanup/lifecycle owners and whole E2E types pass. Public shipped SDK code is unchanged.
+
+
+## SET367 — Current Linux candidate and covered-window acceptance control
+
+Layer: production-like Linux verification. Pin the Bookworm/Node22 TigerVNC shared-bus workflow to immutable current driver0c147a8e (Rust product source identical to installed455a0a9a). Add a separate native-only covered GTK control for issue53: real visible, covered and restored PNGs, preserved AT-SPI value, exact PID/window, unchanged foreground during each capture and independent image comparison. A real separate owned GTK process is the occluder; this lane does not certify Chrome or waive its sandbox. Full Halo foreground browser acceptance remains a separate option with no bypass flags.
+
+Local Node/Python/shell syntax, workflow expression validation and E2E types pass. Hosted native capture effects are pending. Fixture pixel tolerance accounts only for caret/paint variation in the owned synthetic document; it is never a shipped darkness heuristic. The control accepts preserved target pixels or an explicit actionable surface refusal with AX data preserved. A returned corrupt frame fails.

@@ -66,4 +66,8 @@ export HALO_DRIVER_SOCKET="$XDG_RUNTIME_DIR/driver.sock"
 "$OPENSKY_DRIVER_PATH" --socket "$HALO_DRIVER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/native.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/native-grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/driver.log" 2>&1 & daemon_pid=$!
 export HALO_BROWSER_SOCKET="$XDG_RUNTIME_DIR/browser.sock"
 "$OPENSKY_DRIVER_PATH" --socket "$HALO_BROWSER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/browser.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/browser-grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/browser-driver.log" 2>&1 & browser_daemon_pid=$!
-node e2e/halo/contract.mjs
+if [[ "${HALO_NATIVE_CAPTURE_ONLY:-0}" == "1" ]]; then
+  node e2e/halo/capture.mjs
+else
+  node e2e/halo/contract.mjs
+fi

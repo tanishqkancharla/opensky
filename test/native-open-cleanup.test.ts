@@ -22,12 +22,20 @@ test("native open retains both action and cleanup failures", () => {
   );
 });
 
-test("native lifecycle facade leaves frozen SDK methods untouched", () => {
-  const sdk = createOpenSky({ autoLaunch: false });
+test("native lifecycle facade leaves frozen SDK methods untouched", async () => {
+  let registryCalls = 0;
+  const sdk = createOpenSky({ autoLaunch: false, target: "linux", driver: {
+    call: async () => { throw Error("Capability observation must not dispatch input"); },
+    listTools: async () => { registryCalls++; return ["get_window_state"]; },
+  } });
   const before = Object.getOwnPropertyDescriptor(sdk, "open_target");
   assert.equal(before?.writable, false);
   const facade = lifecycleFacade(sdk, { open: args => sdk.open_target(...args), close: args => sdk.close_target(...args) });
   assert.notEqual(facade, sdk);
+  const capability = await facade.get_capabilities();
+  assert.equal(registryCalls, 1);
+  assert.equal(capability.nativePaste.availability, "unavailable");
+  assert.equal(capability.nativePaste.clipboard, "untouched");
   const after = Object.getOwnPropertyDescriptor(sdk, "open_target");
   assert.equal(after?.value, before?.value);
   assert.equal(after?.writable, false);
