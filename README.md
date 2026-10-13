@@ -120,9 +120,12 @@ to close them and `sdk.close()` only detaches. A caller can still bind a known
 window/tab directly with `cua.attachBrowserTab(...)`. Existing-profile discovery
 requires the driver's `existing-profile` grant; OpenSky requests it when starting
 its own helper, so restart an older already-running daemon after upgrading.
-Coordinates use the latest screenshot's pixels. Native paste is supported
-on macOS and Linux X11 with the documented
+Coordinates use the latest screenshot's pixels. Mac native paste is supported with the documented
 [text and clipboard restrictions](skills/opensky/references/text-input.md).
+Linux native paste is unavailable in the current driver registry; query
+`sdk.get_capabilities()` before offering it. Browser paste remains separate.
+See [the persistent Node host contract](docs/halo-host-integration.md) for
+cancellation, completion tracking and explicit foreground browser input.
 
 ## Validation and development
 

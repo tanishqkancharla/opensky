@@ -5384,3 +5384,117 @@ Final ordinary frozen install passes. The cold local Mac production build passes
 [Original primary driver SDK38108229167](https://github.com/tanishqkancharla/cua/actions/runs/38108229167) now passes all16jobs; every original top-level job log names merge f2bdbbe9 with the complete3c922292 candidate tree. Per-job reported Rust counts are795Mac/728Linux/730Windows, each with6ignored and0filtered; other original bindings, language and Spaces owners pass with their explicit skips retained. This is SDK validation, not the full native desktop matrix. All43primary workflows are terminal with7original failures retained. [Original OpenSky CI38111301443](https://github.com/tanishqkancharla/opensky/actions/runs/38111301443) independently passes481whole unit owners and one Bun-only skip; actual merge c6380411 has the complete0f2ae4f6 candidate tree and the real-driver job stays skipped.
 
 All1704certified Mac comparison files, task outcomes, score59.08/native100 and worker estimate70.138006/reserved0/cap75 remain unchanged. The next five-task draft uses unchanged prompts/states and has no workers or iteration rows yet; a new pair still requires the original5USDhold and actual budget authorization.
+
+
+## SET355 — Persistent desktop workers need completion ownership beyond Stop
+
+Halo integration audit against SDK5b547875 and driverdd5f9f53 found that client
+wait deadlines cannot cancel dispatched native input. Add a persistent host
+queue: queued cancellation dispatches nothing; active Stop reports active;
+wait timeout detaches only its waiter; intact transport completion releases
+conflicts. Unknown transport completion permanently fences the queue with no
+replay/reset. Process-local ownership, awaited callbacks, external-client
+arbitration, host-crash limits and application postconditions are explicit.
+New queue/capability/browser fixtures and whole SDK tests pass490/one Bun skip
+on Node24.19. These are contract evidence; TigerVNC/sandboxed Chrome acceptance
+is pending in the new Bookworm/Node22 hosted lane.
+
+## SET356 — Linux foreground browser consent was unreachable in the facade
+
+Current driver already accepts delivery_mode foreground; expose deliveryMode
+on click and the fourth scroll options argument, including legacy methods.
+Foreground chooses trusted input, exact target/tab/session and fresh screenshot
+mapping survive unchanged. No trusted-to-synthetic fallback. Stale exact-tab
+route refusal now has a typed pre-dispatch code so host queues do not confuse
+it with lost transport completion. Visible focus/scroll/click acceptance is
+separate from passing forwarding/staleness fixtures.
+
+## SET357 — Current Linux tool registry contradicts historical paste docs
+
+Driverdd5f9f53 registers native_paste on Mac only. New get_capabilities reports
+selected platform-registry availability and Linux app.paste refuses before
+input/clipboard mutation when absent or unknown. Fix current README/skill;
+retain historical positive Linux evidence against its original older pins.
+Registry introspection is not a permission grant or proof of an arbitrary live
+daemon; launch daemon/client from the same immutable binary. Tests cover ASCII,
+Unicode and no input fallback through public native binding. Actual GTK saved
+content/selected text/clipboard invariance remains a hosted acceptance check;
+Linux successful paste/replacement is explicitly unsupported.
+
+
+SET355 original Bookworm run38175661153 compiled pinned0.34.1/dd5f9f53 with
+Rust1.97.1 and retained binary identity/hash. Whole Node22 SDK diagnostics have
+487 passes,2 failures,2 skips: Node/V8 InternalCallbackScope SIGABRT in the two
+CLI REPL runaway-interruption subprocess owners. Desktop acceptance did not
+start. Preserve the failure, separate CLI-only diagnostics and require embedded
+SDK/lifecycle owners before GUI tests; do not claim the whole Node22 suite green.
+Also document the driver's existing120-second socket deadline: null SDK timeout
+removes the Node wrapper deadline, not that transport limit. No daemon action
+lookup or fence-reset claim. Fixture corrections explicitly install GNOME
+accessibility schemas/backend and sample focus rather than require foreground
+input to always steal it; sandbox flags/filter evidence strengthened.
+
+
+SET355 completion classification refinement: parameter and browser-ref preflight
+errors previously lacked typed delivery metadata, so the conservative host
+queue could fence even when that call sent no input. Mark invalid_params and
+browser_ref_unavailable as not_dispatched; keep ambiguous errors fenced. Add a
+public host validation owner that uses no daemon and proves later admission
+still works after a bad SDK request. This is completion classification only,
+not a rollback guarantee for earlier successful calls in the callback.
+
+
+SET355 original run38176273234 proves258 embedded SDK owners on Node22.23.3 and
+real Xtigervnc/XFCE/GTK startup, then refuses driver startup because immutable
+origin-scoped grants cannot allow global native bypass tools. No GUI input proof.
+Retain original manifest/logs and implement separate persistent native/browser
+bounded-grant endpoints under one DesktopActionQueue on the same desktop. Both
+socket/PID identities are explicit. Document that the union of global native
+input and origin-scoped browser input is not a joint origin security boundary;
+Halo must authorize focus/global input. No driver policy weakening or sandbox
+bypass. Application effects remain pending the corrected hosted fixture.
+
+
+SET355 original run38177102280 passes259 required embedded SDK owners on exact
+c8db892 and starts both explicit bounded driver endpoints. Its first native
+assertion incorrectly assumes sdk.list_apps returns pid/name; the actual public
+facade returns id/displayName. Original inventory confirms the GTK python3 app
+is running. Fix only the fixture's PID oracle via public DriverClient list_apps,
+then bind by its name through the SDK; no private target-memory injection or
+production discovery change. No application input was dispatched in this failed
+attempt. Preserve inventories, editor buffer/clipboard and daemon logs.
+
+
+SET355/357 actual run38177715210 (SDK7c0d21a, driverdd5f9f53, Node22.23.3,
+TigerVNC1.12.0, XFWM4.18, AT-SPI2.46, Chrome155.0.8059.39) proves native
+capability refusal leaves selected replace-me text and Greek clipboard sentinel
+unchanged after ASCII/Unicode requests, with exact saved original text. The
+500ms host wait deadline observes39/1000 Unicode codepoints; Stop leaves typing
+active and eventual saved UTF8 is exact1000/2750bytes. Cancelled queued text is
+absent; following save starts only when typing callback finishes16.520s later.
+Owned sessions detach successfully. Sandboxed Chrome probe fails namespace
+creation with EPERM; no foreground GUI acceptance and no sandbox/privilege
+workaround. Preserve original app effects and refusal. Tighten fixture evidence
+with saved before/after AX text and active-at-deadline snapshots, plus supervised
+PID exit receipts. Move headless probe profile outside retained artifact root to
+avoid archiving live singleton sockets; original upload warning is retained.
+
+SET355 final evidence run38178452205 passes259 required SDK owners but correctly
+fails the added full-AX assertion: `getApp` already observed the editor, so the
+next default diff is "No accessibility changes." No new native acceptance is
+claimed from this run; prior run38177715210 effects remain retained. The fixture
+now explicitly requests `disableDiffing:true` for both full AX receipts. All
+seven owned supervisor processes exited and artifact upload succeeded.
+
+SET355/357 final run38179361234 at SDKacd09e61889797f7f79bd53fe9ae9aeb25f29c82
+passes259 required embedded SDK contracts and actual TigerVNC/Node22/AT-SPI
+native acceptance with bounded manifests:42 codepoints at500ms; active Stop
+remains tracked;1000/1000 codepoints saved exactly after16.904s; following Save
+starts at typing end; queued cancellation dispatches no input. ASCII/Unicode
+paste refusals preserve text, selection, clipboard and saved original. Full AX
+before/after receipts now explicitly request disableDiffing:true. All seven
+supervisor PIDs exited. SET356 browser GUI acceptance remains unverified:
+Chrome155 sandbox namespace initialization fails EPERM before SDK launch,
+without sandbox bypass or privileged workaround. Whole Node22 diagnostic keeps
+488passes/2CLI-V8failures/2skips. Ordinary SDK CI passes; workflow correctly fails
+for missing browser acceptance. No paid score/task changes or driver edits.

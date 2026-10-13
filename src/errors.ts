@@ -6,7 +6,7 @@ export class OpenSkyError extends Error {
 }
 
 export function invalidParams(detail?: string): OpenSkyError {
-  return new OpenSkyError(detail ? `Invalid params: ${detail}` : "Invalid params");
+  return new OpenSkyError(detail ? `Invalid params: ${detail}` : "Invalid params", "invalid_params", { delivery: "not_dispatched" });
 }
 
 export function driverError(message: string, code?: string, details?: unknown): OpenSkyError {

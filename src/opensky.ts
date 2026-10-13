@@ -31,6 +31,7 @@ import type {
   Screenshot,
   OpenSky as OpenSkyApi,
   OpenSkyOptions,
+  OpenSkyCapabilities,
   OpenSkyTarget,
   SnapshotElement,
   TargetHandle,
@@ -78,6 +79,7 @@ const SECONDARY_ACTIONS: Record<string, { kind: "click" | "front" | "key"; actio
 
 // The interface makes this exhaustive: adding a public operation requires a gate.
 const GUARDED_OPERATIONS = {
+  get_capabilities: true,
   list_apps: true, list_browser_tabs: true, get_app_state: true, open_target: true, attach_browser: true, navigate: true,
   close_target: true, bring_to_front: true, click: true, drag: true, paste: true,
   perform_secondary_action: true, press_key: true, scroll: true, select_text: true,
@@ -217,6 +219,18 @@ export class OpenSky implements OpenSkyApi {
 
   /** Process-exit proof only; session/target cleanup still needs its own receipts. */
   get transportCloseReceipt(): TransportCloseReceipt | undefined { return this.closeReceipt; }
+
+  async get_capabilities(): Promise<OpenSkyCapabilities> {
+    let tools: string[] | undefined;
+    if (this.rawDriver.listTools) tools = await this.rawDriver.listTools();
+    const supported = this.target !== "win" && tools?.includes("native_paste");
+    return { target: this.target, nativePaste: {
+      availability: supported ? "supported" : tools ? "unavailable" : "unknown",
+      formats: supported ? this.target === "mac" ? ["text", "html", "md"] : ["text"] : [],
+      reason: supported ? undefined : tools ? "native_paste is absent from the installed platform registry; permissions cannot add it." : "Injected transport does not expose registry introspection.",
+      clipboard: supported ? this.target === "mac" ? "preserved-with-receipt" : "unknown" : tools ? "untouched" : "unknown",
+    }};
+  }
 
   async list_apps(): Promise<App[]> {
     const result = await this.driver.call("list_apps", {});
@@ -1303,7 +1317,7 @@ export class OpenSky implements OpenSkyApi {
     y?: number;
     mouse_button?: MouseButton;
     click_count?: number;
-    /** Mac native coordinate clicks only; omitted keeps legacy background delivery. */
+    /** Explicit typed-browser foreground input, or a Mac native coordinate click. */
     delivery_mode?: "background" | "foreground";
     /** Auxiliary native window-change poll;50–1000ms, legacy default1000. */
     window_change_timeout_ms?: number;
@@ -1314,10 +1328,9 @@ export class OpenSky implements OpenSkyApi {
     const button = normalizeMouseButton(args.mouse_button);
     const resolved = await this.requireResolved(args.app);
     if (args.delivery_mode !== undefined && (
-      !["background", "foreground"].includes(args.delivery_mode) || this.target !== "mac" ||
-      resolved.browser || args.element_index !== undefined ||
-      typeof args.x !== "number" || typeof args.y !== "number"
-    )) throw invalidParams("delivery_mode requires a Mac native coordinate click");
+      !["background", "foreground"].includes(args.delivery_mode) || (!resolved.browser && (this.target !== "mac" ||
+      args.element_index !== undefined || typeof args.x !== "number" || typeof args.y !== "number"))
+    )) throw invalidParams("delivery_mode requires a typed browser or Mac native coordinate click");
     if (resolved.browser) {
       const hasX = typeof args.x === "number";
       const hasY = typeof args.y === "number";
@@ -1335,7 +1348,8 @@ export class OpenSky implements OpenSkyApi {
       const common = {
         target_id: resolved.browser.targetId,
         tab_id: resolved.browser.tabId,
-        input_route: "dom_event",
+        input_route: args.delivery_mode === "foreground" ? "trusted" : "dom_event",
+        ...(args.delivery_mode !== undefined ? { delivery_mode: args.delivery_mode } : {}),
         session: resolved.browser.session,
       };
       if (hasX) {
@@ -1618,11 +1632,18 @@ export class OpenSky implements OpenSkyApi {
     }
     if ((this.target === "mac" || (this.target === "linux" && format === "text")) && resolved && !resolved.browser) {
       this.assertTargetUsable(resolved);
+      if (this.target === "linux") {
+        const capability = (await this.get_capabilities()).nativePaste;
+        if (capability.availability !== "supported") throw new OpenSkyError(
+          "Linux native plaintext paste is " + capability.availability + ". " + capability.reason +
+          " No native_paste, replacement typing, clipboard write, or paste key was dispatched. Query get_capabilities() for the installed driver; use a separately authorized explicit typing operation if appropriate.",
+          "unsupported_native_paste", capability);
+      }
       await this.requireUsableInputWindow(resolved);
       // The compound driver operation checks exact live focus and sends one
       // paste. Never split this into clipboard writes plus a key, or replay
-      // an uncertain delivery. Both platforms preserve supported prior clipboard
-      // contents. Mac reports restoration separately and keeps an observed newer copy. Rich Mac
+      // an uncertain delivery. Mac preserves supported prior clipboard
+      // contents and reports restoration separately and keeps an observed newer copy. Rich Mac
       // content is converted before mutation; the driver verifies exact plain
       // text insertion, while callers observe the resulting rich formatting.
       try {
@@ -1658,7 +1679,7 @@ export class OpenSky implements OpenSkyApi {
     }
     throw new OpenSkyError(
       `Native paste is unsupported for target ${this.target} with format ${format}, or no exact native target is bound. ` +
-        "Mac supports text/html/md; Linux supports text. No clipboard, app, window, tab, or input was touched. " +
+        "Mac supports text/html/md; Linux text requires a registered native_paste tool. No clipboard, app, window, tab, or input was touched. " +
         "This is a capability limitation, not an observed clipboard race; retrying the same request will not enable it.",
       "unsupported_native_paste",
     );
@@ -1913,6 +1934,7 @@ export class OpenSky implements OpenSkyApi {
     y?: number;
     direction: Direction;
     pages?: number;
+    delivery_mode?: "background" | "foreground";
   }): Promise<void> {
     if (!args?.app) throw invalidParams();
     if (args.element_index !== undefined && typeof args.element_index !== "number") throw invalidParams();
@@ -1922,6 +1944,7 @@ export class OpenSky implements OpenSkyApi {
     if (args.element_index !== undefined && hasX) throw invalidParams("element_index cannot be combined with x/y");
     const direction = normalizeDirection(args.direction);
     const resolved = await this.requireResolved(args.app);
+    if (args.delivery_mode !== undefined && (!["background", "foreground"].includes(args.delivery_mode) || !resolved.browser)) throw invalidParams("scroll delivery_mode requires a typed browser");
     if (resolved.browser) {
       const pages = args.pages ?? 1;
       if (!Number.isFinite(pages) || pages <= 0) throw invalidParams("pages must be a positive number");
@@ -1932,6 +1955,7 @@ export class OpenSky implements OpenSkyApi {
           tab_id: resolved.browser.tabId,
           ...point,
           input_route: "trusted",
+          ...(args.delivery_mode !== undefined ? { delivery_mode: args.delivery_mode } : {}),
           action: "scroll",
           delta_x: direction === "left" ? -800 * pages : direction === "right" ? 800 * pages : 0,
           delta_y: direction === "up" ? -600 * pages : direction === "down" ? 600 * pages : 0,
@@ -1954,7 +1978,8 @@ export class OpenSky implements OpenSkyApi {
         target_id: resolved.browser.targetId,
         tab_id: resolved.browser.tabId,
         ref: element.browser_ref,
-        input_route: "dom_event",
+        input_route: args.delivery_mode === "foreground" ? "trusted" : "dom_event",
+        ...(args.delivery_mode !== undefined ? { delivery_mode: args.delivery_mode } : {}),
         action: "scroll",
         delta_x: direction === "left" ? -800 * pages : direction === "right" ? 800 * pages : 0,
         delta_y: direction === "up" ? -600 * pages : direction === "down" ? 600 * pages : 0,
@@ -3040,10 +3065,11 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(
         `Element index ${elementIndex} is not present in the latest semantic browser snapshot for ` +
           `${JSON.stringify(resolved.name)}. Call get_app_state again before acting.`,
+        "browser_ref_unavailable", { delivery: "not_dispatched" },
       );
     }
     if (!element.actions?.includes(action)) {
-      throw new OpenSkyError(`Element index ${elementIndex} does not support browser action ${JSON.stringify(action)}.`);
+      throw new OpenSkyError(`Element index ${elementIndex} does not support browser action ${JSON.stringify(action)}.`, "browser_ref_unavailable", { delivery: "not_dispatched" });
     }
     return element;
   }
@@ -3059,12 +3085,14 @@ export class OpenSky implements OpenSkyApi {
       throw new OpenSkyError(
         `Element index ${elementIndex} is not present in the latest semantic browser snapshot for ` +
           `${JSON.stringify(resolved.name)}. Call get_app_state again before acting.`,
+        "browser_ref_unavailable", { delivery: "not_dispatched" },
       );
     }
     if (!actions.some((action) => element.actions?.includes(action))) {
       throw new OpenSkyError(
         `Element index ${elementIndex} does not support any of the required browser actions ` +
           `${JSON.stringify(actions)}.`,
+        "browser_ref_unavailable", { delivery: "not_dispatched" },
       );
     }
     return element;
@@ -3125,6 +3153,7 @@ export class OpenSky implements OpenSkyApi {
     return new OpenSkyError(
       `${action} is not safely available for the exact typed browser tab in ${JSON.stringify(resolved.name)}. ` +
         `${guidance} No native foreground or coordinate input was sent.`,
+      "browser_route_unavailable", { delivery: "not_dispatched" },
     );
   }
 

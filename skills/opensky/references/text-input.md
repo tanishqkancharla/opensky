@@ -44,10 +44,13 @@ selection. Verify the intended region through available state or a screenshot.
   atomic compare-and-restore, so its final ownership check/write can still race.
   A completed receipt proves text insertion and a separate preservation outcome,
   not every visual style or saving. Observe rich formatting and verify saving.
-- **Linux X11 native:** plaintext up to 16 KiB into the exact observed, focused
-  window. Supported prior formats are restored only if no newer clipboard owner
-  took over. INCR transfers, rich-text input, clipboard managers, and deferred
-  format negotiation remain unsupported.
+- **Linux X11 native:** the current driver does not register `native_paste`.
+  Query `sdk.get_capabilities()`: unavailable means no supported formats and
+  `app.paste()` refuses with `unsupported_native_paste` before dispatching input.
+  It does not change the clipboard or replace selected text. Permissions cannot
+  enable an absent tool. Separately authorized typing has different semantics;
+  the SDK never silently substitutes it. Historical Linux paste acceptance on
+  older source pins does not establish support on the current driver.
 - **Other native routes:** do not assume paste support.
 
 A paste failure or incomplete receipt can follow actual input. Inspect the text

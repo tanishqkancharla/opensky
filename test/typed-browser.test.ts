@@ -2109,3 +2109,36 @@ function assertOrderedSubsequence(actual: string[], expected: string[]): void {
   }
   assert.equal(cursor, expected.length, `expected ordered calls ${expected.join(" -> ")}; got ${actual.join(" -> ")}`);
 }
+
+
+describe("explicit typed-browser foreground input", () => {
+  it("facade forwards foreground click and scroll without replacing trusted input", async () => {
+    const { opensky, driver } = await harness();
+    const { createCua } = await import("../src/cua.js"); const cua = createCua(opensky);
+    const tab = await cua.createBrowserTab("chrome", URL); await tab.getScreenshot({ emit: false });
+    await tab.click([20, 40], { deliveryMode: "foreground" });
+    const click = driver.calls.findLast(call => call.tool === "browser_click")!.args;
+    assert.equal(click.input_route, "trusted"); assert.equal(click.delivery_mode, "foreground"); assert.equal(click.target_id, TARGET_ID); assert.equal(click.tab_id, TAB_ID); assert.equal(click.x, 10);
+    const before = driver.calls.length;
+    await assert.rejects(tab.click([20, 40], { deliveryMode: "foreground" }), /fresh exact-tab screenshot/); assert.equal(driver.calls.length, before);
+    await tab.getScreenshot({ emit: false }); await tab.scroll([100, 120], "down", 2, { deliveryMode: "foreground" });
+    const scroll = driver.calls.findLast(call => call.tool === "browser_pointer")!.args;
+    assert.equal(scroll.input_route, "trusted"); assert.equal(scroll.delivery_mode, "foreground"); assert.equal(scroll.target_id, TARGET_ID); assert.equal(scroll.tab_id, TAB_ID); assert.equal(scroll.delta_y, 1200);
+    await opensky.close();
+  });
+  it("foreground refs remain exactly bound and an absent opt-in preserves the default route", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL] });
+    await opensky.click({ app: state.targetHandle, element_index: 1, delivery_mode: "foreground" });
+    const click = driver.calls.findLast(call => call.tool === "browser_click")!.args;
+    assert.equal(click.input_route, "trusted"); assert.equal(click.delivery_mode, "foreground"); assert.ok(click.ref);
+    await opensky.get_app_state({ app: state.targetHandle });
+    await opensky.scroll({ app: state.targetHandle, element_index: 2, direction: "down", delivery_mode: "foreground" });
+    const scroll = driver.calls.findLast(call => call.tool === "browser_pointer")!.args;
+    assert.equal(scroll.input_route, "trusted"); assert.equal(scroll.delivery_mode, "foreground"); assert.ok(scroll.ref);
+    await opensky.get_app_state({ app: state.targetHandle, includeScreenshot: true });
+    await opensky.click({ app: state.targetHandle, x: 20, y: 40 });
+    assert.equal(driver.calls.findLast(call => call.tool === "browser_click")!.args.delivery_mode, undefined);
+    await opensky.close();
+  });
+});
