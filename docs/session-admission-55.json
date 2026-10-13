@@ -1,0 +1,85 @@
+{
+  "sdk": "aeaee78478a1ce1d7db0ad175fdf96f798317d22",
+  "sdkVersion": "0.2.4",
+  "originalDriver": "455a0a9a3223d25c0214ff63e19218f39cbc5a6e",
+  "repairedDriver": "01d4b9e47705289e3b56a848e35e3508de28017f",
+  "repairedDriverBinarySHA256": "e60fc0f8303e44abf8a1f4efb3cfe9c57c3ae4b85ba7ff5f795a1fcbac1c95c2",
+  "before": [
+    {
+      "transport": "cli",
+      "inputDispatched": false,
+      "initialAppCount": 82,
+      "automaticRecovery": false,
+      "error": {
+        "code": null,
+        "message": "session has ended; tool call 'list_apps' was rejected. Call start_session with session 'opensky-14267-7e1cc7be' to start it again, or use a new session label."
+      },
+      "manualRecoveryAppCount": 82
+    },
+    {
+      "transport": "mcp",
+      "inputDispatched": false,
+      "initialAppCount": 82,
+      "automaticRecovery": false,
+      "error": {
+        "code": "tool_invocation_failed",
+        "message": "session has ended; tool call 'list_apps' was rejected. Call start_session with session 'opensky-14267-33aa4333' to start it again, or use a new session label."
+      },
+      "manualRecoveryAppCount": 82
+    }
+  ],
+  "after": [
+    {
+      "transport": "cli",
+      "mode": "automatic",
+      "inputDispatched": false,
+      "initialAppCount": 82,
+      "postEndAppCount": 82,
+      "automaticRecovery": true,
+      "manualRecoveryAppCount": 82
+    },
+    {
+      "transport": "cli",
+      "mode": "explicit",
+      "inputDispatched": false,
+      "initialAppCount": 82,
+      "postEndAppCount": 82,
+      "automaticRecovery": true,
+      "manualRecoveryAppCount": 82
+    },
+    {
+      "transport": "mcp",
+      "mode": "automatic",
+      "inputDispatched": false,
+      "initialAppCount": 82,
+      "postEndAppCount": 82,
+      "automaticRecovery": true,
+      "manualRecoveryAppCount": 82
+    },
+    {
+      "transport": "mcp",
+      "mode": "explicit",
+      "inputDispatched": false,
+      "initialAppCount": 82,
+      "postEndAppCount": 82,
+      "automaticRecovery": true,
+      "manualRecoveryAppCount": 82
+    }
+  ],
+  "wholeDriverCLIUnitPassed": 326,
+  "zeroDispatchCounterAndTerminalAuthorizationRevocationVerified": true,
+  "stableMacTCCPreserved": true,
+  "postInstallGui": {
+    "FOCUS-N01": "passed",
+    "SHEET-N01": "passed",
+    "WINDOW-N01": "passed",
+    "WINDOW-N02": "passed",
+    "TAB-N01": "passed",
+    "ownedCleanup": "passed"
+  },
+  "limits": [
+    "Actual CLI/MCP automatic and explicit labels verified on Mac.",
+    "Linux four-control admission verification is being dispatched against this immutable repaired driver; covered-window capture remains separately failing.",
+    "No unknown-delivery replay or SDK predicate relaxation."
+  ]
+}

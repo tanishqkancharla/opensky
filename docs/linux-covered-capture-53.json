@@ -1,0 +1,69 @@
+{
+  "sdk": "aeaee78478a1ce1d7db0ad175fdf96f798317d22",
+  "driver": "0c147a8e1b1e4d061184a85329456faaee2e2fb2",
+  "node": "v22.23.3",
+  "environment": "Bookworm TigerVNC/X11 XFWM4 compositor off, shared D-Bus/AT-SPI, bounded exact editor grants",
+  "productionChromeVerified": false,
+  "phases": [
+    {
+      "phase": "visible",
+      "focusBefore": "6291459",
+      "focusAfter": "6291459",
+      "pid": 21191,
+      "windowId": 6291459,
+      "imageCount": 1,
+      "screenshotFrameValid": true,
+      "screenshotError": null
+    },
+    {
+      "phase": "covered",
+      "focusBefore": "16777219",
+      "focusAfter": "16777219",
+      "pid": 21191,
+      "windowId": 6291459,
+      "imageCount": 1,
+      "screenshotFrameValid": true,
+      "screenshotError": null
+    },
+    {
+      "phase": "restored",
+      "focusBefore": "6291459",
+      "focusAfter": "6291459",
+      "pid": 21191,
+      "windowId": 6291459,
+      "imageCount": 1,
+      "screenshotFrameValid": true,
+      "screenshotError": null
+    }
+  ],
+  "pixels": {
+    "covered": {
+      "dimensionsMatch": true,
+      "changedPixelFraction": 0.9998274739583334,
+      "meanAbsoluteDifference": 254.83499348958333
+    },
+    "restored": {
+      "dimensionsMatch": true,
+      "changedPixelFraction": 6.184895833333334e-05,
+      "meanAbsoluteDifference": 0.014967447916666666
+    },
+    "sizes": [
+      [
+        640,
+        480
+      ],
+      [
+        640,
+        480
+      ],
+      [
+        640,
+        480
+      ]
+    ]
+  },
+  "error": "AssertionError [ERR_ASSERTION]: covered capture must preserve the owned target pixels; tolerance is fixture-only, not a product darkness heuristic",
+  "code": "ERR_ASSERTION",
+  "occluderExited": true,
+  "sessionEnded": true
+}
