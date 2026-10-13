@@ -1,13 +1,17 @@
 import { randomUUID } from "node:crypto";
 
 type Response = { content: any[]; details?: any; isError?: boolean };
+type CellResponse = Response & { details: {
+  cellId: string; cellStatus: "running" | "completed" | "unknown"; replayed?: boolean;
+  [key: string]: unknown;
+} };
 type Cell = { id: string; completion: Promise<Response>; result?: Response; delivered: boolean };
 
 /** One action batch, with bounded observation waits and no operation deadline. */
 export class AsyncToolCell {
   private current?: Cell;
 
-  async start(operation: () => Promise<Response>, waitMs = 30_000): Promise<Response> {
+  async start(operation: () => Promise<Response>, waitMs = 30_000): Promise<CellResponse> {
     this.validateWait(waitMs);
     if (this.current && !this.current.delivered) return this.running(this.current, true);
     const cell: Cell = { id: randomUUID(), completion: undefined!, delivered: false };
@@ -18,11 +22,12 @@ export class AsyncToolCell {
     return this.wait(cell.id, waitMs);
   }
 
-  async wait(id: string, waitMs = 30_000): Promise<Response> {
+  async wait(id: string, waitMs = 30_000): Promise<CellResponse> {
     this.validateWait(waitMs);
     const cell = this.current;
     if (!cell || cell.id !== id) return {
       isError: true, content: [{ type: "text", text: "Unknown cell ID; no action was started or replayed." }],
+      details: { cellId: id, cellStatus: "unknown" },
     };
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -37,7 +42,7 @@ export class AsyncToolCell {
     return { ...cell.result, details: { ...cell.result.details, cellId: id, cellStatus: "completed", replayed } };
   }
 
-  private running(cell: Cell, refused = false): Response {
+  private running(cell: Cell, refused = false): CellResponse {
     return {
       ...(refused ? { isError: true } : {}),
       content: [{ type: "text", text: `${refused ? "New code was not started. " : ""}Cell ${cell.id} is pending. Call cua_repl_wait with cell_id "${cell.id}" until completed; do not resubmit the code. The original batch continues without a deadline.` }],

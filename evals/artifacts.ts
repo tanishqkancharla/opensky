@@ -9,7 +9,7 @@ export type EvalArtifactPaths = {
   judgeTranscript: string;
 };
 
-const artifactPathsStorage = new PromiseContext<EvalArtifactPaths>();
+const artifactPathsStorage = new PromiseContext<EvalArtifactPaths | null>();
 
 export function getEvalArtifactPaths(): EvalArtifactPaths | null {
   return artifactPathsStorage.getStore() ?? null;
@@ -17,6 +17,16 @@ export function getEvalArtifactPaths(): EvalArtifactPaths | null {
 
 export async function withEvalArtifactPaths<T>(paths: EvalArtifactPaths, fn: () => Promise<T>): Promise<T> {
   return await artifactPathsStorage.run(paths, fn);
+}
+
+/** Capture the run owner when registering an event/timer callback. Promise
+ * attribution alone cannot carry scope into an independently invoked callback.
+ * A callback registered outside a run must not borrow another run's owner. */
+export function bindEvalArtifactPaths<Args extends unknown[], Result>(
+  callback: (...args: Args) => Result,
+): (...args: Args) => Result {
+  const paths = getEvalArtifactPaths();
+  return (...args) => artifactPathsStorage.run(paths, () => callback(...args));
 }
 
 export function appendJsonl(path: string | null, record: Record<string, unknown>): void {

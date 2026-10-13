@@ -10,10 +10,12 @@ import {
   SessionManager,
   SettingsManager,
   type AgentSessionEvent,
+  type CreateAgentSessionOptions,
 } from "@earendil-works/pi-coding-agent";
 
 import {
   getEvalArtifactPaths,
+  bindEvalArtifactPaths,
   recordAgentEvent,
   recordJudgeEvent,
   recordTranscriptMarkdown,
@@ -347,7 +349,7 @@ async function runPiSession(opts: {
   systemPrompt: string;
   noTools?: "all" | "builtin";
   tools?: string[];
-  customTools: Parameters<typeof createAgentSession>[0] extends { customTools?: infer T } ? NonNullable<T> : never;
+  customTools: NonNullable<CreateAgentSessionOptions["customTools"]>;
   timeoutMs: number;
 }): Promise<{
   sessionId: string;
@@ -388,11 +390,11 @@ async function runPiSession(opts: {
   });
 
   const events: AgentSessionEvent[] = [];
-  const unsubscribe = session.subscribe((event) => {
+  const unsubscribe = session.subscribe(bindEvalArtifactPaths((event) => {
     events.push(event);
     if (opts.source === "agent") recordAgentEvent(event);
     else recordJudgeEvent(event);
-  });
+  }));
   const startedAt = new Date().toISOString();
   let promptSettled = false;
   const promptPromise = session.prompt(opts.prompt).finally(() => {

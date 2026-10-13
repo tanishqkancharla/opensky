@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it } from "node:test";
 import { AsyncRepl } from "../src/async-repl.js";
-import { getEvalArtifactPaths, withEvalArtifactPaths, recordAgentEvent, type EvalArtifactPaths } from "../evals/artifacts.js";
+import { getEvalArtifactPaths, withEvalArtifactPaths, bindEvalArtifactPaths, recordAgentEvent, recordJudgeEvent, type EvalArtifactPaths } from "../evals/artifacts.js";
 
-it("keeps nested and concurrent artifact owners through strict realm awaits", async () => {
+it("keeps nested, concurrent and callback artifact owners through strict realm awaits", async () => {
   const directory = await mkdtemp(join(tmpdir(), "opensky-artifact-context-"));
   const paths = (name: string): EvalArtifactPaths => ({
     transcript: join(directory, name + ".jsonl"), transcriptMarkdown: join(directory, name + ".md"),
@@ -29,6 +29,30 @@ it("keeps nested and concurrent artifact owners through strict realm awaits", as
     await withEvalArtifactPaths(b, async () => { recordAgentEvent({ owner: "b" }); release(); await first; assert.equal(getEvalArtifactPaths(), b); });
     assert.equal(JSON.parse((await readFile(a.transcript, "utf8")).trim()).event.owner, "a");
     assert.equal(JSON.parse((await readFile(b.transcript, "utf8")).trim()).event.owner, "b");
+    assert.equal(getEvalArtifactPaths(), null);
+    // Stream subscribers may be invoked by timers/emitters after registration
+    // scope has returned, or while a different run is active.
+    const unowned = bindEvalArtifactPaths(() => recordAgentEvent({ owner: "unowned" }));
+    const subscriber = await withEvalArtifactPaths(a, async () =>
+      bindEvalArtifactPaths((event: { owner: string }) => {
+        recordAgentEvent(event); recordJudgeEvent(event); return getEvalArtifactPaths();
+      }));
+    await withEvalArtifactPaths(b, async () => {
+      assert.equal(subscriber({ owner: "a-subscriber" }), a);
+      unowned();
+      assert.equal(getEvalArtifactPaths(), b);
+      await new Promise<void>(resolve => setTimeout(() => {
+        assert.equal(subscriber({ owner: "a-timer" }), a); resolve();
+      }, 0));
+      assert.equal(getEvalArtifactPaths(), b);
+    });
+    const agentOwners = (await readFile(a.transcript, "utf8")).trim().split("\n")
+      .map(line => JSON.parse(line).event.owner);
+    assert.deepEqual(agentOwners, ["a", "a-subscriber", "a-timer"]);
+    const judgeOwners = (await readFile(a.judgeEvents, "utf8")).trim().split("\n")
+      .map(line => JSON.parse(line).event.owner);
+    assert.deepEqual(judgeOwners, ["a-subscriber", "a-timer"]);
+    assert.equal((await readFile(b.transcript, "utf8")).trim().split("\n").length, 1);
     assert.equal(getEvalArtifactPaths(), null);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
