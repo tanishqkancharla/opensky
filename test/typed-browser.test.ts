@@ -44,6 +44,7 @@ class TypedBrowserDriver implements DriverClient {
     { tab_id: TAB_ID, title: "New Tab", url: "about:blank", active: true },
   ];
   browserWindows: Array<Record<string, unknown>> = [ordinaryWindow()];
+  windowResult?: () => DriverResult | Promise<DriverResult>;
   boundTabsByWindow = new Map<number, Array<Record<string, unknown>>>();
 
   replaceDocument(): void {
@@ -87,7 +88,7 @@ class TypedBrowserDriver implements DriverClient {
           side_effects: { launched_browser: true, created_profile: true },
         });
       case "list_windows":
-        return result({ windows: this.browserWindows });
+        return this.windowResult ? this.windowResult() : result({ windows: this.browserWindows });
       case "get_browser_state":
         if (effectiveArgs.target_id !== undefined) {
           if (effectiveArgs.context_ref !== undefined && this.contextResult) return this.contextResult(effectiveArgs);
@@ -870,6 +871,66 @@ describe("OpenSky typed-browser contract", () => {
     assert.equal((state.target?.tab as { status?: string } | undefined)?.status, "verified");
     assert.equal(state.target?.document.url, URL);
     assert.equal(state.target?.document.requestRelation, "exact");
+  });
+
+  it("waits for the prepared Chrome process to register an ordinary window without relaunching", async () => {
+    const { opensky, driver } = await harness();
+    let reads = 0;
+    driver.windowResult = () => result({ windows: ++reads === 1 ? [] :
+      reads === 2 ? [{ ...ordinaryWindow(), frame: { x: 0, y: 0, width: 1, height: 1 } }] : [ordinaryWindow()] });
+    try {
+      const state = await opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false });
+      assert.equal(state.target?.document.url, URL);
+      const prepare = driver.calls.filter(call => call.tool === "browser_prepare");
+      assert.equal(prepare.length, 1);
+      const session = prepare[0]!.args.session;
+      const windows = driver.calls.filter(call => call.tool === "list_windows");
+      assert.equal(windows.length, 3);
+      for (const call of windows) assert.deepEqual(call.args, { pid: PID, session });
+      const bind = driver.calls.find(call => call.tool === "get_browser_state" && call.args.pid === PID);
+      assert.deepEqual(bind?.args, { pid: PID, window_id: WINDOW_ID, session });
+      assert.equal(driver.calls.filter(call => call.tool === "browser_navigate").length, 1);
+      assert.equal(driver.calls.some(call => call.tool === "launch_app"), false);
+      assert.equal(driver.calls.some(call => call.tool === "end_session"), false);
+    } finally { await opensky.close(); }
+  });
+
+  it("times out waiting for the prepared window and cleans only the owned session", async () => {
+    const { opensky, driver, home } = await harness();
+    driver.browserWindows = [];
+    const started = performance.now();
+    await assert.rejects(
+      () => opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false }),
+      /The isolated browser launched without an exact ordinary window/,
+    );
+    const elapsed = performance.now() - started;
+    assert.ok(elapsed >= 5_000, `Timed out too early: ${elapsed}ms`);
+    assert.ok(elapsed < 10_000, `Window wait was not bounded: ${elapsed}ms`);
+    const prepares = driver.calls.filter(call => call.tool === "browser_prepare");
+    assert.equal(prepares.length, 1);
+    const session = prepares[0]!.args.session;
+    const windows = driver.calls.filter(call => call.tool === "list_windows");
+    assert.ok(windows.length > 1);
+    for (const call of windows) assert.deepEqual(call.args, { pid: PID, session });
+    assert.deepEqual(driver.calls.filter(call => call.tool === "end_session").map(call => call.args), [{ session }]);
+    assert.equal(driver.calls.some(call => ["get_browser_state", "browser_navigate", "launch_app"].includes(call.tool)), false);
+    assert.deepEqual(await browserLeaseRecords(home), []);
+    await opensky.close();
+    assert.equal(driver.calls.filter(call => call.tool === "end_session" && call.args.session === session).length, 1);
+  });
+
+  it("does not retry a failed window enumeration and retains owned cleanup", async () => {
+    const { opensky, driver, home } = await harness();
+    driver.windowResult = () => { throw new Error("injected window enumeration failure"); };
+    await assert.rejects(
+      () => opensky.open_target({ app: "Google Chrome", targets: [URL], includeScreenshot: false }),
+      /injected window enumeration failure/,
+    );
+    const session = driver.calls.find(call => call.tool === "browser_prepare")!.args.session;
+    assert.equal(driver.calls.filter(call => call.tool === "list_windows").length, 1);
+    assert.deepEqual(driver.calls.find(call => call.tool === "end_session")?.args, { session });
+    assert.deepEqual(await browserLeaseRecords(home), []);
+    await opensky.close();
   });
 
   it("opens a driver-owned headless tab and exposes its trusted-host debugger endpoint", async () => {
@@ -2048,3 +2109,36 @@ function assertOrderedSubsequence(actual: string[], expected: string[]): void {
   }
   assert.equal(cursor, expected.length, `expected ordered calls ${expected.join(" -> ")}; got ${actual.join(" -> ")}`);
 }
+
+
+describe("explicit typed-browser foreground input", () => {
+  it("facade forwards foreground click and scroll without replacing trusted input", async () => {
+    const { opensky, driver } = await harness();
+    const { createCua } = await import("../src/cua.js"); const cua = createCua(opensky);
+    const tab = await cua.createBrowserTab("chrome", URL); await tab.getScreenshot({ emit: false });
+    await tab.click([20, 40], { deliveryMode: "foreground" });
+    const click = driver.calls.findLast(call => call.tool === "browser_click")!.args;
+    assert.equal(click.input_route, "trusted"); assert.equal(click.delivery_mode, "foreground"); assert.equal(click.target_id, TARGET_ID); assert.equal(click.tab_id, TAB_ID); assert.equal(click.x, 10);
+    const before = driver.calls.length;
+    await assert.rejects(tab.click([20, 40], { deliveryMode: "foreground" }), /fresh exact-tab screenshot/); assert.equal(driver.calls.length, before);
+    await tab.getScreenshot({ emit: false }); await tab.scroll([100, 120], "down", 2, { deliveryMode: "foreground" });
+    const scroll = driver.calls.findLast(call => call.tool === "browser_pointer")!.args;
+    assert.equal(scroll.input_route, "trusted"); assert.equal(scroll.delivery_mode, "foreground"); assert.equal(scroll.target_id, TARGET_ID); assert.equal(scroll.tab_id, TAB_ID); assert.equal(scroll.delta_y, 1200);
+    await opensky.close();
+  });
+  it("foreground refs remain exactly bound and an absent opt-in preserves the default route", async () => {
+    const { opensky, driver } = await harness();
+    const state = await opensky.open_target({ app: "Google Chrome", targets: [URL] });
+    await opensky.click({ app: state.targetHandle, element_index: 1, delivery_mode: "foreground" });
+    const click = driver.calls.findLast(call => call.tool === "browser_click")!.args;
+    assert.equal(click.input_route, "trusted"); assert.equal(click.delivery_mode, "foreground"); assert.ok(click.ref);
+    await opensky.get_app_state({ app: state.targetHandle });
+    await opensky.scroll({ app: state.targetHandle, element_index: 2, direction: "down", delivery_mode: "foreground" });
+    const scroll = driver.calls.findLast(call => call.tool === "browser_pointer")!.args;
+    assert.equal(scroll.input_route, "trusted"); assert.equal(scroll.delivery_mode, "foreground"); assert.ok(scroll.ref);
+    await opensky.get_app_state({ app: state.targetHandle, includeScreenshot: true });
+    await opensky.click({ app: state.targetHandle, x: 20, y: 40 });
+    assert.equal(driver.calls.findLast(call => call.tool === "browser_click")!.args.delivery_mode, undefined);
+    await opensky.close();
+  });
+});

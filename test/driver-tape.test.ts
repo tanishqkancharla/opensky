@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
@@ -9,7 +10,7 @@ import {
   canonicalizeDriverArgs,
   type DriverTape,
 } from "../evals/driver-tape.js";
-import { replayScenario } from "../evals/replay.js";
+import { replayScenario, expectedProjectionForCurrentReplay } from "../evals/replay.js";
 import type { DriverClient, DriverResult } from "../src/types.js";
 import { OpenSkyError } from "../src/errors.js";
 
@@ -226,6 +227,58 @@ describe("driver tapes", () => {
     replay.assertExhausted();
   });
 
+  it("bridges only explicitly declared Mac isolated-launch flags and records their use", async () => {
+    const args = { bundle_id: "com.google.Chrome", creates_new_application_instance: true, urls: ["https://example.com"] };
+    const tape: DriverTape = { version: 1, calls: [{ tool: "launch_app", args,
+      result: { structured: { pid: 9 }, text: "", raw: null } }] };
+    const actual = { ...args, session: "known-replay-base", additional_arguments: ["-ApplePersistenceIgnoreState", "YES"] };
+    const bridge = { kind: "v1_implicit_base_session" as const, baseSession: "known-replay-base", macIgnoreSavedState: true as const };
+    await assert.rejects(new ReplayDriverClient(tape).call("launch_app", actual), /Driver tape mismatch at call 0/);
+    await assert.rejects(new ReplayDriverClient(tape, { compatibility: { kind: bridge.kind, baseSession: bridge.baseSession } }).call("launch_app", actual), /Driver tape mismatch at call 0/);
+    const replay = new ReplayDriverClient(tape, { compatibility: bridge });
+    for (const changed of [
+      { ...actual, session: "foreign-session" },
+      { ...actual, bundle_id: "com.apple.TextEdit" },
+      { ...actual, urls: ["https://different.example"] },
+      { ...actual, creates_new_application_instance: false },
+      { ...actual, additional_arguments: ["-ApplePersistenceIgnoreState", "NO"] },
+      { ...actual, additional_arguments: ["-ApplePersistenceIgnoreState", "YES", "extra"] },
+      { ...actual, extra: true },
+    ]) await assert.rejects(replay.call("launch_app", changed), /Driver tape mismatch at call 0/);
+    await assert.rejects(replay.call("other_tool", actual), /Driver tape mismatch at call 0/);
+    await replay.call("launch_app", actual);
+    replay.assertExhausted();
+    assert.deepEqual(replay.compatibilityReceipt, { ...bridge, appliedCallIndices: [0], launchArgumentCallIndices: [0] });
+    assert.deepEqual(tape.calls[0]!.args, args);
+    for (const recorded of [{ ...args, creates_new_application_instance: false }, { ...args, additional_arguments: [] }, { ...args, session: "known-replay-base" }]) {
+      const explicit: DriverTape = { version: 1, calls: [{ ...tape.calls[0]!, args: recorded }] };
+      await assert.rejects(new ReplayDriverClient(explicit, { compatibility: bridge }).call("launch_app", actual), /Driver tape mismatch at call 0/);
+    }
+  });
+
+  it("bridges only the declared historical Mac full-capture budget without changing target arguments", async () => {
+    const args = { pid: 7, window_id: 9, include_screenshot: false };
+    const tape: DriverTape = { version: 1, calls: [{ tool: "get_window_state", args,
+      result: { structured: { elements: [] }, text: "", raw: null } }] };
+    const actual = { ...args, session: "known-replay-base", timeout_ms: 5000 };
+    const compatibility = { kind: "v1_implicit_base_session" as const, baseSession: "known-replay-base", macFullCaptureTimeoutMs: 5000 as const };
+    await assert.rejects(new ReplayDriverClient(tape).call("get_window_state", actual), /Driver tape mismatch at call 0/);
+    const replay = new ReplayDriverClient(tape, { compatibility });
+    for (const changed of [{ ...actual, pid: 8 }, { ...actual, window_id: 10 },
+      { ...actual, timeout_ms: 1000 }, { ...actual, max_depth: 4 },
+      { ...actual, session: "foreign" }, { ...actual, extra: true }]) {
+      await assert.rejects(replay.call("get_window_state", changed), /Driver tape mismatch at call 0/);
+    }
+    await assert.rejects(replay.call("other_tool", actual), /Driver tape mismatch at call 0/);
+    await replay.call("get_window_state", actual); replay.assertExhausted();
+    assert.deepEqual(replay.compatibilityReceipt, { ...compatibility, appliedCallIndices: [0], captureBudgetCallIndices: [0] });
+    for (const recorded of [{ ...args, timeout_ms: 1000 }, { ...args, max_depth: 4 }, { ...args, session: "known-replay-base" }]) {
+      const explicit: DriverTape = { version: 1, calls: [{ ...tape.calls[0]!, args: recorded }] };
+      await assert.rejects(new ReplayDriverClient(explicit, { compatibility }).call("get_window_state", actual), /Driver tape mismatch at call 0/);
+    }
+    assert.deepEqual(tape.calls[0]!.args, args);
+  });
+
   it("canonicalizes nested records deterministically", () => {
     assert.deepEqual(canonicalizeDriverArgs({ z: 1, nested: { b: 2, a: 1 }, a: undefined }), {
       nested: { a: 1, b: 2 },
@@ -246,6 +299,25 @@ describe("driver tapes", () => {
     const first = await replayScenario(scenario);
     const second = await replayScenario(scenario);
     assert.deepEqual(first, second);
+    const expected = JSON.parse(await readFile(join(dirname(scenario), "expected.json"), "utf8"));
+    // The frozen oracle owns the accessibility projection, not newer SDK
+    // dispatch metadata. Keep its text/metrics exact and assert current routing
+    // metadata separately: a recorded launch acknowledgement proves sent,
+    // not that the requested page loaded.
+    assert.equal(first.name, expected.name);
+    assert.deepEqual(first.metrics, expected.metrics);
+    assert.deepEqual(first.states.map(state => state.text), expected.states.map((state: any) => state.text));
+    assert.equal(first.states[0]?.target?.requestDispatch, "sent");
+    assert.equal(first.states[0]?.target?.document?.requestRelation, "unknown");
+    const actualProjection = JSON.parse(JSON.stringify({ name: first.name, states: first.states, metrics: first.metrics }));
+    assert.deepEqual(actualProjection, expectedProjectionForCurrentReplay(expected, first));
+    assert.equal(expected.states[0].target.requestDispatch, "unknown");
+    const wrongResource = structuredClone(expected);
+    wrongResource.states[0].target.requested = ["https://different.example"];
+    assert.notDeepEqual(actualProjection, expectedProjectionForCurrentReplay(wrongResource, first));
+    const wrongRelation = structuredClone(expected);
+    wrongRelation.states[0].target.document.requestRelation = "matches";
+    assert.notDeepEqual(actualProjection, expectedProjectionForCurrentReplay(wrongRelation, first));
     assert.equal(first.metrics.driverCalls, 5);
     assert.equal(first.metrics.reductionRatio, 0.4058);
     assert.match(first.states[0]?.text ?? "", /Accessibility projection:/);
@@ -256,7 +328,11 @@ describe("driver tapes", () => {
       compatibility: {
         kind: "v1_implicit_base_session",
         baseSession: "opensky-retrospective-replay-v1-base",
+        macIgnoreSavedState: true,
+        macFullCaptureTimeoutMs: 5000,
         appliedCallIndices: [0, 1, 2, 3, 4],
+        launchArgumentCallIndices: [1],
+        captureBudgetCallIndices: [3],
       },
     });
   });

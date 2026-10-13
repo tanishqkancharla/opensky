@@ -19,3 +19,5 @@ evals/parity/osworld/*/*.xlsx
 evals/parity/osworld/*/*.pptx
 evals/parity/osworld/*/vscode_replace_text*.txt
 evals/parity/osworld/*/test*.py
+
+e2e/.compiler-cache/

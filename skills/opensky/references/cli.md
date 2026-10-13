@@ -49,6 +49,11 @@ Top-level variables/functions/classes persist in the session. Even declarations
 written with `const` are mutable session bindings; reassignment/redeclaration
 can emit an advisory warning. Nested scopes retain normal JavaScript semantics.
 
+A second `serve` using the same home is rejected without changing the original
+server. Eval waits for the submitted cell’s result; interrupting or losing the
+connection does not cancel an already dispatched action. Observe before retrying
+an action with an unknown result.
+
 Preloaded globals: `cua`, legacy `opensky`, `state`, `sleep(ms)`, `readFile`,
 `pathToFileURL`, and low-level `driver`. Use `cua` for ordinary GUI work.
 
@@ -57,8 +62,9 @@ Preloaded globals: `cua`, legacy `opensky`, `state`, `sleep(ms)`, `readFile`,
 Unlike a preloaded observation tool, the CLI does not automatically attach
 images or print the initial state emitted internally by `getApp`. End the cell
 with `await app.getAXState()` to print its outline.
-`--json` returns `{ok, value, logs, error?}`. Console logs are also printed before
-that JSON; avoid logging when a consumer expects a single JSON document.
+`--json` returns a single `{ok, value?, logs, error?}` document. Console logs
+are included only in `logs`. Values that JSON cannot represent, such as BigInt
+and cyclic objects, use an inspected string in both local and persistent eval.
 
 `getScreenshot()` returns image bytes, not a rendered shell image. To obtain a
 file URL for a host image viewer, the legacy observation supports:
@@ -75,7 +81,8 @@ provided output helpers only if explicit output is needed.
 
 ## Configuration
 
-- `--home <dir>` / `OPENSKY_HOME`: session state, default `~/.opensky`. Use the
+- `--home <dir>` / `OPENSKY_HOME`: session state, default `~/.opensky`. A missing
+  path argument is rejected. Use the
   same home for server and clients; separate homes give independent sessions.
 - `--no-serve`: use a fresh runtime even if a server exists.
 - `--driver <path>` / `OPENSKY_DRIVER_BINARY`: select an OpenSky Driver build.

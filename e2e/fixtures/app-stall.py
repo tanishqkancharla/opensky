@@ -133,6 +133,13 @@ def main():
             first, per = request[4], request[5]
             symbols = [int.from_bytes(request[i:i+4], sys.byteorder) for i in range(8, length, 4)]
             if not count or not per or len(symbols) != count*per: emit("decode-error", source="client", reason="invalid-mapping-symbols"); continue
+            # Retain every observed mapping, including restoration, without
+            # changing the existing U+00E9 trigger or issuing another X request.
+            emit("request", request="ChangeKeyboardMapping", source="client",
+                 clientIdBase=reply.id_base, serverTime=reply.server_time,
+                 recordedSequenceNumber=reply.recorded_sequence_number,
+                 firstKeycode=first, keycodeCount=count,
+                 keysymsPerKeycode=per, keysyms=symbols)
             affected = set(range(first, first+count)); mapped_codes.difference_update(affected)
             codes = {first+i//per for i, symbol in enumerate(symbols) if symbol == E_ACUTE}
             if codes: mapped_codes.update(codes); emit("e-acute-mapped", keycodes=sorted(codes), firstKeycode=first, keycodeCount=count, keysymsPerKeycode=per, recordedSequenceNumber=reply.recorded_sequence_number)

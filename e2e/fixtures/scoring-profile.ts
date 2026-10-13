@@ -40,7 +40,10 @@ export const test = base.extend<{
       const metadata = JSON.parse(await readFile(profilePath, "utf8"));
       const firstReference = Object.keys(metadata.references)[0]!;
       const reference = join(temporary, "references", firstReference);
-      const imageTask = "2b94c692-6abb-48ae-ab0b-b3e8a19cb340";
+      // The duplicate-slide completed specimen retains a genuine raw/adapted
+      // difference under X11. The earlier image-position specimen now passes
+      // both graders, so it cannot exercise truthful divergent reporting.
+      const imageTask = "9ec204e4-f0a3-42f8-8458-b772a6797cab";
       const imagePath = join(temporary, "agent-image.pptx");
       await cp(join(controls, imageTask, "completed/completed.pptx"), imagePath);
       const score = async (taskId: string, artifact: string, expectedSha256?: string): Promise<Result> => JSON.parse((await exec(python, [

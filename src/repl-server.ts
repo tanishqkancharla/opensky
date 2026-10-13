@@ -1,12 +1,12 @@
 import { createServer, connect, type Server, type Socket } from "node:net";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import { inspect } from "node:util";
 
 import { AsyncRepl } from "./async-repl.js";
 import { homeDir } from "./platform.js";
-import { mkdirPrivate, writeFilePrivate } from "./secure-fs.js";
+import { mkdirPrivate } from "./secure-fs.js";
 
 export interface ReplEvalRequest {
   code: string;
@@ -32,6 +32,8 @@ export interface ReplServerInfo {
 export class ReplServer {
   private server: Server | null = null;
   private token = "";
+  private ownsInfo = false;
+  private readonly connections = new Set<Socket>();
   constructor(
     private readonly repl: AsyncRepl,
     private readonly home: string,
@@ -42,9 +44,12 @@ export class ReplServer {
   }
 
   async start(port = 0): Promise<{ port: number; pid: number; token: string }> {
+    if (this.server) throw new Error("This REPL server is already started");
     await mkdirPrivate(this.home);
     this.token = process.env.OPENSKY_REPL_TOKEN || randomBytes(32).toString("base64url");
     this.server = createServer((socket) => {
+      this.connections.add(socket);
+      socket.once("close", () => this.connections.delete(socket));
       this.handle(socket);
     });
     await new Promise<void>((resolve, reject) => {
@@ -61,13 +66,30 @@ export class ReplServer {
       host: "127.0.0.1",
       token: this.token,
     };
-    await writeFilePrivate(this.infoPath, JSON.stringify(info, null, 2));
+    try {
+      // Exclusive publication is also the home ownership claim. Concurrent
+      // starts cannot overwrite the endpoint/token of the original server.
+      await writeFile(this.infoPath, JSON.stringify(info, null, 2), { flag: "wx", mode: 0o600 });
+      this.ownsInfo = true;
+    } catch (error) {
+      const server = this.server;
+      this.server = null;
+      for (const socket of this.connections) socket.destroy();
+      await new Promise<void>(resolve => server.close(() => resolve()));
+      if (error && typeof error === "object" && "code" in error && error.code === "EEXIST") {
+        throw new Error("A REPL server already owns this home; use the existing server or `opensky stop` before starting another.");
+      }
+      throw error;
+    }
     return { ...info, token: this.token };
   }
 
   async stop(): Promise<void> {
     const server = this.server;
     this.server = null;
+    // Close client connections so a pending cell cannot strand shutdown.
+    // The owner still drains admitted OpenSky work before process exit.
+    for (const socket of this.connections) socket.destroy();
     await new Promise<void>((resolve) => {
       if (!server) {
         resolve();
@@ -75,21 +97,30 @@ export class ReplServer {
       }
       server.close(() => resolve());
     });
-    await rm(this.infoPath, { force: true });
+    if (this.ownsInfo) {
+      const info = await readServerInfo(this.home);
+      if (info?.pid === process.pid && info.token === this.token) {
+        await rm(this.infoPath, { force: true });
+      }
+      this.ownsInfo = false;
+    }
   }
 
   private handle(socket: Socket): void {
     socket.setEncoding("utf8");
     let buffer = "";
     let closed = false;
+    let submitted = false;
     const finish = (response: ReplEvalResponse) => {
       if (closed) return;
       closed = true;
       socket.end(`${JSON.stringify(response)}\n`);
     };
     socket.on("data", (chunk: string) => {
+      if (submitted) return;
       buffer += chunk;
       if (!buffer.includes("\n")) return;
+      submitted = true;
       const raw = buffer.slice(0, buffer.indexOf("\n")).trim();
       void this.evaluate(raw).then(finish, (error) => {
         finish({
@@ -144,9 +175,12 @@ export async function evalOnServer(
     let buffer = "";
     const timer = setTimeout(() => {
       socket.destroy();
-      reject(new Error("opensky REPL server timed out"));
-    }, 15_000);
+      reject(new Error("Could not connect to the opensky REPL server; no cell was submitted"));
+    }, 5_000);
     socket.on("connect", () => {
+      // A response deadline cannot cancel an already dispatched UI action.
+      // Wait for its real result rather than invite a duplicate retry.
+      clearTimeout(timer);
       socket.write(payload);
     });
     socket.on("data", (chunk: string) => {
@@ -160,6 +194,10 @@ export async function evalOnServer(
       } catch (error) {
         reject(error);
       }
+    });
+    socket.on("end", () => {
+      clearTimeout(timer);
+      if (!buffer.includes("\n")) reject(new Error("REPL connection ended without a result; the cell may have executed. Observe before retrying."));
     });
     socket.on("error", (error) => {
       clearTimeout(timer);
@@ -207,7 +245,8 @@ function authorized(provided: string | undefined, expected: string): boolean {
   return timingSafeEqual(left, right);
 }
 
-function jsonSafe(value: unknown): unknown {
+export function jsonSafe(value: unknown): unknown {
+  if (value === undefined) return undefined;
   try {
     return JSON.parse(JSON.stringify(value));
   } catch {

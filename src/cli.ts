@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { AsyncRepl, startInteractiveRepl } from "./async-repl.js";
 import { CuaDriverClient } from "./driver.js";
 import { homeDir } from "./platform.js";
-import { evalOnServer, ReplServer, serverAlive } from "./repl-server.js";
+import { evalOnServer, jsonSafe, ReplServer, serverAlive, type ReplEvalResponse } from "./repl-server.js";
 import { createOpenSky } from "./opensky.js";
 import { createCua } from "./cua.js";
 import { installSkill, skillDestinations, uninstallSkill } from "./skill-install.js";
@@ -107,25 +107,35 @@ async function runEval(code: string, flags: Flags): Promise<number> {
     process.stderr.write("opensky eval requires code or stdin\n");
     return 1;
   }
-  const home = homeDir(flags.home);
-  if (!flags.noServe && (await serverAlive(home))) {
-    if (flags.transport !== undefined) {
-      throw new Error("An existing REPL owns its transport. Use --no-serve with --transport for a separate runtime; no existing server was changed.");
-    }
-    const response = await evalOnServer(source, { homeDir: home });
-    return printEval(response.ok, response.value, response.logs, response.error, flags);
-  }
-  const { opensky, extra } = createContext(flags);
-  const repl = new AsyncRepl({ context: { opensky, ...extra } });
+  let opensky: ReturnType<typeof createOpenSky> | undefined;
+  let response: ReplEvalResponse;
   try {
-    const result = await repl.evaluate(source);
-    return printEval(true, result.value, result.logs, undefined, flags);
+    const home = homeDir(flags.home);
+    if (!flags.noServe && (await serverAlive(home))) {
+      if (flags.transport !== undefined) {
+        throw new Error("An existing REPL owns its transport. Use --no-serve with --transport for a separate runtime; no existing server was changed.");
+      }
+      response = await evalOnServer(source, { homeDir: home });
+    } else {
+      const context = createContext(flags);
+      opensky = context.opensky;
+      const repl = new AsyncRepl({ context: { opensky, ...context.extra }, awaitTimeoutMs: null });
+      const result = await repl.evaluate(source);
+      response = { ok: true, value: result.value, logs: result.logs };
+    }
   } catch (error) {
     const logs = error && typeof error === "object" && "logs" in error ? (error as { logs: string[] }).logs : [];
-    return printEval(false, undefined, logs, error instanceof Error ? error.message : String(error), flags);
-  } finally {
-    await opensky.close();
+    response = { ok: false, logs, error: error instanceof Error ? error.message : String(error) };
   }
+  try {
+    await opensky?.close();
+  } catch (error) {
+    // Preserve real cleanup failures in the same result, without a second
+    // uncaught stack trace that obscures the original evaluation error.
+    const cleanup = error instanceof Error ? error.message : String(error);
+    response = { ...response, ok: false, error: response.error ? `${response.error}\nCleanup failed: ${cleanup}` : `Cleanup failed: ${cleanup}` };
+  }
+  return printEval(response.ok, response.value, response.logs, response.error, flags);
 }
 
 async function runFile(file: string | undefined, flags: Flags): Promise<number> {
@@ -151,7 +161,7 @@ async function runRepl(flags: Flags): Promise<number> {
 async function runServe(flags: Flags): Promise<number> {
   const home = homeDir(flags.home);
   const { opensky, extra } = createContext(flags);
-  const repl = new AsyncRepl({ context: { opensky, ...extra }, allowNodeApis: false });
+  const repl = new AsyncRepl({ context: { opensky, ...extra }, allowNodeApis: false, awaitTimeoutMs: null });
   const server = new ReplServer(repl, home);
   const info = await server.start();
   process.stdout.write(
@@ -296,11 +306,11 @@ function printEval(
   error: string | undefined,
   flags: Flags,
 ): number {
-  for (const line of logs) process.stdout.write(`${line}\n`);
   if (flags.json) {
-    process.stdout.write(`${JSON.stringify({ ok, value, error, logs }, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify({ ok, value: jsonSafe(value), error, logs }, null, 2)}\n`);
     return ok ? 0 : 1;
   }
+  for (const line of logs) process.stdout.write(`${line}\n`);
   if (!ok) {
     process.stderr.write(`${error ?? "eval failed"}\n`);
     return 1;
@@ -333,9 +343,13 @@ function parseArgs(argv: string[]): { command?: string; args: string[]; flags: F
     else if (arg === "--global" || arg === "-g") flags.global = true;
     else if (arg === "--help" || arg === "-h") flags.help = true;
     else if (arg === "--version") flags.version = true;
-    else if (arg === "--home") flags.home = argv[++i];
-    else if (arg === "--driver") flags.driver = argv[++i];
-    else if (arg === "--socket") flags.socket = argv[++i];
+    else if (arg === "--home" || arg === "--driver" || arg === "--socket") {
+      const value = argv[++i];
+      if (!value || value.startsWith("-")) throw new Error(`${arg} requires a path argument`);
+      if (arg === "--home") flags.home = value;
+      else if (arg === "--driver") flags.driver = value;
+      else flags.socket = value;
+    }
     else if (arg === "--transport") {
       const transport = argv[++i];
       if (transport !== "cli" && transport !== "mcp") throw new Error("--transport requires cli or mcp");

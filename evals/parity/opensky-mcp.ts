@@ -16,7 +16,8 @@ if (!homeDir || !binaryPath) throw new Error("Provide OPENSKY_HOME and OPENSKY_D
 await mkdir(homeDir, { recursive: true });
 const socket = process.env.OPENSKY_DRIVER_SOCKET ?? process.env.CUA_DRIVER_SOCKET;
 await verifyDriverRuntime({ binaryPath, socket, artifacts: homeDir,
-  ...(process.platform === "linux" ? { ownedLinuxPid: Number(process.env.OPENSKY_OWNED_DRIVER_PID) } : {}) });
+  ...(process.platform === "linux" ? { ownedLinuxPid: Number(process.env.OPENSKY_OWNED_DRIVER_PID),
+    ...(process.env.OPENSKY_VERIFIED_LINUX_DRIVER ? { parentLinuxIdentity: JSON.parse(process.env.OPENSKY_VERIFIED_LINUX_DRIVER) } : {}) } : {}) });
 // Optional passive diagnostics for deterministic reproductions. Retain the
 // actual driver's result before the public facade reduces it. Buffer in memory
 // so recording adds no filesystem wait between consecutive input calls.

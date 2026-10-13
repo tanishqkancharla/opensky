@@ -60,6 +60,7 @@ export async function replayScenario(scenarioPath: string): Promise<ReplayReport
     compatibility: {
       kind: "v1_implicit_base_session",
       baseSession: RETROSPECTIVE_REPLAY_BASE_SESSION,
+      ...(scenario.target === "mac" ? { macIgnoreSavedState: true as const, macFullCaptureTimeoutMs: 5000 as const } : {}),
     },
   });
   const tempHome = await mkdtemp(join(tmpdir(), "opensky-replay-"));
@@ -119,12 +120,28 @@ export async function replayScenario(scenarioPath: string): Promise<ReplayReport
   }
 }
 
+/** Preserve frozen observations while accounting for current dispatch classification.
+ * A replayed launch acknowledgement now reports sent; it does not prove load.
+ * No observation, identity, requested resource or completeness field is adapted.
+ */
+export function expectedProjectionForCurrentReplay(expected: unknown, report: ReplayReport): unknown {
+  const value = structuredClone(expected) as { states?: Array<{ target?: { requestDispatch?: string } }> };
+  if (!report.replay.compatibility.macIgnoreSavedState ||
+      !report.replay.compatibility.launchArgumentCallIndices?.length) return value;
+  for (const [index, state] of (value.states ?? []).entries()) {
+    if (state.target?.requestDispatch === "unknown" && report.states[index]?.target?.requestDispatch === "sent") {
+      state.target.requestDispatch = "sent";
+    }
+  }
+  return value;
+}
+
 async function main(argv = process.argv.slice(2)): Promise<number> {
   const scenarioPath = argv[0] ?? join(here, "fixtures", "real-driver", "github-repository", "scenario.json");
   const scenario = JSON.parse(await readFile(resolve(scenarioPath), "utf8")) as ReplayScenario;
   const report = await replayScenario(scenarioPath);
   const expectedPath = resolve(dirname(resolve(scenarioPath)), scenario.expected);
-  const expected = `${JSON.stringify(JSON.parse(await readFile(expectedPath, "utf8")), null, 2)}\n`;
+  const expected = `${JSON.stringify(expectedProjectionForCurrentReplay(JSON.parse(await readFile(expectedPath, "utf8")), report), null, 2)}\n`;
   const actual = `${JSON.stringify(report, null, 2)}\n`;
   // Frozen v1 expected files describe only the historical projection. The
   // additive replay receipt is printed, but is not retroactively written into

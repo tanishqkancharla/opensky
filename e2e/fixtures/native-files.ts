@@ -1,4 +1,6 @@
-import type { PublicSdk as OpenSky } from "./sdk.js";
+import { compileMacSwiftHelper } from "./mac-swift-compiler.js";
+import type { createCua } from "opensky-cua";
+type OpenSky = Parameters<typeof createCua>[0];
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -35,7 +37,9 @@ async function withOwnedNativeOpenDocuments<T>(realSdk: OpenSky, artifacts: stri
   let actionError: unknown;
   let cleanupError: unknown;
   try {
-    await exec("/usr/bin/swiftc", ["-module-cache-path", join(helperDirectory, "swift-cache"), fileURLToPath(new URL("../../evals/parity/mac-app-lifecycle.swift", import.meta.url)), "-o", helper], { timeout: 60_000 });
+    const compilation = await compileMacSwiftHelper(
+      fileURLToPath(new URL("../../evals/parity/mac-app-lifecycle.swift", import.meta.url)), helper);
+    await writeFile(join(artifacts, "compiler-setup.json"), JSON.stringify(compilation, null, 2));
     const call = async (args: string[]) => exec(helper, args, { timeout: 10_000 });
     const list = async (): Promise<Identity[]> => JSON.parse((await call(["list", bundleId])).stdout) as Identity[];
     const inspect = async (identity: Identity): Promise<Inspection> => JSON.parse((await call(["inspect", String(identity.pid)])).stdout) as Inspection;

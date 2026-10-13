@@ -65,17 +65,28 @@ export async function recordEnvironment(options: { repo: string; appPath: string
     const packageRoot = join(moduleDirectories[0], "@oai/sky");
     const packageJson = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
     const clientFiles: Record<string, string> = {};
-    async function hashClient(directory: string) {
+    async function hashClient(directory: string, base = packageRoot, output = clientFiles) {
       for (const entry of await readdir(directory, { withFileTypes: true })) {
         const path = join(directory, entry.name);
-        if (entry.isDirectory()) await hashClient(path);
-        else if (entry.isFile() && entry.name.endsWith(".js")) clientFiles[relative(packageRoot, path)] = await sha256(path);
+        if (entry.isDirectory()) await hashClient(path, base, output);
+        else if (entry.isFile() && entry.name.endsWith(".js")) output[relative(base, path)] = await sha256(path);
       }
     }
     await hashClient(join(packageRoot, "dist"));
+    let cuaFacade;
+    if (linux && nativeConfig.env.CUA_REPL_ENABLED_SURFACES === "computer") {
+      const facadeRoot = join(moduleDirectories[0], "@oai/cua");
+      const facadePackage = JSON.parse(await readFile(join(facadeRoot, "package.json"), "utf8"));
+      const facadeFiles: Record<string, string> = {};
+      await hashClient(join(facadeRoot, "dist"), facadeRoot, facadeFiles);
+      cuaFacade = { version: facadePackage.version,
+        packageJsonSha256: await sha256(join(facadeRoot, "package.json")),
+        clientFiles: Object.fromEntries(Object.entries(facadeFiles).sort(([a], [b]) => a.localeCompare(b))) };
+    }
     const executable = linux ? undefined : await command("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleExecutable", join(servicePath, "Contents/Info.plist")]);
     nativeReference = {
       nodeReplSha256: await sha256(nativeConfig.command), skyVersion: packageJson.version,
+      ...(cuaFacade ? { cuaFacade } : {}),
       clientFiles: Object.fromEntries(Object.entries(clientFiles).sort(([a], [b]) => a.localeCompare(b))),
       ...(linux ? {
         serviceExecutableSha256: await sha256(linuxBinary),

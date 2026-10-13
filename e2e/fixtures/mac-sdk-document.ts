@@ -1,3 +1,4 @@
+import { compileMacSwiftHelper } from "./mac-swift-compiler.js";
 import type { PublicSdk as OpenSky } from "./sdk.js";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -14,7 +15,7 @@ const bundleId = "com.apple.TextEdit";
 type Identity = { pid: number; bundleId: string; launchedAt: number };
 type Window = { title: string; windowId: number; onScreen: boolean };
 type Inspection = Identity & { finishedLaunching: boolean; activationPolicy: number; windows: Window[] };
-type OwnedDocument = { handle: TargetHandle; path: string; windowId: number; identity: Identity };
+type OwnedDocument = { handle: TargetHandle; path: string; windowId: number; identity: Identity; windows(): Promise<Window[]> };
 
 function sameIdentity(left: Identity, right: Identity): boolean {
   return left.pid === right.pid && left.bundleId === right.bundleId && left.launchedAt === right.launchedAt;
@@ -39,11 +40,9 @@ export async function withSdkOwnedMacDocument<T>(options: {
   let baseline: Identity[] = [];
   let openAttempted = false;
   try {
-    await exec("/usr/bin/swiftc", [
-      "-module-cache-path", join(temporary, "swift-cache"),
-      fileURLToPath(new URL("../../evals/parity/mac-app-lifecycle.swift", import.meta.url)),
-      "-o", helper,
-    ], { timeout: 60_000 });
+    const compilation = await compileMacSwiftHelper(
+      fileURLToPath(new URL("../../evals/parity/mac-app-lifecycle.swift", import.meta.url)), helper);
+    await writeFile(join(options.artifacts, "compiler-setup.json"), JSON.stringify(compilation, null, 2));
     const call = async (args: string[]) => exec(helper, args, { timeout: 10_000 });
     const desktop = JSON.parse((await call(["desktop-state"])).stdout) as { ready: boolean; reasons: string[] };
     await writeFile(join(options.artifacts, "desktop-before.json"), JSON.stringify({ checkedAt: new Date().toISOString(), ...desktop }, null, 2));
@@ -74,7 +73,13 @@ export async function withSdkOwnedMacDocument<T>(options: {
     }
 
     const identity = matches[0]!.identity;
-    const ownedDocument: OwnedDocument = { handle: opened.targetHandle, path: options.path, windowId: windowId!, identity };
+    const ownedDocument: OwnedDocument = { handle: opened.targetHandle, path: options.path, windowId: windowId!, identity,
+      async windows() {
+        const state = await inspect(identity);
+        if (!sameIdentity(state, identity)) throw new Error("Owned process identity changed before window inspection");
+        return state.windows;
+      },
+    };
     owned = ownedDocument;
     // Persist the public handle and independently observed process/window pair
     // before readiness activation or any test input. This known-owned process
@@ -132,7 +137,18 @@ export async function withSdkOwnedMacDocument<T>(options: {
         }
       }
       let quit: unknown = { skipped: "process_exited_after_document_close" };
-      if (running) quit = JSON.parse((await call(["quit", String(owned.identity.pid), owned.identity.bundleId, String(owned.identity.launchedAt)])).stdout);
+      if (running) {
+        try {
+          quit = JSON.parse((await call(["quit", String(owned.identity.pid), owned.identity.bundleId, String(owned.identity.launchedAt)])).stdout);
+        } catch (error) {
+          if ((await list()).some(candidate => sameIdentity(candidate, owned!.identity))) {
+            quit = {
+              cooperativeError: String(error),
+              fallback: JSON.parse((await call(["stop-disposable", String(owned.identity.pid), owned.identity.bundleId, String(owned.identity.launchedAt)])).stdout),
+            };
+          }
+        }
+      }
       const remaining = await list();
       const verifiedExited = !remaining.some(candidate => sameIdentity(candidate, owned!.identity));
       if (!verifiedExited) throw new Error("Verified SDK-owned TextEdit process remained running after cooperative quit");

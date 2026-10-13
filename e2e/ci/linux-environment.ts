@@ -22,6 +22,7 @@ const configuration = {
     NODE_REPL_TRUSTED_CODE_PATHS: dirname(dirname(packageRoot)),
     NODE_REPL_TRUSTED_SERVICES: JSON.stringify({ sky: "@oai/sky/service" }),
     OAI_SKY_LINUX_BIN: process.env.OAI_SKY_LINUX_BIN!,
+    ...(process.env.OPENSKY_LINUX_NATIVE_FACADE === "1" ? { CUA_REPL_ENABLED_SURFACES: "computer", NODE_REPL_UNTRUSTED_ENV_ALLOWLIST: "CUA_REPL_ENABLED_SURFACES" } : {}),
     DISPLAY: process.env.DISPLAY!,
     XAUTHORITY: process.env.XAUTHORITY!,
     DBUS_SESSION_BUS_ADDRESS: process.env.DBUS_SESSION_BUS_ADDRESS!,

@@ -1,5 +1,6 @@
-import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { after } from "node:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,6 +41,12 @@ export async function makeHarness(options: { degradedRetryMs?: number } = {}) {
     pasteModifier: "cmd",
     settleDelayMs: 0,
     degradedRetryMs: options.degradedRetryMs ?? 50,
+  });
+  // This fixture owns the private directory and mock session. Register cleanup
+  // with the calling test so failed assertions also release their resources.
+  after(async () => {
+    try { await opensky.close(); }
+    finally { await rm(dir, { recursive: true, force: true }); }
   });
   return { dir, opensky, driver, driverPath, env, statePath, logPath };
 }

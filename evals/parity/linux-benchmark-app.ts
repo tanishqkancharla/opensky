@@ -30,7 +30,11 @@ export async function prepareLinuxBenchmarkApp(input: {
         input.category === "libreoffice_calc" ? "--calc" : input.category === "libreoffice_impress" ? "--impress" : "--writer", input.document],
     env: { SAL_USE_VCLPLUGIN: "gtk3", NO_AT_BRIDGE: "0" },
   };
-  await writeFile(join(input.artifacts, "app-launch.json"), JSON.stringify({ ...options, profileSettings }, null, 2));
-  return { options, appName: isCode ? "Visual Studio Code" : "LibreOffice",
+  // Desktop entries identify the Office component, rather than the suite name.
+  const appName = isCode ? "Visual Studio Code"
+    : input.category === "libreoffice_calc" ? "LibreOffice Calc"
+    : input.category === "libreoffice_impress" ? "LibreOffice Impress" : "LibreOffice Writer";
+  await writeFile(join(input.artifacts, "app-launch.json"), JSON.stringify({ ...options, appName, profileSettings }, null, 2));
+  return { options, appName,
     menus: isCode ? ["File", "Edit", "Selection", "View"] : ["File", "Edit", "View", "Insert"] };
 }

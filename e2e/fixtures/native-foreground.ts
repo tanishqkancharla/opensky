@@ -1,3 +1,4 @@
+import { compileMacSwiftHelper } from "./mac-swift-compiler.js";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,8 +17,9 @@ export const test = nativeTest.extend<{ foreground: { read(): Promise<DesktopSta
     const helper = join(temporary, "observer");
     let observation = 0;
     try {
-      await exec("/usr/bin/swiftc", ["-module-cache-path", join(temporary, "swift-cache"),
-        fileURLToPath(new URL("../../evals/parity/mac-app-lifecycle.swift", import.meta.url)), "-o", helper], { timeout: 60_000 });
+      const compilation = await compileMacSwiftHelper(
+        fileURLToPath(new URL("../../evals/parity/mac-app-lifecycle.swift", import.meta.url)), helper);
+      await writeFile(join(artifacts, "compiler-setup.json"), JSON.stringify(compilation, null, 2));
       await use({ async read() {
         const state = JSON.parse((await exec(helper, ["desktop-state"], { timeout: 10_000 })).stdout) as DesktopState;
         await writeFile(join(artifacts, `foreground-${++observation}.json`), JSON.stringify({ checkedAt: new Date().toISOString(), ...state }, null, 2));

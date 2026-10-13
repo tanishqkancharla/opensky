@@ -5,9 +5,26 @@ import { join } from "node:path";
 import { assertDisposableLinuxDesktop } from "./linux-app.js";
 import { OpenSkyDriverClient } from "../../src/driver.js";
 
+/** A verifier child receives exact owned-driver identity, never a fabricated
+ * CI environment. App launch and task admission remain parent-only gates. */
+export function verifyParentLinuxDriverIdentity(parent: unknown, actual: Record<string, unknown>) {
+  const expected = parent as Record<string, unknown> | null;
+  const keys = ["executable", "pid", "socketInode", "source", "startTicks"];
+  if (!expected || typeof expected !== "object" || Array.isArray(expected) ||
+      Object.keys(expected).sort().join(",") !== keys.join(",") ||
+      !Number.isSafeInteger(expected.pid) || Number(expected.pid) <= 0 ||
+      typeof expected.executable !== "string" || !expected.executable.startsWith("/") ||
+      !/^[1-9][0-9]*$/.test(String(expected.startTicks)) ||
+      !/^[1-9][0-9]*$/.test(String(expected.socketInode)) ||
+      !/^[a-f0-9]{40}$/.test(String(expected.source)) ||
+      keys.some(key => expected[key] !== actual[key])) {
+    throw new Error("Parent-verified Linux driver identity differs from the live owned daemon");
+  }
+}
+
 /** Query the daemon that will actually receive actions, not the CLI's default
  * permission-status route. Never start a daemon or request a TCC grant here. */
-export async function verifyDriverRuntime(options: { binaryPath: string; socket?: string; artifacts: string; requirePermissions?: boolean; ownedLinuxPid?: number }) {
+export async function verifyDriverRuntime(options: { binaryPath: string; socket?: string; artifacts: string; requirePermissions?: boolean; ownedLinuxPid?: number; parentLinuxIdentity?: unknown }) {
   const driver = new OpenSkyDriverClient({
     binaryPath: options.binaryPath, socket: options.socket,
     autoStart: false, autoInstall: false,
@@ -21,7 +38,7 @@ export async function verifyDriverRuntime(options: { binaryPath: string; socket?
     permissions = response.structured as Record<string, unknown>;
     const source = permissions?.source as Record<string, unknown> | undefined;
     if (process.platform === "linux") {
-      assertDisposableLinuxDesktop();
+      if (options.parentLinuxIdentity === undefined) assertDisposableLinuxDesktop();
       if (!options.socket || !Number.isSafeInteger(options.ownedLinuxPid) || options.ownedLinuxPid! <= 0) {
         throw new Error("Linux runtime verification requires a disposable desktop and the owned daemon PID/socket");
       }
@@ -42,6 +59,7 @@ export async function verifyDriverRuntime(options: { binaryPath: string; socket?
       }
       if (instance(await readFile(`${proc}/stat`, "utf8")) !== started) throw new Error("Linux daemon process changed during verification");
       linuxIdentity = { pid, startTicks: started, socketInode: listener[0][6], source: identity.source, executable: configuredExecutable };
+      if (options.parentLinuxIdentity !== undefined) verifyParentLinuxDriverIdentity(options.parentLinuxIdentity, linuxIdentity);
       if (options.requirePermissions !== false && (permissions.x11 !== true || permissions.atspi !== true)) throw new Error("Linux evaluation requires working X11 input/capture and accessibility bus");
     } else {
       if (process.platform !== "darwin") throw new Error("No runtime identity verification for this platform");
