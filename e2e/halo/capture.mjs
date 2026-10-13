@@ -7,7 +7,7 @@ import {setTimeout as sleep} from "node:timers/promises";
 import {CuaDriverClient,createOpenSky,createCua} from "../../dist/index.js";
 const out=process.env.HALO_ARTIFACTS;
 const pid=Number(process.env.HALO_EDITOR_PID), windowId=Number(process.env.HALO_EDITOR_WINDOW);
-const driver=new CuaDriverClient({binaryPath:process.env.OPENSKY_DRIVER_PATH,socket:process.env.HALO_DRIVER_SOCKET,session:"halo-capture",autoStart:false,timeoutMs:null});
+const driver=new CuaDriverClient({binaryPath:process.env.OPENSKY_DRIVER_PATH,socket:process.env.HALO_DRIVER_SOCKET,session:"halo-capture",autoStart:false,timeoutMs:30000});
 const evidence={sdk:process.env.GITHUB_SHA,driver:process.env.HALO_DRIVER_REF,node:process.version,
   environment:`Bookworm TigerVNC/X11 XFWM4 compositor ${process.env.HALO_COMPOSITOR??"off"}, shared D-Bus/AT-SPI, bounded exact editor grants`,
   productionChromeVerified:false,phases:[]};
@@ -15,9 +15,11 @@ const active=()=>execFileSync("xdotool",["getactivewindow"],{encoding:"utf8"}).t
 const poll=async fn=>{for(let i=0;i<100;i++){try{if(await fn())return;}catch(error){if(!["ENOENT","ESRCH"].includes(error.code))throw error;}await sleep(50);}throw Error("Owned fixture postcondition timed out");};
 let cover,coverExited=false;
 const sdk=createOpenSky({target:"linux",homeDir:join(out,"capture-sdk-home"),screenshotDir:join(out,"capture-sdk-shots"),autoLaunch:false,
- driverOptions:{binaryPath:process.env.OPENSKY_DRIVER_PATH,socket:process.env.HALO_DRIVER_SOCKET,autoStart:false,autoInstall:false}});
+ driverOptions:{binaryPath:process.env.OPENSKY_DRIVER_PATH,socket:process.env.HALO_DRIVER_SOCKET,autoStart:false,autoInstall:false,timeoutMs:30000}});
 let app;
 async function capture(phase){
+  const started=Date.now();
+  console.log(JSON.stringify({phase,stage:"start"}));
   const focusBefore=active();
   const result=await driver.call("get_window_state",{pid,window_id:windowId,full_output:true,include_screenshot:true});
   const images=result.raw?.content?.filter(part=>part.type==="image")??[];
@@ -31,7 +33,9 @@ async function capture(phase){
   const data={phase,focusBefore,focusAfter:active(),pid,windowId,imageCount:images.length,
     screenshotFrameValid:result.structured?.screenshot_frame_valid,screenshotError:result.structured?.screenshot_error??null};
   if(images.length){assert.equal(images.length,1);assert.equal(images[0].mimeType,"image/png");await writeFile(join(out,`capture-${phase}.png`),Buffer.from(images[0].data,"base64"));}
-  evidence.phases.push(data);return data;
+  evidence.phases.push(data);
+  console.log(JSON.stringify({phase,stage:"finished",elapsedMs:Date.now()-started,imageCount:data.imageCount}));
+  return data;
 }
 try{
   assert.equal(JSON.parse(await readFile(join(out,"identity.json"),"utf8")).source,process.env.HALO_DRIVER_REF);
@@ -45,7 +49,9 @@ try{
   const inventory=(await driver.call("list_apps")).structured;
   const native=(Array.isArray(inventory)?inventory:inventory.apps).find(app=>app.pid===pid);assert.ok(native);
   app=await createCua(sdk,{emit:()=>undefined}).getApp(native.name);
+  console.log(JSON.stringify({phase:"public-visible",stage:"start"}));
   assert.ok((await app.getScreenshot({emit:false})).byteLength>0);
+  console.log(JSON.stringify({phase:"public-visible",stage:"finished"}));
   // A separate real GTK process covers the owned editor. No driver launch or
   // permission expansion, compositor change, input injection, or clipboard use.
   cover=spawn("/usr/bin/python3",["-c",`import gi

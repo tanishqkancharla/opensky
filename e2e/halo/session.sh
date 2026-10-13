@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 export DISPLAY=:1 XDG_SESSION_TYPE=x11 NO_AT_BRIDGE=0 GTK_MODULES=gail:atk-bridge
-export HALO_ARTIFACTS="$PWD/artifacts/halo"
+export HALO_ARTIFACTS="${HALO_ARTIFACTS:-$PWD/artifacts/halo}"
 mkdir -p "$HALO_ARTIFACTS"
 export XDG_RUNTIME_DIR="$(mktemp -d /tmp/halo-runtime.XXXXXX)"
 chmod 700 "$XDG_RUNTIME_DIR"
@@ -9,7 +9,14 @@ cleanup() {
   local status
   : > "$HALO_ARTIFACTS/supervisor-cleanup.txt"
   for pid in "${daemon_pid:-}" "${browser_daemon_pid:-}" "${editor_pid:-}" "${wm_pid:-}" "${panel_pid:-}" "${vnc_pid:-}" "${clipboard_pid:-}"; do
-    if [[ -n "$pid" ]]; then kill "$pid" 2>/dev/null || true; status=0; wait "$pid" 2>/dev/null || status=$?; printf "owned_pid=%s wait_status=%s exited=yes\n" "$pid" "$status" >> "$HALO_ARTIFACTS/supervisor-cleanup.txt"; fi
+    if [[ -n "$pid" ]]; then
+      kill "$pid" 2>/dev/null || true
+      for attempt in {1..50}; do if ! kill -0 "$pid" 2>/dev/null; then break; fi; sleep .1; done
+      forced=no
+      if kill -0 "$pid" 2>/dev/null; then kill -KILL "$pid" 2>/dev/null || true; forced=yes; fi
+      status=0; wait "$pid" 2>/dev/null || status=$?
+      printf "owned_pid=%s wait_status=%s exited=yes forced=%s\n" "$pid" "$status" "$forced" >> "$HALO_ARTIFACTS/supervisor-cleanup.txt"
+    fi
   done
   rm -rf "$XDG_RUNTIME_DIR"
 }
@@ -74,7 +81,9 @@ export HALO_BROWSER_SOCKET="$XDG_RUNTIME_DIR/browser.sock"
 "$OPENSKY_DRIVER_PATH" --socket "$HALO_BROWSER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/browser.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/browser-grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/browser-driver.log" 2>&1 & browser_daemon_pid=$!
 node e2e/halo/session-check.mjs
 if [[ "${HALO_NATIVE_CAPTURE_ONLY:-0}" == "1" ]]; then
-  node e2e/halo/capture.mjs
+  # Observation deadlines never claim daemon cancellation. This owned fixture
+  # has a bounded process-group watchdog; supervisor shutdown establishes exit.
+  timeout --signal=TERM --kill-after=5s 90s node e2e/halo/capture.mjs
 else
   node e2e/halo/contract.mjs
 fi

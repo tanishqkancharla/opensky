@@ -13,6 +13,10 @@ on:
         description: 'Native covered GTK capture control; does not certify Chrome'
         type: boolean
         default: false
+      halo_capture_matrix:
+        description: 'Build once and validate fresh compositor-off/on native desktops serially'
+        type: boolean
+        default: false
       halo_composited:
         description: 'Enable XFWM4 compositor for existing backing pixmap control'
         type: boolean
@@ -21,7 +25,7 @@ permissions:
   contents: read
 jobs:
   controls:
-    if: ${{ !(inputs.halo_contract || inputs.halo_capture) }}
+    if: ${{ !(inputs.halo_contract || inputs.halo_capture || inputs.halo_capture_matrix) }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -78,7 +82,7 @@ jobs:
           retention-days: 90
 
   halo:
-    if: ${{ inputs.halo_contract || inputs.halo_capture }}
+    if: ${{ inputs.halo_contract || inputs.halo_capture || inputs.halo_capture_matrix }}
     runs-on: ubuntu-24.04
     container: node:22-bookworm
     timeout-minutes: 40
@@ -127,12 +131,24 @@ jobs:
       - name: Exercise unprivileged TigerVNC desktop with a single shared bus
         env:
           HALO_NODE22_WHOLE_OUTCOME: ${{ steps.node22_whole.outcome }}
-          HALO_NATIVE_CAPTURE_ONLY: ${{ inputs.halo_capture && '1' || '0' }}
+          HALO_NATIVE_CAPTURE_ONLY: ${{ (inputs.halo_capture || inputs.halo_capture_matrix) && '1' || '0' }}
           HALO_COMPOSITOR: ${{ inputs.halo_composited && 'on' || 'off' }}
+          HALO_CAPTURE_MATRIX: ${{ inputs.halo_capture_matrix && '1' || '0' }}
         run: |
           useradd --create-home --uid 1001 halo
           chown -R halo:halo "$GITHUB_WORKSPACE"
-          runuser -u halo -- dbus-run-session -- bash e2e/halo/session.sh
+          if [[ "$HALO_CAPTURE_MATRIX" == "1" ]]; then
+            for compositor in off on; do
+              directory="$GITHUB_WORKSPACE/artifacts/halo/capture-$compositor"
+              mkdir -p "$directory"
+              cp artifacts/halo/identity.json artifacts/halo/driver-sha256.txt "$directory/"
+              chown -R halo:halo "$directory"
+              runuser -u halo -- env HALO_ARTIFACTS="$directory" HALO_COMPOSITOR="$compositor" \
+                dbus-run-session -- bash e2e/halo/session.sh
+            done
+          else
+            runuser -u halo -- dbus-run-session -- bash e2e/halo/session.sh
+          fi
       - name: Retain application effects, sandbox status, grants and original logs
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
