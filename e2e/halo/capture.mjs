@@ -41,6 +41,7 @@ try{
   execFileSync("wmctrl",["-ia",process.env.HALO_EDITOR_WINDOW]);
   await sleep(500);
   const visible=await capture("visible");assert.equal(visible.imageCount,1);
+  evidence.backingProbe=JSON.parse(execFileSync("/usr/bin/python3",["e2e/halo/capture-backing.py",String(windowId)],{encoding:"utf8"}));
   const inventory=(await driver.call("list_apps")).structured;
   const native=(Array.isArray(inventory)?inventory:inventory.apps).find(app=>app.pid===pid);assert.ok(native);
   app=await createCua(sdk,{emit:()=>undefined}).getApp(native.name);

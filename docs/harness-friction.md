@@ -5691,3 +5691,9 @@ The SDK now preserves bounded screenshotError on partial get_app_state results, 
 
 
 SET371 first hosted candidate: immutable f48b328a builds on Linux and all650 platform-linux unit cases pass (10desktop opt-ins ignored). The native visible frame is valid; the first new public facade screenshot then correctly refuses its undeclared output path before the covered phase. Add only nonrecursive files.write for the private pre-created capture-sdk-shots directory. Keep bounded editor PID/window grants and every original failure/permission assertion; do not widen desktop/app authority. Actual covered/composited outcomes remain pending.
+
+
+SET371 Mac recertification: eight selected recipes pass on the installed e60fc0f8 binary. FORMAT-N04/DIFF-N02 also pass, but the richer cleanup import stops on two fixture-cleanup wrappers that report only temporaryRemoved. Their nested exact owned document close/process-exit receipts are complete and current TextEdit inventories are empty. Retain the stopped original summaries and recover only these two database receipts through linked nested proofs. The three existing rich-text fixture wrappers now include that actual cleanup object; the strict matcher remains unchanged. Rerun the affected real owner with all original state/saved-file assertions, then the remaining recipes.
+
+
+SET371 compositor-off run38463756849 passes actual Node22/TigerVNC covered-window refusal, public partial AX/typed facade failure, unchanged foreground, restored image and legitimately dark image. The separate compositor-on run38463935516 still refuses covered pixels; XFWM4 logs a compositor-selection warning, and its source redirects root subwindows. Preserve this failure; add a read-only existing-pixmap/ancestor fixture probe before changing product capture. All26 required current Mac contracts now pass across the retained successful summaries, including strict cleanup after the wrapper repair.

@@ -68,7 +68,7 @@ test("FORMAT-N02: styled Unicode text stays readable and raw text stays selectab
   } finally {
     const cleanup = JSON.parse(await readFile(join(artifacts, "document/cleanup.json"), "utf8").catch(() => "null"));
     if (cleanup?.verifiedExited === true) await rm(directory, { recursive: true, force: true });
-    await writeFile(join(artifacts, "fixture-cleanup.json"), JSON.stringify({ temporaryRemoved: cleanup?.verifiedExited === true }));
+    await writeFile(join(artifacts, "fixture-cleanup.json"), JSON.stringify({ temporaryRemoved: cleanup?.verifiedExited === true, cleanup }));
   }
 }, process.env.OPENSKY_NATIVE_STYLE_REVIEW ? 210_000 : 120_000);
 
@@ -113,7 +113,7 @@ test("FORMAT-N04: normal diffs report same-editor bold and unbold without changi
   } finally {
     const cleanup = JSON.parse(await readFile(join(artifacts, "document/cleanup.json"), "utf8").catch(() => "null"));
     if (cleanup?.verifiedExited === true) await rm(directory, { recursive: true, force: true });
-    await writeFile(join(artifacts, "fixture-cleanup.json"), JSON.stringify({ temporaryRemoved: cleanup?.verifiedExited === true }));
+    await writeFile(join(artifacts, "fixture-cleanup.json"), JSON.stringify({ temporaryRemoved: cleanup?.verifiedExited === true, cleanup }));
   }
 }, 120_000);
 
@@ -151,6 +151,6 @@ test("DIFF-N02: multiline editor diffs retain all text and never expose content 
   } finally {
     const cleanup = JSON.parse(await readFile(join(artifacts, "document/cleanup.json"), "utf8").catch(() => "null"));
     if (cleanup?.verifiedExited === true) await rm(directory, { recursive: true, force: true });
-    await writeFile(join(artifacts, "fixture-cleanup.json"), JSON.stringify({ temporaryRemoved: cleanup?.verifiedExited === true }));
+    await writeFile(join(artifacts, "fixture-cleanup.json"), JSON.stringify({ temporaryRemoved: cleanup?.verifiedExited === true, cleanup }));
   }
 }, 120_000);
