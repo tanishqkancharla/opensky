@@ -4436,21 +4436,27 @@ export function sanitizeTreeText(tree: string, elements: SnapshotElement[] = [])
   for (const element of elements) {
     if (!element.role || !element.actions?.length) continue;
     const rendered = element.actions.map(action => action.replace(/^AX/, "").toLowerCase());
-    const readable = rendered.flatMap((action, index) => {
-      if (element.actions!.indexOf(element.actions![index]!) !== index) return [];
-      const descriptor = action.match(/^name:([^\n]+)\ntarget:[^\n]*\nselector:[^\n]*$/);
-      return [descriptor?.[1]?.trim() || action];
-    });
-    if (readable.length === rendered.length && readable.every((action, index) => action === rendered[index])) continue;
-    // The renderer puts actions last in this element's metadata. Require the
-    // complete raw list, current element index and role before rewriting it;
-    // never search-and-replace descriptor-like text inside an editable value.
-    const metadata = new RegExp(
-      `(^[ \\t]*- \\[${element.element_index}\\] ${escape(element.role)}\\b[^\\n]*)` +
-        `actions=\\[${escape(rendered.join(","))}\\]\\](?=\\n|$)`, "gm",
-    );
-    sanitized = sanitized.replace(metadata, (_match, prefix: string) =>
-      `${prefix}actions=[${readable.join(",")}]]`);
+    // Current driver Markdown omits intrinsic ShowMenu while the structured
+    // inventory keeps it. Match only these two attested display forms; raw
+    // action tokens/capabilities are never modified or inferred from text.
+    const variants = [rendered, rendered.filter((_, index) => element.actions![index] !== "AXShowMenu")];
+    for (const visible of variants) {
+      if (!visible.length) continue;
+      const readable = [...new Set(visible)].map(action => {
+        const descriptor = action.match(/^name:([^\n]+)\ntarget:[^\n]*\nselector:[^\n]*$/);
+        return descriptor?.[1]?.trim() || action;
+      });
+      if (readable.length === visible.length && readable.every((action, index) => action === visible[index])) continue;
+      // Require exact current index/role and the whole raw displayed action
+      // list at the metadata boundary. A quoted editable value stays literal.
+      const metadata = new RegExp(
+        `(^[ \t]*- \\[${element.element_index}\\] ${escape(element.role)}\\b[^\n]*)` +
+          `actions=\\[${escape(visible.join(","))}\\]\\](?=\n|$)`, "gm",
+      );
+      sanitized = sanitized.replace(metadata, (match, prefix: string) =>
+        quotedTreeRows(prefix).some(row => !row.closed) ? match :
+          `${prefix}actions=[${readable.join(",")}]]`);
+    }
   }
   return sanitized.split("\n").map(compactAuxiliaryHelp).join("\n");
 }

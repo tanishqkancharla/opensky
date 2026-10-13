@@ -238,5 +238,38 @@
     "Linux53 and exact sandboxed Chrome acceptance remain pending.",
     "Public signed/notarized driver binary distribution and npm registry publishing remain unavailable."
   ],
-  "finalOwnedCleanup": true
+  "finalOwnedCleanup": true,
+  "sdkCompatibilityFix": "0.2.4: structured implicit ShowMenu omission no longer strands custom-action metadata",
+  "postCompatibilityFixGates": [
+    {
+      "recipe": "mac-notes-selection-observation",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "SELECTION-OBS-N04"
+      ]
+    },
+    {
+      "recipe": "mac-finder-selected-label",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "FINDER-N06"
+      ]
+    },
+    {
+      "recipe": "mac-primary-button",
+      "status": "passed",
+      "cleanupPassed": true,
+      "passedContracts": [
+        "BUTTON-N01"
+      ]
+    }
+  ],
+  "notesOriginalCleanupFailure": {
+    "originalAppOnlyCleanupSummaryRetained": true,
+    "persistentArtifactRecoveredWithExactUUIDAndStyledBody": true,
+    "originalOwnedTemporaryHelpersRemoved": true,
+    "newNamedFixtureReceiptDispatchGuardVerified": true
+  }
 }

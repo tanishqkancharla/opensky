@@ -18,6 +18,11 @@ async function capture(phase){
   const focusBefore=active();
   const result=await driver.call("get_window_state",{pid,window_id:windowId,full_output:true,include_screenshot:true});
   const images=result.raw?.content?.filter(part=>part.type==="image")??[];
+  // CLI --raw projects its MCP image into structured screenshot_png_b64.
+  // Preserve both supported carriers without interpreting a missing frame.
+  if(!images.length&&typeof result.structured?.screenshot_png_b64==="string"){
+    images.push({data:result.structured.screenshot_png_b64,mimeType:"image/png"});
+  }
   assert.equal(active(),focusBefore,"background observation must not activate the editor");
   assert.ok(result.text.includes("replace me"),"real AT-SPI editor value remains visible");
   const data={phase,focusBefore,focusAfter:active(),pid,windowId,imageCount:images.length,

@@ -520,6 +520,19 @@ describe("opensky helpers", () => {
     const content = `- [19] AXTextArea = "actions=[${custom.toLowerCase()},pin list]]" [actions=[showmenu]]`;
     assert.equal(sanitizeTreeText(content,[{element_index:19,role:"AXTextArea",actions:["AXShowMenu"]}]),content);
     assert.equal(sanitizeTreeText(raw,[{...elements[0]!,element_index:99}]),raw);
+    // Driver0.35.2 omits the intrinsic ShowMenu hint in its Markdown while
+    // preserving that exact action in the structured live inventory.
+    const trash = "Name:trash\nTarget:0x0\nSelector:(null)";
+    const selectedCell: SnapshotElement = {element_index:8,role:"AXCell",actions:["AXShowMenu",trash],selected:true};
+    const compact = `- [8] AXCell [actions=[${trash.toLowerCase()}]]`;
+    const flattened = sanitizeTreeText(compact,[selectedCell]);
+    assert.equal(flattened,'- [8] AXCell [actions=[trash]]');
+    assert.equal(enrichTreeSemantics(flattened,[selectedCell]),'- [8] AXCell [actions=[trash]] [selected]');
+    assert.deepEqual(selectedCell.actions,["AXShowMenu",trash]);
+    const literal = `- [8] AXCell = "actions=[${trash.toLowerCase()}]]"`;
+    assert.equal(sanitizeTreeText(literal,[selectedCell]),literal);
+    assert.equal(sanitizeTreeText(compact,[{...selectedCell,actions:["AXPress",trash]}]),compact);
+
   });
 
 

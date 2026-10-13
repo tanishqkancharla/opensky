@@ -13,12 +13,12 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.3/opensky-cua-0.2.3.tgz
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.4/opensky-cua-0.2.4.tgz
 opensky doctor
 opensky skill install -g
 ```
 
-[OpenSky 0.2.3](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.3)
+[OpenSky 0.2.4](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.4)
 is distributed as the attached npm tarball with a published SHA-256 checksum.
 Registry publication awaits publisher authentication; the command above selects
 the released SDK directly. For a local project, omit `-g`.
