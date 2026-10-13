@@ -5778,3 +5778,8 @@ Ordinary source CI uses one Mac runner and global workflow concurrency. Candidat
 
 
 SET375 actual [run38483456981](https://github.com/tanishqkancharla/opensky/actions/runs/38483456981) on source91dfa9350324ce16534606e3a7c6927ae806399b completes both Linux model-free lanes: Node22 in68s and Node24 in62s, including build, current agent-library types, case listing and all497 SDK owners (two platform/runtime skips). The retained Mac lane remains queued; its acceptance is not inferred from Linux. Superseded old queued push checks were cancelled only after exact source/event/job review showed model-free validation, with original states retained. Desktop/model jobs remain serial, non-cancelling and explicitly opted in. This is actual CI feedback improvement, not GUI or benchmark acceptance.
+
+
+## SET376 — Establish sandbox startup readiness before driver builds
+
+Actual Halo contract38468017651 reaches Chrome only after a full driver build and native input assertions, then fails at namespace creation before an SDK tab opens. Add an opt-in ordinary-user Bookworm/Node22 preflight that probes clone/unshare user and user/PID/network namespace creation in isolated short-lived child processes, records exact errno, UID/capabilities/seccomp/LSM/kernel settings and real default-sandbox Chrome startup logs. Gate full contract builds on this prerequisite; capture-only controls remain separate. A dedicated probe lane avoids Rust/SDK/model/desktop setup. No policy changes, elevated runtime container, sandbox-disabling flags or input dispatch. A denied probe is an environment refusal, never browser GUI acceptance; EPERM alone does not identify which policy layer denied it. Validate action expressions and actual hosted diagnostics before claiming results.
