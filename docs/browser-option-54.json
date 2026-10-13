@@ -1,0 +1,78 @@
+{
+  "issue": 54,
+  "environment": "macOS, real isolated Chrome; sandbox bypass flags absent. Exact Linux TigerVNC retest pending.",
+  "driverBefore": {
+    "version": "0.34.1",
+    "source": "6bbc64f4b511dee293adb29da707107bd212ae4c"
+  },
+  "driverAfter": {
+    "version": "0.35.2",
+    "source": "455a0a9a3223d25c0214ff63e19218f39cbc5a6e",
+    "sha256": "256e1a671c6b159ebd03a293651fbd45f0c1c44e7529775d752c68685c311955"
+  },
+  "before": {
+    "before": {
+      "value": "Standard",
+      "clicks": 0,
+      "changes": 0,
+      "ariaChosen": false
+    },
+    "afterDefault": {
+      "value": "Standard",
+      "clicks": 1,
+      "changes": 0,
+      "ariaChosen": false
+    },
+    "afterAria": {
+      "value": "Standard",
+      "clicks": 1,
+      "changes": 0,
+      "ariaChosen": true
+    },
+    "afterForeground": {
+      "value": "Express",
+      "clicks": 3,
+      "changes": 1,
+      "ariaChosen": true
+    }
+  },
+  "after": {
+    "before": {
+      "value": "Standard",
+      "clicks": 0,
+      "changes": 0,
+      "ariaChosen": false
+    },
+    "defaultClickRefusal": {
+      "code": "browser_action_unavailable",
+      "message": "A native HTML option cannot be selected through synthetic DOM click; no click was dispatched. Use explicitly authorized foreground input on its visible parent select and keyboard navigation, then observe the selected value."
+    },
+    "afterDefault": {
+      "value": "Standard",
+      "clicks": 0,
+      "changes": 0,
+      "ariaChosen": false
+    },
+    "afterAria": {
+      "value": "Standard",
+      "clicks": 0,
+      "changes": 0,
+      "ariaChosen": true
+    },
+    "afterForeground": {
+      "value": "Express",
+      "clicks": 2,
+      "changes": 1,
+      "ariaChosen": true
+    }
+  },
+  "foregroundControl": "Exact native app activation before explicit trusted browser parent click, then native ArrowDown/Enter",
+  "applicationEffectsVerified": true,
+  "ownedCleanupVerified": true,
+  "paidAgentRuns": 0,
+  "limits": [
+    "No new Linux/Windows runtime acceptance claimed.",
+    "Foreground control explicitly uses guarded native application activation/keys on Mac; no automatic SDK route substitution.",
+    "Failed control drafts retained separately; first missed macOS native popup activation/key timing, then precise driver error was hidden by SDK parsing."
+  ]
+}

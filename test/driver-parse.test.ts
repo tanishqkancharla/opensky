@@ -109,6 +109,17 @@ describe("parseDriverRefusal", () => {
     });
   });
 
+  it("retains projected ActionResult errors only after an explicit refusal", () => {
+    const error={code:"browser_action_unavailable",hint:"Native HTML option selection is unsupported; no click was dispatched."};
+    assert.deepEqual(parseDriverRefusal({effect:"refused",error,summary:"producer summary"}),{code:error.code,message:error.hint});
+    assert.deepEqual(parseDriverRefusal({effect:"refused",error:{code:"route_unavailable"},summary:"Enable the explicitly authorized route."}),{code:"route_unavailable",message:"Enable the explicitly authorized route."});
+    assert.equal(parseDriverRefusal({error}),null);
+    assert.equal(parseDriverRefusal({effect:"confirmed",error}),null);
+    assert.equal(parseDriverRefusal({effect:"refused",error:{code:7,hint:[]}})?.code,undefined);
+    const unknown=parseDriverRefusal({effect:"refused",error,delivery:{mode:"unknown"}});
+    assert.match(unknown!.message,/Action delivery is unknown; do not retry automatically/);
+  });
+
   it("keeps unknown delivery terminal and bounds diagnostics without synthesizing a code", () => {
     const refusal = parseDriverRefusal({ effect: "refused", delivery: { mode: "unknown" } }, "long ".repeat(10_000) + "must not retry");
     assert.equal(refusal?.code, undefined);

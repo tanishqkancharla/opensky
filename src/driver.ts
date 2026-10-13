@@ -461,9 +461,11 @@ export function parseDriverRefusal(structured: unknown, diagnosticText?: string)
 
   const nested = explicitRefusal ?? structured;
   const reason = isRecord(nested.reason) ? nested.reason : undefined;
-  const code = firstNonemptyString(nested.code, reason?.code);
+  const projectedError = isRecord(structured.error) ? structured.error : undefined;
+  const code = firstNonemptyString(nested.code, reason?.code, projectedError?.code);
   const exactMessage = firstNonemptyString(
     reason?.message, reason?.detail, nested.reason, nested.message, structured.reason, structured.message,
+    projectedError?.hint, projectedError?.message, structured.summary,
   );
   const escalation = isRecord(structured.escalation) ? structured.escalation : undefined;
   // These are the closed public ActionResult enums, not an inferred refusal

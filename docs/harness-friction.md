@@ -5621,3 +5621,14 @@ Upstream's native window observation now defaults to one compact Markdown tree a
 The reconciled OpenSky driver advertises `windowStateViewCompatibility: "compact-v1"` in its existing offline identity. The SDK transport requests `full_output:true` for default native observations only when that marker is present. Existing drivers receive their previous arguments. Explicit `full_output`, `tree_format` or `since` are preserved; unsupported future markers refuse before daemon admission. Both the CLI client and persistent MCP transport share this compatibility path. No input is dispatched or replayed by this adaptation.
 
 New owner tests fail against the original SDK and pass against the candidate. They exercise both transports through an inert protocol fixture and verify caller objects and other tools remain unchanged. This is contract evidence, not application-level acceptance. New driver GUI, generated binding drift, platform gates and production Linux issue controls remain required.
+
+
+## SET363 — Precise projected refusal diagnostics and native HTML options
+
+**Status:** Implemented and verified on real Mac Chrome; exact production Linux retest pending.
+
+Driver 0.35.2's public ActionResult preserves refusal cause in `error.code` and `error.hint`. The SDK previously recognized `effect:refused` but ignored those fields and displayed only generic escalation. Actual native-option verification exposed this missing diagnostic; source unit fixtures alone had missed it.
+
+The parser now reads the projected error and producer summary only after an explicit structured refusal is established. Diagnostics remain bounded; unknown delivery warnings and strict pre-dispatch-only session revival rules remain unchanged. Bare/informational error objects do not classify an outcome or permit replay. The new owner fails before the repair; 497 SDK tests pass afterward (one Bun-only skip).
+
+[Application-level evidence](browser-option-54.json): the old driver's native HTML option click resolves, dispatches one event, and leaves Standard selected. The new common driver route refuses before any click event, and SDK reports `browser_action_unavailable` with the actionable hint. ARIA option click still changes its state. Exact native Chrome activation before the trusted parent-select click and native ArrowDown/Enter selects Express. Both old/new controlled runs clean up their owned apps, profiles and servers. This addresses [issue54](https://github.com/tanishqkancharla/opensky/issues/54) through honest refusal, without silently substituting synthetic input for trusted input. Mac popup control differs from ordinary page key injection. Exact TigerVNC/XFWM4 retesting and covered GTK capture issue53 remain pending.
