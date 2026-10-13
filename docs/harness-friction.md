@@ -5697,3 +5697,6 @@ SET371 Mac recertification: eight selected recipes pass on the installed e60fc0f
 
 
 SET371 compositor-off run38463756849 passes actual Node22/TigerVNC covered-window refusal, public partial AX/typed facade failure, unchanged foreground, restored image and legitimately dark image. The separate compositor-on run38463935516 still refuses covered pixels; XFWM4 logs a compositor-selection warning, and its source redirects root subwindows. Preserve this failure; add a read-only existing-pixmap/ancestor fixture probe before changing product capture. All26 required current Mac contracts now pass across the retained successful summaries, including strict cleanup after the wrapper repair.
+
+
+SET371 next driver candidate 85afe337f2a5585ce35003f3a1f0bf15d37d4e3e: crop the exact client interior from a proven existing backed ancestor, matching visual/depth and bounding shape. Ancestor backing availability is still being investigated by original probe38465461664; GitHub currently reports an active job with no step data. The corrected private pixmap diagnostic no longer translates a non-window drawable. E2E types and workflow expression validation pass; actual Linux compile/unit/GUI evidence must follow this new immutable pin.

@@ -37,13 +37,14 @@ comp.XCompositeNameWindowPixmap.argtypes = [D, W]; comp.XCompositeNameWindowPixm
 conn = X.XOpenDisplay(None)
 if not conn: raise RuntimeError("Owned fixture X11 connection unavailable")
 previous = X.XSetErrorHandler(C.cast(handle, D))
-def geometry(window):
+def geometry(window, drawable_is_window=True):
     root, x, y, width, height, border, depth = W(), I(), I(), U(), U(), U(), U()
     if not X.XGetGeometry(conn, window, C.byref(root), C.byref(x), C.byref(y),
                           C.byref(width), C.byref(height), C.byref(border), C.byref(depth)):
         raise RuntimeError("Fixture geometry unavailable")
     dx, dy, child = I(), I(), W()
-    X.XTranslateCoordinates(conn, window, root, 0, 0, C.byref(dx), C.byref(dy), C.byref(child))
+    if drawable_is_window:
+        X.XTranslateCoordinates(conn, window, root, 0, 0, C.byref(dx), C.byref(dy), C.byref(child))
     return {"root": root.value, "width": width.value, "height": height.value,
             "border": border.value, "depth": depth.value, "rootX": dx.value, "rootY": dy.value}
 try:
@@ -58,7 +59,7 @@ try:
         pixmap = comp.XCompositeNameWindowPixmap(conn, current); X.XSync(conn, 0)
         entry = {"window": current, "geometry": geom, "nameErrors": errors[:], "backed": not errors}
         if not errors:
-            entry["pixmapGeometry"] = geometry(pixmap)
+            entry["pixmapGeometry"] = geometry(pixmap, False)
             X.XFreePixmap(conn, pixmap); X.XSync(conn, 0)
         evidence["ancestors"].append(entry)
         root, parent, children, count = W(), W(), C.POINTER(W)(), U()
