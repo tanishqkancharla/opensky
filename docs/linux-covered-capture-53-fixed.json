@@ -1,0 +1,328 @@
+{
+  "sdkRuntimeTestPin": "6535e4db4577a5d3673bc5c6b260bb771a1ce9e3",
+  "driver": "34f3d150ea7ef86ce171ed7bb3724ce218448e64",
+  "driverVersion": "0.35.2",
+  "run": 38476505768,
+  "cases": [
+    {
+      "sdk": "6535e4db4577a5d3673bc5c6b260bb771a1ce9e3",
+      "driver": "34f3d150ea7ef86ce171ed7bb3724ce218448e64",
+      "node": "v22.23.3",
+      "environment": "Bookworm TigerVNC/X11 XFWM4 compositor off, shared D-Bus/AT-SPI, bounded exact editor grants",
+      "productionChromeVerified": false,
+      "phases": [
+        {
+          "phase": "visible",
+          "focusBefore": "6291459",
+          "focusAfter": "6291459",
+          "pid": 23347,
+          "windowId": 6291459,
+          "imageCount": 1,
+          "screenshotFrameValid": true,
+          "screenshotError": null
+        },
+        {
+          "phase": "covered",
+          "focusBefore": "16777219",
+          "focusAfter": "16777219",
+          "pid": 23347,
+          "windowId": 6291459,
+          "imageCount": 0,
+          "screenshotFrameValid": false,
+          "screenshotError": {
+            "code": "window_capture_unavailable",
+            "reason": "window_capture_unavailable: X11 window 6291459: Target pixels are occluded and have no existing Composite backing. Explicitly authorize bring_to_front, or enable a compositor that maintains backing pixels, then capture again.",
+            "suggestion": "Explicitly authorize bring_to_front, or use existing compositor backing; then obtain a fresh screenshot. No activation was performed.",
+            "window_id": 6291459
+          }
+        },
+        {
+          "phase": "restored",
+          "focusBefore": "6291459",
+          "focusAfter": "6291459",
+          "pid": 23347,
+          "windowId": 6291459,
+          "imageCount": 1,
+          "screenshotFrameValid": true,
+          "screenshotError": null
+        },
+        {
+          "phase": "dark",
+          "focusBefore": "6291459",
+          "focusAfter": "6291459",
+          "pid": 23347,
+          "windowId": 6291459,
+          "imageCount": 1,
+          "screenshotFrameValid": true,
+          "screenshotError": null
+        }
+      ],
+      "backingProbe": {
+        "compositorSelectionOwner": 0,
+        "ancestors": [
+          {
+            "window": 6291459,
+            "geometry": {
+              "root": 1306,
+              "width": 640,
+              "height": 480,
+              "border": 0,
+              "depth": 24,
+              "rootX": 85,
+              "rootY": 129,
+              "visual": 964,
+              "encoding": {
+                "class": 4,
+                "redMask": 16711680,
+                "greenMask": 65280,
+                "blueMask": 255,
+                "bitsPerRGB": 8
+              }
+            },
+            "nameErrors": [
+              {
+                "code": 8,
+                "request": 143,
+                "minor": 6
+              }
+            ],
+            "backed": false
+          },
+          {
+            "window": 2103771,
+            "geometry": {
+              "root": 1306,
+              "width": 650,
+              "height": 514,
+              "border": 0,
+              "depth": 24,
+              "rootX": 80,
+              "rootY": 100,
+              "visual": 33,
+              "encoding": {
+                "class": 4,
+                "redMask": 16711680,
+                "greenMask": 65280,
+                "blueMask": 255,
+                "bitsPerRGB": 8
+              }
+            },
+            "nameErrors": [
+              {
+                "code": 8,
+                "request": 143,
+                "minor": 6
+              }
+            ],
+            "backed": false
+          }
+        ]
+      },
+      "foregroundReference": {
+        "mean": 254.82002604166667,
+        "matchesDriver": {
+          "whole": 6.184895833333334e-05,
+          "text": 0.006597222222222222
+        }
+      },
+      "publicSDK": {
+        "AXPreserved": true,
+        "screenshot": null,
+        "screenshotError": {
+          "code": "window_capture_unavailable",
+          "message": "window_capture_unavailable: X11 window 6291459: Target pixels are occluded and have no existing Composite backing. Explicitly authorize bring_to_front, or enable a compositor that maintains backing pixels, then capture again.",
+          "suggestion": "Explicitly authorize bring_to_front, or use existing compositor backing; then obtain a fresh screenshot. No activation was performed."
+        },
+        "facadeTypedRefusal": true,
+        "foregroundPreserved": true
+      },
+      "acceptance": "actionable exact-window capture refusal with AT-SPI preserved",
+      "darkReference": {
+        "mean": 0.165810546875,
+        "matchesDriver": {
+          "whole": 0,
+          "text": 0
+        }
+      },
+      "legitimateDarkFrame": {
+        "captured": true,
+        "mean": 0.165810546875
+      },
+      "occluderExited": true,
+      "sessionEnded": true
+    },
+    {
+      "sdk": "6535e4db4577a5d3673bc5c6b260bb771a1ce9e3",
+      "driver": "34f3d150ea7ef86ce171ed7bb3724ce218448e64",
+      "node": "v22.23.3",
+      "environment": "Bookworm TigerVNC/X11 XFWM4 compositor on, shared D-Bus/AT-SPI, bounded exact editor grants",
+      "productionChromeVerified": false,
+      "phases": [
+        {
+          "phase": "visible",
+          "focusBefore": "6291459",
+          "focusAfter": "6291459",
+          "pid": 23684,
+          "windowId": 6291459,
+          "imageCount": 1,
+          "screenshotFrameValid": true,
+          "screenshotError": null
+        },
+        {
+          "phase": "covered",
+          "focusBefore": "16777219",
+          "focusAfter": "16777219",
+          "pid": 23684,
+          "windowId": 6291459,
+          "imageCount": 1,
+          "screenshotFrameValid": true,
+          "screenshotError": null
+        },
+        {
+          "phase": "restored",
+          "focusBefore": "6291459",
+          "focusAfter": "6291459",
+          "pid": 23684,
+          "windowId": 6291459,
+          "imageCount": 1,
+          "screenshotFrameValid": true,
+          "screenshotError": null
+        },
+        {
+          "phase": "dark",
+          "focusBefore": "6291459",
+          "focusAfter": "6291459",
+          "pid": 23684,
+          "windowId": 6291459,
+          "imageCount": 1,
+          "screenshotFrameValid": true,
+          "screenshotError": null
+        }
+      ],
+      "backingProbe": {
+        "compositorSelectionOwner": 2097442,
+        "ancestors": [
+          {
+            "window": 6291459,
+            "geometry": {
+              "root": 1306,
+              "width": 640,
+              "height": 480,
+              "border": 0,
+              "depth": 24,
+              "rootX": 85,
+              "rootY": 129,
+              "visual": 964,
+              "encoding": {
+                "class": 4,
+                "redMask": 16711680,
+                "greenMask": 65280,
+                "blueMask": 255,
+                "bitsPerRGB": 8
+              }
+            },
+            "nameErrors": [
+              {
+                "code": 8,
+                "request": 143,
+                "minor": 6
+              }
+            ],
+            "backed": false
+          },
+          {
+            "window": 2097925,
+            "geometry": {
+              "root": 1306,
+              "width": 650,
+              "height": 514,
+              "border": 0,
+              "depth": 24,
+              "rootX": 80,
+              "rootY": 100,
+              "visual": 33,
+              "encoding": {
+                "class": 4,
+                "redMask": 16711680,
+                "greenMask": 65280,
+                "blueMask": 255,
+                "bitsPerRGB": 8
+              }
+            },
+            "nameErrors": [],
+            "backed": true,
+            "pixmapGeometry": {
+              "root": 1306,
+              "width": 650,
+              "height": 514,
+              "border": 0,
+              "depth": 24,
+              "rootX": 0,
+              "rootY": 0
+            }
+          }
+        ]
+      },
+      "foregroundReference": {
+        "mean": 254.83499348958333,
+        "matchesDriver": {
+          "whole": 6.184895833333334e-05,
+          "text": 0.006597222222222222
+        }
+      },
+      "pixels": {
+        "covered": {
+          "dimensionsMatch": true,
+          "changedPixelFraction": 0.0007584635416666666,
+          "meanAbsoluteDifference": 3.0419401041666667
+        },
+        "restored": {
+          "dimensionsMatch": true,
+          "changedPixelFraction": 0,
+          "meanAbsoluteDifference": 0
+        },
+        "sizes": [
+          [
+            640,
+            480
+          ],
+          [
+            640,
+            480
+          ],
+          [
+            640,
+            480
+          ]
+        ],
+        "coveredReference": {
+          "whole": 0.0006966145833333334,
+          "text": 0
+        }
+      },
+      "acceptance": "preserved target pixels",
+      "darkReference": {
+        "mean": 0.16500651041666667,
+        "matchesDriver": {
+          "whole": 0,
+          "text": 0
+        }
+      },
+      "legitimateDarkFrame": {
+        "captured": true,
+        "mean": 0.165810546875
+      },
+      "occluderExited": true,
+      "sessionEnded": true
+    }
+  ],
+  "allOwnedCleanupPassed": true,
+  "sandboxedChromeVerified": false,
+  "beforeEvidence": "linux-covered-capture-53.json",
+  "limits": [
+    "Unbacked covered/clipped windows refuse; no activation, redirection or repaint.",
+    "Shaped/unusual incompatible encodings handled conservatively.",
+    "Wayland/Windows acceptance separate; sandboxed Chrome still unverified on hosted namespace-denied container.",
+    "No new paired benchmark score or agent cost from these model-free controls."
+  ]
+}

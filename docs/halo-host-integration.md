@@ -3,11 +3,12 @@
 ## Current pins and verification boundary
 
 The latest verified embedded SDK runtime is **`b32be18b6cbfbc2b390996dc1e872d980384eb8e`**;
-Driver **0.35.2**, source **`85afe337f2a5585ce35003f3a1f0bf15d37d4e3e`**.
+Driver **0.35.2**, current capture source **`34f3d150ea7ef86ce171ed7bb3724ce218448e64`**.
+The native typing/paste run below used85afe337; the later source changes only Linux capture.
 Later SDK main changes only the private capture fixture/workflow and evidence,
 not the TypeScript runtime. The public host queue, capability and foreground
-APIs below shipped in SDK0.2.0 and remain in0.2.4. The new native partial
-`screenshotError` API is a main candidate pending the next SDK release.
+APIs below shipped in SDK0.2.0 and remain in [SDK0.2.5](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.5).
+The new native partial `screenshotError` API is included in0.2.5.
 Registry `opensky-cua@0.1.2` does not identify these features. Use an immutable
 built checkout or the declared GitHub release tarball; record the selected
 binary's `--opensky-driver-identity` and avoid pairing it with another daemon.
@@ -334,3 +335,62 @@ resource policy in a single origin-scoped manifest is not supported by the
 pinned driver. The acceptance manifest's explicit display input grant is needed
 for the reported `type_text(scope="desktop")` reproduction, not a minimal grant
 for every Halo tool. No unrestricted mode is used in either instance.
+
+
+## Native screenshots and partial observations (SDK0.2.5)
+
+A native X11 window with existing compositor backing can be captured while
+covered. The driver resolves the current client ancestry and crops only the
+exact client interior; it does not redirect, repaint or activate the window.
+Without backing, covered/clipped/unviewable pixels are unavailable. The driver
+refuses rather than declaring an undefined or black placeholder a valid frame.
+Unusual incompatible pixel encodings and complex unbacked shapes remain
+conservative refusals. This is an X11 contract; Wayland acceptance is separate.
+
+The SDK preserves accessibility state in a partial result:
+
+```js
+import { createOpenSky, createCua } from 'opensky-cua';
+const sdk = createOpenSky({ target: 'linux', autoLaunch: false,
+  homeDir: '/home/halo/.opensky', screenshotDir: '/home/halo/.opensky/shots',
+  driverOptions: { binaryPath: '/opt/opensky/opensky-driver',
+    socket: process.env.HALO_NATIVE_SOCKET, autoStart: false } });
+const app = await createCua(sdk, { emit: () => undefined }).getApp('Mousepad');
+const state = await sdk.get_app_state({ app: app.toJSON().targetHandle,
+  includeScreenshot: true, disableDiff: true });
+if (state.screenshotError) {
+  console.log(state.text); // real AX data remains available
+  console.log(state.screenshotError.code, state.screenshotError.suggestion);
+  // state.screenshot is null; no stale image/file carrier is exposed.
+}
+await sdk.close();
+```
+
+`ScreenshotError` is an exported TypeScript type with `code`, `message` and an
+optional `suggestion`. `app.getAXStateAndScreenshot()` exposes this optional
+field too. A capture-only `app.getScreenshot()` throws `OpenSkyError` with the
+precise `window_capture_unavailable` code and bounded explanation. Failed
+capture retires the previous screenshot's coordinate authority: obtain a fresh
+valid screenshot before coordinate input. Current AX observations remain a
+separate source of element authority.
+
+Pre-create the host-owned screenshot directory and grant only that directory
+in the native daemon's bounded manifest, in addition to its reviewed display,
+application/window and tool grants:
+
+```yaml
+resources:
+  files:
+    write:
+      - dir: /home/halo/.opensky/shots
+        recursive: false
+```
+
+This is a manifest fragment, not a replacement for the complete native manifest.
+SDK native screenshot output outside the reviewed directory correctly refuses
+`bounded_resource_outside_manifest`. The separate origin-scoped browser manifest
+keeps its policy boundary. Run these SDK calls inside Halo's shared host queue;
+only explicitly authorized foreground input may change focus.
+
+
+[Final capture application run38476505768](https://github.com/tanishqkancharla/opensky/actions/runs/38476505768) verifies both compositor modes on SDK runtime6535e4db4577a5d3673bc5c6b260bb771a1ce9e3 / Driver34f3d150ea7ef86ce171ed7bb3724ce218448e64. Independent root pixels verify foreground text, covered text with compositing, restored and legitimate-dark text frames. Without backing, covered capture returns the precise error while AX and foreground remain intact. Both sets of seven supervisor processes and owned occluders exit, with no forced shutdown. [Before/after capture evidence](linux-covered-capture-53-fixed.json). Version/README/report changes for the release do not modify the tested TypeScript runtime.
