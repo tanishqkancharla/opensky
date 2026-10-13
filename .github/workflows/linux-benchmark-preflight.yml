@@ -129,6 +129,7 @@ jobs:
         run: |
           node --import tsx --test --test-timeout=60000 test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
       - name: Exercise unprivileged TigerVNC desktop with a single shared bus
+        shell: bash
         env:
           HALO_NODE22_WHOLE_OUTCOME: ${{ steps.node22_whole.outcome }}
           HALO_NATIVE_CAPTURE_ONLY: ${{ (inputs.halo_capture || inputs.halo_capture_matrix) && '1' || '0' }}
@@ -146,6 +147,8 @@ jobs:
               runuser -u halo -- env HALO_ARTIFACTS="$directory" HALO_COMPOSITOR="$compositor" \
                 dbus-run-session -- bash e2e/halo/session.sh
             done
+            test -s artifacts/halo/capture-off/capture-evidence.json
+            test -s artifacts/halo/capture-on/capture-evidence.json
           else
             runuser -u halo -- dbus-run-session -- bash e2e/halo/session.sh
           fi

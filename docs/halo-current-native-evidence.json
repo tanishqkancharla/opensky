@@ -1,0 +1,39 @@
+{
+  "sdk": "b32be18b6cbfbc2b390996dc1e872d980384eb8e",
+  "driver": "85afe337f2a5585ce35003f3a1f0bf15d37d4e3e",
+  "node": "v22.23.3",
+  "run": 38468017651,
+  "environment": "unprivileged uid1001 Bookworm TigerVNC/X11/XFWM4 shared D-Bus/AT-SPI; explicit bounded manifests",
+  "cancelAndCompletion": {
+    "partialCodepointsAt500ms": 41,
+    "deadlineState": "active",
+    "stopRequested": true,
+    "cancelledQueuedState": "cancelled",
+    "completeCodepoints": 1000,
+    "savedUTF8Bytes": 2750,
+    "savedSHA256": "c872011f389649a8fbaa0152b4ccf9bd5ae7f7f9c6ab7f7a995b54271fb07e6b",
+    "completionSeconds": 14.414,
+    "saveStartedAtTypingCompletion": true,
+    "noQueuedMarker": true
+  },
+  "paste": {
+    "availability": {
+      "availability": "unavailable",
+      "formats": [],
+      "reason": "native_paste is absent from the installed platform registry; permissions cannot add it.",
+      "clipboard": "untouched"
+    },
+    "textSelectionClipboardUnchanged": true,
+    "saved": "replace me",
+    "ASCIIAndUnicodeBothRefused": true
+  },
+  "sandboxedChrome": {
+    "verified": false,
+    "failure": "Unprivileged sandbox namespace creation denied by hosted container (Operation not permitted); no bypass attempted."
+  },
+  "originalWorkflowConclusion": "failure; native assertions pass, sandboxed browser acceptance unavailable",
+  "cleanup": {
+    "allSevenOwnedSupervisorProcessesExited": true,
+    "sessionsDetached": "owned browser/session detached; daemon belongs to session supervisor"
+  }
+}

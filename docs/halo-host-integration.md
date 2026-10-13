@@ -1,55 +1,55 @@
 # Persistent Linux host integration
 
-## Candidate and verification boundary
+## Current pins and verification boundary
 
-Tested SDK pin: **`acd09e61889797f7f79bd53fe9ae9aeb25f29c82`**
-([draft PR52](https://github.com/tanishqkancharla/opensky/pull/52)), based on latest
-SDK candidate `5b547875b3ed6bec7c0cd2e11882a9141c069cf3` (PR49).
-Driver: **0.34.1**, source **`dd5f9f539289f88b942939d0ee077f8c1d2899cd`**
-(Cua fork PR49), protocol1, tested Linux binary SHA256
-`d205b87bf9d1dd354cd589e38e1261a5c133362b24f2848020242a8070769a67`.
-Neither feature branch is a main/npm release; `opensky-cua@0.1.2` does not
-identify or include this contract. Build an immutable SDK checkout with
-`npm ci --ignore-scripts && npm run build`, then install that built package in
-the Node host. Record the SDK commit and driver `--opensky-driver-identity`;
-do not substitute the forks' default branches or a different running daemon.
+The latest verified embedded SDK runtime is **`b32be18b6cbfbc2b390996dc1e872d980384eb8e`**;
+Driver **0.35.2**, source **`85afe337f2a5585ce35003f3a1f0bf15d37d4e3e`**.
+Later SDK main changes only the private capture fixture/workflow and evidence,
+not the TypeScript runtime. The public host queue, capability and foreground
+APIs below shipped in SDK0.2.0 and remain in0.2.4. The new native partial
+`screenshotError` API is a main candidate pending the next SDK release.
+Registry `opensky-cua@0.1.2` does not identify these features. Use an immutable
+built checkout or the declared GitHub release tarball; record the selected
+binary's `--opensky-driver-identity` and avoid pairing it with another daemon.
 
-[Final application run38179361234](https://github.com/tanishqkancharla/opensky/actions/runs/38179361234)
-used Node22.23.3 in Debian Bookworm, TigerVNC1.12.0, XFWM4.18.0, AT-SPI2.46.0,
-an ordinary uid1001 and two explicit bounded manifests on one shared session
-D-Bus. It verified actual native effects:
+[Actual application run38468017651](https://github.com/tanishqkancharla/opensky/actions/runs/38468017651)
+used Node22.23.3 in Debian Bookworm, TigerVNC/X11, XFWM4, real AT-SPI,
+uid1001 and two explicit bounded manifests on one shared session D-Bus.
+[Compact before/after evidence](halo-current-native-evidence.json):
 
 | Check | Application evidence |
 |---|---|
-| 500ms host wait deadline and active Stop | 42 of1000 Unicode codepoints visible; query stayed active with stopRequested=true |
-| Completion and serialization | typing finished after16.904s; exactly1000 codepoints/2750 UTF-8 bytes saved; following Save began only at typing completion |
-| Queued Stop | cancelled callback never dispatched; no MUST-NOT-APPEAR input in buffer/saved file |
-| ASCII and Unicode native paste | unsupported_native_paste; original text/selection/clipboard and saved `replace me` unchanged |
-| Real AT-SPI and cleanup | full before/after AX trees contain app text; seven owned supervisor processes exited |
+| 500ms host wait deadline and active Stop | 41 of1000 Unicode codepoints visible; action stayed active with stopRequested=true |
+| Completion and serialization | typing finished after14.414s; exactly1000 codepoints/2750 UTF-8 bytes saved; following Save began at typing completion |
+| Queued Stop | cancelled callback did not dispatch; MUST-NOT-APPEAR absent from the saved file |
+| ASCII and Unicode native paste | unsupported_native_paste; exact text, selection and clipboard unchanged; saved document remains `replace me` |
+| Cleanup | both SDK domains detached; all seven owned supervisor processes exited |
 
-**Sandboxed browser GUI acceptance remains unverified.** Chrome155.0.8059.39
-was launched without sandbox-disabling flags, but the container denied its
-sandbox namespace creation with `Operation not permitted`, before an owned SDK
-browser tab could open. No trusted click/scroll, focus change, default-route
-refusal or renderer sandbox assertion earned runtime acceptance. This is an
-environment limitation, not evidence that Halo's sandboxed Chrome fails. No
-privileged mode, `/dev/uinput` or sandbox-disabling workaround was used. The
-workflow intentionally remains failed; do not interpret native success as full
-production compatibility.
+All262 required embedded SDK owners pass on Node22; all650 Linux platform units
+pass (10 desktop opt-ins ignored). Whole Node22 diagnostics retain494 passes,
+two AsyncRepl interruption Node/V8 assertion failures and two skips. Those CLI
+failures are separate from SDK embedding; they remain visible rather than being
+reported as successful validation.
 
-The required embedded SDK contracts passed259/259 on Node22. Local Node24.19
-whole-suite validation passed491, with one Bun-only skip. Foreground exact/stale
-forwarding, unknown-completion fencing and injected-transport capability
-behavior have deterministic contract coverage. Whole Node22 diagnostics retain
-488 passes,2 CLI REPL Node/V8 SIGABRT failures and2 skips; CLI repairs are separate
-from SDK embedding. Ordinary SDK CI passed at the tested pin. Original failed
-attempts remain recorded in the friction ledger.
+**Sandboxed browser GUI acceptance remains unverified.** The real Chrome probe
+uses its sandbox, but the hosted container denies namespace creation with
+`Operation not permitted` before an owned SDK browser tab opens. No trusted
+click/scroll, focus change, default-route refusal or renderer sandbox assertion
+earns runtime acceptance. No privileged mode, `/dev/uinput`, or sandbox bypass
+was used. This is an environment limitation, not evidence that Halo's sandboxed
+Chrome fails. The workflow intentionally remains failed, despite its native
+assertions passing.
 
-Reproduce with `linux-benchmark-preflight.yml` on the immutable SDK branch and
-`halo_contract=true`. Files in `e2e/halo/` retain `evidence.json`, saved files,
-full AX snapshots, explicit manifests, package/identity receipts and original
-logs as `halo-bookworm-contract`. A successful unit run or missing browser
-result does not establish sandboxed Chrome compatibility.
+The original native acceptance at SDK`acd09e61889797f7f79bd53fe9ae9aeb25f29c82` /
+Driver0.34.1`dd5f9f539289f88b942939d0ee077f8c1d2899cd` remains historical evidence
+in [run38179361234](https://github.com/tanishqkancharla/opensky/actions/runs/38179361234).
+Its feature branches have since merged; they are no longer draft-only contracts.
+
+Reproduce via `linux-benchmark-preflight.yml` with `halo_contract=true` at the
+explicit source pin. `e2e/halo/` retains full AX, saved files, manifests,
+identity/package receipts and original logs as `halo-bookworm-contract`.
+A missing browser result or passing unit suite does not establish production
+Chrome compatibility.
 
 ## Ownership and cancellation contract
 
