@@ -5721,3 +5721,38 @@ SET371 text oracle calibration: actual visible/covered PNG inspection confirms G
 
 
 SET371 final38476505768 passes both actual modes on Driver34f3d150 / SDK6535e4db. Independent X11 root crops verify foreground and dark glyphs; covered composited glyphs match at the calibrated fixture threshold, restored frames remain stable. Noncomposited covered reads preserve actual AX/foreground and return window_capture_unavailable through both public SDK paths. All14 supervisor processes and both owned occluders exit, no forced termination. Original corrupt-frame, permission, incomplete-matrix, format and strict-color failures remain retained. SDK0.2.5 packages this verified partial/error contract; version/README/evidence changes are non-runtime. Node22 strict AsyncRepl failures are now tracked separately in issue56. Mac normal-desktop readiness refuses before agent admission; no new benchmark-agent cost or score is claimed.
+
+
+## SET372 — Preserve strict cell attribution without Node legacy async hooks
+
+Node22.23.3 actual SDK promise-runaway probes print a timeout then exit SIGABRT;
+process exit, not final stdout, is decisive. Removing ALS in a private control
+avoids the abort but is not a repair because it loses stale-generation tracking.
+Node's experimental async-context-frame flag works only without external legacy
+hooks; an explicit external async hook reproduces the upstream VM interruption
+failure on Node22 and Node24 too. These failures remain retained.
+
+The candidate uses one weak V8 promise-context tracker for strict generation and
+artifact ownership, including nested scopes. Every timed VM turn restores its
+local attribution stack after timeout, while existing poisoning/revocation
+remains. The original three externally bounded subprocess owners pass on plain
+Node22, without removing timeout enforcement or requiring a startup flag. Extend
+the existing lifetime owner: a completed cell's deferred continuation cannot
+borrow the next active generation; disabling attribution makes the keeper fail.
+A real artifact-writer owner verifies nested/parallel scope and strict realm
+awaits.23 focused owners pass on Node22 and Node24, one Bun-only case skipped.
+Whole suites and actual strict computer-use bridge acceptance remain required.
+External async_hooks can still trigger Node's VM abort independently of OpenSky;
+this concrete host/runtime limitation remains unresolved, and56 stays open.
+
+## SET373 — Require explicit opt-in for untracked API eval spending
+
+The old nightly computer-use workflow can reach API-funded Terra evaluation
+outside the campaign's serial CLI budget/controller. Scheduled and ordinary
+runs now remain model-free validation. API-funded evals require explicit manual
+run_models=true; no secret, permission or tracked budget is changed. Edited
+workflow expression validation passes. This does not dispatch a model or claim
+new desktop evidence.
+
+
+SET372 candidate whole existing suites now pass498/499 on plain Node22.23.3 and bundled Node24, one Bun-only skip. Build and E2E types pass. This is contract evidence, not desktop acceptance. The bounded TigerVNC supervisor now runs an actual strict CUA bridge with two persistent cells, a retained exact app handle, real AT-SPI text and artifact-owner readback before its existing capture matrix. No input is injected by this bridge observation control. External host async_hooks remain a separately reproduced Node VM limitation.

@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { AsyncLocalStorage } from "node:async_hooks";
+import { PromiseContext } from "./promise-context.js";
 import { inspect } from "node:util";
 import vm from "node:vm";
 import repl from "node:repl";
@@ -42,7 +42,7 @@ export class AsyncRepl {
   private readonly timeoutMs: number;
   private readonly awaitTimeoutMs: number | null;
   private readonly strictSandbox: boolean;
-  private readonly strictEvaluation = new AsyncLocalStorage<number>();
+  private readonly strictEvaluation = new PromiseContext<number>();
   private readonly activeEvaluations = new Set<number>();
   private evaluationSequence = 0;
   private poisonedReason: string | undefined;
@@ -103,7 +103,7 @@ export class AsyncRepl {
       }
       extensionNames.push(key);
       extensionValues.push((...args: unknown[]) => {
-        // Cross-realm awaits can lose AsyncLocalStorage context. The
+        // Cross-realm awaits can lose promise attribution. The
         // evaluator queue permits exactly one active generation, and any
         // timeout poisons the REPL before another can begin, so this fallback
         // cannot authorize a stale continuation as a newer evaluation.
@@ -149,7 +149,8 @@ export class AsyncRepl {
           ? this.strictEvaluation.run(generation, () => script.runInContext(this.sandbox, { timeout: this.timeoutMs }))
           : script.runInContext(this.sandbox, { timeout: this.timeoutMs });
         const value = this.strictSandbox
-          ? await awaitContextValue(evaluated, this.sandbox, this.timeoutMs, this.awaitTimeoutMs)
+          ? await awaitContextValue(evaluated, this.sandbox, this.timeoutMs, this.awaitTimeoutMs,
+              (turn) => this.strictEvaluation.run(generation, turn))
           : await withDeadline(Promise.resolve(evaluated), this.awaitTimeoutMs);
         if (this.strictSandbox) {
           logs.push(...Array.from(this.sandbox.__openskyLogs as unknown[], (value) => String(value)));
@@ -470,7 +471,7 @@ async function withDeadline<T>(promise: Promise<T>, timeoutMs: number | null): P
   }
 }
 
-async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs: number, awaitTimeoutMs: number | null): Promise<unknown> {
+async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs: number, awaitTimeoutMs: number | null, runTurn: (turn: () => unknown) => unknown): Promise<unknown> {
   if (!value || (typeof value !== "object" && typeof value !== "function") || typeof (value as { then?: unknown }).then !== "function") {
     return value;
   }
@@ -488,7 +489,7 @@ async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs:
     if (remaining <= 0) throw new Error(`Evaluation timed out after ${awaitTimeoutMs}ms`);
     // With microtaskMode=afterEvaluate this empty turn drains realm-created
     // Promise continuations under vm's synchronous timeout accounting.
-    vm.runInContext("", context, { timeout: Math.max(1, remaining) });
+    runTurn(() => vm.runInContext("", context, { timeout: Math.max(1, remaining) }));
     // While host actions are pending, repeatedly draining an idle realm spins
     // setImmediate plus VM watchdogs at full speed. Yield for 1ms between
     // drains; each drain still enforces its synchronous/microtask CPU timeout.

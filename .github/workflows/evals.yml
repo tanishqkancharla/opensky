@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_models:
+        description: 'Explicit API-funded model eval opt-in; separate from tracked campaign CLI budget'
+        type: boolean
+        default: false
   schedule:
     - cron: '23 9 * * *'
 
@@ -31,8 +36,10 @@ jobs:
       - run: npm test
 
   real-driver:
-    # Never expose model credentials to pull-request code. Scheduled runs use default branch.
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    # Scheduled/ordinary runs validate without spending model credits.
+    # API-funded evaluations require an explicit manual opt-in; campaign agents
+    # remain serial Codex CLI runs under the parent budget/cleanup controller.
+    if: github.event_name == 'workflow_dispatch' && inputs.run_models == true
     needs: validate
     runs-on: macos-15
     timeout-minutes: 60

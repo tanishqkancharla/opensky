@@ -220,6 +220,31 @@ describe("async REPL wrapper", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     assert.deepEqual(calls, ["late"], "the continuation's second host call must be rejected after revocation");
     await assert.rejects(() => repl.evaluate("return 2"), /evaluator is poisoned/);
+
+    // A completed cell's deferred continuation must not borrow the next cell's
+    // generation, even when it wakes while that cell is legitimately active.
+    const later = new AsyncRepl({ allowNodeApis: false, strictSandbox: true,
+      timeoutMs: 100, awaitTimeoutMs: 2000 });
+    let releaseOld!: () => void, releaseCurrent!: () => void, enteredCurrent!: () => void;
+    const oldWait = new Promise<void>(resolve => { releaseOld = resolve; });
+    const currentWait = new Promise<void>(resolve => { releaseCurrent = resolve; });
+    const currentEntered = new Promise<void>(resolve => { enteredCurrent = resolve; });
+    let staleCalls = 0;
+    later.installContextFactory("bridge", `return Object.freeze({
+      old: () => new Promise((resolve, reject) => __old().then(resolve, reject)),
+      current: () => new Promise((resolve, reject) => __current().then(resolve, reject)),
+      ping: () => __ping()
+    });`, { __old: () => oldWait, __current: () => { enteredCurrent(); return currentWait; },
+      __ping: () => { staleCalls++; return "unexpected"; } });
+    await later.evaluate("bridge.old().then(() => bridge.ping()).catch(error => { state.staleError = String(error); }); return 1");
+    const current = later.evaluate("await bridge.current(); return state.staleError");
+    await currentEntered;
+    releaseOld();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    releaseCurrent();
+    const observed = await current;
+    assert.equal(staleCalls, 0);
+    assert.match(String(observed.value), /capability is unavailable outside its active evaluation/);
   });
 
   for (const kind of ["sync", "then", "async"]) {

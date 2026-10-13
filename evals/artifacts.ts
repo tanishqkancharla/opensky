@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from "node:async_hooks";
+import { PromiseContext } from "../src/promise-context.js";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
@@ -9,7 +9,7 @@ export type EvalArtifactPaths = {
   judgeTranscript: string;
 };
 
-const artifactPathsStorage = new AsyncLocalStorage<EvalArtifactPaths>();
+const artifactPathsStorage = new PromiseContext<EvalArtifactPaths>();
 
 export function getEvalArtifactPaths(): EvalArtifactPaths | null {
   return artifactPathsStorage.getStore() ?? null;

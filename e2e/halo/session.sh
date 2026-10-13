@@ -80,6 +80,7 @@ export HALO_DRIVER_SOCKET="$XDG_RUNTIME_DIR/driver.sock"
 export HALO_BROWSER_SOCKET="$XDG_RUNTIME_DIR/browser.sock"
 "$OPENSKY_DRIVER_PATH" --socket "$HALO_BROWSER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/browser.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/browser-grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/browser-driver.log" 2>&1 & browser_daemon_pid=$!
 node e2e/halo/session-check.mjs
+timeout --signal=TERM --kill-after=5s 60s node --import tsx e2e/halo/strict-bridge.mjs
 if [[ "${HALO_NATIVE_CAPTURE_ONLY:-0}" == "1" ]]; then
   # Observation deadlines never claim daemon cancellation. This owned fixture
   # has a bounded process-group watchdog; supervisor shutdown establishes exit.
