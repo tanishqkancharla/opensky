@@ -13,6 +13,18 @@ D, W, I, U = C.c_void_p, C.c_ulong, C.c_int, C.c_uint
 class XError(C.Structure):
     _fields_ = [("type", I), ("display", D), ("resourceid", W), ("serial", W),
                 ("error_code", C.c_ubyte), ("request_code", C.c_ubyte), ("minor_code", C.c_ubyte)]
+class Visual(C.Structure):
+    _fields_ = [("ext_data", D), ("visualid", W), ("class_", I),
+                ("red_mask", W), ("green_mask", W), ("blue_mask", W),
+                ("bits_per_rgb", I), ("map_entries", I)]
+class Attributes(C.Structure):
+    _fields_ = [("x", I), ("y", I), ("width", I), ("height", I),
+                ("border_width", I), ("depth", I), ("visual", C.POINTER(Visual)),
+                ("root", W), ("class_", I), ("bit_gravity", I), ("win_gravity", I),
+                ("backing_store", I), ("backing_planes", W), ("backing_pixel", W),
+                ("save_under", I), ("colormap", W), ("map_installed", I), ("map_state", I),
+                ("all_event_masks", C.c_long), ("your_event_mask", C.c_long),
+                ("do_not_propagate_mask", C.c_long), ("override_redirect", I), ("screen", D)]
 handler_type = C.CFUNCTYPE(I, D, C.POINTER(XError))
 errors = []
 @handler_type
@@ -30,6 +42,7 @@ X.XGetSelectionOwner.argtypes = [D, W]; X.XGetSelectionOwner.restype = W
 X.XGetGeometry.argtypes = [D, W, C.POINTER(W), C.POINTER(I), C.POINTER(I),
                           C.POINTER(U), C.POINTER(U), C.POINTER(U), C.POINTER(U)]
 X.XQueryTree.argtypes = [D, W, C.POINTER(W), C.POINTER(W), C.POINTER(C.POINTER(W)), C.POINTER(U)]
+X.XGetWindowAttributes.argtypes = [D, W, C.POINTER(Attributes)]
 X.XFree.argtypes = [D]
 X.XFreePixmap.argtypes = [D, W]
 X.XTranslateCoordinates.argtypes = [D, W, W, I, I, C.POINTER(I), C.POINTER(I), C.POINTER(W)]
@@ -45,8 +58,18 @@ def geometry(window, drawable_is_window=True):
     dx, dy, child = I(), I(), W()
     if drawable_is_window:
         X.XTranslateCoordinates(conn, window, root, 0, 0, C.byref(dx), C.byref(dy), C.byref(child))
-    return {"root": root.value, "width": width.value, "height": height.value,
-            "border": border.value, "depth": depth.value, "rootX": dx.value, "rootY": dy.value}
+    result = {"root": root.value, "width": width.value, "height": height.value,
+              "border": border.value, "depth": depth.value, "rootX": dx.value, "rootY": dy.value}
+    if drawable_is_window:
+        attrs = Attributes()
+        if not X.XGetWindowAttributes(conn, window, C.byref(attrs)):
+            raise RuntimeError("Fixture visual unavailable")
+        visual = attrs.visual.contents
+        result["visual"] = visual.visualid
+        result["encoding"] = {"class": visual.class_, "redMask": visual.red_mask,
+                              "greenMask": visual.green_mask, "blueMask": visual.blue_mask,
+                              "bitsPerRGB": visual.bits_per_rgb}
+    return result
 try:
     X.XGrabServer(conn)
     atom = X.XInternAtom(conn, b"_NET_WM_CM_S0", 0)

@@ -5709,3 +5709,6 @@ SET371 latest full Halo control38468017651, SDKb32be18b/Driver85afe337: all262 e
 
 
 SET371 first matrix38469093845 is green but has only flat compositor-off artifacts. Its container step defaults to sh, so the Bash [[ branch is not executed; this is incomplete coverage, not composited acceptance. Set shell:bash explicitly and require both selected scenario evidence files before success. Retain the original flat artifacts, and rerun the actual paired matrix. The product runtime is unchanged.
+
+
+SET371 proper matrix38471244617 retains successful off artifacts and a real on refusal before pixels: existing backing geometry/depth/visual guard is too strict for the WM format. Driver34f3d150ea7ef86ce171ed7bb3724ce218448e64 compares TrueColor RGB encodings, uses actual source depth/visual, retains exact crop/shape checks and reports precise format details on refusal. Move the private ancestry/encoding probe before first capture so a refused initial frame still has decisive format evidence. SDK0.2.5 candidate passes its whole497 owners (one Bun-only skip), build and E2E types, but no release/composited acceptance is claimed yet. The previous unbounded single on run38466049066 ended cancelled and has no acceptance artifact; new bounded matrix evidence must decide behavior.
