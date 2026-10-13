@@ -5610,3 +5610,14 @@ Five fresh serial isolated Terra pairs completed on SDK85b64ff and installed Dri
 New [issue53](https://github.com/tanishqkancharla/opensky/issues/53) reports black covered GTK captures on noncomposited TigerVNC/XFWM4. New [issue54](https://github.com/tanishqkancharla/opensky/issues/54) reports default synthetic HTML option clicks resolving without selecting. Their reporter used sandboxed Chrome and standard explicit grants; that evidence establishes a working foreground browser control in that environment, independent of the previous hosted namespace failure.
 
 Upstream Driver0.35.2 tagad694f82aaaa12e67257e4510837fc1f6cfc9484 was checked first. Its immutable browser/tools.rs still uses this.click() for the DOM-event route; Linux capture.rs has no Composite/named-pixmap path. Neither report is established as fixed by the new release. Next: reconcile the latest driver with retained fork corrections, then run actual covered-window and native-option controls. Preserve focus and exact/stale target guards; return an actionable refusal when an effect or target pixels cannot be delivered. No black-pixel heuristic, silent foreground activation, synthetic fallback for trusted input, or sandbox bypass is authorized by these fixes.
+
+
+## SET362 — Driver 0.35.2 observation integration
+
+**Status:** Implemented candidate; focused SDK contracts pass, actual new-driver GUI verification pending.
+
+Upstream's native window observation now defaults to one compact Markdown tree and a smaller walk budget. OpenSky consumes structured elements, background capabilities and its own semantic/diff projection; silently accepting the new default would lose input and collection data.
+
+The reconciled OpenSky driver advertises `windowStateViewCompatibility: "compact-v1"` in its existing offline identity. The SDK transport requests `full_output:true` for default native observations only when that marker is present. Existing drivers receive their previous arguments. Explicit `full_output`, `tree_format` or `since` are preserved; unsupported future markers refuse before daemon admission. Both the CLI client and persistent MCP transport share this compatibility path. No input is dispatched or replayed by this adaptation.
+
+New owner tests fail against the original SDK and pass against the candidate. They exercise both transports through an inert protocol fixture and verify caller objects and other tools remain unchanged. This is contract evidence, not application-level acceptance. New driver GUI, generated binding drift, platform gates and production Linux issue controls remain required.

@@ -6,7 +6,7 @@ if (process.argv.slice(2).join(" ") === "--version") {
 }
 
 if (process.argv.slice(2).join(" ") === "--opensky-driver-identity") {
-  process.stdout.write(JSON.stringify({product: "opensky-driver", protocolVersion: 1, ...(["token-only", "token-only-start"].includes(process.env.MCP_FIXTURE_MODE) ? {inputCompatibility: "token-only-v1"} : {})}) + "\n");
+  process.stdout.write(JSON.stringify({product: "opensky-driver", protocolVersion: 1, ...(process.env.MCP_FIXTURE_WINDOW_STATE_VIEW ? {windowStateViewCompatibility: process.env.MCP_FIXTURE_WINDOW_STATE_VIEW} : {}), ...(["token-only", "token-only-start"].includes(process.env.MCP_FIXTURE_MODE) ? {inputCompatibility: "token-only-v1"} : {})}) + "\n");
   process.exit(0);
 }
 

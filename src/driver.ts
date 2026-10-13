@@ -41,6 +41,7 @@ export class CuaDriverClient implements DriverClient {
   readonly sessionOwnership = { kind: "cli-explicit" } as const;
   private daemonReady = false;
   private tokenOnlyArguments = false;
+  private compactWindowStateViews = false;
   private verifiedBinary?: { path: string; promise: Promise<string> };
 
   private readonly callTimeoutMs: number | null;
@@ -103,9 +104,16 @@ export class CuaDriverClient implements DriverClient {
     return parsed.result;
   }
 
-  /** Normalize only retired aliases when the verified helper explicitly declares them. */
+  /** Preserve SDK observation shape and normalize aliases only when the verified helper declares the contracts. */
   prepareArguments(args: Record<string, unknown>, tool?: string): Record<string, unknown> {
     const payload = { ...args };
+    // OpenSky consumes the complete structured native observation and applies
+    // its own projection/diff. New drivers advertise their compact default;
+    // preserve the SDK response contract without guessing by version number.
+    if (tool === "get_window_state" && this.compactWindowStateViews &&
+        payload.full_output === undefined && payload.tree_format === undefined && payload.since === undefined) {
+      payload.full_output = true;
+    }
     if (!this.tokenOnlyArguments) return payload;
     if (payload.element_index !== undefined && typeof payload.element_token !== "string") {
       throw driverError("This Driver requires a fresh element_token; observe again before acting on an index.", "invalid_element_target");
@@ -167,6 +175,10 @@ export class CuaDriverClient implements DriverClient {
       if (result.code !== 0 || !identity || identity.product !== "opensky-driver" || identity.protocolVersion !== 1) {
         throw driverError(`The helper at ${JSON.stringify(binary)} is not a compatible OpenSky Driver. Upstream Cua Driver and pre-rename local builds are not supported. ${INSTALL_HELP}`);
       }
+      if (identity.windowStateViewCompatibility !== undefined && identity.windowStateViewCompatibility !== "compact-v1") {
+        throw driverError("The helper advertises an unsupported native window observation contract; upgrade the SDK before using it.", "unsupported_driver_observation_contract");
+      }
+      this.compactWindowStateViews = identity.windowStateViewCompatibility === "compact-v1";
       this.tokenOnlyArguments = identity.inputCompatibility === "token-only-v1";
       return binary;
     })();
