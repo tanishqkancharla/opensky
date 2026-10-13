@@ -5715,3 +5715,6 @@ SET371 proper matrix38471244617 retains successful off artifacts and a real on r
 
 
 SET371 acceptance oracle improvement: comparing the driver's covered pixels only to its own foreground pixels could accept two identically corrupt frames. Add an independent X11 root foreground crop and compare the actual text ROI as well as the whole image. The expected light GTK phase must be genuinely light; this is a fixture oracle, never a product darkness heuristic. Matrix source248e014 remains a format-diagnostic run; final acceptance must also pass this independent application-pixel oracle.
+
+
+SET371 text oracle calibration: actual visible/covered PNG inspection confirms GTK changes inactive text from black to gray and the light background slightly, while preserving glyph positions. Use a64-channel difference threshold only in the small text ROI, retaining its2% changed-location bound; whole-image threshold remains16. Missing, shifted or black/blank text frames still fail against the independent root reference. Product capture has no image thresholds. Retain every original run and require a fresh real matrix after this fixture change.

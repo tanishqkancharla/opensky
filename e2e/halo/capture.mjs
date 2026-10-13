@@ -59,9 +59,11 @@ x,y,w,h=map(int,sys.argv[2:]);im=ImageGrab.grab(xdisplay=os.environ['DISPLAY']).
 import sys,json
 a=Image.open(sys.argv[1]).convert('RGB');b=Image.open(sys.argv[2]).convert('RGB')
 assert a.size==b.size
-def compare(x,y):
- d=ImageChops.difference(x,y);return sum(1 for p in d.getdata() if max(p)>16)/(x.width*x.height)
-print(json.dumps({'whole':compare(a,b),'text':compare(a.crop((0,0,120,24)),b.crop((0,0,120,24)))}))`;
+def compare(x,y,threshold=16):
+ d=ImageChops.difference(x,y);return sum(1 for p in d.getdata() if max(p)>threshold)/(x.width*x.height)
+# GTK paints inactive text gray rather than black. Preserve the actual glyph
+# positions while allowing that legitimate <=64 channel style change.
+print(json.dumps({'whole':compare(a,b),'text':compare(a.crop((0,0,120,24)),b.crop((0,0,120,24)),64)}))`;
   evidence.foregroundReference.matchesDriver=JSON.parse(execFileSync("/usr/bin/python3",["-c",referenceScript,join(out,"capture-foreground-reference.png"),join(out,"capture-visible.png")],{encoding:"utf8"}));
   assert.ok(evidence.foregroundReference.matchesDriver.whole<0.02&&evidence.foregroundReference.matchesDriver.text<0.02,"driver foreground frame matches independent root pixels including the actual text ROI");
   const inventory=(await driver.call("list_apps")).structured;
