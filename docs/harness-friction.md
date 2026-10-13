@@ -5498,3 +5498,32 @@ Chrome155 sandbox namespace initialization fails EPERM before SDK launch,
 without sandbox bypass or privileged workaround. Whole Node22 diagnostic keeps
 488passes/2CLI-V8failures/2skips. Ordinary SDK CI passes; workflow correctly fails
 for missing browser acceptance. No paid score/task changes or driver edits.
+
+
+## SET358 — Native saved-file cleanup with equal window titles
+
+**Symptom/layer:** The parent evaluator rejected a completed native TextEdit save
+when Duplicate left two owned windows with the requested filename. Its ambiguity
+resolver understood SDK session traces but did not consume the native provider's
+actual saved-resource URL. This is evaluation bookkeeping, not an SDK input bug.
+
+**Implemented:** Retain the original refusal. Admit recovery only from a completed
+native full observation whose canonical standard-window root has the exact
+requested file URL and trusted TextEdit tool-surface metadata; reject prose,
+child values, emitted fake headers, wrong paths, failed calls and missing body
+markers. Corroborate absent-before/fresh regular-file ownership, then preserve
+the same inode and bytes in the run evidence. Do not fabricate a native window ID
+from identical titles. The original timeout-recovery path remains supported.
+
+**Validation:** 21 existing/new parent ownership tests pass; removing the exact
+URL check admits a wrong directory and breaks the negative owner. Actual native
+run1491 exposes the requested saved URL and retains inode6914618 unchanged.
+Independent RTF conversion verifies the exact three revised paragraphs and only
+the first line bold. An earlier unexpected save at a known GUI fixture URL is
+retained separately. App/window/helper and saved-path cleanup are clear.
+
+**Limits/tradeoff:** This recovery is resource ownership evidence, not permission
+to replay input or automatic task completion. A separate actual body/style and
+live-action review is required. The native agent's directory and Duplicate
+recoveries stay in its metrics; changed last-used Save location limits causal
+comparison with the subsequent SDK run. No product performance gain is claimed.
