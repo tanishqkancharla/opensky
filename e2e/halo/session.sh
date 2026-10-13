@@ -26,12 +26,18 @@ editor_window=$(xdotool search --sync --onlyvisible --name '^Halo Contract Edito
 wmctrl -ia "$editor_window"
 printf 'preserved clipboard sentinel Ελληνικά' | xclip -selection clipboard -loops 0 -quiet & clipboard_pid=$!
 export HALO_EDITOR_PID="$editor_pid" HALO_EDITOR_WINDOW="$editor_window"
+mkdir -p "$HALO_ARTIFACTS/capture-sdk-shots"
+chmod 700 "$HALO_ARTIFACTS/capture-sdk-shots"
 cat > "$HALO_ARTIFACTS/native-grants.yaml" <<EOF
 version: 2
 mode: bounded
 expires_after: 1h
 idle_timeout: 30m
 resources:
+  files:
+    write:
+      - dir: "$HALO_ARTIFACTS/capture-sdk-shots"
+        recursive: false
   desktop:
     display: true
     applications: [$editor_pid]
