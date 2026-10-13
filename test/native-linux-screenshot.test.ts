@@ -47,7 +47,10 @@ async function captureHarness(target: "linux" | "mac") {
         state.tree_markdown = state.tree_markdown.replace(/\[13\][^\n]*/, '[13] AXButton 7 value="changed while capturing"');
       }
       if (capture && failure === "degraded") state.degraded = true;
-      if (capture && failure === "invalid-frame") state.screenshot_frame_valid = false;
+      if (capture && failure === "invalid-frame") {
+        state.screenshot_frame_valid = false;
+        state.screenshot_error = {code:"window_capture_unavailable",reason:"Target pixels are occluded without Composite backing.",suggestion:"Explicitly authorize bring_to_front then capture again."};
+      }
     }
     return result;
   };
@@ -92,9 +95,16 @@ for (const failure of ["degraded", "invalid-frame", "throw"] as const) {
     try {
       await h.app.getAXState({ disableDiffing: true, emit: false });
       h.setFailure(failure);
-      await assert.rejects(h.app.getScreenshot({ emit: false }));
+      await assert.rejects(h.app.getScreenshot({ emit: false }), failure === "invalid-frame"
+        ? {code:"window_capture_unavailable",message:/occluded.*bring_to_front/s} : undefined);
       await assert.rejects(h.app.click(13), /not present in the latest accessibility snapshot/);
       assert.equal(h.inputs.length, 0, "no input replay after failed capture");
+      if(failure === "invalid-frame"){
+        const partial=await h.opensky.get_app_state({app:"Calculator",includeScreenshot:true,disableDiff:true});
+        assert.equal(partial.screenshot,null);
+        assert.equal(partial.screenshotError?.code,"window_capture_unavailable");
+        assert.match(partial.text,/AXButton/);
+      }
     } finally { await h.opensky.close(); }
   });
 }

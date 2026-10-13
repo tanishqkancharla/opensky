@@ -5681,3 +5681,10 @@ The new named cleanup matcher initially treats the native document fixture's wra
 ## SET370 — Current TigerVNC covered-window failure reproduced
 
 [Actual SDK0.2.4/Driver0.35.2 source0c147a8e evidence](linux-covered-capture-53.json) on Debian Bookworm/Node22.23.3 TigerVNC/XFWM4 compositor off and explicit bounded editor grants: visible/restored640x480 editor frames agree, but the covered frame is black and99.9827% of pixels differ. All three reads retain the expected AT-SPI text and preserve foreground; driver wrongly reports screenshot_frame_valid:true for the covered frame. Exact owned occluder/session/supervisor cleanup passes. This is a real native X11 defect, not the earlier private image-carrier failure. Issue53 remains open; no capture repair, Chrome acceptance or pixel-darkness heuristic is claimed.
+
+
+## SET371 — Attest X11 target pixels and expose partial screenshot failure
+
+Issue53's current TigerVNC reproduction shows undefined unbacked window pixels declared valid. The candidate driver first names existing Composite backing without redirection; otherwise it fences exposure, clipping and stacking with a short RAII server grab through the in-process pixel read. Unavailable pixels stop all unguarded window fallback. Owned overlay scenes retain current owner/ancestry checks. Real AX data survives with screenshot_frame_valid:false and window_capture_unavailable; no activation, repaint or darkness heuristic is introduced.
+
+The SDK now preserves bounded screenshotError on partial get_app_state results, suppresses stale/invalid screenshot carriers, and throws the precise actionable code for facade screenshot requests. Existing retired-input-authority assertions remain; the extended keeper fails before repair and36 affected facade/screenshot owners pass afterward. These are contract tests. Hosted whole Linux units and actual compositor-off refusal/compositor-on backing, restored and legitimate-dark GUI frames are the required next evidence. Mac input and installed driver sources remain unchanged.

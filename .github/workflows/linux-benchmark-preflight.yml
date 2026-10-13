@@ -13,6 +13,10 @@ on:
         description: 'Native covered GTK capture control; does not certify Chrome'
         type: boolean
         default: false
+      halo_composited:
+        description: 'Enable XFWM4 compositor for existing backing pixmap control'
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -79,8 +83,8 @@ jobs:
     container: node:22-bookworm
     timeout-minutes: 40
     env:
-      HALO_DRIVER_REF: 01d4b9e47705289e3b56a848e35e3508de28017f
-      CUA_DRIVER_SOURCE_SHA: 01d4b9e47705289e3b56a848e35e3508de28017f
+      HALO_DRIVER_REF: f48b328aedafbe3225bedf91f47f43b94c7b4087
+      CUA_DRIVER_SOURCE_SHA: f48b328aedafbe3225bedf91f47f43b94c7b4087
       CARGO_PROFILE_RELEASE_LTO: 'false'
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
       CARGO_INCREMENTAL: '0'
@@ -106,6 +110,7 @@ jobs:
         run: |
           mkdir -p artifacts/halo
           cargo build --release --locked -p cua-driver --manifest-path driver/libs/cua-driver/rust/Cargo.toml
+          cargo test --release --locked -p platform-linux --lib --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/platform-linux-unit.log 2>&1
           driver/libs/cua-driver/rust/target/release/cua-driver --opensky-driver-identity > artifacts/halo/identity.json
           sha256sum driver/libs/cua-driver/rust/target/release/cua-driver > artifacts/halo/driver-sha256.txt
           npm ci --ignore-scripts
@@ -123,6 +128,7 @@ jobs:
         env:
           HALO_NODE22_WHOLE_OUTCOME: ${{ steps.node22_whole.outcome }}
           HALO_NATIVE_CAPTURE_ONLY: ${{ inputs.halo_capture && '1' || '0' }}
+          HALO_COMPOSITOR: ${{ inputs.halo_composited && 'on' || 'off' }}
         run: |
           useradd --create-home --uid 1001 halo
           chown -R halo:halo "$GITHUB_WORKSPACE"

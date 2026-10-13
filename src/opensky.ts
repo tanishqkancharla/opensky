@@ -523,6 +523,7 @@ export class OpenSky implements OpenSkyApi {
       app: resolved.launchPath || resolved.name || args.app,
       targetHandle: resolved.handle,
       screenshot: snapshot.screenshot ?? (snapshot.screenshotPath ? { url: pathToFileURL(snapshot.screenshotPath).href } : null),
+      ...(snapshot.screenshotError ? {screenshotError:snapshot.screenshotError} : {}),
       text: text + selectionObservation(snapshot.textSelection) +
         (!snapshot.degraded && this.target === "mac" && !resolved.browser
           ? inlineItemEditObservation(snapshot.tree, snapshot.elements) : ""),
@@ -2569,8 +2570,14 @@ export class OpenSky implements OpenSkyApi {
       ...(this.target === "mac" && options.maxDepth === undefined ? { timeout_ms: 5000 } : {}),
     });
     const structured = asRecord(result.structured) ?? {};
-    if (options.requireValidScreenshot && structured.screenshot_frame_valid === false) {
-      throw new OpenSkyError("The driver could not validate the exact window screenshot", undefined, structured);
+    const captureFailure = asRecord(structured.screenshot_error);
+    const screenshotError = structured.screenshot_frame_valid === false ? {
+      code: optionalString(captureFailure?.code) ?? "window_capture_unavailable",
+      message: (optionalString(captureFailure?.reason) ?? "The driver could not validate the exact window screenshot").slice(0,4096),
+      ...(optionalString(captureFailure?.suggestion) ? {suggestion: String(captureFailure!.suggestion).slice(0,2048)} : {}),
+    } : undefined;
+    if (options.requireValidScreenshot && screenshotError) {
+      throw new OpenSkyError([screenshotError.message,screenshotError.suggestion].filter(Boolean).join(" "), screenshotError.code, screenshotError);
     }
     let rawElements = normalizeElements(structured.elements);
     const rawTree =
@@ -2620,7 +2627,7 @@ export class OpenSky implements OpenSkyApi {
     const annotatedTree = enrichTreeSemantics(compactTreeActionHints(remappedTree, elements), elements);
     const tree = this.target === "linux" ? compactLinuxContextActions(annotatedTree, elements) : annotatedTree;
     const snapshotId = optionalString(structured.snapshot_id);
-    const filePath =
+    const filePath = screenshotError ? null :
       optionalString(structured.screenshot_file_path) ??
       (options.includeScreenshot ? await maybeWriteScreenshot(structured, screenshotPath) : null);
     const frame = frameOf(structured);
@@ -2639,6 +2646,7 @@ export class OpenSky implements OpenSkyApi {
       elements,
       textSelection: !structured.degraded && this.target === "mac"
         ? parseTextSelection(structured.text_selection, resolved.pid, resolved.windowId!) : undefined,
+      screenshotError,
       screenshotPath: filePath,
       screenshot: screenshot ?? (filePath ? { url: pathToFileURL(filePath).href } : undefined),
       frame,

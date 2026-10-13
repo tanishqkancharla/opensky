@@ -6,6 +6,7 @@ import { opensky as defaultOpenSky, normalizeMouseButton } from "./opensky.js";
 import type {
   App as LegacyAppInfo,
   AppState,
+  ScreenshotError,
   MouseButton,
   OpenSky as OpenSkyApi,
   PasteFormat,
@@ -42,6 +43,7 @@ export interface SelectTextOptions {
 export interface StateAndScreenshot {
   state: string;
   screenshot?: Uint8Array;
+  screenshotError?: ScreenshotError;
 }
 
 export interface AppInfo {
@@ -610,6 +612,8 @@ abstract class BoundTarget implements Target {
 
   async getScreenshot(options: ObservationOptions = {}): Promise<Uint8Array> {
     const state = await this.observe({}, true, !(this instanceof BoundApp));
+    if (state.screenshotError) throw new OpenSkyError(
+      [state.screenshotError.message,state.screenshotError.suggestion].filter(Boolean).join(" "),state.screenshotError.code,state.screenshotError);
     if (!state.screenshot) throw new CuaUnsupportedError("getScreenshot", "the exact target returned no screenshot");
     const screenshot = new Uint8Array(await readFile(fileURLToPath(state.screenshot.url)));
     this.facade.emit(screenshot, options);
@@ -618,7 +622,8 @@ abstract class BoundTarget implements Target {
 
   async getAXStateAndScreenshot(options: StateOptions = {}): Promise<StateAndScreenshot> {
     const state = await this.observe(options, true);
-    const result: StateAndScreenshot = { state: state.text };
+    const result: StateAndScreenshot = { state: state.text,
+      ...(state.screenshotError ? {screenshotError:state.screenshotError} : {}) };
     if (state.screenshot) result.screenshot = new Uint8Array(await readFile(fileURLToPath(state.screenshot.url)));
     this.facade.emit(result, options);
     return result;

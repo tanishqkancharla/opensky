@@ -17,7 +17,7 @@ trap cleanup EXIT
 Xtigervnc :1 -localhost -SecurityTypes None -geometry 1280x900 -depth 24 > "$HALO_ARTIFACTS/vnc.log" 2>&1 & vnc_pid=$!
 for attempt in {1..100}; do if xdpyinfo >/dev/null 2>&1; then break; fi; sleep .1; done
 xdpyinfo > "$HALO_ARTIFACTS/xdpyinfo.txt"
-xfwm4 --replace --compositor=off > "$HALO_ARTIFACTS/xfwm.log" 2>&1 & wm_pid=$!
+xfwm4 --replace --compositor="${HALO_COMPOSITOR:-off}" > "$HALO_ARTIFACTS/xfwm.log" 2>&1 & wm_pid=$!
 xfce4-panel > "$HALO_ARTIFACTS/panel.log" 2>&1 & panel_pid=$!
 gsettings set org.gnome.desktop.interface toolkit-accessibility true
 /usr/bin/python3 e2e/halo/editor.py > "$HALO_ARTIFACTS/editor.log" 2>&1 & editor_pid=$!

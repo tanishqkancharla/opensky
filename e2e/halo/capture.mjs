@@ -4,16 +4,19 @@ import {writeFile, readFile} from "node:fs/promises";
 import {join} from "node:path";
 import {spawn, execFileSync} from "node:child_process";
 import {setTimeout as sleep} from "node:timers/promises";
-import {CuaDriverClient} from "../../dist/index.js";
+import {CuaDriverClient,createOpenSky,createCua} from "../../dist/index.js";
 const out=process.env.HALO_ARTIFACTS;
 const pid=Number(process.env.HALO_EDITOR_PID), windowId=Number(process.env.HALO_EDITOR_WINDOW);
 const driver=new CuaDriverClient({binaryPath:process.env.OPENSKY_DRIVER_PATH,socket:process.env.HALO_DRIVER_SOCKET,session:"halo-capture",autoStart:false,timeoutMs:null});
 const evidence={sdk:process.env.GITHUB_SHA,driver:process.env.HALO_DRIVER_REF,node:process.version,
-  environment:"Bookworm TigerVNC/X11 XFWM4 compositor off, shared D-Bus/AT-SPI, bounded exact editor grants",
+  environment:`Bookworm TigerVNC/X11 XFWM4 compositor ${process.env.HALO_COMPOSITOR??"off"}, shared D-Bus/AT-SPI, bounded exact editor grants`,
   productionChromeVerified:false,phases:[]};
 const active=()=>execFileSync("xdotool",["getactivewindow"],{encoding:"utf8"}).trim();
 const poll=async fn=>{for(let i=0;i<100;i++){try{if(await fn())return;}catch(error){if(!["ENOENT","ESRCH"].includes(error.code))throw error;}await sleep(50);}throw Error("Owned fixture postcondition timed out");};
 let cover,coverExited=false;
+const sdk=createOpenSky({target:"linux",homeDir:join(out,"capture-sdk-home"),screenshotDir:join(out,"capture-sdk-shots"),autoLaunch:false,
+ driverOptions:{binaryPath:process.env.OPENSKY_DRIVER_PATH,socket:process.env.HALO_DRIVER_SOCKET,autoStart:false,autoInstall:false}});
+let app;
 async function capture(phase){
   const focusBefore=active();
   const result=await driver.call("get_window_state",{pid,window_id:windowId,full_output:true,include_screenshot:true});
@@ -38,6 +41,10 @@ try{
   execFileSync("wmctrl",["-ia",process.env.HALO_EDITOR_WINDOW]);
   await sleep(500);
   const visible=await capture("visible");assert.equal(visible.imageCount,1);
+  const inventory=(await driver.call("list_apps")).structured;
+  const native=(Array.isArray(inventory)?inventory:inventory.apps).find(app=>app.pid===pid);assert.ok(native);
+  app=await createCua(sdk,{emit:()=>undefined}).getApp(native.name);
+  assert.ok((await app.getScreenshot({emit:false})).byteLength>0);
   // A separate real GTK process covers the owned editor. No driver launch or
   // permission expansion, compositor change, input injection, or clipboard use.
   cover=spawn("/usr/bin/python3",["-c",`import gi
@@ -56,6 +63,16 @@ Gtk.main()`],{stdio:"ignore"});
   execFileSync("wmctrl",["-ir",coverWindow,"-e","0,40,60,900,700"]);execFileSync("wmctrl",["-ia",coverWindow]);
   await poll(()=>Number(active())===Number(coverWindow));await sleep(500);
   const covered=await capture("covered");
+  if(process.env.HALO_COMPOSITOR==="on")assert.equal(covered.imageCount,1,"existing compositor backing must preserve covered pixels");
+  if(!covered.imageCount){
+    const focusBefore=active();
+    const partial=await sdk.get_app_state({app:app.toJSON().targetHandle,includeScreenshot:true,disableDiff:true});
+    assert.equal(partial.screenshot,null);assert.equal(partial.screenshotError?.code,"window_capture_unavailable");
+    assert.match(partial.text,/replace me/);
+    await assert.rejects(app.getScreenshot({emit:false}),{code:"window_capture_unavailable",message:/occluded.*bring_to_front/s});
+    assert.equal(active(),focusBefore);
+    evidence.publicSDK={AXPreserved:true,screenshot:null,screenshotError:partial.screenshotError,facadeTypedRefusal:true,foregroundPreserved:true};
+  }
   execFileSync("wmctrl",["-ia",process.env.HALO_EDITOR_WINDOW]);await poll(()=>Number(active())===windowId);await sleep(500);
   const restored=await capture("restored");assert.equal(restored.imageCount,1);
   if(covered.imageCount){
@@ -73,17 +90,25 @@ print(json.dumps({'covered':comparison(a,b),'restored':comparison(a,c),'sizes':[
     evidence.acceptance="preserved target pixels";
   }else{
     assert.equal(covered.screenshotFrameValid,false);
-    assert.equal(covered.screenshotError?.code,"surface_identity_unproven");
+    assert.equal(covered.screenshotError?.code,"window_capture_unavailable");
     assert.match(covered.screenshotError?.reason??covered.screenshotError?.message??"",/occlud|covered|backing|unavailable/i);
     evidence.acceptance="actionable exact-window capture refusal with AT-SPI preserved";
   }
+  // A legitimately black fixture stays capturable: product refusal is based
+  // on exposure/backing, never pixel darkness. GTK applies its own real CSS.
+  await writeFile(join(out,"request-dark-theme"),"owned fixture request");
+  await poll(async()=>JSON.parse(await readFile(join(out,"editor-state.json"),"utf8")).theme==="dark");await sleep(500);
+  const dark=await capture("dark");assert.equal(dark.imageCount,1);
+  const stats=JSON.parse(execFileSync("/usr/bin/python3",["-c","from PIL import Image,ImageStat;import sys,json;im=Image.open(sys.argv[1]).convert('RGB');print(json.dumps({'mean':sum(ImageStat.Stat(im).mean)/3}))",join(out,"capture-dark.png")],{encoding:"utf8"}));
+  assert.ok(stats.mean<10,"GTK fixture actually rendered black; this threshold is never used in the driver");
+  evidence.legitimateDarkFrame={captured:true,mean:stats.mean};
 }catch(error){evidence.error=String(error);evidence.code=error.code;process.exitCode=1;}
 finally{
   try{
     if(cover&&!coverExited){cover.kill("SIGTERM");try{await poll(()=>coverExited);}catch{cover.kill("SIGKILL");await poll(()=>coverExited);}}
   }catch(error){evidence.occluderCleanupError=String(error);process.exitCode=1;}
   evidence.occluderExited=cover===undefined||coverExited;
-  try{await driver.call("end_session",{session:"halo-capture"});evidence.sessionEnded=true;}catch(error){evidence.cleanupError=String(error);process.exitCode=1;}
+  try{await sdk.close();await driver.call("end_session",{session:"halo-capture"});evidence.sessionEnded=true;}catch(error){evidence.cleanupError=String(error);process.exitCode=1;}
   await writeFile(join(out,"capture-evidence.json"),JSON.stringify(evidence,null,2));
   console.log(JSON.stringify({acceptance:evidence.acceptance??null,error:evidence.error??null,occluderExited:evidence.occluderExited,productionChromeVerified:false}));
 }

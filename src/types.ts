@@ -55,11 +55,19 @@ export interface Screenshot {
   viewportCssHeight?: number;
 }
 
+export interface ScreenshotError {
+  code: string;
+  message: string;
+  suggestion?: string;
+}
+
 export interface AppState {
   app: string;
   /** Opaque exact-target selector. Pass it anywhere `app` is accepted. */
   targetHandle: TargetHandle;
   screenshot: Screenshot | null;
+  /** Partial AX observations remain available when exact pixels cannot be captured. */
+  screenshotError?: ScreenshotError;
   text: string;
   /** Optional current native selection; observation only, no input authority. */
   textSelection?: TextSelection;
@@ -386,6 +394,7 @@ export interface WindowSnapshot {
   tree: string;
   textSelection?: TextSelection;
   elements: SnapshotElement[];
+  screenshotError?: ScreenshotError;
   screenshotPath: string | null;
   screenshot?: Screenshot;
   frame?: { width: number; height: number };
