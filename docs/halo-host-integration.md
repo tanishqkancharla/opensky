@@ -2,8 +2,11 @@
 
 ## Current pins and verification boundary
 
-The current supported distribution is **SDK0.2.11**, with Driver **0.35.4**,
-runtime source **`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`**.
+The current supported distribution is **SDK0.2.12**, with Driver **0.35.4**,
+runtime source **`a6473bea5e57e25c5c642c213f14d7b4c8d60f35`**.
+The macOS bundle disables AppKit automatic termination; explicit driver Stop remains available.
+Linux native acceptance remains pinned to Driver`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`;
+the intervening runtime change is macOS bundle metadata only.
 The actual native acceptance run uses SDK`cffb21e803b527f99d6357840619c3980afc99ff`;
 the final distribution has the same TypeScript SDK runtime, with updated
 release metadata, driver pin, CI scope and documentation. The current native
