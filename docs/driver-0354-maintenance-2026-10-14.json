@@ -1,0 +1,80 @@
+{
+  "driverRuntimeSource": "aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1",
+  "driverMainAfterTestOnlyCorrection": "5a70972063cd35bf3b7bd867d67759901bb97fcb",
+  "finalDriverDiff": [
+    "libs/cua-driver/rust/crates/cua-driver/tests/testkit_host_state_isolation_test.rs"
+  ],
+  "driverVersion": "0.35.4",
+  "driverMacSHA256": "63427559bc959af8ae9fe8fe06f957b24ae9af1e8580d030445e351ab35a16a8",
+  "upstreamInspected": "c2a42eaaf723ed5aee6d9ee2e0fb0808c896c882",
+  "attributedUpstreamChanges": [
+    "bf42be34f53ee5230f1dfa0ac38d37892592acfd",
+    "63b3c9efe7d207c62abbbe2f6504d1f6b42430a9",
+    "d7d8ed8c690e93d691055f070b247371c84cbf60",
+    "fbab7c506cf94d25dd76edda627e58a51b27b570",
+    "f7e177fab66777faa7abba3576af4668c57add9c",
+    "a2a2d7335f31f215ecac2cb33eeb96a90520fa4c",
+    "5e607bc5d7bc60ae0b80c8fcd9659847f575cc33",
+    "d74a9cab3fb2e80ab7f0cef47025ec828586ea75",
+    "f53daa6c2a6f1c04ccbcf57adabccd0d7d43bba8",
+    "3f70341ee1e42c5b32e22c1ce1483ceeba0a5831",
+    "22c99c02ff119344e746e19bf8ecc782dbd1f679",
+    "8be7052a063aacb58c4d743b4e7efa3afd78143a",
+    "c2a42eaaf723ed5aee6d9ee2e0fb0808c896c882"
+  ],
+  "macRequiredContractsPassed": 27,
+  "canonicalMiddleClick": {
+    "passed": true,
+    "orderedNativePair": true,
+    "oracles": [
+      "fixture_state",
+      "focus",
+      "z_order",
+      "cursor",
+      "no_leaked_input"
+    ],
+    "cleanupPassed": true
+  },
+  "localSdkTests": {
+    "node22": 500,
+    "node24": 500,
+    "bunOnlySkip": 1
+  },
+  "localDriverUnits": {
+    "contract": 67,
+    "core": 1047,
+    "macPlatform": 631
+  },
+  "originalHostedDriverRun": "https://github.com/tanishqkancharla/cua/actions/runs/38652287595",
+  "originalHostedStatus": "failed at the history test hardcoded upstream brand; platform/core/contract/driver units and nine X11 keyboard tests passed",
+  "correctedHostedRun": "https://github.com/tanishqkancharla/cua/actions/runs/38653835337",
+  "correctedHostedStatusAtPackaging": "pending",
+  "localCorrectedHistoryOwner": "passed with source binary outside Documents; installed-bundle and Documents-path controls retained separately",
+  "nativeHostAcceptance": "https://github.com/tanishqkancharla/opensky/actions/runs/38652656631",
+  "nativeTyping": {
+    "charactersAt500ms": 42,
+    "stateAt500ms": "active",
+    "stopRequested": true,
+    "completedCharacters": 1000,
+    "savedUtf8Bytes": 2750,
+    "savedSHA256": "c872011f389649a8fbaa0152b4ccf9bd5ae7f7f9c6ab7f7a995b54271fb07e6b",
+    "seconds": 16.936,
+    "savedExact": true,
+    "followingSaveStartedAtTypingCompletion": true,
+    "cancelledQueuedPayloadAbsent": true
+  },
+  "signedIdentityPreserved": true,
+  "permissionRegrant": false,
+  "futureUpstreamInspection": {
+    "head": "b346685ed00fe665fff014b7fdb5d18fba41adc8",
+    "integrated": false,
+    "reason": "Freeze current tested candidate; later acknowledgement patch has differing timeout semantics and needs separate reconciliation."
+  },
+  "limits": [
+    "Source-built driver distribution, no public stable-signed driver binary included.",
+    "Sandboxed TigerVNC Chrome not accepted; native-only run explicitly records not_run.",
+    "Full canonical platform matrix remains separate.",
+    "Issues19 and56 remain open.",
+    "SDK runtime unchanged; no benchmark improvement inferred."
+  ]
+}

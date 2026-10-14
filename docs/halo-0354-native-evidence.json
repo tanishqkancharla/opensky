@@ -1,0 +1,58 @@
+{
+  "sdkAcceptanceSource": "cffb21e803b527f99d6357840619c3980afc99ff",
+  "sdkDistributionVersion": "0.2.11",
+  "driverSource": "aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1",
+  "driverVersion": "0.35.4",
+  "node": "v22.23.3",
+  "hostedRun": "https://github.com/tanishqkancharla/opensky/actions/runs/38652656631",
+  "scope": "native-only",
+  "typing": {
+    "charactersAt500ms": 42,
+    "stateAt500ms": "active",
+    "stopRequested": true,
+    "completedCharacters": 1000,
+    "savedUtf8Bytes": 2750,
+    "savedSHA256": "c872011f389649a8fbaa0152b4ccf9bd5ae7f7f9c6ab7f7a995b54271fb07e6b",
+    "seconds": 16.936,
+    "savedExact": true,
+    "followingSaveStartedAtTypingCompletion": true,
+    "cancelledQueuedPayloadAbsent": true
+  },
+  "nativePaste": {
+    "availability": "unavailable",
+    "code": "unsupported_native_paste",
+    "asciiAndUnicodeRefused": true,
+    "textSelectionClipboardUnchanged": true,
+    "savedDocument": "replace me"
+  },
+  "strictBridge": {
+    "sdk": "cffb21e803b527f99d6357840619c3980afc99ff",
+    "node": "v22.23.3",
+    "phases": [
+      "initial-real-AX",
+      "retained-bound-app-after-realm-await"
+    ],
+    "driver": "aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1",
+    "artifactScopePreserved": true,
+    "ownSessionsDetached": true
+  },
+  "sdkTests": {
+    "linuxWholePassed": 499,
+    "linuxSkipped": 2,
+    "embeddedPassed": 264,
+    "localNode22Passed": 500,
+    "localNode24Passed": 500,
+    "localBunSkipped": 1
+  },
+  "cleanup": {
+    "ownedProcessesExited": 7,
+    "forcedTermination": false,
+    "sessionsDetached": true
+  },
+  "browser": {
+    "verified": false,
+    "status": "not_run",
+    "reason": "Explicit native-only contract; sandboxed TigerVNC Chrome acceptance remains separate."
+  },
+  "sourceAccounting": "Acceptance SDKcffb21e and final0.2.11 have identical src trees. Distribution metadata, CI scope and documentation differ; no SDK runtime change."
+}

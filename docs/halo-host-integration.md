@@ -2,54 +2,57 @@
 
 ## Current pins and verification boundary
 
-The latest verified SDK runtime is **`f1b687b7309eacf9036c88ae2283d774038dcae6`**;
-Driver **0.35.2**, capture source **`34f3d150ea7ef86ce171ed7bb3724ce218448e64`**.
-SDK0.2.6 includes the host queue, capabilities, foreground input and partial
-native screenshot contract. This release also replaces SDK-owned legacy async
-hooks in optional strict evaluation and artifact attribution. The original
-native typing/paste run below used SDKb32be18b / Driver85afe337; newer driver
-changes affect Linux capture. Those saved-input effects have not been rerun
-on the0.2.6 candidate. The new actual strict bridge and capture run is recorded
-separately below.
+The current supported distribution is **SDK0.2.11**, with Driver **0.35.4**,
+runtime source **`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`**.
+The actual native acceptance run uses SDK`cffb21e803b527f99d6357840619c3980afc99ff`;
+the final distribution has the same TypeScript SDK runtime, with updated
+release metadata, driver pin, CI scope and documentation. The current native
+run verifies saved typing, cancellation/drain, paste refusal and strict bridging.
+The previous compositor-off/on capture matrix used SDKf1b687b7 / Driver0.35.2
+source34f3d150; capture-matrix acceptance is separate from the new native run.
 Registry `opensky-cua@0.1.2` does not identify these features. Use an immutable
 built checkout or the declared GitHub release tarball; record the selected
 binary's `--opensky-driver-identity` and avoid pairing it with another daemon.
 
-[Actual application run38468017651](https://github.com/tanishqkancharla/opensky/actions/runs/38468017651)
+[Current native application run38652656631](https://github.com/tanishqkancharla/opensky/actions/runs/38652656631)
 used Node22.23.3 in Debian Bookworm, TigerVNC/X11, XFWM4, real AT-SPI,
 uid1001 and two explicit bounded manifests on one shared session D-Bus.
-[Compact before/after evidence](halo-current-native-evidence.json):
+[Compact before/after evidence](halo-0354-native-evidence.json):
 
 | Check | Application evidence |
 |---|---|
-| 500ms host wait deadline and active Stop | 41 of1000 Unicode codepoints visible; action stayed active with stopRequested=true |
-| Completion and serialization | typing finished after14.414s; exactly1000 codepoints/2750 UTF-8 bytes saved; following Save began at typing completion |
+| 500ms host wait deadline and active Stop | 42 of1000 Unicode codepoints visible; action stayed active with stopRequested=true |
+| Completion and serialization | typing finished after16.936s; exactly1000 codepoints/2750 UTF-8 bytes saved; following Save began at typing completion |
 | Queued Stop | cancelled callback did not dispatch; MUST-NOT-APPEAR absent from the saved file |
 | ASCII and Unicode native paste | unsupported_native_paste; exact text, selection and clipboard unchanged; saved document remains `replace me` |
-| Cleanup | both SDK domains detached; all seven owned supervisor processes exited |
+| Cleanup | both SDK domains detached; all seven owned supervisor processes exited without forced termination |
 
-The current actual run38481237185 passes all262 required embedded SDK owners,
-497 whole SDK owners with two skips on Linux Node22, and650 Linux platform units
-with10 desktop opt-ins ignored. Local Node22/24 whole suites pass498 with one
-Bun-only skip. The original Node22 VM crashes are retained in issue56; the
-SDK-owned trigger is corrected, with the external-hook limitation below.
+This explicitly native-only run passes all264 required embedded SDK owners,
+499 whole SDK owners with two skips on Linux Node22, and664 Linux platform units.
+Local Node22/24 whole suites each pass500 with one Bun-only skip. The strict
+bridge retains an exact app handle across a realm await and preserves artifact
+ownership. The external legacy-hook limitation in issue56 remains open.
+[Earlier native evidence](halo-current-native-evidence.json) and
+[the prior capture/strict matrix](https://github.com/tanishqkancharla/opensky/actions/runs/38481237185)
+remain historical; neither is replaced by a browser-acceptance claim.
 
-**Sandboxed browser GUI acceptance remains unverified.** The real Chrome probe
-uses its sandbox, but the hosted container denies namespace creation with
+**Sandboxed browser GUI acceptance remains unverified.** Earlier real Chrome probes
+kept the sandbox enabled, but the hosted container denied namespace creation with
 `Operation not permitted` before an owned SDK browser tab opens. No trusted
 click/scroll, focus change, default-route refusal or renderer sandbox assertion
 earns runtime acceptance. No privileged mode, `/dev/uinput`, or sandbox bypass
 was used. This is an environment limitation, not evidence that Halo's sandboxed
-Chrome fails. The workflow intentionally remains failed, despite its native
-assertions passing.
+Chrome fails. Those full-browser attempts remain failed. The new native-only lane explicitly
+records browser status as `not_run`; its green result does not certify Chrome.
 
 The original native acceptance at SDK`acd09e61889797f7f79bd53fe9ae9aeb25f29c82` /
 Driver0.34.1`dd5f9f539289f88b942939d0ee077f8c1d2899cd` remains historical evidence
 in [run38179361234](https://github.com/tanishqkancharla/opensky/actions/runs/38179361234).
 Its feature branches have since merged; they are no longer draft-only contracts.
 
-Reproduce via `linux-benchmark-preflight.yml` with `halo_contract=true` at the
-explicit source pin. `e2e/halo/` retains full AX, saved files, manifests,
+Reproduce native effects via `linux-benchmark-preflight.yml` with
+`halo_native=true` at the explicit source pin. Use `halo_contract=true` for
+the full sandboxed browser contract; its sandbox prerequisite remains mandatory. `e2e/halo/` retains full AX, saved files, manifests,
 identity/package receipts and original logs as `halo-bookworm-contract`.
 A missing browser result or passing unit suite does not establish production
 Chrome compatibility.
