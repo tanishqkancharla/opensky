@@ -1,0 +1,35 @@
+{
+  "sdkRuntime": "a328614a5e592085568ce308d4b6cd2a4d25ff90",
+  "sdkRelease": "0.2.7",
+  "driverRuntime": "a6c670060b54edfe7d2d0b5864215ea01fc92113",
+  "driverVersion": "0.35.3",
+  "driverSHA256": "b66e75bcbe20410a91e67fec39f6f4e1e8a06a347753a3ff9c4eab48d68408fc",
+  "attributedUpstream": [
+    "e1091afef672afdeb6fcf32aa18843aaf8c7ff52",
+    "1c36a5cbe007c61128632716d0f54021f39d8b65",
+    "c18bb1c058ad09dc1beb0634a451c737049b000a"
+  ],
+  "verifiedForegroundGuardRefusal": {
+    "contract": "KEY-S05",
+    "tool": "hotkey",
+    "delivery_mode": "background",
+    "code": "paste_target_is_browser_chrome",
+    "delivered": false,
+    "visibleAddressUnchanged": true,
+    "ownedPagePreserved": true,
+    "clipboardOriginalContentsLogged": false,
+    "clipboardRestoredByExistingOwner": true,
+    "sessionAndAppCleanup": true
+  },
+  "windowsOriginalFailureRun": 38508984102,
+  "windowsCorrectedWholeOwnerRun": 38510201114,
+  "windowsVerifiedSource": "910ce5b478f69802ddec1d608f1c9fc29c95de04",
+  "macFullFinalBinaryCertification": "pending",
+  "limits": [
+    "Driver is source-built with a stable local identity; no public signed driver binary claimed.",
+    "Final driver all-platform unit verification and full current Mac gate certification tracked separately.",
+    "No new sandboxed Linux browser or Windows desktop acceptance.",
+    "Issues19 and56 remain open.",
+    "Benchmark estimate is separate from exact billed or total project cost."
+  ]
+}

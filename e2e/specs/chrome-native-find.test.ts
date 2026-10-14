@@ -5,6 +5,7 @@ import {tmpdir} from "node:os";
 import {expect} from "vitest";
 import {createOpenSky} from "opensky-cua";
 import {test} from "../fixtures/sdk.js";
+import {withOwnedMacClipboard} from "../fixtures/mac-clipboard-owner.js";
 const findTest=test.extend({html:'<main><h1>Find ownership fixture</h1><p>domain one; domain two.</p></main>'});
 findTest('FIND-N01: native app scope binds actual Find controls while the main document remains exact',async({sdk,cua,site})=>{
  if(process.platform!=='darwin')throw Error('Requires actual macOS Chrome');
@@ -51,3 +52,38 @@ findTest('FIND-N01: native app scope binds actual Find controls while the main d
   const ended=(await driver.call('end_session',{session})).structured as any;const safeToContinue=ended.session===session&&ended.active===false;await writeFile(join(directory,'cleanup.json'),JSON.stringify({session,ended,safeToContinue},null,2));expect(safeToContinue).toBe(true);
  }
 },60000);
+
+findTest('KEY-S05: background paste refuses browser chrome focus without delivery',async({sdk,cua,site})=>{
+ if(process.platform!=='darwin')throw Error('Requires actual macOS Chrome');
+ const directory=await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR??tmpdir(),'chrome-background-paste-'));
+ const driver=(sdk as ReturnType<typeof createOpenSky>).driver;
+ const session='chrome-background-paste-'+randomUUID();let main:any;
+ const states:string[]=[];let refusal:any;
+ try{
+  const prepared=(await driver.call('browser_prepare',{session,allow_launch:true,profile:{mode:'isolated_new'}})).structured as any;
+  expect(prepared.prepared).toBe(true);
+  await expect.poll(async()=>{
+   const windows=((await driver.call('list_windows',{session,pid:prepared.prepared_pid})).structured as any).windows.filter((w:any)=>w.pid===prepared.prepared_pid&&w.is_on_screen&&w.layer===0&&w.bounds.width>100&&w.bounds.height>100);
+   if(windows.length===1)main=windows[0];return windows.length;
+  },{timeout:5000,interval:100}).toBe(1);
+  const app=await cua.getApp('Google Chrome');await app.pressKey('CMD+L');await app.typeText(site.url);await app.pressKey('ENTER');
+  await expect.poll(async()=>{const state=await app.getAXState({emit:false,disableDiffing:true});states.push(state);return state;},{timeout:5000,interval:100}).toContain('Find ownership fixture');
+  await app.pressKey('CMD+L');
+  const before=await app.getAXState({emit:false,disableDiffing:true});states.push(before);
+  const address=(state:string)=>state.split('\n').filter(row=>/AX(?:TextField|ComboBox|SearchField).*Address and search bar/.test(row));
+  expect(address(before)).toHaveLength(1);expect(address(before)[0]).toContain('focused');
+  // Seed only owned fixture text; the existing helper retains original items
+  // privately and restores them after the probe, including on a regression.
+  await withOwnedMacClipboard('OpenSky owned paste-refusal probe',false,async clipboard=>{
+  try{await driver.call('hotkey',{session,pid:main.pid,window_id:main.window_id,keys:['cmd','v'],delivery_mode:'background'});}catch(error){refusal=error;}
+  expect(refusal).toMatchObject({code:'paste_target_is_browser_chrome',details:expect.objectContaining({delivered:false})});
+  const after=await app.getAXState({emit:false,disableDiffing:true});states.push(after);
+  expect(address(after)).toEqual(address(before));expect(after).toContain('Find ownership fixture');
+  expect(await clipboard.markerPreserved()).toBe(true);
+  });
+ }finally{
+  await writeFile(join(directory,'proof.json'),JSON.stringify({main,states,refusal:refusal&&{code:refusal.code,details:refusal.details,message:String(refusal)},originalClipboardLogged:false,ownedClipboardSeeded:true},null,2));
+  const ended=(await driver.call('end_session',{session})).structured as any;const safeToContinue=ended.session===session&&ended.active===false;
+  await writeFile(join(directory,'cleanup.json'),JSON.stringify({session,ended,safeToContinue},null,2));expect(safeToContinue).toBe(true);
+ }
+},30000);
