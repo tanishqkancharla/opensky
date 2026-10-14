@@ -42,6 +42,16 @@ test("PASTE-N04: preserves a competing copy after actual text insertion", async 
       payloadContained:saved.includes(payload),savedCharacters:saved.length,
       expectedCharacters:payload.length,publicPasteReturned:!pasteError,
       watcherFailed:"error" in copied,contentsLogged:false,
+      // Preserve the primary public outcome even if the independent watcher
+      // fails first. Keep only closed delivery metadata, never clipboard data.
+      pasteFailure:pasteError?{
+        name:(pasteError as Error).name,
+        code:(pasteError as {code?:string}).code??null,
+        delivery:Object.fromEntries(Object.entries((pasteError as {details?:Record<string,unknown>}).details??{}).filter(([key])=>[
+          "status","effect","clipboard_policy","clipboard_restore_status",
+          "clipboard_restored","do_not_replay","delivery","input_status",
+        ].includes(key))),
+      }:null,
     },null,2));
     if("error" in copied)throw copied.error;
     expect(copied.receipt).toMatchObject({copied:true,insertionObserved:true,payloadObservedBeforeCopy:true});
