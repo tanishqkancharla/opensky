@@ -45,11 +45,37 @@
   "all16GroupsPassed": true,
   "exactOwnedCleanup": true,
   "originalCalendarPreserved": true,
-  "safariRetry": "pending",
+  "safariRetry": {
+    "runId": 1572,
+    "status": "complete",
+    "nativeRun": 1570,
+    "ownedCleanup": true,
+    "daemonStillSamePID": true,
+    "successfulToolCalls": 11,
+    "seconds": 75.58330798149109,
+    "nativeSeconds": 36.53705906867981,
+    "inputTokens": 223133,
+    "nativeInputTokens": 238673,
+    "estimatedCostUsd": 0.2229284,
+    "nativeEstimatedCostUsd": 0.2316572,
+    "bestResourceIndex": 0.9348899959358621,
+    "firstTab": "new empty Start Page from cold launch; native opens an additional unused blank tab",
+    "reloadEvidence": "address-bar sequence and visible URL, no independent network request counter"
+  },
   "limits": [
     "No deliberate system memory exhaustion or forced termination test.",
     "Disabling AppKit automatic termination is not protection against arbitrary OOM or forced shutdown.",
     "Linux saved effects remain separately verified on runtimeaee4fd3a; subsequent runtime delta is Mac bundle metadata only.",
     "No sandboxed TigerVNC Chrome acceptance or paired performance gain claimed."
-  ]
+  ],
+  "priorCorrectedAllPlatformCI": {
+    "runId": 38653835337,
+    "status": "success"
+  },
+  "newInstallerOwnerCI": {
+    "runId": 38656224338,
+    "linux": "success",
+    "windows": "success",
+    "macOS": "queued at packaging"
+  }
 }
