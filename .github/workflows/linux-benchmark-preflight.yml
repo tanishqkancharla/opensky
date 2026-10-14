@@ -9,6 +9,10 @@ on:
         description: 'Bookworm Node22 TigerVNC/XFCE shared-bus SDK contract with sandboxed Chrome'
         type: boolean
         default: false
+      halo_native:
+        description: 'Native typing completion and paste refusal on TigerVNC; no browser acceptance'
+        type: boolean
+        default: false
       halo_capture:
         description: 'Native covered GTK capture control; does not certify Chrome'
         type: boolean
@@ -29,7 +33,7 @@ permissions:
   contents: read
 jobs:
   controls:
-    if: ${{ !(inputs.halo_contract || inputs.halo_capture || inputs.halo_capture_matrix || inputs.halo_sandbox_probe) }}
+    if: ${{ !(inputs.halo_contract || inputs.halo_native || inputs.halo_capture || inputs.halo_capture_matrix || inputs.halo_sandbox_probe) }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -113,13 +117,13 @@ jobs:
           retention-days: 90
 
   halo:
-    if: ${{ inputs.halo_contract || inputs.halo_capture || inputs.halo_capture_matrix }}
+    if: ${{ inputs.halo_contract || inputs.halo_native || inputs.halo_capture || inputs.halo_capture_matrix }}
     runs-on: ubuntu-24.04
     container: node:22-bookworm
     timeout-minutes: 40
     env:
-      HALO_DRIVER_REF: 34f3d150ea7ef86ce171ed7bb3724ce218448e64
-      CUA_DRIVER_SOURCE_SHA: 34f3d150ea7ef86ce171ed7bb3724ce218448e64
+      HALO_DRIVER_REF: aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1
+      CUA_DRIVER_SOURCE_SHA: aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1
       CARGO_PROFILE_RELEASE_LTO: 'false'
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
       CARGO_INCREMENTAL: '0'
@@ -170,6 +174,7 @@ jobs:
         shell: bash
         env:
           HALO_NODE22_WHOLE_OUTCOME: ${{ steps.node22_whole.outcome }}
+          HALO_NATIVE_CONTRACT_ONLY: ${{ inputs.halo_native && '1' || '0' }}
           HALO_NATIVE_CAPTURE_ONLY: ${{ (inputs.halo_capture || inputs.halo_capture_matrix) && '1' || '0' }}
           HALO_COMPOSITOR: ${{ inputs.halo_composited && 'on' || 'off' }}
           HALO_CAPTURE_MATRIX: ${{ inputs.halo_capture_matrix && '1' || '0' }}

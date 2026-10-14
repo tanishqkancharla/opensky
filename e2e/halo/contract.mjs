@@ -62,6 +62,10 @@ try {
   const afterAX = await app.getAXState({ disableDiffing: true, emit: false });
   await writeFile(join(out, "editor-after.ax.txt"), afterAX); assert.match(afterAX, /éΩ中🙂/);
   record("cancel-and-completion", { atDeadline, partial, complete, active: active.query(), cancelled: cancelled.query(), following: following.query(), savedExact: true });
+  if (process.env.HALO_NATIVE_CONTRACT_ONLY === "1") {
+    evidence.scope = "native-only";
+    record("foreground-browser", { verified: false, status: "not_run", reason: "Explicit native-only contract; sandboxed Chrome acceptance remains separate" });
+  } else {
   try {
     // A real sandbox probe is mandatory; no sandbox-disabling flags or elevated container privileges.
     const sandbox = execFileSync("google-chrome-stable", ["--headless", "--disable-gpu", "--no-first-run", "--user-data-dir=" + join(process.env.XDG_RUNTIME_DIR, "sandbox-probe"), "--dump-dom", "chrome://sandbox"], { timeout: 15000, encoding: "utf8" });
@@ -97,6 +101,7 @@ try {
     await writeFile(join(out, "browser-after.png"), await tab.getScreenshot({ emit: false }));
     record("foreground-browser", { clicked, scrolled: { ...browser }, focusBefore, focusAfter: execFileSync("xdotool", ["getwindowfocus"], { encoding: "utf8" }).trim(), staleRefusal: true, absentOptInRefusal: true });
   } catch (error) { record("foreground-browser", { verified: false, error: String(error), code: error.code }); throw error; }
+  }
 } catch (error) { evidence.error = String(error); evidence.errorCode = error.code; evidence.errorStack = error.stack; process.exitCode = 1; }
 finally {
   try { if (tab) await queue.submit(() => tab.close()).wait(); await queue.close({ timeoutMs: 30000 }); await sdk.close(); await browserSdk.close(); await browserDriver.call("end_session", { session: "halo-browser-contract" }); await driver.call("end_session", { session: "halo-contract" }); evidence.cleanup = "owned browser/session detached; daemon belongs to session supervisor"; } catch (error) { evidence.cleanupError = String(error); process.exitCode = 1; }
