@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-10-14T00:51:05.800569+00:00",
+  "scope": "app-window computer use; normal desktop capture/physical unlock not proven",
+  "SDKRuntime": "f1b687b7309eacf9036c88ae2283d774038dcae6",
+  "driverVersion": "0.35.2",
+  "driverSource": "01d4b9e47705289e3b56a848e35e3508de28017f",
+  "driverSHA256": "e60fc0f8303e44abf8a1f4efb3cfe9c57c3ae4b85ba7ff5f795a1fcbac1c95c2",
+  "requiredContractsPassed": [
+    "ACT-N01",
+    "AX-N01",
+    "BUTTON-N01",
+    "CLICK-M02",
+    "CLICK-N01",
+    "CLICK-W01",
+    "DIFF-N01",
+    "DIFF-N02",
+    "FILE-N01",
+    "FIND-N01",
+    "FINDER-N06",
+    "FOCUS-N01",
+    "FORMAT-N04",
+    "KEY-S04",
+    "PASTE-N01",
+    "PASTE-N04",
+    "RICH-N01",
+    "RICH-N02",
+    "RICH-N03",
+    "SELECT-N01",
+    "SELECT-N03",
+    "SELECTION-OBS-N04",
+    "SHEET-N01",
+    "TAB-N01",
+    "WINDOW-N01",
+    "WINDOW-N02"
+  ],
+  "additionalContractsPassed": [
+    "TYPE-N06"
+  ],
+  "strictBridgePhases": [
+    "initial-bound-native-window",
+    "retained-handle-across-realm-await",
+    "real-keyboard-effect"
+  ],
+  "strictBridgeRealKeyboardEffect": true,
+  "originalCalendarMonthRestored": true,
+  "ownedSessionsDetached": true,
+  "coldCalculatorLaunchAndExactCleanup": true,
+  "allGUIOwnedCleanupPassed": true,
+  "originalReporterInvocationFailureRetained": true,
+  "benchmarkPaidRuns": 0,
+  "privateCalendarContentPublished": false
+}
