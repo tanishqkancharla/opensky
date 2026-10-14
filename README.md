@@ -157,3 +157,8 @@ See [real SDK E2E tests](e2e/README.md), [parity evaluations](evals/parity/READM
 and [driver follow-ups](docs/driver-followups.md) for behavior-level validation.
 Harness findings belong in the [friction ledger](docs/harness-friction.md);
 reusable lessons belong in [harness principles](docs/harness-principles.md).
+
+
+### Native driver client observations
+
+When supplying a custom `DriverClient`, native observations must include the structured `elements` inventory for any displayed numeric indices. Indexed Markdown alone is refused with `native_observation_bindings_unavailable`; previous bindings are retired. Use the current OpenSky client, which requests `full_output:true` when the helper advertises `compact-v1`. Literal bracketed numbers in labels/document text remain data while control indices are stabilized. See [current Mac validation](docs/mac-driver-0353-evidence.json) for exact driver and environment pins.

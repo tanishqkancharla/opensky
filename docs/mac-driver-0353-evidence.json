@@ -1,0 +1,63 @@
+{
+  "driverSource": "1e5f6a146273763a0efa1cd96276d43b997684f3",
+  "driverVersion": "0.35.3",
+  "upstreamSource": "ae2c117cd96673bb2dc0c2b3bff023ad70586b92",
+  "binarySHA256": "65ff7e6a1f6c294d1dc0ccb472f4dc1d22a478e1ac4c312b4cbf66cad08c0baf",
+  "signingAndExistingTccGrantsPreserved": true,
+  "launchObservationMs": {
+    "timeout": 250,
+    "poll": 50
+  },
+  "macGuiContracts": [
+    "ACT-N01",
+    "AX-N01",
+    "BUTTON-N01",
+    "CLICK-M02",
+    "CLICK-N01",
+    "CLICK-W01",
+    "DIFF-N01",
+    "DIFF-N02",
+    "FILE-N01",
+    "FIND-N01",
+    "FINDER-N06",
+    "FOCUS-N01",
+    "FORMAT-N04",
+    "KEY-S04",
+    "PASTE-N01",
+    "PASTE-N04",
+    "RICH-N01",
+    "RICH-N02",
+    "RICH-N03",
+    "SELECT-N01",
+    "SELECT-N03",
+    "SELECTION-OBS-N04",
+    "SHEET-N01",
+    "TAB-N01",
+    "WINDOW-N01",
+    "WINDOW-N02"
+  ],
+  "macGuiContractsPassed": 26,
+  "ownedCleanupPassed": true,
+  "sdkUnitOwners": {
+    "node22": {
+      "passed": 500,
+      "skipped": 1
+    },
+    "node24": {
+      "passed": 500,
+      "skipped": 1
+    }
+  },
+  "missingBindingsRealDriverControl": {
+    "refusalCode": "native_observation_bindings_unavailable",
+    "nativeReads": 1,
+    "desktopInputs": 0,
+    "sessionDetached": true
+  },
+  "limits": [
+    "Local affected Mac contracts; complete canonical Mac/Windows/Wayland matrix remains separate.",
+    "Linux0353 native GUI and sandboxed Chrome remain unverified; previous reviewed container denies default Chrome namespaces.",
+    "Original PASTE-N04 fixture process-registry check failure retained; exact payload save and cleanup passed, unchanged keeper and fresh complete paste suite pass.",
+    "No new paid resource score is attributed to these SDK guards."
+  ]
+}

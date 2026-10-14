@@ -2565,6 +2565,8 @@ export class OpenSky implements OpenSkyApi {
     // returns as soon as collection finishes; a short initial timeout followed
     // by the same full walk discards work and publishes an unused snapshot.
     // Depth-limited reads and other platforms retain their own defaults.
+    const observationKey = windowKey(resolved);
+    const previousSnapshot = this.memory.trees[observationKey];
     const result = await this.driver.call("get_window_state", {
       ...captureArgs,
       ...(this.target === "mac" && options.maxDepth === undefined ? { timeout_ms: 5000 } : {}),
@@ -2584,6 +2586,22 @@ export class OpenSky implements OpenSkyApi {
       (typeof structured.tree_markdown === "string" && structured.tree_markdown) ||
       (typeof structured.text === "string" && structured.text) ||
       "";
+    if (structured.degraded !== true && rawElements.length === 0 &&
+        quotedTreeRows(rawTree).some(row => /^[ \t]*(?:- )?\[\d+\]\s+\S/.test(row.line))) {
+      // A compact/custom transport can return display indices without the
+      // bindings the SDK needs. Never publish unusable input authority or
+      // keep the preceding snapshot after this new driver observation.
+      if (this.memory.trees[observationKey] === previousSnapshot) {
+        delete this.memory.trees[observationKey];
+        resolved.snapshotId = undefined;
+        await this.persist();
+      }
+      throw new OpenSkyError(
+        "The native observation has indexed accessibility rows but no structured element bindings. " +
+        "Use the current OpenSky driver client; compact-v1 observations require full_output:true.",
+        "native_observation_bindings_unavailable", { delivery: "not_dispatched" },
+      );
+    }
     const menuCapabilities = this.target === "mac"
       ? projectClosedMenuActions(rawTree, rawElements) : { tree: rawTree, elements: rawElements };
     rawElements = menuCapabilities.elements;
@@ -4697,10 +4715,13 @@ function semanticElementIdentity(element: SnapshotElement): string {
 
 function remapTreeIndices(tree: string, elements: SnapshotElement[]): string {
   const indices = new Map(elements.map((element) => [element.driver_index ?? element.element_index, element.element_index]));
-  return tree.replace(/\[(\d+)\]/g, (match, raw: string) => {
-    const stable = indices.get(Number(raw));
-    return stable === undefined ? match : `[${stable}]`;
-  });
+  return quotedTreeRows(tree).map(({line}) => line.replace(
+    /^([ \t]*(?:- )?)\[(\d+)\](?=\s)/,
+    (match, prefix: string, raw: string) => {
+      const stable = indices.get(Number(raw));
+      return stable === undefined ? match : `${prefix}[${stable}]`;
+    },
+  )).join("\n");
 }
 
 /** Compact only text proved outside its owning window; document bounds alone are not a viewport. */

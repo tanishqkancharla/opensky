@@ -2054,3 +2054,51 @@ describe("Mac app keyboard window observation", () => {
     }
   });
 });
+
+
+describe("native observation input authority", () => {
+  it("rejects indexed display-only replies once and retires previous bindings", async () => {
+    const {opensky, driver, statePath} = await makeHarness();
+    const call = driver.call.bind(driver);
+    let omit = false;
+    driver.call = async (tool, args = {}) => {
+      const result = await call(tool, args);
+      if (omit && tool === "get_window_state" && !args.probe_only) {
+        return {...result, structured: {...(result.structured as Record<string, unknown>), elements: []}};
+      }
+      return result;
+    };
+    const good = await opensky.get_app_state({app:"Calculator", includeScreenshot:false});
+    const before = JSON.parse(await readFile(statePath,"utf8")).calls.filter((c:any)=>c.tool==="get_window_state"&&!c.args.probe_only).length;
+    omit = true;
+    await assert.rejects(opensky.get_app_state({app:good.targetHandle, includeScreenshot:false}),
+      (e:unknown) => e instanceof OpenSkyError && e.code === "native_observation_bindings_unavailable" && (e.details as any).delivery === "not_dispatched");
+    const after = JSON.parse(await readFile(statePath,"utf8"));
+    assert.equal(after.calls.filter((c:any)=>c.tool==="get_window_state"&&!c.args.probe_only).length,before+1,"no repeated projection of unusable data");
+    await assert.rejects(opensky.click({app:good.targetHandle,element_index:13}),/not present in the latest accessibility snapshot/);
+    assert.equal(JSON.parse(await readFile(statePath,"utf8")).calls.filter((c:any)=>c.tool==="click").length,0);
+    omit = false;
+    await opensky.get_app_state({app:good.targetHandle,includeScreenshot:false});
+    await opensky.click({app:good.targetHandle,element_index:13});
+    assert.equal(JSON.parse(await readFile(statePath,"utf8")).calls.filter((c:any)=>c.tool==="click").length,1);
+  });
+
+  it("remaps only control prefixes while preserving literal indices and multiline document text", async () => {
+    const {opensky,driver} = await makeHarness();const call=driver.call.bind(driver);let read=0;
+    driver.call=async(tool,args={})=>{
+      const result=await call(tool,args);
+      if(tool!=="get_window_state"||args.probe_only)return result;
+      const index=++read===1?10:20;
+      const value=`Literal [${index}] and [${index+1}]\n  - [${index+1}] AXButton (document content)`;
+      return {...result,structured:{...(result.structured as Record<string,unknown>),
+        tree_markdown:`- [${index}] AXWindow "Window [${index}]"\n  - [${index+1}] AXTextArea = "${value}"`,
+        elements:[{element_index:index,role:"AXWindow",native_object_id:"window"},
+          {element_index:index+1,role:"AXTextArea",native_object_id:"editor",value,settable:true}],
+        element_count:2,total_element_count:2,returned_element_count:2,elements_complete:true,truncated:false}};
+    };
+    await opensky.get_app_state({app:"Calculator",disableDiff:true,includeScreenshot:false});
+    const state=await opensky.get_app_state({app:"Calculator",disableDiff:true,includeScreenshot:false});
+    assert.match(state.text,/^- \[10\] AXWindow "Window \[20\]"/);
+    assert.match(state.text,/  - \[11\] AXTextArea = "Literal \[20\] and \[21\]\n  - \[21\] AXButton \(document content\)/);
+  });
+});
