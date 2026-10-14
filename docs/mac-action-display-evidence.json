@@ -1,0 +1,41 @@
+{
+  "driverSource": "a6c670060b54edfe7d2d0b5864215ea01fc92113",
+  "driverUnchanged": true,
+  "existingUnitOwnerExtended": true,
+  "beforeFixKeeperFailed": true,
+  "sdkTests": {
+    "node22": {
+      "passed": 500,
+      "skipped": 1
+    },
+    "node24": {
+      "passed": 500,
+      "skipped": 1
+    }
+  },
+  "realRelevantContracts": [
+    "ACT-N01",
+    "CLICK-M02",
+    "DIFF-N02",
+    "FORMAT-N04"
+  ],
+  "cleanupVerified": true,
+  "sameLiveRawSnapshot": {
+    "sameSnapshot": true,
+    "rawSHA256": "1342f421c0704f1077c1d1f630ccd333ef50a41c72a4da4b31b558082bc03854",
+    "driverPid": 79194,
+    "windowId": 79586,
+    "beforeCharacters": 17139,
+    "afterCharacters": 17011,
+    "beforeDescriptors": 4,
+    "afterDescriptors": 0,
+    "structuredAuthorityUnchanged": true,
+    "inputCalls": 1
+  },
+  "limits": [
+    "Live display-only control; no paid score gain claimed.",
+    "Less than1percent text reduction in measured popup.",
+    "Raw capabilities/authority unchanged; no new input or route behavior.",
+    "Original ordinary-view relevance failure retained."
+  ]
+}

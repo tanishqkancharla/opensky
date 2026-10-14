@@ -4463,9 +4463,13 @@ export function sanitizeTreeText(tree: string, elements: SnapshotElement[] = [])
     if (!element.role || !element.actions?.length) continue;
     const rendered = element.actions.map(action => action.replace(/^AX/, "").toLowerCase());
     // Current driver Markdown omits intrinsic ShowMenu while the structured
-    // inventory keeps it. Match only these two attested display forms; raw
+    // inventory keeps it; current Mac also omits ScrollToVisible. Match only
+    // these attested complete display forms; raw
     // action tokens/capabilities are never modified or inferred from text.
-    const variants = [rendered, rendered.filter((_, index) => element.actions![index] !== "AXShowMenu")];
+    const variants = [rendered,
+      rendered.filter((_, index) => element.actions![index] !== "AXShowMenu"),
+      rendered.filter((_, index) => !["AXShowMenu", "AXScrollToVisible"].includes(element.actions![index]!)),
+    ];
     for (const visible of variants) {
       if (!visible.length) continue;
       const readable = [...new Set(visible)].map(action => {

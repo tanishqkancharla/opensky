@@ -532,6 +532,14 @@ describe("opensky helpers", () => {
     const literal = `- [8] AXCell = "actions=[${trash.toLowerCase()}]]"`;
     assert.equal(sanitizeTreeText(literal,[selectedCell]),literal);
     assert.equal(sanitizeTreeText(compact,[{...selectedCell,actions:["AXPress",trash]}]),compact);
+    // Current Mac Markdown hides both intrinsic hints, preserving both in the
+    // structured authority. Flatten only that attested complete display form.
+    const currentCell={...selectedCell,actions:["AXShowMenu","AXScrollToVisible",trash]};
+    assert.equal(sanitizeTreeText(compact,[currentCell]),flattened);
+    assert.deepEqual(currentCell.actions,["AXShowMenu","AXScrollToVisible",trash]);
+    assert.equal(sanitizeTreeText(compact,[{...currentCell,actions:[...currentCell.actions,"AXPress"]}]),compact);
+    assert.equal(sanitizeTreeText(literal,[currentCell]),literal);
+
 
   });
 
