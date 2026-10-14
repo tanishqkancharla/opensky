@@ -1,0 +1,85 @@
+{
+  "verifiedAt": "2026-10-14T15:40:51.937789+00:00",
+  "iteration": 169,
+  "sdkRelease": "0.2.10",
+  "sdkSource": "346865cf41a21d6599f123a496bb55b0f7618419",
+  "driverSource": "79d347a64c6154caed14325daf44e8ef7afaca7d",
+  "driverVersion": "0.35.3",
+  "completedPairs": 5,
+  "originalAttempts": 11,
+  "excludedIncompleteRuns": [
+    1561
+  ],
+  "cleanupClear": true,
+  "openskyScore": 62.40670348787528,
+  "nativeScore": 100,
+  "chargedBenchmarkEstimateUsd": 93.61379639999996,
+  "benchmarkCapUsd": 100,
+  "billingScope": "Estimated benchmark agents only; exact project/subscription cost unavailable.",
+  "safariPair": {
+    "nativeRun": 1562,
+    "openskyRun": 1563,
+    "nativeSeconds": 31.419297218322754,
+    "openskySeconds": 85.30851936340332,
+    "nativeInputTokens": 206027,
+    "openskyInputTokens": 179592,
+    "slowDriverTypingMs": [
+      4439,
+      3365,
+      3360
+    ]
+  },
+  "typingControl": {
+    "markersObserved": true,
+    "cleanupPassed": true,
+    "sourceUnchanged": true,
+    "stages": [
+      {
+        "preactivate": false,
+        "typingMs": 4799.724792,
+        "activationVerified": null
+      },
+      {
+        "preactivate": true,
+        "typingMs": 823.4349169999987,
+        "activationVerified": true
+      },
+      {
+        "preactivate": false,
+        "typingMs": 1078.2764160000006,
+        "activationVerified": null
+      },
+      {
+        "preactivate": true,
+        "typingMs": 798.0982499999991,
+        "activationVerified": true
+      }
+    ]
+  },
+  "upstreamCandidate": {
+    "sha": "8be7052a063aacb58c4d743b4e7efa3afd78143a",
+    "componentRelease": "cua-driver-rs-v0.35.4",
+    "publishedAt": "2026-10-14T12:32:14Z",
+    "assetsVerified": true,
+    "integrated": false,
+    "nextScope": [
+      "Mac middle-click routing",
+      "Linux preflight and spare-keycode batches, preserving local application acknowledgements and exact restoration",
+      "Permissions CLI exit status",
+      "Recording/history metadata",
+      "Coordinate-scroll capability",
+      "Installer version and logging",
+      "Relevant canonical harness and CI changes"
+    ]
+  },
+  "remainingIssues": [
+    19,
+    56
+  ],
+  "limits": [
+    "One owned control; no internal-stage timing or causal root cause established.",
+    "Explicit persistent activation changes focus semantics and is not a shipped optimization.",
+    "Earlier daemon exit cause remains unproven; unchanged restart preserved signing and grants.",
+    "No product repair, causal score gain or sandboxed TigerVNC Chrome acceptance claimed."
+  ]
+}
