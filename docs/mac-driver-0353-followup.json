@@ -43,6 +43,6 @@
   "finalDriverAllPlatformUnitVerification": {
     "runId": 38511965387,
     "source": "a6c670060b54edfe7d2d0b5864215ea01fc92113",
-    "status": "Windows and Linux passed; Mac pending"
+    "status": "All Linux,Windows andMac build/unit jobs passed"
   }
 }

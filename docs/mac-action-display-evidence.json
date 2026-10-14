@@ -37,5 +37,21 @@
     "Less than1percent text reduction in measured popup.",
     "Raw capabilities/authority unchanged; no new input or route behavior.",
     "Original ordinary-view relevance failure retained."
-  ]
+  ],
+  "paidVerification": {
+    "nativeRun": 1542,
+    "beforeSDKRun": 1543,
+    "afterSDKRun": 1548,
+    "beforeInputTokens": 328610,
+    "afterInputTokens": 324896,
+    "beforeEstimatedCostUsd": 0.3166568,
+    "afterEstimatedCostUsd": 0.280856,
+    "beforeSeconds": 57.38015079498291,
+    "afterSeconds": 69.76686906814575,
+    "beforeBestIndex": 1.0206058100198794,
+    "afterBestIndex": 1.2409251445200382,
+    "overallScoreImproved": false,
+    "cleanActionNamesObserved": true,
+    "bothOriginalAndVerificationRunsRetained": true
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "opensky-cua",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Open computer-use library with legacy and native-style CUA APIs, backed by OpenSky Driver",
   "type": "module",
   "bin": {
