@@ -13,27 +13,29 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.6/opensky-cua-0.2.6.tgz
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.8/opensky-cua-0.2.8.tgz
 opensky doctor
 opensky skill install -g
 ```
 
-[OpenSky 0.2.6](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.6)
+[OpenSky 0.2.8](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.8)
 is distributed as the attached npm tarball with a published SHA-256 checksum.
 Registry publication awaits publisher authentication; the command above selects
 the released SDK directly. For a local project, omit `-g`.
 
-Install **OpenSky Driver** from the fork's `main` branch first if `doctor`
+Install **OpenSky Driver** from this verified fork commit first if `doctor`
 reports it missing:
 
 ```sh
 git clone https://github.com/tanishqkancharla/cua.git
 cd cua
+git checkout a6c670060b54edfe7d2d0b5864215ea01fc92113
 bash libs/cua-driver/scripts/install.sh
 ```
 
 Use `libs/cua-driver/scripts/install.ps1` instead on Windows. The
 machine-readable source contract is [driver-source.json](driver-source.json).
+Its `verifiedCommit` records the tested source; it does not enable automatic installation.
 Building requires Rust and platform build tools. Automatic fork release
 downloads are not available; OpenSky never falls back to upstream CUA Driver.
 

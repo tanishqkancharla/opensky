@@ -3,5 +3,6 @@
   "branch": "main",
   "path": "libs/cua-driver",
   "product": "opensky-driver",
-  "identityProtocolVersion": 1
+  "identityProtocolVersion": 1,
+  "verifiedCommit": "a6c670060b54edfe7d2d0b5864215ea01fc92113"
 }
