@@ -59,5 +59,7 @@
     "Linux0353 native GUI and sandboxed Chrome remain unverified; previous reviewed container denies default Chrome namespaces.",
     "Original PASTE-N04 fixture process-registry check failure retained; exact payload save and cleanup passed, unchanged keeper and fresh complete paste suite pass.",
     "No new paid resource score is attributed to these SDK guards."
-  ]
+  ],
+  "sdkRuntimeSource": "a328614a5e592085568ce308d4b6cd2a4d25ff90",
+  "sdkRelease": "0.2.7"
 }
