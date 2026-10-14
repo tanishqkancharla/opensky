@@ -1,0 +1,39 @@
+{
+  "sdk": "e666f8f1cdb1f702080337e12ee180d20e68074d",
+  "driverSource": "01d4b9e47705289e3b56a848e35e3508de28017f",
+  "driverVersion": "0.35.2",
+  "scope": "Mac Notes task, private Codex CLI benchmark adapter",
+  "status": "actual task effects and owned cleanup verified",
+  "observed": {
+    "native": {
+      "elapsedSeconds": 55.508867025375366,
+      "inputTokens": 140886,
+      "costEstimateUsd": 0.1692072,
+      "toolCalls": 6
+    },
+    "openskyBeforeAdapterRepair": {
+      "elapsedSeconds": 170.64750003814697,
+      "inputTokens": 527522,
+      "costEstimateUsd": 0.47677159999999996,
+      "toolCalls": 15
+    },
+    "openskyAfterAdapterRepair": {
+      "elapsedSeconds": 59.2553608417511,
+      "inputTokens": 115344,
+      "costEstimateUsd": 0.1372176,
+      "toolCalls": 6
+    }
+  },
+  "validation": [
+    "32 focused SDK owners pass",
+    "Existing SELECTION-OBS-N04 real Notes gate passes with cleanup",
+    "Exact current adapter index click and UTF-16 title selection effect pass",
+    "Original affected Terra task rerun has6 completed tool calls with no index refusal; exact saved four-line text and bold title retained by reversible same-account archive move"
+  ],
+  "limitations": [
+    "Private adapter loaded current facade with older injected client. Shipped SDK driver already has the compact-v1 full-output compatibility fix.",
+    "One run each, differing retained Notes inventory; no statistically controlled performance claim.",
+    "Costs are API-equivalent estimates, not actual invoices.",
+    "All original runs, failures and cleanup receipts retained privately."
+  ]
+}
