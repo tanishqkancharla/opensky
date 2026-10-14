@@ -5851,3 +5851,12 @@ The display reduction in that control is less than1%; it does not explain the or
 
 
 SET384 verification: original task rerun1548 completes with readable Explore/Satellite names and exact cleanup. Input328610→324896 (1.1% lower), estimatedcost0.3166568→0.280856 (11.3% lower), elapsed57.38→69.77 seconds. Against unchanged native1542, best-resource index1.0206→1.2409 worsens. Use latest1548 in the score and preserve1543; no repeated search for a favorable timing result. This verifies the display correction, not overall performance improvement.
+
+
+## SET385 — Integrate current driver fixes with cross-platform feedback
+
+Six additional driver-path changes landed after the earlier upstream inspection: synthetic pointer/mouse sequences, sharing approved Chrome connections, Chromium frame rebasing, Windows embedded-daemon console suppression, Mac popup preservation, and Linux typing preflight/error reporting. Preserve their original authors and upstream commit references. The synthetic-click conflict retains detached-node and native-option refusal in the same dispatch turn; the Linux conflict combines distinct-keycode capacity preflight with the existing application acknowledgement barrier and exact keymap restoration. No uncertain input is replayed.
+
+The fork workflow now runs the whole applicable platform crate and the existing complete isolated X11 keyboard binary. Exact source79d347a6 passes all three hosted build/driver/contract/core/platform jobs; Linux additionally passes seven actual X11 keyboard contracts, including exhausted-capacity refusal before input and acknowledgement timeout. Local Mac passes all27 required SDK contracts with cleanup. The existing FRESH-B01 page now reacts to pointerdown, requiring the expanded synthetic route to produce the actual delayed result; FRESH-B01 andSTALE-B01 pass. The existing standalone trusted-click owner changes the real Chrome counter0→1 while independent focus,z-order,cursor and no-leaked-input oracles pass; owned Chrome and Electron witness cleanup passes.
+
+SDK TypeScript runtime remains unchanged from0.2.9. These results support the new exact driver pin; they are not sandboxed Halo/TigerVNC browser acceptance, new Windows GUI acceptance, a closed issue19/56, or a benchmark score improvement. [Current evidence](driver-maintenance-2026-10-14.json).

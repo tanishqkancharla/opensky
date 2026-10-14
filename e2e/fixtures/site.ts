@@ -135,7 +135,7 @@ export function collectionPage(kind: "list" | "article" | "table"): string {
 export const latePage = `
 <button>Load later result</button><output aria-live="polite">Waiting</output>
 <script>${report}
-document.querySelector('button').onclick = () => setTimeout(() => {
+document.querySelector('button').onpointerdown = () => setTimeout(() => {
   document.querySelector('output').textContent = 'Later result ready';
   report({phase:'ready'});
 }, 350);

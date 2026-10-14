@@ -1,0 +1,69 @@
+{
+  "driverRuntimeSource": "79d347a64c6154caed14325daf44e8ef7afaca7d",
+  "driverVersion": "0.35.3",
+  "driverMacSHA256": "64ce115afef71c03a18225a0264572e18e7df64f081ffa1dedc6397809aec71b",
+  "upstreamInspected": "2c3d2f412231b5ab41213c1972e985f4d079bbf7",
+  "attributedUpstreamChanges": [
+    "a7c4a0ea5e197fdfb422fa07a53649419296e842",
+    "a3a50cbc4fe05848ac0f65f30a92ef6d97f197af",
+    "6e050d72078b33959fbfece8e85bd1d4999a18d3",
+    "a9d912817b3021f330fc0734824373874f84038a",
+    "295266586d25fcfea934eeb915ba8a701501d644",
+    "2c3d2f412231b5ab41213c1972e985f4d079bbf7"
+  ],
+  "hostedRun": "https://github.com/tanishqkancharla/cua/actions/runs/38554600322",
+  "hostedAllThreePlatforms": "success",
+  "hostedUnits": {
+    "Linux": {
+      "driver": 321,
+      "contract": 67,
+      "core": 1048,
+      "platform": 659,
+      "realX11Keyboard": 7
+    },
+    "Windows": {
+      "driver": 316,
+      "contract": 67,
+      "core": 1033,
+      "platform": 280
+    },
+    "Mac": {
+      "driver": 326,
+      "contract": 67,
+      "core": 1045,
+      "platform": 628
+    }
+  },
+  "localMacRequiredContractsPassed": 27,
+  "additionalSdkContractsPassed": [
+    "FRESH-B01",
+    "STALE-B01"
+  ],
+  "trustedBackgroundChrome": {
+    "owner": "libs/cua-driver/rust/crates/cua-driver-e2e/tests/standalone_browser_behavior_test.rs::standalone_browser_trusted_click",
+    "beforeCounter": 0,
+    "afterCounter": 1,
+    "passedOracles": [
+      "fixture_state",
+      "focus",
+      "z_order",
+      "cursor",
+      "no_leaked_input"
+    ],
+    "videoRequested": false,
+    "cleanupPassed": true
+  },
+  "sdkFreshnessOwner": "FRESH-B01 now requires pointerdown to trigger its delayed result; actual page readiness and subsequent SDK observation passed.",
+  "preservedLocalContracts": [
+    "Detached-node and native-option refusals remain before synthetic pointer dispatch.",
+    "Linux input reserves distinct borrowed keycodes before emitting text and retains application acknowledgement before restoring them.",
+    "Uncertain delivery is not replayed."
+  ],
+  "limits": [
+    "This is not sandboxed TigerVNC/XFCE Chrome acceptance; that production environment remains unavailable.",
+    "Windows GUI and full canonical Mac/Wayland desktop matrices remain separate.",
+    "Open issues19 and56 remain unresolved.",
+    "Driver distribution is source-only; upstream0.35.3 component release assets returned404 at inspection.",
+    "No overall benchmark improvement is inferred from these new source changes."
+  ]
+}
