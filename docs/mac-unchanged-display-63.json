@@ -58,5 +58,23 @@
     "resourceImprovementClaimed": false
   },
   "currentCandidateResponseHeading": "Fresh display observation (controls unchanged):",
-  "followUpIssueRemainsOpen": true
+  "followUpIssueRemainsOpen": false,
+  "finalHeadingFollowUp": {
+    "nativeFailedRun": 1605,
+    "nativeCompletedRetry": 1606,
+    "SDKRun": 1607,
+    "initialAndFinalDisplay": "23",
+    "initialAndFinalExpression": "15 + 19 \u2212 11",
+    "SDKCalls": 2,
+    "nativeCalls": 5,
+    "SDKContextTokens": 49731,
+    "nativeContextTokens": 111209,
+    "SDKSeconds": 30.072728872299194,
+    "nativeSeconds": 44.03228974342346,
+    "freshHeadingBranchExercised": true,
+    "SDKFullRereadOrReplay": false,
+    "numericIndexErrorsAlsoObservedOnNative": true,
+    "resourceImprovementCausallyEstablished": false,
+    "runtimeAndOwnerSourcesUnchangedFromRelease": true
+  }
 }
