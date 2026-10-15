@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "status": "current-Mac-contracts-passed-paid-verification-pending",
+  "issue": 62,
+  "SDKVersion": "0.2.17",
+  "SDKRuntimeUnchangedFrom": "cffb21e803b527f99d6357840619c3980afc99ff",
+  "driverVersion": "0.35.4",
+  "driverSource": "8bb6abadd80ae6aa4f523fb74f97e7f5d504c05a",
+  "macDriverSHA256": "164a07160b0b5feeed593159132f9114bc93eaa6949bb241fc3619259189bc81",
+  "before": {
+    "originalSDKControlPassed": 2,
+    "originalSDKControlTrials": 3,
+    "loggedSDKControlPassed": 4,
+    "loggedSDKControlTrials": 6,
+    "expandedRealOwnerPassed": 0,
+    "expandedRealOwnerTrials": 6,
+    "nativeControlPassed": 2,
+    "nativeControlTrials": 2
+  },
+  "intermediate": {
+    "source": "9d67e505f36a34dad1e3aa8c3a8c103476d87745",
+    "passedTrials": 5,
+    "totalTrials": 6,
+    "coldTrialPassed": false,
+    "actualWatchdogDemotionsDuringColdTrial": 3
+  },
+  "after": {
+    "passedTrials": 6,
+    "totalTrials": 6,
+    "coldTrialPassed": true,
+    "expectedDisplay": "15",
+    "expectedExpression": "14 \u00d7 2 \u2212 13",
+    "actualWatchdogDemotions": 0,
+    "ownedCleanupPassed": true,
+    "macPlatformUnitTestsPassed": 632,
+    "macIntegrationUnitTestsPassed": 2,
+    "macGUIIgnoredTestsRunByThisCommand": false
+  },
+  "stableSigningAndExistingTCCRetained": true,
+  "automaticTerminationEnabled": false,
+  "actualWindowObservationSettingsMs": [
+    250,
+    50
+  ],
+  "SDKFocusedContractTestsPassed": 39,
+  "inputReplayUsed": false,
+  "timeoutWideningUsed": false,
+  "performanceGainClaimed": false,
+  "sandboxedTigerVncChromeAccepted": false,
+  "limitations": [
+    "Six real sequences verify this case; no claim that posting receipt proves arbitrary application consumption.",
+    "Linux and Windows adapters unchanged; this fix addresses Mac focus handling only.",
+    "Fresh isolated Terra benchmark pairs pending; no resource score improvement claimed."
+  ],
+  "requiredCurrentMacContractsPassed": 27,
+  "additionalCurrentMacContractsPassed": [
+    "TYPE-N06"
+  ],
+  "SDKNode22Passed": 500,
+  "SDKNode24Passed": 500,
+  "SDKSkippedEach": 1,
+  "originalCalendarPreserved": true,
+  "allOwnedCleanupClear": true
+}

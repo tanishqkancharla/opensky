@@ -44,8 +44,15 @@ test('ACT-N01: advertised native press keeps digit delivery and bounds auxiliary
     const fresh = (await windows()).filter(w => w.app_name === 'Calculator' && w.is_on_screen
       && w.bounds.width > 100 && w.bounds.height > 100 && !before.has(`${w.pid}:${w.window_id}`));
     expect(fresh).toHaveLength(1); owned = fresh[0]!;
-    await app.click(index(tree, l => l.includes('AXButton (All Clear)')));
+    await app.click(index(tree, l => /AXButton \((?:All )?Clear\)/.test(l)));
     tree = await app.getAXState({ disableDiffing: true, emit: false });
+    await writeFile(join(directory, 'after-entry-clear.txt'), tree);
+    // A persisted unfinished expression first exposes Clear (current operand),
+    // then All Clear (whole expression). Choose the newly observed action.
+    if (!tree.includes('AXStaticText = "0" (Edit field)')) {
+      await app.click(index(tree, l => l.includes('AXButton (All Clear)')));
+      tree = await app.getAXState({disableDiffing:true,emit:false});
+    }
     expect(tree).toContain('AXStaticText = "0" (Edit field)');
     for (const digit of ['1', '2', '3']) {
       const button = index(tree, l => l.includes(`AXButton (${digit})`) && l.includes('press'));
@@ -54,7 +61,19 @@ test('ACT-N01: advertised native press keeps digit delivery and bounds auxiliary
       await writeFile(join(directory, `after-${digit}.txt`), tree);
       expect(tree).toContain(`AXStaticText = "${digit === '1' ? '1' : digit === '2' ? '12' : '123'}" (Edit field)`);
     }
-    await writeFile(join(directory, 'acceptance.json'), JSON.stringify({ times, median: median(times), owned, finalDigits: '123' }, null, 2));
+    // Serial keyboard delivery must survive the temporary foreground interval.
+    // Keep every actual final state; do not retry a dropped key or infer success
+    // from an accepted/unverifiable event receipt.
+    const keyboardTrials: Array<{value?: string; expression?: string}> = [];
+    for (let trial = 0; trial < 6; trial++) {
+      for (const key of ['Escape','2','0','asterisk','1','1','Return','Escape','2','plus','1','2','Return','asterisk','2','minus','1','3','Return']) await app.pressKey(key);
+      const actual = await app.getAXState({disableDiffing:true,emit:false});
+      await writeFile(join(directory, `keyboard-${trial + 1}.txt`), actual);
+      keyboardTrials.push({value: actual.match(/AXStaticText = "([^"]+)" \(Edit field\)/)?.[1], expression: actual.match(/AXStaticText = "([^"]+)" \(Last Expression\)/)?.[1]});
+    }
+    await writeFile(join(directory, 'keyboard-trials.json'), JSON.stringify(keyboardTrials, null, 2));
+    expect(keyboardTrials).toEqual(Array.from({length:6}, () => ({value:'15',expression:'14 × 2 − 13'})));
+    await writeFile(join(directory, 'acceptance.json'), JSON.stringify({ times, median: median(times), owned, finalDigits: '123', keyboardTrials }, null, 2));
     expect(median(times)).toBeLessThan(1100);
   } finally {
     await writeFile(join(directory, 'timings.json'), JSON.stringify({ times, owned, dispatch }, null, 2));
@@ -65,7 +84,7 @@ test('ACT-N01: advertised native press keeps digit delivery and bounds auxiliary
     await writeFile(join(directory, 'cleanup.json'), JSON.stringify({ app: 'Calculator secondary press fixture',
       owned, safeToContinue: !owned || !(await windows()).some(w => w.pid === owned!.pid && w.window_id === owned!.window_id && w.is_on_screen) }));
   }
-}, 60000);
+}, 240000);
 
 test('ACT-N02: native text confirmation commits actual Safari navigation with bounded observation', async ({ sdk, cua }) => {
   const driver = sdk as unknown as Driver;
