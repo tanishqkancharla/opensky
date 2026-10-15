@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "SDKVersion": "0.2.16",
+  "SDKRuntimeUnchangedFrom": "cffb21e803b527f99d6357840619c3980afc99ff",
+  "driverVersion": "0.35.4",
+  "driverSource": "a164e38e89958b3b26cfc7914f82b85cc7deda28",
+  "macDriverSHA256": "3c58fe7fcb656ff45e3ae8b03deb4096b71f031297eed7310fff4d98b518525c",
+  "issue": 61,
+  "upstreamSource": "1ff756bd79856ef4c34b180ea1a6fb36ca368d73",
+  "attribution": [
+    "injaneity",
+    "Ritikag33"
+  ],
+  "before": {
+    "SDKVersion": "0.2.15",
+    "driverSource": "1007552bba87de5aa498c3229ccb48f62f37d4ce",
+    "nonexistentSelectedEndpointReportedDefaultGrants": true
+  },
+  "after": {
+    "defaultMacTCCStatusPreserved": true,
+    "privateSelectedDaemonDistinguished": true,
+    "absentSelectedDaemonRunning": false,
+    "absentStatus": "unknown",
+    "absentGrantBooleansOmitted": true,
+    "endpointSpecificGrantExitCode": 64,
+    "grantUIRequested": false,
+    "privateDaemonStoppedViaExpectedPID": true,
+    "privateSocketAndPIDFileRemoved": true,
+    "GUIInputs": 0
+  },
+  "localMacValidation": {
+    "driverUnitsPassed": 327,
+    "permissionCLICasesPassed": 2,
+    "protectedPromptRefusalPassed": true,
+    "selectedEndpointMutantDetected": true,
+    "docsGeneratorTestsPassed": 5,
+    "workflowActionlintPassed": true,
+    "SDKNode22Passed": 500,
+    "SDKNode24Passed": 500,
+    "SDKSkippedEach": 1
+  },
+  "nativeLinuxCI": {
+    "runId": 38759816438,
+    "source": "a164e38e89958b3b26cfc7914f82b85cc7deda28",
+    "permissionOwnerStep": "success",
+    "schemaRemovalMutantAndRestoredOwnerStep": "success",
+    "wholeWorkflowConclusion": "pending",
+    "environment": "GitHub-hosted Ubuntu24.04, read-only status; no TigerVNC/Chrome certification"
+  },
+  "nativeWindowsCI": "pending",
+  "stableSigningAndExistingTCCRetained": true,
+  "automaticTerminationEnabled": false,
+  "actualWindowObservationSettingsMs": [
+    250,
+    50
+  ],
+  "sharedCoreAndMacAdapterSourcesUnchangedFrom": "1007552bba87de5aa498c3229ccb48f62f37d4ce",
+  "currentNativeGUIContractsClaimed": 0,
+  "fullNativeGUIAcceptance": false,
+  "sandboxedTigerVncChromeAccepted": false,
+  "newPaidAgents": 0,
+  "performanceGainClaimed": false,
+  "privateRawStatusOrAppContentPublished": false
+}

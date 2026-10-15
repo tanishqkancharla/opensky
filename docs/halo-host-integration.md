@@ -2,12 +2,13 @@
 
 ## Current pins and verification boundary
 
-The current supported distribution is **SDK0.2.15**, with Driver **0.35.4**,
-runtime source **`1007552bba87de5aa498c3229ccb48f62f37d4ce`**.
+The current supported distribution is **SDK0.2.16**, with Driver **0.35.4**,
+runtime source **`a164e38e89958b3b26cfc7914f82b85cc7deda28`**.
 The macOS bundle disables AppKit automatic termination; explicit driver Stop remains available.
 Linux native acceptance remains pinned to Driver`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`;
 intervening production changes are macOS bundle metadata, the SCK worker autorelease pool,
-shared browser delivery-result reporting, and operator CLI status PID-file selection.
+shared browser delivery-result reporting, operator CLI status PID-file selection,
+and native permission-status schema/endpoint reporting.
 Linux native input and the TypeScript host action queue are unchanged; native acceptance
 is not recertified by Mac capture/browser or isolated CLI tests.
 The actual native acceptance run uses SDK`cffb21e803b527f99d6357840619c3980afc99ff`;
@@ -20,6 +21,45 @@ Driver1007552b additionally fixes operator `status --pid-file` selection.
 Its isolated CLI-daemon checks are separate from Halo's embedded SDK/native
 acceptance; status PID-file text is not authenticated ownership or action completion.
 [Operator contract evidence](driver-status-pid-60.json).
+
+### Read-only status for the selected daemon
+
+Drivera164e38e also fixes `permissionStatus()` selecting the wrong daemon: the
+SDK already passed its explicit `socket`, but previous driver CLI dispatch ignored
+it. With the current pin, an unavailable selected endpoint returns
+`{daemon_running:false,status:"unknown",reason:...}` without grant booleans or
+fallback. A live Linux daemon reports native fields including `x11` and `atspi`;
+Windows reports integrity/UIA; macOS retains responsible-process TCC filtering.
+Unknown status is not a denial or permission to send input. Status is not proof
+of action completion or successful browser/native capture.
+
+```js
+import {OpenSkyDriverClient} from "opensky-cua";
+const driver = new OpenSkyDriverClient({
+  binaryPath: "/absolute/path/to/opensky-driver",
+  socket: "/absolute/path/to/owned-daemon.sock",
+  autoStart: false,
+  autoInstall: false,
+});
+console.log(await driver.permissionStatus()); // read-only; does not start a daemon
+```
+
+Start/configure the persistent daemon separately in the host's DISPLAY and shared
+D-Bus session. The Linux/Windows tool schemas accept the SDK's existing
+`prompt:false` request. No new OS or action grants are added. The existing shared
+authorization refusal for agent `prompt:true` remains. `permissions grant --socket`
+(and `grantPermissions()` on a socket-configured client) exits64 before any UI:
+that grant command configures the installed Mac app, while embedded hosts own
+their setup. Callers of `grantPermissions()` must inspect its returned exit code.
+
+Actual signed Mac SDK/CLI default/private/missing endpoint checks and the public
+expected-PID private-daemon Stop pass with zero input; socket/PID files are removed.
+The native Linux permission-owner and schema-removal/restoration steps passed;
+Windows and the complete workflow remain pending in
+[driver run38759816438](https://github.com/tanishqkancharla/cua/actions/runs/38759816438)
+at this revision. This is not new TigerVNC/Chrome or GUI acceptance.
+[Compact permission-status evidence](driver-permissions-61.json).
+
 Registry `opensky-cua@0.1.2` does not identify these features. Use an immutable
 built checkout or the declared GitHub release tarball; record the selected
 binary's `--opensky-driver-identity` and avoid pairing it with another daemon.
