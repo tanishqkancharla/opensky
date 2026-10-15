@@ -1,0 +1,154 @@
+{
+  "issue": 59,
+  "SDKVersion": "0.2.14",
+  "SDKRuntimeUnchangedFrom": "cffb21e803b527f99d6357840619c3980afc99ff",
+  "driverVersion": "0.35.4",
+  "driverSource": "b973a50bc124a1240bb4c04493b68661deaf7575",
+  "upstreamSource": "6e48c3347a2d857ba47c5ec62e887fdf64ab65c0",
+  "attributedForkCommit": "4e5972f091c92302a99157520cc48d98e9d99e88",
+  "driverMacSHA256": "ca76c669353a7a53a30e6f7318c3620fface1304df2bf8eb768aefe38324bb0b",
+  "probeSHA256": "b3262010b89211597876f9f13b816ccbf69186930ab806f0571bd2b1e327ff25",
+  "phases": [
+    {
+      "phase": "before",
+      "driverSource": "a67954e33d0bb5b80a7517d889a5b18ecca59a35",
+      "counterBefore": 0,
+      "counterAfter": 1,
+      "clickTrusted": true,
+      "scrollBefore": 0,
+      "scrollAfter": 600,
+      "foregroundWitnessRemainedFrontmost": true,
+      "results": [
+        {
+          "tool": "browser_click",
+          "requestedDelivery": "foreground",
+          "publicDelivery": "background",
+          "effect": "unverifiable",
+          "route": "trusted_input"
+        },
+        {
+          "tool": "browser_pointer",
+          "requestedDelivery": "foreground",
+          "publicDelivery": "background",
+          "effect": "unverifiable",
+          "route": "trusted_input"
+        }
+      ]
+    },
+    {
+      "phase": "upstream-only",
+      "driverSource": "4e5972f091c92302a99157520cc48d98e9d99e88",
+      "counterBefore": 0,
+      "counterAfter": 1,
+      "clickTrusted": true,
+      "scrollBefore": 0,
+      "scrollAfter": 600,
+      "foregroundWitnessRemainedFrontmost": true,
+      "results": [
+        {
+          "tool": "browser_click",
+          "requestedDelivery": "foreground",
+          "publicDelivery": "foreground",
+          "effect": "unverifiable",
+          "route": "trusted_input"
+        },
+        {
+          "tool": "browser_pointer",
+          "requestedDelivery": "foreground",
+          "publicDelivery": "background",
+          "effect": "unverifiable",
+          "route": "trusted_input"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "driverSource": "b973a50bc124a1240bb4c04493b68661deaf7575",
+      "counterBefore": 0,
+      "counterAfter": 1,
+      "clickTrusted": true,
+      "scrollBefore": 0,
+      "scrollAfter": 600,
+      "foregroundWitnessRemainedFrontmost": true,
+      "results": [
+        {
+          "tool": "browser_click",
+          "requestedDelivery": "foreground",
+          "publicDelivery": "foreground",
+          "effect": "unverifiable",
+          "route": "trusted_input"
+        },
+        {
+          "tool": "browser_pointer",
+          "requestedDelivery": "foreground",
+          "publicDelivery": "foreground",
+          "effect": "unverifiable",
+          "route": "trusted_input"
+        }
+      ]
+    }
+  ],
+  "regression": {
+    "wholeCorePass": 1047,
+    "wholeCoreIgnored": 1,
+    "SDKNode22Pass": 500,
+    "SDKNode24Pass": 500,
+    "SDKSkipEach": 1,
+    "normalizationAndPointerMutantsDetected": true,
+    "wheelFieldRemovalFailsNullVersusForeground": true,
+    "realBrowserControls": [
+      {
+        "test": "standalone_browser_trusted_click",
+        "testStatus": "pass",
+        "ownedChromeExited": true,
+        "oracles": [
+          "fixture_state",
+          "focus",
+          "z_order",
+          "cursor",
+          "no_leaked_input"
+        ]
+      },
+      {
+        "test": "standalone_browser_trust_gated_dom_click",
+        "testStatus": "pass",
+        "ownedChromeExited": true,
+        "oracles": [
+          "fixture_state",
+          "focus",
+          "z_order",
+          "cursor",
+          "no_leaked_input"
+        ]
+      }
+    ],
+    "currentRequiredNativeContractsPassed": [
+      "FOCUS-N01",
+      "SHEET-N01",
+      "TAB-N01",
+      "WINDOW-N01",
+      "WINDOW-N02"
+    ],
+    "requiredNativeContractsTotal": 27,
+    "remainingNativeCertification": "blocked by login_window_frontmost; PASTE-N01 refused before any driver call; no passing paste claim"
+  },
+  "lifecycle": {
+    "signingIdentityPreserved": true,
+    "accessibilityAndScreenRecordingRetained": true,
+    "automaticTerminationEnabled": false,
+    "ownedCleanupClear": true,
+    "originalCalendarPreserved": true,
+    "normalDesktopReady": false,
+    "appWindowControlsVerified": true,
+    "appWindowControlsDoNotOverrideDocumentFixture": true
+  },
+  "limits": [
+    "Mac application effects only; sandbox bypass not enabled.",
+    "Linux sandboxed TigerVNC Chrome acceptance remains unverified.",
+    "Delivery.mode describes the successful input branch, not application verification, rollback or guaranteed activation.",
+    "Intermediate upstream-only wheel failure and stopped/failed desktop fixtures retained.",
+    "Fresh Calendar AX/key controls restore Month; cold Calculator capture and exact exit pass, supporting app/window scope only.",
+    "No paid benchmark agents, score improvement, speedup, context or cost gain claimed."
+  ],
+  "privateDataPublished": false
+}

@@ -2,12 +2,13 @@
 
 ## Current pins and verification boundary
 
-The current supported distribution is **SDK0.2.13**, with Driver **0.35.4**,
-runtime source **`a67954e33d0bb5b80a7517d889a5b18ecca59a35`**.
+The current supported distribution is **SDK0.2.14**, with Driver **0.35.4**,
+runtime source **`b973a50bc124a1240bb4c04493b68661deaf7575`**.
 The macOS bundle disables AppKit automatic termination; explicit driver Stop remains available.
 Linux native acceptance remains pinned to Driver`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`;
-intervening production changes are macOS bundle metadata and the SCK worker autorelease pool.
-Linux input and host lifecycle code is unchanged; native acceptance is not recertified by Mac capture tests.
+intervening production changes are macOS bundle metadata, the SCK worker autorelease pool,
+and shared browser delivery-result reporting. Linux native input and host lifecycle code
+is unchanged; native acceptance is not recertified by Mac capture/browser tests.
 The actual native acceptance run uses SDK`cffb21e803b527f99d6357840619c3980afc99ff`;
 the final distribution has the same TypeScript SDK runtime, with updated
 release metadata, driver pin, CI scope and documentation. The current native
@@ -189,6 +190,14 @@ background posture and Linux Chrome can refuse with
 `browser_input_trust_unavailable`/`route_unavailable`. Ref actions without opt-in
 retain their existing explicit `dom_event` behavior; this is not a fallback for
 failed trusted input. A stale screenshot or ref refuses before input.
+
+Driverb973a50b also preserves the executed foreground branch in public
+`delivery.mode` for trusted click and wheel results. The Mac fixture verifies
+trusted counter0→1 and scroll0→600 before/after; the upstream-only intermediate
+fix still misreported wheel delivery and is retained in
+[browser delivery evidence](browser-delivery-59.json). These results remain
+`effect:"unverifiable"`; mode is neither application verification nor a promise
+that focus changes. This does not establish Linux sandboxed browser acceptance.
 
 `deliveryMode` records per-call foreground consent, not permission to bypass
 policy. Halo must only expose that option to authorized tools/extensions and
