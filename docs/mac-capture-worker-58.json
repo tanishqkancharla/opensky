@@ -1,0 +1,100 @@
+{
+  "driverRuntimeSource": "a67954e33d0bb5b80a7517d889a5b18ecca59a35",
+  "driverMainTestOnly": "166b10663ee30cd9f852f49e3dfd34b180441d5f",
+  "upstreamCommit": "b6a8280d6ff719a94f22cac06bc6951a1bdb4b74",
+  "authorsPreserved": [
+    "injaneity",
+    "Irfanwani"
+  ],
+  "driverMacSHA256": "b54966f891a86eaa1c578a6320b32a47d2d27b47faef59016d1ede419adac019",
+  "deferredReleaseOwner": {
+    "existingOwnerExtended": true,
+    "successReleasedBeforeReturn": 1,
+    "errorReleasedBeforeReturn": 1,
+    "poolRemovalMutantFailed": true,
+    "mutantObservedReleases": 0,
+    "mutantExpectedReleases": 1,
+    "realCocoaObjects": true,
+    "testOnlyProductionHooks": false
+  },
+  "wholeMacPlatformUnits": {
+    "passed": 632,
+    "ignored": 6
+  },
+  "captureProbe": {
+    "beforeSource": "a6473bea5e57e25c5c642c213f14d7b4c8d60f35",
+    "afterSource": "a67954e33d0bb5b80a7517d889a5b18ecca59a35",
+    "beforeCaptures": 24,
+    "afterCaptures": 24,
+    "windowDimensions": [
+      1140,
+      598
+    ],
+    "desktopDimensions": [
+      1365,
+      768
+    ],
+    "allPNGsDecoded": true,
+    "nonUniformPixels": true,
+    "SCKPathObservedInSample": true,
+    "zeroInputCalls": true,
+    "noAppLaunch": true,
+    "bothSessionsDetached": true,
+    "originalWindowPreserved": true,
+    "beforeRSSDeltaBytes": 89210880,
+    "afterRSSDeltaBytes": 89227264,
+    "RSSImprovementDemonstrated": false,
+    "largeBitmapRootObserved": "CoreGraphics get_cache.image_cache",
+    "leaksScanner": {
+      "exitCode": 1,
+      "reportedAllocationCount": 416,
+      "reportedBytes": 19936,
+      "largeBitmapsNotReportedAsOrphaned": true
+    },
+    "additionalWarmedDisplayOnlyProbe": {
+      "count": 20,
+      "rssDeltaBytes": -1392640,
+      "performanceComparison": false
+    }
+  },
+  "newMacGuiContracts": {
+    "requiredPassed": 27,
+    "additionalPassed": [
+      "TYPE-N06"
+    ],
+    "groupsPassed": 16,
+    "exactOwnedCleanup": true,
+    "sameDaemonThroughout": true
+  },
+  "stableSigningIdentityPreserved": true,
+  "permissionRegrant": false,
+  "benchmarkSpendUSD": 95.050798,
+  "newPaidAgents": 0,
+  "limits": [
+    "No demonstrated reduction in initial RSS, run time, token usage or cost.",
+    "Warmed preview result is an additional control, not a fresh before/after comparison.",
+    "Framework cache reachability and one steady batch do not prove a whole-system leak absence or lifetime memory bound.",
+    "Raw screenshots and process samples remain private.",
+    "Sandboxed TigerVNC Chrome remains unaccepted; Linux native evidence retains its prior exact pins.",
+    "Issues19/56 and Safari timing/Maps context discrepancies remain unresolved."
+  ],
+  "sdkUnitTests": {
+    "node22": 500,
+    "node24": 500,
+    "bunOnlySkipsEach": 1
+  },
+  "windowPixelComparison": {
+    "pairs": 20,
+    "identicalDecodedPixelPairs": 20,
+    "privatePixelsPublished": false
+  },
+  "probeSourceSHA256": "00d184531855b8c0d30bf2f8f42b7947abf7371a6cc622ff7c4c4ed9c4a5f92c",
+  "largeBitmapRootsSampled": 1,
+  "hostedDriverCI": {
+    "runId": 38676210946,
+    "linux": "success",
+    "windows": "success",
+    "macOS": "queued at packaging"
+  },
+  "operatingSystem": "27.0"
+}

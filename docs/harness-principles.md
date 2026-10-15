@@ -206,3 +206,5 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 - Derive validation identities from the same contract producer as the service. Keep exact refusals for incompatible identities.
 
 - Verify repairs from the original failing starting state, including cold caches when relevant.
+
+- Separate resource ownership from process footprint: verify release at the owning boundary, trace retained allocations, and warm bounded caches before attributing an RSS slope to a leak or claiming a resource improvement.
