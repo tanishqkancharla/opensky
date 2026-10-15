@@ -35,12 +35,22 @@ test.for(['list','icon'] as const)('FINDER-N06: clicking an already-selected fil
   await expect.poll(async()=>{state=await app.getAXState({disableDiffing:true,emit:false});return state.includes(`AXWindow "${root.split('/').at(-1)}"`)&&!state.includes('AXSheet');}).toBe(true);
   await app.pressKey(mode==='list'?'super+2':'super+1');state=await app.getAXState({disableDiffing:true,emit:false});
   const field=()=>{const match=state.match(mode==='list'?/\[(\d+)\] AXTextField = "Drafts"/:/\[(\d+)\] AXImage "Drafts"/);expect(match).toBeTruthy();return Number(match![1]);};
+  if(mode==='list')expect(state).toContain('Finder rename: select the item, press Return, then observe the inline editor');
   await app.click(field());state=await app.getAXState({disableDiffing:true,emit:false});expect(state).toContain('[selected]');
   if(process.env.OPENSKY_E2E_ARTIFACT_DIR)await writeFile(join(process.env.OPENSKY_E2E_ARTIFACT_DIR,'selected-field-before.txt'),state);
   await app.click(field());state=await app.getAXState({disableDiffing:true,emit:false});expect(state).toContain('[selected]');
   // The label is a selected collection item, not a text editor. Its normal
   // Open shortcut must still navigate instead of editing the filename.
-  await app.pressKey('super+o');state=await app.getAXState({disableDiffing:true,emit:false});expect(state).toContain('AXWindow "Drafts"');
+  let openedName='Drafts';
+  if(mode==='list'){
+   await app.pressKey('Return');state=await app.getAXState({disableDiffing:true,emit:false});
+   expect(state).toContain('Inline item-name editor [');expect(state).not.toContain('Finder rename:');
+   const editor=state.match(/^- \[(\d+)\] AXTextField[^\n]*id=ShrinkToFit Text Field/m);expect(editor).toBeTruthy();
+   await app.setValue(Number(editor![1]),'Renamed');await app.pressKey('Return');state=await app.getAXState({disableDiffing:true,emit:false});
+   expect(state).toContain('AXTextField = "Renamed"');expect((await lstat(join(root,'Renamed'))).isDirectory()).toBe(true);
+   await expect(access(join(root,'Drafts'))).rejects.toMatchObject({code:'ENOENT'});openedName='Renamed';
+  }
+  await app.pressKey('super+o');state=await app.getAXState({disableDiffing:true,emit:false});expect(state).toContain(`AXWindow "${openedName}"`);
   if(process.env.OPENSKY_E2E_ARTIFACT_DIR)await writeFile(join(process.env.OPENSKY_E2E_ARTIFACT_DIR,'selected-field-after.txt'),state);
  }catch(error){
   failed=true;primaryError=error;

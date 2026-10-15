@@ -1535,7 +1535,7 @@ it("advertises only primary Press for a proven closed menu bar and preserves ope
     assert.equal(projectClosedMenuActions('- [5] AXTextArea = "actions=[cancel,press,pick]"', [item]).tree, '- [5] AXTextArea = "actions=[cancel,press,pick]"');
   });
 
-it("distinguishes a live root item-name editor from a file label without changing capabilities", () => {
+it("distinguishes a live root item-name editor from a file label without changing capabilities", async () => {
     const label: SnapshotElement = {element_index: 8, role: "AXTextField", value: "Drafts", url: "file:///owned/Drafts/", actions: ["AXOpen", "AXConfirm"], settable: true, enabled: true};
     const source = '- [8] AXTextField = "Drafts" [actions=[open,confirm] settable]';
     const rendered = enrichTreeSemantics(source, [label]);
@@ -1551,6 +1551,21 @@ it("distinguishes a live root item-name editor from a file label without changin
     assert.equal(inlineItemEditObservation(tree, [{...editor, url:label.url}]), "");
     assert.equal(inlineItemEditObservation(tree, [editor, {...editor, element_index:11}]), "");
     assert.match(enrichTreeSemantics('- [9] AXTextField [settable]', [editor]), /type-directly/);
+    for (const finder of [false, true]) {
+      const {opensky, driver, statePath} = await makeHarness();
+      await driver.call("list_apps", {});
+      const fixture = JSON.parse(await readFile(statePath, "utf8"));
+      const app = fixture.apps.find((item: any) => item.name === "TextEdit");
+      if (finder) { app.name = "Finder"; app.bundle_id = "com.apple.finder"; }
+      app.elements = [{element_index:0, role:"AXWindow", label:"Owned folder",native_object_id:"window"}, {...label,native_object_id:"drafts"}, {...label,element_index:11,value:"Final",url:"file:///owned/Final/",native_object_id:"final"}];
+      await writeFile(statePath, JSON.stringify(fixture));
+      const state = await opensky.get_app_state({app:app.name, includeScreenshot:false, disableDiff:true});
+      assert.equal((state.text.match(/Finder rename:/g) ?? []).length, finder ? 1 : 0);
+      if (finder) assert.match(state.text, /press Return, then observe the inline editor.*Direct setValue.*Automation/);
+      assert.doesNotMatch((await opensky.get_app_state({app:state.targetHandle,includeScreenshot:false})).text,/Finder rename:/);
+      const after = JSON.parse(await readFile(statePath,"utf8"));
+      assert.equal(after.calls.some((call:any)=>["click","set_value","press_key","hotkey"].includes(call.tool)),false);
+    }
   });
 
 it("chooses exact foreground for native buttons missing primary-action enumeration, without replay", async () => {
