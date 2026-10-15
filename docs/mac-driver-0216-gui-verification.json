@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-15T20:17:33.980570+00:00",
+  "sdkRelease": "0.2.16",
+  "sdkReleaseSource": "b84af9cc7ca63bff7921e2c3fd5aad34c2dd443b",
+  "sdkValidatedSource": "3bdd9e60459f11e6b7981e60730ee0f5e4693708",
+  "sdkRuntimeAndOwnerTestsUnchangedFromRelease": true,
+  "driverSource": "a164e38e89958b3b26cfc7914f82b85cc7deda28",
+  "driverVersion": "0.35.4",
+  "installedBinarySHA256": "3c58fe7fcb656ff45e3ae8b03deb4096b71f031297eed7310fff4d98b518525c",
+  "stableDriverBundleIdentifier": "com.opensky.driver",
+  "normalDesktopPreflightReady": true,
+  "physicalLockStateReported": null,
+  "requiredContractIDs": [
+    "ACT-N01",
+    "AX-N01",
+    "BUTTON-N01",
+    "CLICK-M02",
+    "CLICK-N01",
+    "CLICK-W01",
+    "DIFF-N01",
+    "DIFF-N02",
+    "FILE-N01",
+    "FIND-N01",
+    "FINDER-N06",
+    "FOCUS-N01",
+    "FORMAT-N04",
+    "KEY-S04",
+    "KEY-S05",
+    "PASTE-N01",
+    "PASTE-N04",
+    "RICH-N01",
+    "RICH-N02",
+    "RICH-N03",
+    "SELECT-N01",
+    "SELECT-N03",
+    "SELECTION-OBS-N04",
+    "SHEET-N01",
+    "TAB-N01",
+    "WINDOW-N01",
+    "WINDOW-N02"
+  ],
+  "additionalContractIDs": [
+    "TYPE-N06"
+  ],
+  "selectedAssertionsPassed": 31,
+  "assertions": [
+    {
+      "file": "e2e/specs/native-calculator-click-timing.test.ts",
+      "title": "CLICK-N01: adjacent Calculator buttons deliver each digit within the native click budget"
+    },
+    {
+      "file": "e2e/specs/native-calculator-click-timing.test.ts",
+      "title": "DIFF-N01: ordinary Calculator diffs expose changing display text without actionable IDs"
+    },
+    {
+      "file": "e2e/specs/native-tab-identity.test.ts",
+      "title": "TAB-N01: same-title native tabs retain physical identity and emit selection changes before exact close"
+    },
+    {
+      "file": "e2e/specs/native-primary-button.test.ts",
+      "title": "BUTTON-N01: one primary click opens a Safari tab when its native button omits AXPress"
+    },
+    {
+      "file": "e2e/specs/native-active-window.test.ts",
+      "title": "FOCUS-N01: app scope follows the focused document while the document handle stays exact"
+    },
+    {
+      "file": "e2e/specs/native-save-sheet.test.ts",
+      "title": "SHEET-N01: document handle edits and cancels its attached Save sheet"
+    },
+    {
+      "file": "e2e/specs/native-window-transition.test.ts",
+      "title": "WINDOW-N01: a physical app window transition emits one AX cue after screenshot-only observation, while tabs do not"
+    },
+    {
+      "file": "e2e/specs/native-window-transition.test.ts",
+      "title": "WINDOW-N02: exact document observation stays exact and emits no app transition cue after opening a sibling"
+    },
+    {
+      "file": "e2e/specs/native-ax-outcome.test.ts",
+      "title": "AX-N01: one Safari reload applies once without opening an unrelated toolbar menu"
+    },
+    {
+      "file": "e2e/specs/chrome-native-find.test.ts",
+      "title": "FIND-N01: native app scope binds actual Find controls while the main document remains exact"
+    },
+    {
+      "file": "e2e/specs/chrome-native-find.test.ts",
+      "title": "KEY-S05: background paste refuses browser chrome focus without delivery"
+    },
+    {
+      "file": "e2e/specs/native-named-plus-chord.test.ts",
+      "title": "KEY-S04: named plus chords change zoom once on the exact owned Chrome window"
+    },
+    {
+      "file": "e2e/specs/native-secondary-action-timing.test.ts",
+      "title": "ACT-N01: advertised native press keeps digit delivery and bounds auxiliary observation"
+    },
+    {
+      "file": "e2e/specs/native-text-click-settle.test.ts",
+      "title": "CLICK-W01: Safari web text click retains focus settling and renderer input"
+    },
+    {
+      "file": "e2e/specs/native-text-click-settle.test.ts",
+      "title": "CLICK-M02: native Maps text click avoids WebKit delay while preserving query delivery"
+    },
+    {
+      "file": "e2e/specs/native-file-label-selection.test.ts",
+      "title": "FILE-N01: a native file label selects once without editable-focus failure and opens only on advertised Open"
+    },
+    {
+      "file": "e2e/specs/native-notes-selection-observation.test.ts",
+      "title": "SELECTION-OBS-N04: Notes embedded editor selection uses its exact associated window and survives read-only observations"
+    },
+    {
+      "file": "e2e/specs/native-rich-text-observation.test.ts",
+      "title": "FORMAT-N04: normal diffs report same-editor bold and unbold without changing raw text"
+    },
+    {
+      "file": "e2e/specs/native-rich-text-observation.test.ts",
+      "title": "DIFF-N02: multiline editor diffs retain all text and never expose content as action rows"
+    },
+    {
+      "file": "e2e/specs/native-rich-paste.test.ts",
+      "title": "RICH-N01: rich html paste persists exact boundaries and bold style"
+    },
+    {
+      "file": "e2e/specs/native-rich-paste.test.ts",
+      "title": "RICH-N02: rich html paste persists exact boundaries and bold style"
+    },
+    {
+      "file": "e2e/specs/native-rich-paste.test.ts",
+      "title": "RICH-N03: rich md paste persists exact boundaries and bold style"
+    },
+    {
+      "file": "e2e/specs/native-success.test.ts",
+      "title": "PASTE-N01: pastes multiline text into the native document"
+    },
+    {
+      "file": "e2e/specs/native-success.test.ts",
+      "title": "PASTE-N04: preserves a competing copy after actual text insertion"
+    },
+    {
+      "file": "e2e/specs/native-success.test.ts",
+      "title": "SELECT-N01: replaces the disambiguated second occurrence after Unicode text"
+    },
+    {
+      "file": "e2e/specs/native-success.test.ts",
+      "title": "SELECT-N03: an ambiguous match preserves the established selection"
+    },
+    {
+      "file": "e2e/specs/native-success.test.ts",
+      "title": "SELECT-N-cursor_before: inserts at the requested edge without replacing the match"
+    },
+    {
+      "file": "e2e/specs/native-success.test.ts",
+      "title": "SELECT-N-cursor_after: inserts at the requested edge without replacing the match"
+    },
+    {
+      "file": "e2e/specs/native-success.test.ts",
+      "title": "TYPE-N06: long Unicode packets replace a selection and persist the complete multiline tail"
+    },
+    {
+      "file": "e2e/specs/native-finder-inline-rename.test.ts",
+      "title": "FINDER-N06: clicking an already-selected filename preserves its collection behavior in list view"
+    },
+    {
+      "file": "e2e/specs/native-finder-inline-rename.test.ts",
+      "title": "FINDER-N06: clicking an already-selected filename preserves its collection behavior in icon view"
+    }
+  ],
+  "exactPerGroupOwnedCleanupVerified": true,
+  "originalCalendarPreservedAndMonthRestored": true,
+  "originalFailuresRetained": [
+    "Brief campaign lease contention before dispatch; bounded nonblocking acquisition fixed.",
+    "Finder navigation readiness failed before label assertion; exact window and folder recovered; one fresh retry passed both list/icon owners."
+  ],
+  "parentRecovery": {
+    "originalNativeRunId": 1590,
+    "cause": "Saved RTF artifact reader exceeded its20s bound; underlying filesystem/privacy cause not established.",
+    "fileIdentityPreserved": true,
+    "independentExactRTFTextAndFirstLineOnlyBold": true,
+    "oneGUIMove": true,
+    "currentSDKUsed": true,
+    "permissionChanges": false,
+    "paidAgentReplay": false,
+    "originalTimeoutAndSetupFailuresRetained": true,
+    "ownerTestCounts": {
+      "nativeSavedResource": 9,
+      "FinderPreparation": 3,
+      "appCleanup": 11,
+      "FinderViewAndSelection": 3
+    },
+    "existingActualFinderN06RegressionPassedBothViews": true
+  },
+  "limits": [
+    "This verifies actual selected Mac GUI owners, not full Mac/Linux parity or sandboxed TigerVNC Chrome.",
+    "No new SDK or driver runtime optimization; paired task ratios remain descriptive.",
+    "Raw driver artifacts/screenshots and exact ownership inventories remain private in the campaign workspace."
+  ]
+}
