@@ -1,0 +1,71 @@
+{
+  "issue": 60,
+  "SDKVersion": "0.2.15",
+  "SDKRuntimeUnchangedFrom": "cffb21e803b527f99d6357840619c3980afc99ff",
+  "driverVersion": "0.35.4",
+  "driverSource": "1007552bba87de5aa498c3229ccb48f62f37d4ce",
+  "macDriverSHA256": "f684c93b184c07eabf426024700e91a1d072b25140369e6d9d47d25fc2961ada",
+  "upstreamSource": "bab00b7b4039ee0be89ee1c828268103fa8b87d5",
+  "attributedForkCommit": "cd461d844dccd40022784775c1926e4d203bcce6",
+  "CISelectionCommit": "a5e907a566805fc16109115cebd441c56c4d240f",
+  "contract": {
+    "explicitSelectedFileBothFlagForms": true,
+    "alternateFileValueReportedAsWritten": true,
+    "defaultFileSelectionUnchanged": true,
+    "PIDTextIsAuthenticatedOwnership": false,
+    "GUIInputs": 0
+  },
+  "before": {
+    "driverSource": "b973a50bc124a1240bb4c04493b68661deaf7575",
+    "privateDaemonWroteActualPID": true,
+    "separateArgumentReported": "unknown (no pid file)",
+    "leadingEqualsArgumentReported": "unknown (no pid file)",
+    "publicExpectedPIDStopExit": 0,
+    "ownedDaemonExited": true,
+    "socketAndPIDFileRemoved": true
+  },
+  "after": {
+    "driverSource": "1007552bba87de5aa498c3229ccb48f62f37d4ce",
+    "bothSelectedFileFormsMatchWrittenDaemonPID": true,
+    "otherSelectedFileMatchesWrittenValue": true,
+    "noOverrideStillUnknownInPrivateHome": true,
+    "publicExpectedPIDStopExit": 0,
+    "ownedDaemonExited": true,
+    "socketAndPIDFileRemoved": true
+  },
+  "regression": {
+    "wholeDriverUnitsPassed": 327,
+    "wholeCLIHistoryStatusBinariesPassed": 3,
+    "exactSelectedFileMutantDetected": true,
+    "SDKNode22Passed": 500,
+    "SDKNode24Passed": 500,
+    "SDKSkippedEach": 1,
+    "changedWorkflowActionlintPass": 3,
+    "newCurrentNativeGUIContractsClaimed": 0,
+    "prior027NativeCertificationStillIncomplete": true
+  },
+  "harness": {
+    "protectedCheckoutStartupFailureRetained": true,
+    "parentSampleWaitedInResponsibilityReexec": true,
+    "outsideDocumentsCopyByteIdentical": true,
+    "outsideCopyPrivateDaemonAndPublicStopPassed": true,
+    "testCopiesCurrentCargoArtifactIntoOwnedHomeOnMac": true,
+    "installedOlderBinaryNotSubstituted": true,
+    "productionTestHooksAdded": false
+  },
+  "runtime": {
+    "sharedCoreAndAllNativeAdaptersUnchangedFrom": "b973a50bc124a1240bb4c04493b68661deaf7575",
+    "signatureAndExistingGrantsPreserved": true,
+    "automaticTerminationEnabled": false,
+    "observationTimeoutMs": 250,
+    "observationPollMs": 50
+  },
+  "limits": [
+    "This is an operator CLI reporting fix; TypeScript SDK and host action completion contract are unchanged.",
+    "Status reports the selected file as written; it is not authenticated daemon ownership, completion, cancellation or rollback.",
+    "Normal desktop still reports loginwindow; no new Mac GUI or Linux/Windows GUI acceptance claimed.",
+    "Sandboxed TigerVNC Chrome remains unverified.",
+    "No paid agents, benchmark score or performance gain claimed."
+  ],
+  "rawAppDataPublished": false
+}

@@ -13,12 +13,12 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.14/opensky-cua-0.2.14.tgz
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.15/opensky-cua-0.2.15.tgz
 opensky doctor
 opensky skill install -g
 ```
 
-[OpenSky 0.2.14](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.14)
+[OpenSky 0.2.15](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.15)
 is distributed as the attached npm tarball with a published SHA-256 checksum.
 Registry publication awaits publisher authentication; the command above selects
 the released SDK directly. For a local project, omit `-g`.
@@ -29,7 +29,7 @@ reports it missing:
 ```sh
 git clone https://github.com/tanishqkancharla/cua.git
 cd cua
-git checkout b973a50bc124a1240bb4c04493b68661deaf7575
+git checkout 1007552bba87de5aa498c3229ccb48f62f37d4ce
 bash libs/cua-driver/scripts/install.sh
 ```
 

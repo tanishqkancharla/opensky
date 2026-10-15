@@ -2,19 +2,24 @@
 
 ## Current pins and verification boundary
 
-The current supported distribution is **SDK0.2.14**, with Driver **0.35.4**,
-runtime source **`b973a50bc124a1240bb4c04493b68661deaf7575`**.
+The current supported distribution is **SDK0.2.15**, with Driver **0.35.4**,
+runtime source **`1007552bba87de5aa498c3229ccb48f62f37d4ce`**.
 The macOS bundle disables AppKit automatic termination; explicit driver Stop remains available.
 Linux native acceptance remains pinned to Driver`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`;
 intervening production changes are macOS bundle metadata, the SCK worker autorelease pool,
-and shared browser delivery-result reporting. Linux native input and host lifecycle code
-is unchanged; native acceptance is not recertified by Mac capture/browser tests.
+shared browser delivery-result reporting, and operator CLI status PID-file selection.
+Linux native input and the TypeScript host action queue are unchanged; native acceptance
+is not recertified by Mac capture/browser or isolated CLI tests.
 The actual native acceptance run uses SDK`cffb21e803b527f99d6357840619c3980afc99ff`;
 the final distribution has the same TypeScript SDK runtime, with updated
 release metadata, driver pin, CI scope and documentation. The current native
 run verifies saved typing, cancellation/drain, paste refusal and strict bridging.
 The previous compositor-off/on capture matrix used SDKf1b687b7 / Driver0.35.2
 source34f3d150; capture-matrix acceptance is separate from the new native run.
+Driver1007552b additionally fixes operator `status --pid-file` selection.
+Its isolated CLI-daemon checks are separate from Halo's embedded SDK/native
+acceptance; status PID-file text is not authenticated ownership or action completion.
+[Operator contract evidence](driver-status-pid-60.json).
 Registry `opensky-cua@0.1.2` does not identify these features. Use an immutable
 built checkout or the declared GitHub release tarball; record the selected
 binary's `--opensky-driver-identity` and avoid pairing it with another daemon.
