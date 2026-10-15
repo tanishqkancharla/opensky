@@ -190,13 +190,24 @@
       "nativeSavedResource": 9,
       "FinderPreparation": 3,
       "appCleanup": 11,
-      "FinderViewAndSelection": 3
+      "FinderViewAndSelection": 3,
+      "existingSDKResourceBinding": 10
     },
-    "existingActualFinderN06RegressionPassedBothViews": true
+    "existingActualFinderN06RegressionPassedBothViews": true,
+    "originalSDKRunId": 1591,
+    "backendsVerified": [
+      "native",
+      "opensky"
+    ],
+    "recordedSDKSnapshotTokenFinalDriverReadAndPublicObservationVerified": true,
+    "actualHelperAbsenceRequiredForSDK": true,
+    "nativeSDKSavedOutputsByteIdentical": true,
+    "savedSyntheticRTFSHA256": "41c8c6c13a64f6e7cd9cd9bae80bd8df14fefea6a6b7e51f420c63de1aecc4b2"
   },
   "limits": [
     "This verifies actual selected Mac GUI owners, not full Mac/Linux parity or sandboxed TigerVNC Chrome.",
     "No new SDK or driver runtime optimization; paired task ratios remain descriptive.",
     "Raw driver artifacts/screenshots and exact ownership inventories remain private in the campaign workspace."
-  ]
+  ],
+  "updatedAt": "2026-10-15T20:25:12.063609+00:00"
 }
