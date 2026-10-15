@@ -517,7 +517,7 @@ export class OpenSky implements OpenSkyApi {
       const display = [...displayOnlyRows(snapshot.tree).values()];
       if (display.length > 0 && display.length <= 4 && display.every(row => row.length <= 240) &&
           display.join("\n").length <= 800) {
-        text += `\nUnchanged display rows from this observation:\n${display.join("\n")}`;
+        text = `Fresh display observation (controls unchanged):\n${display.join("\n")}`;
       }
     }
     if (!snapshot.degraded) {

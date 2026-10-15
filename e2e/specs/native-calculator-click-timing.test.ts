@@ -109,8 +109,8 @@ test("DIFF-N01: ordinary Calculator diffs expose changing display text without a
     for (const digit of ["2", "1", "3"]) await app.click(index(digit));
     const unchanged = await app.getAXState({emit:false});
     await writeFile(join(artifacts, "unchanged-after-action.txt"), unchanged);
-    expect(unchanged).toContain("No accessibility changes.");
-    expect(unchanged).toContain("Unchanged display rows from this observation:");
+    expect(unchanged).not.toContain("No accessibility changes.");
+    expect(unchanged).toContain("Fresh display observation (controls unchanged):");
     expect(unchanged).toMatch(/^AXStaticText = "213" \(Edit field\)$/m);
     expect(unchanged).not.toMatch(/\[\d+\] AXStaticText/);
     const idle = await app.getAXState({emit:false});

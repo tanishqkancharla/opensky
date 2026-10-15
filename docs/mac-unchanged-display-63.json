@@ -28,7 +28,7 @@
     "skippedEach": 1,
     "realDisplayOwnerFailedBeforeAndPassedAfter": true,
     "affectedGUIRegressionsPassed": true,
-    "paidVerification": "pending"
+    "paidVerification": "pending updated heading"
   },
   "displayLimits": {
     "rows": 4,
@@ -41,5 +41,14 @@
     "Native/SDK persisted initial displays differ; retain this timing limitation.",
     "Driver27-contract certification is retained at its original SDK pin; affected presentation owners have new real evidence.",
     "No full TigerVNC sandboxed Chrome acceptance."
-  ]
+  ],
+  "intermediateVerification": {
+    "unexercisedBranchRun": 1594,
+    "exercisedButStillRepeatedRun": 1595,
+    "SDKContextTokens": 114376,
+    "SDKSeconds": 50.06747269630432,
+    "SDKCalls": 6,
+    "resourceImprovementClaimed": false
+  },
+  "currentCandidateResponseHeading": "Fresh display observation (controls unchanged):"
 }
