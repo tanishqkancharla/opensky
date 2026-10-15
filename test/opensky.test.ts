@@ -1565,6 +1565,18 @@ it("distinguishes a live root item-name editor from a file label without changin
       assert.doesNotMatch((await opensky.get_app_state({app:state.targetHandle,includeScreenshot:false})).text,/Finder rename:/);
       const after = JSON.parse(await readFile(statePath,"utf8"));
       assert.equal(after.calls.some((call:any)=>["click","set_value","press_key","hotkey"].includes(call.tool)),false);
+      const input = {app:state.targetHandle,element_index:8,value:"Renamed"};
+      await assert.rejects(opensky.set_value({...input,allow_scripted_rename:"no" as any}),/must be boolean/);
+      if(finder){
+        await assert.rejects(opensky.set_value({...input,allow_scripted_rename:false}),{code:"file_name_needs_rename"});
+        assert.equal(JSON.parse(await readFile(statePath,"utf8")).calls.some((call:any)=>call.tool==="set_value"),false);
+      }
+      // Legacy direct API keeps its original route; other apps ignore the
+      // Finder-specific opt-out. No new driver schema argument escapes.
+      await opensky.set_value({...input,...(!finder?{allow_scripted_rename:false}:{})});
+      const writes=JSON.parse(await readFile(statePath,"utf8")).calls.filter((call:any)=>call.tool==="set_value");
+      assert.equal(writes.length,1);assert.equal(writes[0].args.allow_scripted_rename,undefined);
+      assert.equal(writes[0].args.window_id,2001);assert.ok(writes[0].args.element_token);
     }
   });
 

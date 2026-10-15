@@ -2113,10 +2113,17 @@ export class OpenSky implements OpenSkyApi {
     }
   }
 
-  async set_value(args: { app: string; element_index: number; value: string; window_change_timeout_ms?: number }): Promise<void> {
+  async set_value(args: {
+    app: string; element_index: number; value: string; window_change_timeout_ms?: number;
+    /** Legacy low-level calls retain scripted rename. Native-style app editors opt out. */
+    allow_scripted_rename?: boolean;
+  }): Promise<void> {
     const windowObservation = nativeWindowObservationArgs(args?.window_change_timeout_ms);
     if (!args?.app || typeof args.element_index !== "number" || typeof args.value !== "string") {
       throw invalidParams();
+    }
+    if (args.allow_scripted_rename !== undefined && typeof args.allow_scripted_rename !== "boolean") {
+      throw invalidParams("allow_scripted_rename must be boolean");
     }
     const resolved = await this.requireResolved(args.app);
     if (resolved.browser) {
@@ -2134,6 +2141,15 @@ export class OpenSky implements OpenSkyApi {
     }
     const nativeElement = this.memory.trees[windowKey(resolved)]?.elements
       .find(item => item.element_index === args.element_index);
+    if (args.allow_scripted_rename === false && this.target === "mac" &&
+        resolved.bundleId === "com.apple.finder" && nativeElement && isNativeFileItemLabel(nativeElement)) {
+      throw new OpenSkyError(
+        "This is a listed Finder file name, not the inline editor. Select the item, press Return, " +
+        "then observe the inline editor; edit that field and press Return to commit. " +
+        "No input or Automation request was sent.",
+        "file_name_needs_rename",
+      );
+    }
     const focusText = this.target === "mac" && nativeElement
       && ["AXTextField", "AXTextArea", "AXComboBox"].includes(nativeElement.role ?? "");
     await this.driver.call("set_value", {

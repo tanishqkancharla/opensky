@@ -43,6 +43,9 @@ test.for(['list','icon'] as const)('FINDER-N06: clicking an already-selected fil
   // Open shortcut must still navigate instead of editing the filename.
   let openedName='Drafts';
   if(mode==='list'){
+   await expect(app.setValue(field(),'ForbiddenScriptedRename')).rejects.toMatchObject({code:'file_name_needs_rename'});
+   expect((await lstat(join(root,'Drafts'))).isDirectory()).toBe(true);
+   await expect(access(join(root,'ForbiddenScriptedRename'))).rejects.toMatchObject({code:'ENOENT'});
    await app.pressKey('Return');state=await app.getAXState({disableDiffing:true,emit:false});
    expect(state).toContain('Inline item-name editor [');expect(state).not.toContain('Finder rename:');
    const editor=state.match(/^- \[(\d+)\] AXTextField[^\n]*id=ShrinkToFit Text Field/m);expect(editor).toBeTruthy();

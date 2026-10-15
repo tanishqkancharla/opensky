@@ -603,6 +603,7 @@ it("bounds auxiliary Mac key/text/value/click/secondary observation without chan
         const args=call.args as Record<string,unknown>;
         assert.equal(args.window_change_timeout_ms,target==="mac"?(["type_text","set_value"].includes(call.method)?50:250):undefined);
         assert.equal(args.app,"tgt_app");
+        if(call.method==="set_value")assert.equal(args.allow_scripted_rename,target==="mac"?false:undefined);
       }
     }
   });

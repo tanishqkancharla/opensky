@@ -699,7 +699,7 @@ abstract class BoundTarget implements Target {
   async setValue(elementIndex: number, value: string): Promise<void> {
     this.facade.prepareAction(this.targetHandle);
     await this.facade.opensky.set_value({ app: this.targetHandle, element_index: elementIndex, value,
-      ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 50 } : {}) });
+      ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 50, allow_scripted_rename: false } : {}) });
   }
 
   async typeText(text: string): Promise<void> {
