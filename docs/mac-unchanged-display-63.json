@@ -28,7 +28,14 @@
     "skippedEach": 1,
     "realDisplayOwnerFailedBeforeAndPassedAfter": true,
     "affectedGUIRegressionsPassed": true,
-    "paidVerification": "pending updated heading"
+    "paidVerification": "No resource improvement established; retain issue63 open.",
+    "latestSDKRun": 1596,
+    "latestSDKCalls": 7,
+    "latestSDKContextTokens": 127068,
+    "latestSDKSeconds": 64.82828783988953,
+    "latestBestResourceRatio": 1.1565949143240442,
+    "latestPaidHeadingBranchExercised": false,
+    "modelWrongDigitCorrected": true
   },
   "displayLimits": {
     "rows": 4,
@@ -50,5 +57,6 @@
     "SDKCalls": 6,
     "resourceImprovementClaimed": false
   },
-  "currentCandidateResponseHeading": "Fresh display observation (controls unchanged):"
+  "currentCandidateResponseHeading": "Fresh display observation (controls unchanged):",
+  "followUpIssueRemainsOpen": true
 }
