@@ -114,7 +114,7 @@ Direct SDK users consume returned observations; embedded hosts can provide an
 `emit` callback. App objects expose `getAXState`, `getScreenshot`, `click`,
 `pressKey`, `typeText`, `setValue`, `selectText`, `paste`, `scroll`, and `drag`.
 
-On macOS Finder, `app.setValue` edits an observed inline name editor. Listed file-name labels refuse with `file_name_needs_rename` before input or Automation: select the item, press Return, observe the inline editor, edit it, then press Return. The lower-level `OpenSky.set_value` accepts `allow_scripted_rename: false` for the same refusal; its existing default scripted route remains available.
+On macOS Finder, `app.setValue` edits an observed inline name editor. Listed file-name labels refuse with `file_name_needs_rename` before input or Automation: select the item, press Return, observe the inline editor, edit it, then press Return. The lower-level `OpenSky.set_value` accepts `allow_scripted_rename: false` for the same refusal; its existing default scripted route remains available. Direct scripted renames retain the [tracked Automation timeout limitation](https://github.com/tanishqkancharla/opensky/issues/65).
 Tabs add `goto`, `back`, `forward`, `reload`, and exact `close`.
 See [runtime integration](docs/runtime-reference.md) for emitters and lifecycle.
 
