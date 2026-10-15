@@ -28,14 +28,14 @@
     "skippedEach": 1,
     "realDisplayOwnerFailedBeforeAndPassedAfter": true,
     "affectedGUIRegressionsPassed": true,
-    "paidVerification": "No resource improvement established; retain issue63 open.",
-    "latestSDKRun": 1596,
-    "latestSDKCalls": 7,
-    "latestSDKContextTokens": 127068,
-    "latestSDKSeconds": 64.82828783988953,
-    "latestBestResourceRatio": 1.1565949143240442,
-    "latestPaidHeadingBranchExercised": false,
-    "modelWrongDigitCorrected": true
+    "paidVerification": "Direct same-value SDK1607 completes without repeat; contract addressed, no causal resource gain claimed.",
+    "latestSDKRun": 1607,
+    "latestSDKCalls": 2,
+    "latestSDKContextTokens": 49731,
+    "latestSDKSeconds": 30.072728872299194,
+    "latestBestResourceRatio": 0.35167910957220805,
+    "latestPaidHeadingBranchExercised": true,
+    "modelWrongDigitCorrected": false
   },
   "displayLimits": {
     "rows": 4,
@@ -47,7 +47,8 @@
   "limitations": [
     "Native/SDK persisted initial displays differ; retain this timing limitation.",
     "Driver27-contract certification is retained at its original SDK pin; affected presentation owners have new real evidence.",
-    "No full TigerVNC sandboxed Chrome acceptance."
+    "No full TigerVNC sandboxed Chrome acceptance.",
+    "Memory follow-up is a different task from the original percent chain; the corrected native baseline includes model error overhead. Do not infer causal before/after resource savings."
   ],
   "intermediateVerification": {
     "unexercisedBranchRun": 1594,
@@ -76,5 +77,24 @@
     "numericIndexErrorsAlsoObservedOnNative": true,
     "resourceImprovementCausallyEstablished": false,
     "runtimeAndOwnerSourcesUnchangedFromRelease": true
+  },
+  "iteration172AfterSnapshot": {
+    "realUnchangedDisplay": "213",
+    "idleResponse": "No accessibility changes.",
+    "newActionableIDs": false,
+    "newInputDispatch": false,
+    "SDKNode22Passed": 501,
+    "SDKNode24Passed": 501,
+    "skippedEach": 1,
+    "realDisplayOwnerFailedBeforeAndPassedAfter": true,
+    "affectedGUIRegressionsPassed": true,
+    "paidVerification": "No resource improvement established; retain issue63 open.",
+    "latestSDKRun": 1596,
+    "latestSDKCalls": 7,
+    "latestSDKContextTokens": 127068,
+    "latestSDKSeconds": 64.82828783988953,
+    "latestBestResourceRatio": 1.1565949143240442,
+    "latestPaidHeadingBranchExercised": false,
+    "modelWrongDigitCorrected": true
   }
 }
