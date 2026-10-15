@@ -502,13 +502,24 @@ export class OpenSky implements OpenSkyApi {
       query: args.query?.trim(),
       collectionScope: args.collectionScope,
     });
-    const text = args.query !== undefined
+    let text = args.query !== undefined
       ? `Semantic query ${JSON.stringify(args.query.trim())}; fresh accessibility state:\n${snapshot.tree}`
       : snapshot.documentChanged && previous && !args.disableDiff
       ? `Document changed; fresh accessibility state:\n${snapshot.tree}`
       : snapshot.degraded || args.disableDiff || args.collectionScope === "all" || !previous || previous.viewKind === "context"
         ? snapshot.tree
         : diffTrees(previous.tree, previous.elements, snapshot.tree, snapshot.elements);
+    if (hadPendingAction && this.target === "mac" && !resolved.browser && resolved.contentScope !== "web" &&
+        !snapshot.degraded && text === "No accessibility changes.") {
+      // A repeated calculation can end at its starting value. Keep a small
+      // fresh display witness without claiming that the input was consumed,
+      // manufacturing element IDs, or repeating a large unchanged inventory.
+      const display = [...displayOnlyRows(snapshot.tree).values()];
+      if (display.length > 0 && display.length <= 4 && display.every(row => row.length <= 240) &&
+          display.join("\n").length <= 800) {
+        text += `\nUnchanged display rows from this observation:\n${display.join("\n")}`;
+      }
+    }
     if (!snapshot.degraded) {
       this.memory.trees[windowKey(resolved)] = {
         tree: snapshot.tree,

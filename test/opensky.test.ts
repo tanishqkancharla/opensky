@@ -83,6 +83,34 @@ describe("unadvertised native primary button routing", () => {
   });
 });
 
+describe("unchanged native observation bounds", () => {
+  it("keeps idle, large and long display inventories concise after a fresh read", async () => {
+    const {opensky, driver} = await makeHarness();
+    let rows = '- AXStaticText = "short display"';
+    const invoke = driver.call.bind(driver);
+    driver.call = async (tool, args) => {
+      const result = await invoke(tool, args);
+      if (tool === "get_window_state" && !args?.probe_only && result.structured) {
+        const value = result.structured as {tree_markdown?: string};
+        value.tree_markdown += `\n${rows}`;
+      }
+      return result;
+    };
+    await opensky.get_app_state({app:"Calculator",includeScreenshot:false,disableDiff:true});
+    assert.equal((await opensky.get_app_state({app:"Calculator",includeScreenshot:false})).text, "No accessibility changes.");
+    for (const inventory of [
+      Array.from({length:5}, (_, i) => `- AXStaticText = "row ${i}"`).join("\n"),
+      `- AXStaticText = "${"x".repeat(250)}"`,
+      Array.from({length:4}, () => `- AXStaticText = "${"x".repeat(200)}"`).join("\n"),
+    ]) {
+      rows = inventory;
+      await opensky.get_app_state({app:"Calculator",includeScreenshot:false,disableDiff:true});
+      await opensky.press_key({app:"Calculator",key:"Escape"});
+      assert.equal((await opensky.get_app_state({app:"Calculator",includeScreenshot:false})).text, "No accessibility changes.");
+    }
+  });
+});
+
 describe("opensky helpers", () => {
   it("summarizes a removed display inventory while retaining current content and control changes", () => {
     const beforeControls: SnapshotElement[] = [{ element_index: 0, role: "AXWindow" }, { element_index: 7, role: "AXTextField", value: "set" }, { element_index: 9, role: "AXButton", label: "Old action" }];

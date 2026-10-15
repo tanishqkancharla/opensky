@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "issue": 63,
+  "SDKVersion": "0.2.17",
+  "driverSource": "8bb6abadd80ae6aa4f523fb74f97e7f5d504c05a",
+  "driverSHA256": "164a07160b0b5feeed593159132f9114bc93eaa6949bb241fc3619259189bc81",
+  "before": {
+    "nativeRun": 1592,
+    "SDKRun": 1593,
+    "nativeCalls": 2,
+    "SDKCalls": 5,
+    "SDKFirstChainAlreadySucceeded": true,
+    "defaultSDKResponse": "No accessibility changes.",
+    "nativeColdPersistedDisplay": "213",
+    "SDKColdPersistedDisplay": "15",
+    "nativeSeconds": 23.094324111938477,
+    "SDKSeconds": 67.43209862709045,
+    "nativeContextTokens": 56220,
+    "SDKContextTokens": 104234
+  },
+  "after": {
+    "realUnchangedDisplay": "213",
+    "idleResponse": "No accessibility changes.",
+    "newActionableIDs": false,
+    "newInputDispatch": false,
+    "SDKNode22Passed": 501,
+    "SDKNode24Passed": 501,
+    "skippedEach": 1,
+    "realDisplayOwnerFailedBeforeAndPassedAfter": true,
+    "affectedGUIRegressionsPassed": true,
+    "paidVerification": "pending"
+  },
+  "displayLimits": {
+    "rows": 4,
+    "charactersPerRow": 240,
+    "charactersTotal": 800
+  },
+  "driverUnchanged": true,
+  "performanceGainClaimed": false,
+  "limitations": [
+    "Native/SDK persisted initial displays differ; retain this timing limitation.",
+    "Driver27-contract certification is retained at its original SDK pin; affected presentation owners have new real evidence.",
+    "No full TigerVNC sandboxed Chrome acceptance."
+  ]
+}

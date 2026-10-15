@@ -104,6 +104,18 @@ test("DIFF-N01: ordinary Calculator diffs expose changing display text without a
     const full = await app.getAXState({ disableDiffing: true, emit: false });
     await writeFile(join(artifacts, "full.txt"), full);
     expect(full).toMatch(/AXStaticText = "213" \(Edit field\)/);
+    tree = full;
+    await app.click(index("Clear"));
+    for (const digit of ["2", "1", "3"]) await app.click(index(digit));
+    const unchanged = await app.getAXState({emit:false});
+    await writeFile(join(artifacts, "unchanged-after-action.txt"), unchanged);
+    expect(unchanged).toContain("No accessibility changes.");
+    expect(unchanged).toContain("Unchanged display rows from this observation:");
+    expect(unchanged).toMatch(/^AXStaticText = "213" \(Edit field\)$/m);
+    expect(unchanged).not.toMatch(/\[\d+\] AXStaticText/);
+    const idle = await app.getAXState({emit:false});
+    await writeFile(join(artifacts, "idle.txt"), idle);
+    expect(idle).toBe("No accessibility changes.");
   } finally {
     if (owned) {
       await driver.invoke("close_window", { pid: owned.pid, window_id: owned.window_id });
