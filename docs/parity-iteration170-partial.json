@@ -1,0 +1,134 @@
+{
+  "iteration": 170,
+  "status": "budget-gated-selection-incomplete",
+  "fullGoalStatus": "not complete",
+  "metrics": {
+    "tested_tasks": 173,
+    "active_tasks": 149,
+    "retired_tasks": 34,
+    "scored_pairs": 138,
+    "opensky_score": 62.560138803646204,
+    "native_score": 100,
+    "unresolved_run_cleanup": 0,
+    "unresolved_check_cleanup": 0
+  },
+  "reviewedPairs": {
+    "mac-06-01": {
+      "nativeRun": 1570,
+      "openskyRun": 1572,
+      "initialState": "cold",
+      "ratios": {
+        "time": 2.0686752001417212,
+        "cost": 0.962320186896846,
+        "context": 0.9348899959358621
+      },
+      "index": 0.9348899959358621,
+      "limits": [
+        "Mac autoquit repair restores completion; one run is not a speed or cost improvement claim. SDK uses newly created cold-launch tab; native opens an extra unused blank tab. Original failed1571 retained."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 36.53705906867981,
+          "context_tokens": 238673,
+          "estimated_cost_usd": 0.2316572
+        },
+        "opensky": {
+          "elapsed_seconds": 75.58330798149109,
+          "context_tokens": 223133,
+          "estimated_cost_usd": 0.22292840000000003
+        }
+      },
+      "productChange": true
+    },
+    "mac-03-02": {
+      "nativeRun": 1573,
+      "openskyRun": 1574,
+      "initialState": "cold",
+      "ratios": {
+        "time": 2.7941870081855087,
+        "cost": 0.7464499433931748,
+        "context": 1.1999431020074323
+      },
+      "index": 0.7464499433931748,
+      "limits": [
+        "Both end13 after mapped chain; persisted starting result differs, causing SDK extra full verification. SDK9.81s service time vs74s total. Ordinary model timing not attributed to harness."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 26.496925830841064,
+          "context_tokens": 56241,
+          "estimated_cost_usd": 0.098928
+        },
+        "opensky": {
+          "elapsed_seconds": 74.03736591339111,
+          "context_tokens": 67486,
+          "estimated_cost_usd": 0.0738448
+        }
+      },
+      "productChange": false
+    },
+    "mac-14-08": {
+      "nativeRun": 1575,
+      "openskyRun": 1576,
+      "initialState": "cold",
+      "ratios": {
+        "time": 1.0629524600653424,
+        "cost": 1.04153083873968,
+        "context": 1.236355783173418
+      },
+      "index": 1.04153083873968,
+      "limits": [
+        "Actual requested map/card/mode effects pass; named neighborhood results on both arms. SDK uses12 calls versus native10 and extra full observations; preserve context difference without assuming its cause."
+      ],
+      "metrics": {
+        "native": {
+          "elapsed_seconds": 38.53134894371033,
+          "context_tokens": 226891,
+          "estimated_cost_usd": 0.2614828
+        },
+        "opensky": {
+          "elapsed_seconds": 40.95699214935303,
+          "context_tokens": 280518,
+          "estimated_cost_usd": 0.27234240000000004
+        }
+      },
+      "productChange": false
+    }
+  },
+  "nativeOnlyDictionary": 1577,
+  "unstartedSDKTasks": [
+    "mac-13-06",
+    "mac-15-10"
+  ],
+  "unstartedNativeTasks": [
+    "mac-15-10"
+  ],
+  "originalFailedRunRetained": 1571,
+  "estimatedBenchmarkSpendUSD": 95.05079799999996,
+  "benchmarkCapUSD": 100,
+  "availableUSD": 4.949202000000042,
+  "requiredCanonicalLocalReservationUSD": 5,
+  "paidDispatchAllowed": false,
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.12",
+  "sdkReleaseSource": "c815307b0de83193b75fce49d3a7e30b3b58f9e2",
+  "driverRuntimeSource": "a6473bea5e57e25c5c642c213f14d7b4c8d60f35",
+  "remainingIssues": [
+    19,
+    56
+  ],
+  "limits": [
+    "Three reviewed pairs; do not finalize five-task iteration or substitute historical Dictionary SDK output.",
+    "API-equivalent estimate, not actual subscription/project billing. No paid arm is launched below canonical reservation.",
+    "Mac autoquit opt-in repaired and released; Safari timing and Maps extra context remain unresolved.",
+    "Sandboxed TigerVNC Chrome remains unaccepted.",
+    "Legacy paired-remainder helper is not wired to this canonical CLI; do not invent original reservation receipts or weaken the live budget gate."
+  ],
+  "nextIndependentActions": [
+    "Inspect Maps additional full observations and intrinsic-action verbosity against native before another change.",
+    "Investigate issue19 LaunchServices stall and issue56 external legacy async_hooks limitation.",
+    "Reconcile queued newer upstream driver patches while retaining exact source/ownership and Unicode unknown-delivery contracts.",
+    "Verify any future paired-remainder integration through the actual CLI claim path before relying on it."
+  ],
+  "exactOwnedCleanup": true,
+  "originalCalendarPreserved": true
+}
