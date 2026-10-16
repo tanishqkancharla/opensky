@@ -430,6 +430,21 @@ describe("opensky helpers", () => {
       '- [3] AXMenuButton "Options" [actions=[showmenu,press]]',
     ].join("\n"));
     assert.deepEqual(elements[0]?.actions, ["showmenu", "scrolltovisible"]);
+    // Maps/UIKit repeats these canonical secondary actions on nearly every
+    // card row. Primary scroll() remains documented; raw authority stays exact.
+    const pageActions = ["AXPress", "AXCancel", "AXScrollDownByPage", "AXScrollLeftByPage", "AXScrollRightByPage", "AXScrollUpByPage"];
+    const page: SnapshotElement = {element_index:20,role:"AXGroup",label:"Card",actions:[...pageActions]};
+    const pageTree = '- [20] AXGroup "literal actions=[scrolldownbypage]" [actions=[press,cancel,scrolldownbypage,scrollleftbypage,scrollrightbypage,scrollupbypage]]';
+    assert.equal(compactTreeActionHints(pageTree,[page]), '- [20] AXGroup "literal actions=[scrolldownbypage]" [actions=[press,cancel]]');
+    assert.deepEqual(page.actions,pageActions);
+    assert.equal(compactTreeActionHints(pageTree,[]),pageTree);
+    // A custom action with the same readable name is not a canonical AX page scroll.
+    const customPage = {element_index:21,role:"AXGroup",actions:["Name:scrolldownbypage\nTarget:0x0\nSelector:custom:"]};
+    const customTree = '- [21] AXGroup "Custom" [actions=[scrolldownbypage]]';
+    assert.equal(compactTreeActionHints(customTree,[customPage]),customTree);
+    const collision = {element_index:22,role:"AXGroup",actions:["AXScrollDownByPage",...customPage.actions]};
+    const collisionTree = '- [22] AXGroup "Ambiguous" [actions=[scrolldownbypage,scrolldownbypage]]';
+    assert.equal(compactTreeActionHints(collisionTree,[collision]),collisionTree);
   });
 
   it("bounds verbose auxiliary help without changing the primary label or actions", () => {
@@ -576,6 +591,20 @@ describe("opensky helpers", () => {
     assert.deepEqual(currentCell.actions,["AXShowMenu","AXScrollToVisible",trash]);
     assert.equal(sanitizeTreeText(compact,[{...currentCell,actions:[...currentCell.actions,"AXPress"]}]),compact);
     assert.equal(sanitizeTreeText(literal,[currentCell]),literal);
+    // Current Clock sliders append settable and a formatted value after the
+    // action list. Keep those exact fields and the raw descriptor authority.
+    const increment = "Name:increment\nTarget:0x123\nSelector:increment:";
+    const decrement = "Name:decrement\nTarget:0x456\nSelector:decrement:";
+    const slider: SnapshotElement = {element_index:55,role:"AXSlider",value:"0",formattedValue:"0 seconds",settable:true,
+      actions:["AXPress","AXIncrement","AXDecrement","AXCancel",increment,decrement]};
+    const sliderActions = `press,increment,decrement,cancel,${increment.toLowerCase()},${decrement.toLowerCase()}`;
+    const sliderRaw = `- [55] AXSlider [actions=[${sliderActions}] settable] [value="0 seconds"]`;
+    const sliderClean = '- [55] AXSlider [actions=[press,increment,decrement,cancel,increment,decrement] settable] [value="0 seconds"]';
+    assert.equal(sanitizeTreeText(sliderRaw,[slider]),sliderClean);
+    assert.deepEqual(slider.actions,["AXPress","AXIncrement","AXDecrement","AXCancel",increment,decrement]);
+    assert.equal(sanitizeTreeText(sliderRaw.replace(' settable]',']'),[slider]),sliderClean.replace(' settable]',']'));
+    assert.equal(sanitizeTreeText(sliderRaw.replace(' settable]',' unknown="x"]'),[slider]),sliderRaw.replace(' settable]',' unknown="x"]'));
+    assert.equal(sanitizeTreeText(sliderRaw,[{...slider,role:"AXButton"}]),sliderRaw);
 
 
   });

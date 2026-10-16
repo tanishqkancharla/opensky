@@ -5,12 +5,26 @@ import { expect } from "vitest";
 import { test } from "../fixtures/sdk.js";
 import { servePage } from "../fixtures/site.js";
 
-test("CLICK-M02: native Maps text click avoids WebKit delay while preserving query delivery", async ({ cua }) => {
+test("CLICK-M02: native Maps text click avoids WebKit delay while preserving query delivery", async ({ sdk, cua }) => {
   const artifacts = await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR ?? tmpdir(), "native-click-settle-"));
+  // Observe the real driver response; the SDK must retain its action authority
+  // while removing repeated page-scroll names from the model-facing view.
+  const driver = (sdk as unknown as {driver:{call(tool:string,args?:Record<string,unknown>):Promise<{structured:unknown}>}}).driver;
+  const call = driver.call.bind(driver);
+  let rawElements: Array<{actions?:unknown[]}> = [], rawActionJSON = "";
+  driver.call = async (tool, args = {}) => {
+    const result = await call(tool,args);
+    if (tool === "get_window_state") {
+      const elements = (result.structured as {elements?:Array<{actions?:unknown[]}>})?.elements;
+      if (Array.isArray(elements)) {rawElements=elements;rawActionJSON=JSON.stringify(elements.map(element=>element.actions));}
+    }
+    return result;
+  };
   const app = await cua.getApp("Maps");
   let serial = 0;
   const state = async () => {
     const text = await app.getAXState({ disableDiffing: true, emit: false });
+    expect(JSON.stringify(rawElements.map(element=>element.actions))).toBe(rawActionJSON);
     await writeFile(join(artifacts, `${serial++}-state.txt`), text);
     return text;
   };
@@ -19,7 +33,7 @@ test("CLICK-M02: native Maps text click avoids WebKit delay while preserving que
     expect(rows).toHaveLength(1);
     return Number(rows[0]!.match(/\[(\d+)\]/)![1]);
   };
-  const measurements: Array<{ query: string; seconds: number; queryObserved: boolean; cardObserved: boolean }> = [];
+  const measurements: Array<{ query: string; seconds: number; queryObserved: boolean; cardObserved: boolean; rawPageScrollControls:number }> = [];
   for (const [query, heading] of [["Central Park, New York", "Central Park"], ["Millennium Park, Chicago", "Millennium Park"], ["Central Park, New York", "Central Park"]]) {
     let text = await state();
     const started = performance.now();
@@ -33,7 +47,11 @@ test("CLICK-M02: native Maps text click avoids WebKit delay while preserving que
       text = await state();
       return text.includes(`= "${query}"`) && text.includes(`AXHeading (${heading})`);
     }, { timeout: 10_000 }).toBe(true);
-    measurements.push({ query: query!, seconds, queryObserved: true, cardObserved: true });
+    const rawPageScrollControls = rawElements.filter(element=>element.actions?.some(action=>
+      typeof action === "string" && /^AXScroll(?:Down|Left|Right|Up)ByPage$/.test(action))).length;
+    expect(rawPageScrollControls).toBeGreaterThan(0);
+    expect(text).not.toMatch(/actions=\[[^\]\n]*(?:AX)?scroll(?:down|left|right|up)bypage/i);
+    measurements.push({ query: query!, seconds, queryObserved: true, cardObserved: true, rawPageScrollControls });
   }
   const median = measurements.map(m => m.seconds).sort((a, b) => a - b)[1]!;
   await writeFile(join(artifacts, "acceptance.json"), JSON.stringify({ measurements, median,

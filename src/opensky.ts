@@ -4520,13 +4520,15 @@ export function sanitizeTreeText(tree: string, elements: SnapshotElement[] = [])
       if (readable.length === visible.length && readable.every((action, index) => action === visible[index])) continue;
       // Require exact current index/role and the whole raw displayed action
       // list at the metadata boundary. A quoted editable value stays literal.
+      // Settable/value suffixes are display metadata too. Preserve their
+      // exact bytes while flattening only the fully attested action list.
       const metadata = new RegExp(
-        `(^[ \t]*- \\[${element.element_index}\\] ${escape(element.role)}\\b[^\n]*)` +
-          `actions=\\[${escape(visible.join(","))}\\]\\](?=\n|$)`, "gm",
+        String.raw`(^[ \t]*- \[${element.element_index}\] ${escape(element.role)}\b[^\n]*)` +
+          String.raw`actions=\[${escape(visible.join(","))}\]((?: settable)?\](?: \[value="(?:[^"\\\n]|\\[^\n])*"\])?)(?=\n|$)`, "gm",
       );
-      sanitized = sanitized.replace(metadata, (match, prefix: string) =>
+      sanitized = sanitized.replace(metadata, (match, prefix: string, suffix: string) =>
         quotedTreeRows(prefix).some(row => !row.closed) ? match :
-          `${prefix}actions=[${readable.join(",")}]]`);
+          `${prefix}actions=[${readable.join(",")}]${suffix}`);
     }
   }
   return sanitized.split("\n").map(compactAuxiliaryHelp).join("\n");
@@ -4569,6 +4571,16 @@ export function compactTreeActionHints(tree: string, elements: SnapshotElement[]
       if (role !== control![2]) return line;
       if ([element?.value, element?.formattedValue, element?.label].some(value => value?.includes("\n"))) return line;
       const rawActions = element?.actions ?? [];
+      // Primary scroll() is already documented. Repeating UIKit's canonical
+      // page-scroll names on every card row adds no model-facing operation.
+      // Keep the raw inventory for dispatch; custom names remain explicit.
+      const pagePattern = /^AXScroll(?:Down|Left|Right|Up)ByPage$/;
+      const pageActions = new Set(rawActions.filter(action => pagePattern.test(action))
+        .map(action => action.slice(2).toLowerCase()));
+      for (const action of rawActions.filter(action => !pagePattern.test(action))) {
+        const name = action.split("\n", 1)[0]!.replace(/^Name:/i, "").replace(/^AX/, "").trim().toLowerCase();
+        pageActions.delete(name); // Preserve a colliding custom readable name.
+      }
       let compact = compactGeneratedIdentifier(line, element);
       const selectable = role === "AXRow" && rawActions.some(action =>
         /^(?:AX)?Show(?:Default|Alternate)UI$/i.test(action));
@@ -4580,6 +4592,7 @@ export function compactTreeActionHints(tree: string, elements: SnapshotElement[]
           .filter(Boolean)
           .filter(action => !selectable || !/^show(?:default|alternate)ui$/i.test(action))
           .filter((action) => action.toLowerCase() !== "scrolltovisible")
+          .filter((action) => !pageActions.has(action.replace(/^AX/i, "").toLowerCase()))
           .filter((action) => !isEditableText || action.toLowerCase() !== "press")
           .filter((action) => {
             if (action.toLowerCase() !== "showmenu") return true;

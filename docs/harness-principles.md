@@ -208,3 +208,8 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 - Verify repairs from the original failing starting state, including cold caches when relevant.
 
 - Separate resource ownership from process footprint: verify release at the owning boundary, trace retained allocations, and warm bounded caches before attributing an RSS slope to a leak or claiming a resource improvement.
+
+
+### Keep implementation detail out of routine observations
+
+Describe a first-class operation once. Keep repetitive platform action variants and selector internals in the structured binding map, and verify that the compact view preserves content, capabilities and actual application outcomes.
