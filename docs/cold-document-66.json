@@ -1,0 +1,60 @@
+{
+  "issue": 66,
+  "sdkVersion": "0.2.28",
+  "SDKRuntime": "d7034226852823a2a9dd26eb962e6a67b62c870e",
+  "driverVersion": "0.36.0",
+  "driverSource": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+  "macBinarySHA256": "02c754f88b78406cda2b3a9e498e54ea6b733eaf11b18cc74f9925999fd1244c",
+  "actualFailure": {
+    "contract": "SELECT-N01 document setup",
+    "pid": 39489,
+    "windowId": 95290,
+    "requested": "private newly created UTF8 sdk-draft.txt",
+    "exactResourceReads": 21,
+    "resourceBoundSeconds": 5,
+    "observed": "Untitled/document_url null",
+    "outcome": "native_target_unproven before fixture input",
+    "freshProcessQuitVerified": true,
+    "wholeOriginalScratchInodeRetained": true,
+    "payloadUnchangedSHA256": "dc06d97e41da35932ed4c614dda3a1804be9818aa455c6b05ed7b402683e1e42"
+  },
+  "nativeOSLogEvidence": {
+    "captureWindowLocal": "2026-10-16 09:19:40\u201309:20:12 -0700",
+    "precedingSuccessfulPIDs": [
+      29310,
+      34397
+    ],
+    "successfulProcessesLoggedReceivedDocumentEvent": true,
+    "failedProcessReceivedDocumentEventObserved": false,
+    "failedHintPID": 39489,
+    "oldASN": "0x0-0x6d1ed18",
+    "newASN": "0x0-0x8e17e0f",
+    "orderedEvents": [
+      "09:20:02.986002 new-PID hint with new ASN",
+      "09:20:02.986466 Apple Events reports existing same-PID/different-ASN registration",
+      "09:20:02.986531 CoreServicesUIAgent sends document-open event to PID39489",
+      "09:20:02.986624 Apple Events looks up PID39489 client port",
+      "09:20:03.111326 new TextEdit checks in with new ASN",
+      "09:20:03.111576 checkin explicitly ignores matching-PID old-ASN registration"
+    ],
+    "limits": "Positive stale identity messages narrow the hypothesis. Absence of a receive log alone is not proof of missing delivery; exact misrouting and a stable correction are not yet demonstrated."
+  },
+  "controls": {
+    "currentWindowRecipe": [
+      "WINDOW-N01",
+      "WINDOW-N02"
+    ],
+    "originalPasteRecipe": "2 passed,1 setup failed,remaining not run; retained",
+    "instrumentedWholePasteRecipe": "all10 passed; failure branch not exercised",
+    "isolatedNoInputPublicOpens": 6,
+    "isolatedResults": "all6 exact URI/body and unchanged original scratch; each fresh process cleaned",
+    "paidAgents": 0,
+    "newScoreRows": 0
+  },
+  "diagnosticChange": {
+    "file": "e2e/fixtures/mac-sdk-document.ts",
+    "behavior": "After original failed public open only: independently identify one fresh process and collect passive exact-PID snapshots at0/3/6seconds. No open/input replay, no adoption, no larger correlation bound and no reclassification of original test or cleanup. Diagnostic IO failure cannot replace original refusal.",
+    "publishedRuntimeChanged": false
+  },
+  "status": "Open; not fixed. Paid candidate blocked pending diagnosed correction and affected qualification."
+}

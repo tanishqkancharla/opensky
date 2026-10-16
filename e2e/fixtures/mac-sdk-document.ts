@@ -107,6 +107,38 @@ export async function withSdkOwnedMacDocument<T>(options: {
     result = await use(ownedDocument);
   } catch (error) {
     actionError = error;
+    if (openAttempted && !owned) {
+      // Diagnose the original refusal without extending resource correlation,
+      // retrying open, adopting a window or sending any test input. A later
+      // document is evidence only; the original failure/cleanup stays failed.
+      const postmortem: Record<string, unknown> = {
+        refusedAt: new Date().toISOString(), requestedPath: options.path,
+        originalError: String(error), inputDispatched: false, launchReplay: false,
+        testAcceptance: false, baseline, samples: [],
+      };
+      try {
+        const current = JSON.parse((await exec(helper, ["list", bundleId], {timeout: 5000})).stdout) as Identity[];
+        const fresh = current.filter(candidate => !baseline.some(previous => sameIdentity(previous, candidate)));
+        postmortem.current = current;
+        if (fresh.length === 1) {
+          const identity = fresh[0]!;
+          for (let sample = 0; sample < 3; sample++) {
+            if (sample) await delay(3000);
+            const independent = JSON.parse((await exec(helper, ["inspect", String(identity.pid)], {timeout: 5000})).stdout) as Inspection;
+            if (!sameIdentity(identity, independent)) throw new Error("Postmortem process identity changed");
+            const observed = await options.sdk.driver.call("list_windows", {pid: identity.pid, include_document_urls: true});
+            (postmortem.samples as unknown[]).push({at: new Date().toISOString(), identity, independent, windows: observed.structured});
+          }
+        }
+      } catch (diagnosticError) {
+        postmortem.diagnosticError = String(diagnosticError);
+      }
+      try {
+        await writeFile(join(options.artifacts, "refused-open-postmortem.json"), JSON.stringify(postmortem, null, 2));
+      } catch (diagnosticError) {
+        console.error("Could not retain refused-open diagnostic; original failure remains:", diagnosticError);
+      }
+    }
   }
 
   if (owned) {
