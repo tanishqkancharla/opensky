@@ -80,6 +80,15 @@ describe("unadvertised native primary button routing", () => {
     assert.ok(inputs.every((call: any) => call.args.pid === app.pid && call.args.window_id === app.windows[0].window_id));
     assert.equal(inputs[0].args.delivery_mode, "foreground");
     assert.ok(inputs.slice(1).every((call: any) => call.args.delivery_mode === undefined));
+    for (const mode of ["foreground", "background"] as const) {
+      await opensky.click({ app: "Calculator", element_index: 1, click_count: 2, delivery_mode: mode });
+      const last = JSON.parse(await readFile(statePath, "utf8")).calls.at(-1);
+      assert.equal(last.tool, "double_click");
+      assert.equal(last.args.delivery_mode, mode);
+      assert.equal(last.args.pid, app.pid);
+      assert.equal(last.args.window_id, app.windows[0].window_id);
+      assert.equal(last.args.element_token, inputs[4].args.element_token);
+    }
   });
 });
 

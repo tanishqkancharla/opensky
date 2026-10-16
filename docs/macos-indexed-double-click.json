@@ -1,0 +1,156 @@
+{
+  "contract": "DOUBLE-N01",
+  "driverSource": "6647fa8d7f5edc0337d0d616f00c202df68b9bc4",
+  "driverVersion": "0.35.4",
+  "driverSHA256": "634e7d7c92cdd7cee3cd0b37013ece2d1a809be05efb172ec355dd148f5fe0e1",
+  "platform": "macOS",
+  "nativePublicDoubleClick": {
+    "pid": 19977,
+    "scored": false,
+    "scopeTransitionVerified": true,
+    "nativeControl": {
+      "pid": 19977,
+      "nativeCall": "await nativeFontBook.click(27,{clickCount:2}); await nativeFontBook.getAXState();",
+      "before": "Searching All Fonts2of361;27containerShowHelvetica",
+      "after": "Helvetica6styles;PreviewandRepertoirevisible",
+      "exactUniqueOSPIDVerified": true,
+      "inputCalls": 1,
+      "scored": false
+    }
+  },
+  "beforeSDKPublicDoubleClick": {
+    "pid": 22706,
+    "calls": [
+      {
+        "tool": "double_click",
+        "args": {
+          "pid": 22706,
+          "window_id": 89166,
+          "element_index": 34,
+          "element_token": "s000001bd:34",
+          "snapshot_id": "s000001bd"
+        },
+        "result": {
+          "structured": {
+            "delivery": {
+              "mode": "unknown"
+            },
+            "effect": "unverifiable",
+            "route": "synthetic_events",
+            "summary": "\u2705 Double-clicked element [34] at (694.5, 354.5)."
+          },
+          "text": "{\n  \"delivery\": {\n    \"mode\": \"unknown\"\n  },\n  \"effect\": \"unverifiable\",\n  \"route\": \"synthetic_events\",\n  \"summary\": \"\u2705 Double-clicked element [34] at (694.5, 354.5).\"\n}",
+          "raw": {
+            "delivery": {
+              "mode": "unknown"
+            },
+            "effect": "unverifiable",
+            "route": "synthetic_events",
+            "summary": "\u2705 Double-clicked element [34] at (694.5, 354.5)."
+          }
+        }
+      },
+      {
+        "operation": "double-click exact Helvetica card",
+        "observedRepertoire": false
+      }
+    ],
+    "scored": false,
+    "scopeTransitionVerified": false,
+    "error": {
+      "message": "Exact family/Repertoire scope not observed"
+    }
+  },
+  "explicitDriverForegroundControl": {
+    "pid": 25305,
+    "calls": [
+      {
+        "tool": "double_click",
+        "args": {
+          "pid": 25305,
+          "window_id": 89180,
+          "element_index": 33,
+          "element_token": "s000001c2:33",
+          "snapshot_id": "s000001c2",
+          "delivery_mode": "foreground"
+        },
+        "result": {
+          "structured": {
+            "delivery": {
+              "mode": "foreground"
+            },
+            "effect": "unverifiable",
+            "route": "global_input",
+            "summary": "\u2705 Double-clicked element [33] at (694.5, 354.5)."
+          },
+          "text": "{\n  \"delivery\": {\n    \"mode\": \"foreground\"\n  },\n  \"effect\": \"unverifiable\",\n  \"route\": \"global_input\",\n  \"summary\": \"\u2705 Double-clicked element [33] at (694.5, 354.5).\"\n}",
+          "raw": {
+            "delivery": {
+              "mode": "foreground"
+            },
+            "effect": "unverifiable",
+            "route": "global_input",
+            "summary": "\u2705 Double-clicked element [33] at (694.5, 354.5)."
+          }
+        }
+      },
+      {
+        "operation": "double-click exact Helvetica card",
+        "observedRepertoire": true
+      }
+    ],
+    "scored": false,
+    "scopeTransitionVerified": true
+  },
+  "afterSDKPublicDoubleClick": {
+    "inputError": null,
+    "window": 89265,
+    "input": [
+      {
+        "tool": "double_click",
+        "args": {
+          "pid": 42351,
+          "window_id": 89265,
+          "element_index": 34,
+          "element_token": "s000001e1:34",
+          "snapshot_id": "s000001e1",
+          "delivery_mode": "foreground"
+        },
+        "structured": {
+          "delivery": {
+            "mode": "foreground"
+          },
+          "effect": "unverifiable",
+          "route": "global_input",
+          "summary": "\u2705 Double-clicked element [34] at (694.5, 354.5)."
+        }
+      }
+    ],
+    "openedExactTypeface": true,
+    "hasRepertoire": true
+  },
+  "SDKNode22": {
+    "passed": 501,
+    "skippedBunOnly": 1
+  },
+  "SDKNode24": {
+    "passed": 501,
+    "skippedBunOnly": 1
+  },
+  "existingRelevantGuiPassed": [
+    "FILE-N01",
+    "WINDOW-N01",
+    "WINDOW-N02",
+    "BUTTON-N01"
+  ],
+  "exactOwnedCleanupPassed": true,
+  "driverAndSigningIdentityUnchanged": true,
+  "newPaidPairScoreClaimed": false,
+  "limits": [
+    "Driver delivery receipts report unverifiable; actual AX state and screenshots prove the Font Book outcome.",
+    "Initial native controller missed its handshake deadline despite a successful action; retained timeout and exact cleanup. A new synchronized comparison and independent SDK observation prove the subsequent native effect.",
+    "A separate cold comparison initially restored the previous typeface detail instead of the collection. Retained setup failure; public Go back normalizes the model-free owner.",
+    "Earlier paid Font Book incomplete runs remain incomplete; this deterministic repair is not itself a complete paid task.",
+    "No new Linux or Windows native desktop acceptance; the facade route change is Mac-specific."
+  ]
+}

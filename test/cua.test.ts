@@ -536,7 +536,7 @@ it("uses current app scope only for ambient Mac app keyboard calls",async()=>{
     }
   });
 
-it("uses foreground only for a fresh Mac native image coordinate click", async () => {
+it("uses foreground for Mac native image clicks and indexed double-clicks, preserving explicit delivery", async () => {
     const directory = await mkdtemp(join(tmpdir(), "cua-pointer-routing-"));
     after(() => rm(directory, { recursive: true, force: true }));
     const path = join(directory, "image.png");
@@ -558,6 +558,10 @@ it("uses foreground only for a fresh Mac native image coordinate click", async (
       assert.equal(mode,target === "mac" ? "foreground" : undefined);
       await app.click(2);
       assert.equal((fake.calls.at(-1)!.args as {delivery_mode?:string}).delivery_mode,undefined);
+      await app.click(2, {clickCount:2});
+      assert.equal((fake.calls.at(-1)!.args as {delivery_mode?:string}).delivery_mode,target === "mac" ? "foreground" : undefined);
+      await app.click(2, {clickCount:2,deliveryMode:"background"});
+      assert.equal((fake.calls.at(-1)!.args as {delivery_mode?:string}).delivery_mode,"background");
       typed = true;await app.getScreenshot({emit:false});await app.click([20,30]);
       assert.equal((fake.calls.at(-1)!.args as {delivery_mode?:string}).delivery_mode,undefined);
       await app.getAXState({emit:false});await app.click([20,30]);

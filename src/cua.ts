@@ -648,9 +648,13 @@ abstract class BoundTarget implements Target {
       ...translated,
       mouse_button: options.mouseButton,
       click_count: options.clickCount,
-      // Native Mac vision clicks use the driver's exact-window foreground
-      // route once. PID background events can be accepted without an effect.
-      ...(options.deliveryMode !== undefined ? { delivery_mode: options.deliveryMode } : nativePixel ? { delivery_mode: "foreground" as const } : {}),
+      // Native Mac vision and indexed double-clicks use one exact-window
+      // foreground route. AppKit collections can drop background pointer input;
+      // the driver still chooses AXOpen when advertised. Never replay a gesture.
+      ...(options.deliveryMode !== undefined ? { delivery_mode: options.deliveryMode }
+        : nativePixel || (typeof target === "number" && this.facade.opensky.target === "mac"
+          && normalizeMouseButton(options.mouseButton) === "left" && options.clickCount === 2)
+          ? { delivery_mode: "foreground" as const } : {}),
       ...(this.facade.opensky.target === "mac" ? { window_change_timeout_ms: 250 } : {}),
     });
   }

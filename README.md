@@ -118,6 +118,15 @@ On macOS Finder, `app.setValue` edits an observed inline name editor. Listed fil
 Tabs add `goto`, `back`, `forward`, `reload`, and exact `close`.
 See [runtime integration](docs/runtime-reference.md) for emitters and lifecycle.
 
+On macOS, `app.click(index, {clickCount: 2})` uses the driver's foreground
+route with the exact observed window and element token; it may change focus.
+This avoids background double-clicks that AppKit collection cards can silently
+drop. An advertised `AXOpen` remains semantic; pointer input is never replayed.
+Use `{clickCount: 2, deliveryMode: "background"}` to keep the background policy
+when needed, and verify the application outcome. The lower-level
+`sdk.click` keeps its previous default and accepts `delivery_mode` for indexed
+left double-clicks. Browser foreground consent remains separate.
+
 App observations follow the active window within the bound process, including
 dialogs; actions target the latest observed window. Explicit legacy handles
 stay fixed to their window. Browser sessions created by OpenSky are isolated and
