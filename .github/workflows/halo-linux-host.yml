@@ -67,6 +67,7 @@ jobs:
           cargo test --release --locked -p platform-linux --lib --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/platform-linux-unit.log 2>&1
           driver/libs/cua-driver/rust/target/release/cua-driver --opensky-driver-identity > artifacts/halo/identity.json
           sha256sum driver/libs/cua-driver/rust/target/release/cua-driver > artifacts/halo/driver-sha256.txt
+          cp driver/libs/cua-driver/rust/target/release/cua-driver artifacts/halo/opensky-driver
           npm ci --ignore-scripts
           npm run build
           node --version > artifacts/halo/node.txt
@@ -84,7 +85,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
         with:
-          name: halo-ubuntu22-host-contract
+          name: ${{ inputs.readiness_only && 'halo-ubuntu22-host-readiness' || 'halo-ubuntu22-host-contract' }}
           path: artifacts/halo
           if-no-files-found: warn
           retention-days: 90

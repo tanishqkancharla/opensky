@@ -31,6 +31,9 @@ browser click/scroll is certified. This Ubuntu host evidence does not establish
 Halo's Bookworm container compatibility; the prior Bookworm native-only evidence
 below stays separately pinned. Foreground browser examples remain the supported
 API shape with actual sandboxed TigerVNC browser acceptance still pending.
+The bounded browser origin list must explicitly include `about:blank` for the
+new isolated tab bootstrap, followed by each allowed destination origin. This
+is an exact additional required grant, not an implicit exception or wildcard.
 
 Whole SDK506pass/1Bun-only skip each Node22/24;269 embedded owners and666Linux
 units pass. All29 required signed-Mac owners pass across18groups. A first

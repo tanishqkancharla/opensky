@@ -100,7 +100,8 @@ resources:
   browser:
     profiles:
       - kind: isolated
-    origins: ['http://127.0.0.1:8123']
+    # Exact owned bootstrap page is observed before the first URL navigation.
+    origins: ['about:blank', 'http://127.0.0.1:8123']
   desktop:
     display: true
 allow:
