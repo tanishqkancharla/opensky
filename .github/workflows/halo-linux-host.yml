@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       driver_ref:
-        description: 'Exact forty-character fork commit to qualify; does not change the supported SDK pin'
+        description: 'Optional exact forty-character candidate; empty uses driver-source.json verifiedCommit'
         type: string
-        default: '4a0189e286cf48c6b05da5bdd76ffebce4accc84'
+        default: ''
       readiness_only:
         description: 'Collect unchanged-policy Chrome sandbox/install facts without building or desktop input'
         type: boolean
@@ -23,23 +23,33 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     env:
-      HALO_DRIVER_REF: ${{ inputs.driver_ref || '4a0189e286cf48c6b05da5bdd76ffebce4accc84' }}
-      CUA_DRIVER_SOURCE_SHA: ${{ inputs.driver_ref || '4a0189e286cf48c6b05da5bdd76ffebce4accc84' }}
       CARGO_PROFILE_RELEASE_LTO: 'false'
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
       CARGO_INCREMENTAL: '0'
     steps:
-      - name: Require an immutable driver source
-        run: '[[ "$HALO_DRIVER_REF" =~ ^[0-9a-f]{40}$ ]]'
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Resolve immutable driver source from SDK pin or explicit candidate
+        env:
+          HALO_DRIVER_OVERRIDE: ${{ inputs.driver_ref }}
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync, appendFileSync, mkdirSync, writeFileSync} from 'node:fs';
+          const supported = JSON.parse(readFileSync('driver-source.json', 'utf8')).verifiedCommit;
+          const override = process.env.HALO_DRIVER_OVERRIDE || '';
+          const source = override || supported;
+          if (!/^[0-9a-f]{40}$/.test(source)) throw new Error('Driver source must be an exact lowercase forty-hex commit');
+          appendFileSync(process.env.GITHUB_ENV, `HALO_DRIVER_REF=${source}\nCUA_DRIVER_SOURCE_SHA=${source}\n`);
+          mkdirSync('artifacts/halo', {recursive:true});
+          writeFileSync('artifacts/halo/driver-selection.json', JSON.stringify({source,supported,selection:override?'explicit-candidate':'sdk-pin'},null,2)+'\n');
+          JS
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: tanishqkancharla/cua
           ref: ${{ env.HALO_DRIVER_REF }}
           path: driver
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
       - name: Install build and TigerVNC desktop packages
         run: |
           sudo apt-get update
@@ -76,7 +86,7 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: halo-ubuntu22-host-contract
-          run-id: '38908929381'
+          run-id: '38920063943'
           github-token: ${{ github.token }}
           path: prebuilt-halo
       - name: Build exact driver and SDK

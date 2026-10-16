@@ -1,9 +1,9 @@
 {
-  "source": "4a0189e286cf48c6b05da5bdd76ffebce4accc84",
-  "run": 38908929381,
+  "source": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+  "run": 38920063943,
   "artifact": "halo-ubuntu22-host-contract",
-  "binarySHA256": "d9fcfd485030a1e8d0064ab834928a38ae8ae1fcbab15d90e7cda9c5193fe4f8",
-  "unitLogSHA256": "48854e87c9ff818c8cd8ea72cc2e9af22282f35acaafb90167e9423879cd6810",
+  "binarySHA256": "014795e8f428f8da3ac767f6ce5030f8fa2d3ecac39cf5ae2eca05830045b1b1",
+  "unitLogSHA256": "d7ab157f5edd1a357796e0dec08837d36fe347474c527e2ff94ae3daf6db3ab2",
   "platform": "Ubuntu22 x86_64",
-  "qualification": "Driver build/666Linux units and native SDK effects passed; overall source run fails renderer observer. No whole-run acceptance inferred."
+  "qualification": "Fresh driver build/669 Linux units and the complete bounded-grant TigerVNC shared-bus sandboxed Chrome host contract passed. Ubuntu22 host evidence; Bookworm container browser remains unverified."
 }
