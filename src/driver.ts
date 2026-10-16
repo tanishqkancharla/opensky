@@ -19,6 +19,7 @@ export interface CuaDriverOptions {
   startTimeoutMs?: number;
   session?: string;
   socket?: string;
+  /** Complete child-process environment; spread process.env to override individual values. */
   env?: NodeJS.ProcessEnv;
   /** Start a dedicated daemon with the existing-profile capability grant. */
   allowExistingBrowserProfiles?: boolean;
@@ -244,7 +245,7 @@ export class CuaDriverClient implements DriverClient {
       const opened = appPath ? await this.exec(
         "/usr/bin/open",
         ["-g", appPath,
-          ...["CUA_DRIVER_WINDOW_CHANGE_TIMEOUT_MS", "CUA_DRIVER_WINDOW_CHANGE_POLL_MS"].flatMap(name =>
+          ...["PATH", "CUA_DRIVER_WINDOW_CHANGE_TIMEOUT_MS", "CUA_DRIVER_WINDOW_CHANGE_POLL_MS"].flatMap(name =>
             this.driverEnv()[name] === undefined ? [] : ["--env", `${name}=${this.driverEnv()[name]}`]),
           "--args", ...this.withSocket(serveArgs)],
         3_000,
@@ -314,7 +315,10 @@ export class CuaDriverClient implements DriverClient {
   private driverEnv(): NodeJS.ProcessEnv {
     const env = { ...(this.options.env ?? process.env) };
     const localBin = join(homedir(), ".local", "bin");
-    const current = env.PATH ?? "";
+    // An environment without PATH must still find Mac system inspection tools.
+    // LaunchServices does not inherit `open`'s environment unless passed via
+    // --env; preserve an explicitly supplied PATH, including a restricted one.
+    const current = env.PATH ?? (detectTarget() === "mac" ? "/usr/bin:/bin:/usr/sbin:/sbin" : "");
     if (!current.split(delimiter).includes(localBin)) {
       env.PATH = current ? `${localBin}${delimiter}${current}` : localBin;
     }

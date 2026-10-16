@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { mkdtemp, mkdir, symlink, rm, writeFile, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, delimiter } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { appBundleForDriver, CuaDriverClient } from "../src/driver.js";
@@ -102,4 +103,35 @@ describe("desktop helper auto-install", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it("passes the selected PATH through LaunchServices and supplies Mac system tools when absent", async () => {
+    if (process.platform !== "darwin") return;
+    const root = await mkdtemp(join(tmpdir(), "opensky-launch-path-"));
+    try {
+      const app = join(root, "Driver.app");
+      const binary = join(app, "Contents", "MacOS", "opensky-driver");
+      await mkdir(dirname(binary), { recursive: true });
+      await writeFile(binary, "inert launcher fixture");
+      for (const [env, expected] of [
+        [{}, [join(homedir(), ".local", "bin"), "/usr/bin", "/bin", "/usr/sbin", "/sbin"].join(delimiter)],
+        [{ PATH: "/explicit/restricted" }, [join(homedir(), ".local", "bin"), "/explicit/restricted"].join(delimiter)],
+      ] as const) {
+        const launches: Array<{ command: string; args: string[] }> = [];
+        let checks = 0;
+        const driver = new CuaDriverClient({ binaryPath: binary, env });
+        driver.ensureHelper = driver.requireBinary = async () => binary;
+        driver.status = async () => ({ running: ++checks > 1, text: "fixture" });
+        // This boundary is inert: never open a real bundle or launch a daemon.
+        Object.defineProperty(driver, "exec", { value: async (command: string, args: string[]) => {
+          launches.push({ command, args }); return { code: 0, stdout: "", stderr: "" };
+        } });
+        await driver.ensureDaemon();
+        assert.deepEqual(launches, [{ command: "/usr/bin/open", args: [
+          "-g", await realpath(app), "--env", "PATH=" + expected,
+          "--args", "serve", "--no-overlay",
+        ] }]);
+      }
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
 });

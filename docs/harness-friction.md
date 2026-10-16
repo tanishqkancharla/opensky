@@ -6126,3 +6126,30 @@ Startup note: after rebuilding, the existing ten-second helper wait expired; a l
 SET412 public SDK control now passes:25924characters withCPU/search,624unread rows, no partial tree and355ms read/screenshot; explicitall551759characters remains available and complete on this desktop. Previous default152437characters/partial765ms and budget-only524088characters are retained controls, not paired-agent results. SDK text translates the driver's wire-level recovery hint into public getAXState({collectionScope:"all"}). The full current GUI set and paid task verification remain pending; do not extrapolate these observation figures into a task score.
 
 SET412 ROWS-N01 now verifies public facade search/filter/clear and explicitall→visible recovery with exact app exit. Independently viewed retained filtered screenshot shows one actual process row; final owner requires its row ancestry, not merely the search field’s text. The first owner failed before input because volatile _NS identifiers are intentionally hidden in public projection; that fixture failure is retained and its selector now follows observed search ancestry. Native process filtering does not require a Return workaround. Existing desktop regressions and revised paid task pair remain pending.
+
+
+## SET413 — Preserve system inspection tools through Mac app startup
+
+A current-binary Mac regression sweep passes the native app groups, then Chrome
+`browser_prepare` refuses `browser_route_unavailable`: `could not inspect browser
+listeners: No such file or directory (os error 2)`. The daemon's actual environment
+contains only `~/.local/bin` in PATH; `/usr/sbin/lsof` exists. Startup through
+LaunchServices had forwarded observation bounds but omitted PATH. A partial SDK
+`env` also reduced its selected PATH to the local helper directory.
+
+SDK Mac startup now forwards its selected PATH explicitly with `open --env`.
+When PATH is absent, the Mac SDK supplies `/usr/bin:/bin:/usr/sbin:/sbin` after
+the local helper directory. An explicitly supplied PATH remains authoritative,
+including an intentionally restricted path. This does not mutate launchd or the
+user's shell environment and does not restart an already running daemon.
+An inert launcher boundary owner verifies both cases. Actual Chrome rerun and
+remaining regression evidence are pending; original refusal and exact cleanup
+remain retained. Driver source, binary, signing identity and grants are unchanged.
+
+A first actual probe supplied only timing variables in `env`, which replaces the
+whole client environment. The daemon launched with the corrected PATH, but its
+HOME-less CLI checks used a different default socket and timed out. A read-only
+client with the inherited environment immediately found the same live daemon.
+Retain that probe as setup failure, not slow startup or missing permissions.
+The public option now explicitly documents full-environment semantics; callers
+overriding individual values should pass `{...process.env, ...overrides}`.
