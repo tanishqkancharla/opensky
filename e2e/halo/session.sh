@@ -103,13 +103,27 @@ export HALO_DRIVER_SOCKET="$XDG_RUNTIME_DIR/driver.sock"
 export HALO_BROWSER_SOCKET="$XDG_RUNTIME_DIR/browser.sock"
 "$OPENSKY_DRIVER_PATH" --socket "$HALO_BROWSER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/browser.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/browser-grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/browser-driver.log" 2>&1 & browser_daemon_pid=$!
 node e2e/halo/session-check.mjs
-timeout --signal=TERM --kill-after=5s 60s node --import tsx e2e/halo/strict-bridge.mjs
+# Preserve a strict-worker failure without losing independent embedded-SDK
+# application evidence. A failed/detached-unknown bridge cannot admit input.
+bridge_status=0
+timeout --signal=TERM --kill-after=5s 60s node --import tsx e2e/halo/strict-bridge.mjs || bridge_status=$?
+node --input-type=module - <<'JS_BRIDGE_CLEANUP'
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+const receipt=JSON.parse(readFileSync(join(process.env.HALO_ARTIFACTS,'strict-bridge-evidence.json'),'utf8'));
+assert.equal(receipt.ownSessionsDetached,true,'Strict bridge must detach its owned session before the SDK application contract');
+JS_BRIDGE_CLEANUP
+contract_status=0
 if [[ "${HALO_NATIVE_CONTRACT_ONLY:-0}" == "1" ]]; then
-  timeout --signal=TERM --kill-after=5s 120s node e2e/halo/contract.mjs
+  timeout --signal=TERM --kill-after=5s 120s node e2e/halo/contract.mjs || contract_status=$?
 elif [[ "${HALO_NATIVE_CAPTURE_ONLY:-0}" == "1" ]]; then
   # Observation deadlines never claim daemon cancellation. This owned fixture
   # has a bounded process-group watchdog; supervisor shutdown establishes exit.
-  timeout --signal=TERM --kill-after=5s 90s node e2e/halo/capture.mjs
+  timeout --signal=TERM --kill-after=5s 90s node e2e/halo/capture.mjs || contract_status=$?
 else
-  node e2e/halo/contract.mjs
+  node e2e/halo/contract.mjs || contract_status=$?
 fi
+printf '{"strictBridgeExitCode":%s,"sdkContractExitCode":%s}\n' "$bridge_status" "$contract_status" > "$HALO_ARTIFACTS/session-phases.json"
+if (( contract_status != 0 )); then exit "$contract_status"; fi
+exit "$bridge_status"
