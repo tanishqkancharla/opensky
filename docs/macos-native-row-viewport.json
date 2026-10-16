@@ -1,7 +1,7 @@
 {
   "issue": 68,
-  "driverSource": "a9eee3da1d2b0587f3cecdce5f73a81c990423a5",
-  "driverSHA256": "bdabbbc9d70f2e953857f4c65e6af03c0345934f7d6f085e3af639eaf3257d56",
+  "driverSource": "32ec46dc514ce97924019b83e2cbfee96fda8c0b",
+  "driverSHA256": "dc091dfc6f53df1daaf43395990377eef9bea9b06f92c2944c5f392b234cac89",
   "nativeOriginalRun": 1683,
   "nativeInitialCharacters": 12278,
   "originalPublicSDK": {
@@ -37,13 +37,13 @@
     }
   ],
   "canonicalRustOwner": {
-    "allElements": 7520,
-    "collapsedRows": 618,
+    "allElements": 7168,
+    "collapsedRows": 605,
     "noInputSent": true,
-    "pid": 99706,
+    "pid": 83761,
     "viewportHasToolbarAndCpuAndSearch": true,
     "visibleElements": 524,
-    "window": 89416
+    "window": 90088
   },
   "exactOwnedCleanupPassed": true,
   "signingIdentityAndGrantsPreserved": true,
@@ -54,8 +54,8 @@
     "Original loose diagnostic hasSearch flag was heuristic; actual new owners identify the search field through its observed process-search parent.",
     "Existing strict Clippy failures in untouched input code are retained; no shipped lint policy was weakened.",
     "First SDK workflow owner assumed a volatile _NS identifier survived public projection; retained pre-input fixture failure, repaired selector to use observed search ancestry.",
-    "All29 required Mac GUI owners plus TYPE-N06 pass on the signed candidate. Matching paid Activity Monitor reruns pending.",
-    "CI correctly reports native_row_scope was wrongly added to the portable input schema. Mac live schema supports it, Linux/Windows do not. Correct contract placement before release; no cross-platform acceptance claim."
+    "The Mac-only parameter is removed from the portable typed input and kept in the Mac live schema/public facade. Original Linux/Windows CI failures are retained; new cross-platform CI is pending at this release checkpoint.",
+    "The matching revised Activity Monitor pair is complete: native28.829s/266776input/$0.2435032; SDK31.869s/260818input/$0.2947312. Best-resource ratio0.9777. Near parity; no causal paid before/after gain."
   ],
   "publicSDKWorkflow": {
     "visibleCharacters": 25941,
@@ -69,10 +69,32 @@
   "independentParentScreenshotVerified": "Single actual process row under Activity Monitor search; no input-only success inference.",
   "currentMacRequiredContractsPassed": 29,
   "additionalLongUnicodeOwnerPassed": true,
-  "currentMacDriverSHA256": "bdabbbc9d70f2e953857f4c65e6af03c0345934f7d6f085e3af639eaf3257d56",
+  "currentMacDriverSHA256": "dc091dfc6f53df1daaf43395990377eef9bea9b06f92c2944c5f392b234cac89",
   "finalIndependentCleanupPassed": true,
   "originalFailuresRetained": [
     "Finder Go to Folder setup delay; exact modal close refusal; exact-window recovery and one unchanged recipe retry passed. Cause unknown.",
     "Chrome setup refusal because launched daemon PATH omitted system lsof; SDK startup forwards selected PATH; actual Chrome retry passed."
-  ]
+  ],
+  "initialCandidateDriverSource": "a9eee3da1d2b0587f3cecdce5f73a81c990423a5",
+  "initialCandidateDriverSHA256": "bdabbbc9d70f2e953857f4c65e6af03c0345934f7d6f085e3af639eaf3257d56",
+  "previousCanonicalRustOwner": {
+    "allElements": 7520,
+    "collapsedRows": 618,
+    "noInputSent": true,
+    "pid": 99706,
+    "viewportHasToolbarAndCpuAndSearch": true,
+    "visibleElements": 524,
+    "window": 89416
+  },
+  "currentPublicSDKWorkflow": {
+    "visibleCharacters": 25976,
+    "visibleElements": 524,
+    "allCharacters": 530385,
+    "allElements": 7116,
+    "defaultHasSearchAndCpu": true,
+    "actualSelfProcessFilterObserved": true,
+    "allRecovery": true
+  },
+  "workflowGroups": 18,
+  "duplicatePasteInvocationOmitted": "The whole native-success/native-rich-paste group already includes the same PASTE-N01/PASTE-N04 owners; every required owner is retained."
 }

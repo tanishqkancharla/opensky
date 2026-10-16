@@ -6201,3 +6201,20 @@ are exact recorded AXPresses without separate emitted render checks. The native
 Terminal tool explicitly denies com.apple.Terminal twice within its run; retire
 that unsuitable comparison without dispatching an SDK arm or creating a score.
 All owned app/helper/artifact cleanup is clear and the original Calendar stays.
+
+SET414 exact signed candidate verification: Driver32ec46dc5, executable
+SHA256dc091dfc6f53df1daaf43395990377eef9bea9b06f92c2944c5f392b234cac89,
+passes all29 required Mac owners plus TYPE-N06 in18 groups with no failed
+group on this candidate. The canonical Rust row owner independently reads524
+visible elements versus7168 all elements, leaves605 offscreen rows unread and
+keeps CPU/search/toolbar; the public SDK owner filters the actual self-process
+row, restores search, recovers all rows and returns to the viewport. All owned
+cleanup and final app/helper audit pass; existing Calendar is preserved. The
+same stable signer and original TCC grants remain. Cross-platform CI is still
+pending; Mac acceptance does not replace it. SDK0.2.22 packages this exact
+driver source and the tested TypeScript runtime.
+
+The regression order now starts with the affected viewport and Chrome owners.
+The whole paste group already includes PASTE-N01/PASTE-N04, so its duplicate
+standalone invocation is omitted. Every required contract and owning file is
+still tested; no assertions, cleanup checks or source gates are removed.
