@@ -1,7 +1,7 @@
+import { runStrictCase } from "./strict-process.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createNodeReplOutput, installNodeReplOutput, type ReplOutput } from "../src/node-repl.js";
-import { AsyncRepl } from "../src/async-repl.js";
+import { createNodeReplOutput, type ReplOutput } from "../src/node-repl.js";
 
 describe("Computer-compatible explicit output", () => {
   it("preserves byte views, detects image format, and keeps explicit repeated images", async () => {
@@ -29,21 +29,6 @@ describe("Computer-compatible explicit output", () => {
     assert.deepEqual(outputs, []);
   });
 
-  it("keeps strict output capabilities in the membrane and snapshots values at write time", async () => {
-    const outputs: ReplOutput[] = [];
-    const repl = new AsyncRepl({ strictSandbox: true, allowNodeApis: false });
-    installNodeReplOutput(repl, value => outputs.push(value));
-    await repl.evaluate(`
-      let value = {count:1}; nodeRepl.write(value); value.count = 2;
-      const padded = new Uint8Array([0,255,216,255,0]);
-      await nodeRepl.emitImage({bytes:padded.subarray(1,4), mimeType:"image/jpeg"});
-    `);
-    assert.deepEqual(outputs, [
-      { type: "text", text: "{ count: 1 }" },
-      { type: "image", mimeType: "image/jpeg", data: "/9j/" },
-    ]);
-    await assert.rejects(() => repl.evaluate(`nodeRepl.emitImage.constructor("return process")()`), /Code generation/);
-    await assert.rejects(() => repl.evaluate(`await nodeRepl.emitImage("file:///tmp/test.png")`), /host asset resolver/);
-    assert.equal(outputs.length, 2);
-  });
+  it("keeps strict output capabilities in the membrane and snapshots values at write time", () =>
+    runStrictCase(new URL("./fixtures/strict-output-case.ts", import.meta.url), "keeps strict output capabilities in the membrane and snapshots values at write time"));
 });

@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { executionAsyncId } from "node:async_hooks";
 import { PromiseContext } from "./promise-context.js";
 import { inspect } from "node:util";
 import vm from "node:vm";
@@ -13,14 +14,16 @@ export interface EvalResult {
 
 export class AsyncReplError extends Error {
   readonly evaluatorUsable: boolean;
+  readonly code?: "strict_runtime_unsupported";
   constructor(
     message: string,
     public readonly logs: string[],
-    options?: { cause?: unknown; evaluatorUsable?: boolean },
+    options?: { cause?: unknown; evaluatorUsable?: boolean; code?: "strict_runtime_unsupported" },
   ) {
     super(message, options);
     this.name = "Error";
     this.evaluatorUsable = options?.evaluatorUsable ?? true;
+    this.code = options?.code;
   }
 }
 
@@ -126,18 +129,37 @@ export class AsyncRepl {
     this.sandbox[name] = binding;
   }
 
+  private async assertStrictEntry(): Promise<void> {
+    // A fresh host Promise reports zero when Node promise execution tracking is
+    // disabled. Unlike V8-only promise hooks, legacy async_hooks tracking can
+    // leave Node's native async stack corrupt after a VM microtask timeout.
+    // Probe only public APIs; never inspect or disable the host's hooks.
+    const tracked = await Promise.resolve().then(() => executionAsyncId());
+    if (tracked !== 0) {
+      this.poisonedReason = "unsupported Node promise execution tracking";
+      throw new AsyncReplError(
+        "strictSandbox cannot safely enter the VM while Node promise execution tracking is active. " +
+        "Use a separately supervised evaluator process without legacy async_hooks instrumentation. " +
+        "This evaluator is unusable; already dispatched host actions are not cancelled or rolled back.",
+        [], { code: "strict_runtime_unsupported", evaluatorUsable: false },
+      );
+    }
+  }
+
   async evaluate(code: string, filename = "opensky"): Promise<EvalResult> {
     const run = async (): Promise<EvalResult> => {
       if (this.strictSandbox && this.poisonedReason) {
         throw new AsyncReplError(`strictSandbox evaluator is poisoned after ${this.poisonedReason}; create a new evaluator`, [], { evaluatorUsable: false });
       }
+      if (this.strictSandbox) await this.assertStrictEntry();
       const logs: string[] = [];
       const generation = ++this.evaluationSequence;
       if (this.strictSandbox) this.activeEvaluations.add(generation);
-      if (this.strictSandbox) vm.runInContext("globalThis.__openskyLogs.length = 0", this.sandbox);
       const previousConsole = this.sandbox.console;
       if (!this.strictSandbox) this.sandbox.console = createConsoleProxy(logs);
       try {
+        if (this.strictSandbox) this.strictEvaluation.run(generation, () =>
+          vm.runInContext("globalThis.__openskyLogs.length = 0", this.sandbox, { timeout: this.timeoutMs }));
         const wrapped = wrapAsync(code);
         const script = new vm.Script(wrapped, { filename });
         const bindings = cellBindings(code);
@@ -150,7 +172,12 @@ export class AsyncRepl {
           : script.runInContext(this.sandbox, { timeout: this.timeoutMs });
         const value = this.strictSandbox
           ? await awaitContextValue(evaluated, this.sandbox, this.timeoutMs, this.awaitTimeoutMs,
-              (turn) => this.strictEvaluation.run(generation, turn))
+              async (turn) => {
+                await this.assertStrictEntry();
+                // Do not assimilate an arbitrary VM return value outside the
+                // controlled realm pump. A turn is only a bounded drain.
+                this.strictEvaluation.run(generation, turn);
+              })
           : await withDeadline(Promise.resolve(evaluated), this.awaitTimeoutMs);
         if (this.strictSandbox) {
           logs.push(...Array.from(this.sandbox.__openskyLogs as unknown[], (value) => String(value)));
@@ -162,7 +189,8 @@ export class AsyncRepl {
         }
         const message = error instanceof Error ? error.message : String(error);
         if (this.strictSandbox && /timed out/i.test(message)) this.poisonedReason = message;
-        throw new AsyncReplError(message, logs, { cause: error, evaluatorUsable: !this.poisonedReason });
+        throw new AsyncReplError(message, logs, { cause: error, evaluatorUsable: !this.poisonedReason,
+          code: error instanceof AsyncReplError ? error.code : undefined });
       } finally {
         if (this.strictSandbox) this.activeEvaluations.delete(generation);
         if (!this.strictSandbox) this.sandbox.console = previousConsole;
@@ -471,7 +499,7 @@ async function withDeadline<T>(promise: Promise<T>, timeoutMs: number | null): P
   }
 }
 
-async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs: number, awaitTimeoutMs: number | null, runTurn: (turn: () => unknown) => unknown): Promise<unknown> {
+async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs: number, awaitTimeoutMs: number | null, runTurn: (turn: () => void) => Promise<void>): Promise<unknown> {
   if (!value || (typeof value !== "object" && typeof value !== "function") || typeof (value as { then?: unknown }).then !== "function") {
     return value;
   }
@@ -489,7 +517,7 @@ async function awaitContextValue(value: unknown, context: vm.Context, timeoutMs:
     if (remaining <= 0) throw new Error(`Evaluation timed out after ${awaitTimeoutMs}ms`);
     // With microtaskMode=afterEvaluate this empty turn drains realm-created
     // Promise continuations under vm's synchronous timeout accounting.
-    runTurn(() => vm.runInContext("", context, { timeout: Math.max(1, remaining) }));
+    await runTurn(() => { vm.runInContext("", context, { timeout: Math.max(1, remaining) }); });
     // While host actions are pending, repeatedly draining an idle realm spins
     // setImmediate plus VM watchdogs at full speed. Yield for 1ms between
     // drains; each drain still enforces its synchronous/microtask CPU timeout.

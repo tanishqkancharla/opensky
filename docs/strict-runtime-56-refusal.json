@@ -1,0 +1,65 @@
+{
+  "issue": 56,
+  "status": "implemented; hosted actual bridge validation pending",
+  "SDKBase": "f885b8b9de9b85b61d86bfaec5df5e94cea6c3fa",
+  "driverSource": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+  "driverChanged": false,
+  "before": {
+    "nodes": [
+      "22.23.3",
+      "24.19.0"
+    ],
+    "exactPreloadedTsxProbe": {
+      "kinds": [
+        "then",
+        "async"
+      ],
+      "outcomes": 4,
+      "signal": "SIGABRT",
+      "markerBeforeAbortIsNotSuccess": true
+    },
+    "newEffectKeepers": {
+      "cases": 6,
+      "failed": 6,
+      "preCellEntered": 1,
+      "betweenTurnsContinuationEntered": 1
+    }
+  },
+  "after": {
+    "publicCode": "strict_runtime_unsupported",
+    "evaluatorUsable": false,
+    "freshHostPromiseExecutionIdGuard": "before first cell and each awaited VM resume",
+    "hostHooksChanged": false,
+    "inputReplayed": false,
+    "plainTimeoutOwners": 6,
+    "instrumentedRefusalOwners": 12,
+    "naturalExitZero": 18,
+    "preCellEffects": 0,
+    "betweenTurnsInitialEffects": 1,
+    "betweenTurnsContinuationEffects": 0,
+    "subsequentNativeCallbackSurvived": true,
+    "wholeSDK": {
+      "node22": {
+        "pass": 515,
+        "skip": 1,
+        "fail": 0
+      },
+      "node24": {
+        "pass": 515,
+        "skip": 1,
+        "fail": 0
+      }
+    },
+    "preservedPositiveScenarios": 11,
+    "preservedAssertions": 97,
+    "positiveBodiesComparedToOriginal": true,
+    "build": "passed",
+    "e2eTypecheck": "passed"
+  },
+  "limits": [
+    "Trusted host code must not enable incompatible instrumentation from inside an already-entered synchronous VM turn. Use separately supervised processes when host instrumentation can change arbitrarily.",
+    "Refusal does not cancel or roll back previously dispatched host actions. Host action completion/drain remains separate.",
+    "Node test runner enables promise execution tracking: unchanged positive assertions execute in bounded standalone subprocesses; refusals are separately verified.",
+    "No fresh desktop acceptance, benchmark score or Bookworm sandboxed browser acceptance from CPU owners."
+  ]
+}

@@ -729,15 +729,41 @@ supervisor processes and both occluders exit without forced shutdown. This
 observation control sends no input and does not establish new typing, browser
 or paired benchmark acceptance. [Evidence](linux-strict-bridge-56.json).
 
-**External legacy `node:async_hooks` remains a Node VM interruption limitation.**
-An embedding host that enables such hooks can still abort on promise runaway
-interruption on Node22 or24. The Node22 async-context-frame startup flag does
-not solve that external-hook case. Issue56 remains open. Keep strict evaluation
-in a separately supervised process if host instrumentation enables legacy hooks;
-do not run it inside a production desktop server that must survive every cell.
-No automatic host-hook detection, process isolation or crash recovery is supplied
-by this SDK. No startup flag or removal of timeout/sandbox enforcement is part
-of the fix. Sandboxed Chrome acceptance remains independently unverified.
+### Host instrumentation refusal (current candidate)
+
+Strict evaluation now checks Node promise execution tracking before a first cell
+and each awaited VM resume. When active, it refuses with public
+`AsyncReplError.code === "strict_runtime_unsupported"` and
+`evaluatorUsable === false`; subsequent calls report a poisoned evaluator.
+Preloaded hooks refuse before any cell effects. If tracking becomes active while
+a host action is awaited, that action may already have effects; the continuation
+is refused. The host must separately await/drain its already dispatched actions.
+Nothing is cancelled, replayed or rolled back by this evaluator refusal.
+
+```ts
+import { AsyncRepl, AsyncReplError } from "opensky-cua";
+const evaluator = new AsyncRepl({ allowNodeApis: false, strictSandbox: true });
+try {
+  await evaluator.evaluate("return 42");
+} catch (error) {
+  if (error instanceof AsyncReplError && error.code === "strict_runtime_unsupported") {
+    // Discard this evaluator. Run strict cells in a separately supervised Node
+    // process without legacy async_hooks instrumentation; never replay input.
+  } else { throw error; }
+}
+```
+
+This conservative public-API probe neither inspects nor disables the host's
+hooks. V8-only promise attribution remains compatible. Node's test runner also
+enables tracking, so positive strict scenarios run in externally bounded
+standalone processes. Keep evaluation separately supervised if trusted host code
+can enable incompatible instrumentation inside an already-entered synchronous
+VM turn: a check between turns cannot preempt arbitrary host code during a turn.
+The SDK supplies no process isolation or crash recovery. Both Node22/24 retain
+synchronous/microtask deadlines, timeout poisoning and stale capability refusal.
+[Before/after probe evidence](strict-runtime-56-refusal.json). Hosted actual bridge
+verification for this candidate is pending; prior native and browser evidence
+retains its original source pins and environment scope.
 
 
 ## Chrome sandbox startup preflight
