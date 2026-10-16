@@ -6272,3 +6272,14 @@ updated to require both the shorter keyboard sequence and the conditional
 setValue editor observation. Fresh actual FILE-N01 and both FINDER-N06 cases
 pass with exact cleanup on the unchanged signed32 driver. Matching paid SDK
 verification is still pending; no speed improvement is claimed yet.
+
+SET416 paid verification: fresh SDK1691 finishes the same task in15 cells and
+79.7s versus original1690 23 cells/144.6s; native1689 remains38.1s. Both
+original/new SDK artifacts contain exactly the requested Alpha/Beta hierarchy
+and final ascending Name/open/back state, with exact cleanup. The new run
+changes navigation and creation batching, still uses observed inline editors
+after a refused direct-label setValue, and never exercises keyboard-only
+rename. Therefore the descriptive improvement is retained without attributing
+it to the hint. Both direct-label input refusal and supported editor path stay
+intact. Current-candidate Notes and Reminders pairs also complete with exact
+styled body/item states and independently verified owned retention/cleanup.
