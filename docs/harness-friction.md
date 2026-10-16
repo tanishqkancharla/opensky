@@ -6170,3 +6170,34 @@ The generated portable contract still incorrectly exposes the Mac-only
 missing live-schema field. That cross-platform contract correction remains
 required before distribution. These Mac-scoped checks do not accept Linux or
 Windows behavior. Matching Activity Monitor task comparisons remain pending.
+
+
+## SET414 — Keep Mac-only scope out of the portable driver input
+
+Fresh candidate CI fails the existing portable-schema owners on Linux, Windows
+and generated SDK clients because `native_row_scope` is missing from their live
+registries. The option was incorrectly added to the portable subset when
+adapting the native Mac viewport contribution. The Mac runtime supports the
+option; the other adapters do not.
+
+Remove the option from the portable typed record and regenerate manifest and
+UniFFI clients. Retain it in the Mac live tool schema and the public OpenSky
+TypeScript facade's `getAXState({collectionScope:"visible"|"all"})`. Move the
+invalid-domain owner to the actual Mac tool boundary; explicit since requests
+are refused before even looking up a window. Whole local contract67, SDK106
+and Mac641 owners pass (6 explicit Mac GUI/clipboard opt-ins stay ignored).
+Removing the full-response guard makes the new Mac owner fail; restoring it
+passes the whole Mac binary. Generated bindings and ABI drift checks pass.
+Original CI failures remain retained. Fresh cross-platform CI and signed actual
+Mac candidate verification are pending; no Linux/Windows viewport implementation
+or new release acceptance is claimed.
+
+Iteration180 also completes four reviewed pairs across Preview, Font Book,
+System Information and Activity Monitor. The revised Activity Monitor pair uses
+266776 native versus260818 SDK input tokens,28.8s versus31.9s, and estimated
+$0.2435 versus$0.2947. Its best-resource index is0.9777; this is near parity,
+not evidence of a causal paid speedup. Intermediate Energy/Disk/Network views
+are exact recorded AXPresses without separate emitted render checks. The native
+Terminal tool explicitly denies com.apple.Terminal twice within its run; retire
+that unsuitable comparison without dispatching an SDK arm or creating a score.
+All owned app/helper/artifact cleanup is clear and the original Calendar stays.
