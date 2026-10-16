@@ -224,7 +224,7 @@ jobs:
         run: npm test > artifacts/halo/unit-tests.log 2>&1
       - name: Required embedded SDK contracts on Node22
         run: |
-          node --import tsx --test --test-timeout=60000 test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
+          node --import tsx --test --test-timeout=60000 test/app-rebind.test.ts test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
       - name: Exercise unprivileged TigerVNC desktop with a single shared bus
         shell: bash
         env:

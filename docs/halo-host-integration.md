@@ -1,6 +1,32 @@
 # Persistent Linux host integration
 
-## Current tested distribution: SDK0.2.29 / Driver0.36.0
+## Current tested distribution: SDK0.2.30 / Driver0.36.0
+
+Fresh `cua.getApp(name)` discovers the current native process into a separate
+binding after restart. Retained handles keep their original process and refuse
+stale input; ambiguous namesakes still refuse. Direct SDK callers use
+`get_app_state({app: name, scope: "app", includeScreenshot: false})` for fresh
+binding. Runtime source is **`452bc212706c0e33edb5b214c56b4179971995a7`**;
+driver remains **`9e9219a0ca84ea195b9cf3be35b42a6379699448`**.
+
+[Bookworm38981264234](https://github.com/tanishqkancharla/opensky/actions/runs/38981264234)
+verifies actual GTK stop/start under one SDK/facade: PID30626 exits; fresh lookup
+binds30689, even with reused XID6291459. Retained read/paste refuse before input;
+one replacement paste saves the exact75UTF-8bytes, with the documented payload-left
+clipboard. Three owned children and three desktop supervisors exit unforced.
+The separate grant names only canonical Python executable windows, display,
+clipboard text write and listed tools; launch/termination permissions are denied.
+Original PID/window-only native, strict bridge and Stop/drain contracts also pass:
+516whole SDK/two skips,269embedded,669fresh Linux units/ten ignored and seven
+original supervisors exiting without force. Local Node22/24 each pass517/one Bun
+skip; real Mac restart and existing Calculator click/diff checks pass.
+[Exact scope and evidence](native-app-rebind72.json).
+
+Install the [GitHub tarball](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.30).
+Mac cold-file launch19/66 and sandboxed Bookworm Chrome remain unqualified.
+No npm registry publication or paid benchmark improvement is claimed.
+
+## Previous tested distribution: SDK0.2.29 / Driver0.36.0
 
 SDK runtime **`cb13ce95b535fcc3a166e478ce75c4d1055954b5`** adds a typed,
 actionable refusal for unsafe Node promise tracking in the optional strict
@@ -839,7 +865,7 @@ unverified here; no new native-input or paired benchmark score follows from this
 probe. Dispatch `halo_sandbox_probe=true` for this diagnostic alone.
 
 
-## Rebinding a native app after process restart (main candidate, issue72)
+## Rebinding a native app after process restart (SDK0.2.30, issue72)
 
 A fresh `await cua.getApp(name)` discovers the current native process and returns
 a separate binding. The direct SDK equivalent is
@@ -850,6 +876,6 @@ Calling `listApps()` is inventory only. It does not change retained handles.
 If several visible processes match the name, fresh discovery still refuses
 ambiguity. Do not invent selector substrings or replay uncertain input.
 
-The change is verified by a real Mac process restart and focused contracts;
-current Bookworm regression and release qualification are pending. The separate
+The change is verified by a real Mac process restart and the Bookworm run above;
+installed distribution qualification is recorded with the release. The separate
 Mac cold-file launch66 limitation remains open.
