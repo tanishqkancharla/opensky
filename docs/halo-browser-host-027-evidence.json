@@ -1,0 +1,83 @@
+{
+  "SDKRelease": "0.2.27",
+  "SDKReleaseSource": "330cf176e73fea3cf4f3d8c18ef3b71c2a497c2e",
+  "SDKRuntimeSource": "d7034226852823a2a9dd26eb962e6a67b62c870e",
+  "qualificationHarnessSource": "90bb0b40e17c29d1e3ae9db78c9a8e93c5e0bd36",
+  "driverSource": "4a0189e286cf48c6b05da5bdd76ffebce4accc84",
+  "driverVersion": "0.35.4",
+  "driverSHA256": "d9fcfd485030a1e8d0064ab834928a38ae8ae1fcbab15d90e7cda9c5193fe4f8",
+  "run": 38913108850,
+  "conclusion": "success",
+  "artifactSHA256": "0eba8a9ac4a49b550f961de48def9023649670c741b02b774e470d977f8d8c9d",
+  "environment": {
+    "OS": "Ubuntu22 host, not Bookworm container",
+    "Node": "v22.23.3",
+    "Chrome": "Google Chrome 155.0.8059.84",
+    "display": "TigerVNC :1, XFWM, shared D-Bus/AT-SPI",
+    "runtimeUID": 1001,
+    "runtimeCapabilities": "0",
+    "privilegedContainer": false,
+    "sandboxPolicyChanged": false,
+    "ChromeInstallDirectoryChange": "root-owned777 directories tightened to755",
+    "browserOrigins": [
+      "about:blank",
+      "http://127.0.0.1:8123"
+    ]
+  },
+  "nativeEffects": {
+    "ASCIIandUnicodeSavedExact": true,
+    "selectionReplaced": true,
+    "clipboard": "payload-left",
+    "partialPasteSaved": "par",
+    "partialEffect": "unknown",
+    "partialDispatches": 1,
+    "replay": false,
+    "typingCodepointsAt500ms": 43,
+    "typingCodepointsSaved": 1000,
+    "typingUTF8BytesSaved": 2750,
+    "StopRemainedActive": true,
+    "queuedInputCancelled": true,
+    "followingSaveAfterCompletion": true
+  },
+  "browser": {
+    "clicked": {
+      "clicks": 1,
+      "scrollY": 0,
+      "focused": true,
+      "trusted": true,
+      "wheelTrusted": null
+    },
+    "scrolled": {
+      "clicks": 1,
+      "scrollY": 600,
+      "focused": true,
+      "trusted": false,
+      "wheelTrusted": true
+    },
+    "absentForegroundRefusalPreservesFocusAndZeroClicks": true,
+    "staleScreenshotRefusalPreservesOneClick": true,
+    "foregroundOwnedPIDVerified": true,
+    "trustedClick": true,
+    "trustedWheel": true,
+    "sandboxedOwnedRenderers": 5,
+    "rendererNoNewPrivs": 1,
+    "rendererSeccomp": 2,
+    "additionalRendererFilterVerified": true,
+    "beforeAfterScreenshotsVisuallyReviewed": true
+  },
+  "ownedSupervisorProcessesExitedWithoutForce": 7,
+  "driverUnits": {
+    "passed": 666,
+    "ignored": 10,
+    "reusedFromRun": 38908929381,
+    "fresh": false
+  },
+  "embeddedSDKTests": 269,
+  "freshEvidenceKeeperTestsNode22And24": 3,
+  "BookwormContainerBrowserAccepted": false,
+  "limits": [
+    "Ubuntu22 host acceptance does not establish exact Bookworm container compatibility.",
+    "Driver binary/whole Linux unit proof reused by exact source and byte hashes; new SDK and application effects executed.",
+    "No new paid benchmark score or causal performance claim."
+  ]
+}

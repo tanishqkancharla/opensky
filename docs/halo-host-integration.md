@@ -25,15 +25,42 @@ all pass.44codepoints are visible at the500ms deadline; Stop leaves that action
 active and following Save starts only after completion. Seven supervisors exit
 without force. [Compact native effect evidence](native-app-027-evidence.json).
 
-**That overall run fails in browser preparation:** no root-owned/non-writable
-system Chromium executable is accepted. Sandbox startup itself passes, but no
-browser click/scroll is certified. This Ubuntu host evidence does not establish
-Halo's Bookworm container compatibility; the prior Bookworm native-only evidence
-below stays separately pinned. Foreground browser examples remain the supported
-API shape with actual sandboxed TigerVNC browser acceptance still pending.
-The bounded browser origin list must explicitly include `about:blank` for the
-new isolated tab bootstrap, followed by each allowed destination origin. This
-is an exact additional required grant, not an implicit exception or wildcard.
+### Sandboxed foreground browser qualification after release
+
+[Full run38913108850](https://github.com/tanishqkancharla/opensky/actions/runs/38913108850)
+**passes** at qualification harness90bb0b40e17c29d1e3ae9db78c9a8e93c5e0bd36,
+with the same published SDK0.2.27 runtime and driver4a0189e. On Ubuntu22 host,
+Node22.23.3, Google Chrome155.0.8059.84, TigerVNC/XFWM/shared D-Bus, an ordinary
+uid1001 with zero effective capabilities performs one trusted click and a
+trusted wheel scroll of600pixels. The page has focus and the active native
+window PID equals the driver-owned Chrome root. Missing foreground opt-in
+preserves editor focus/zero clicks; a stale screenshot refuses without a second
+click. Before/after screenshots show the button scrolled out of the viewport.
+Five stable owned renderer processes have NoNewPrivs1, Seccomp2 and an additional
+filter beyond the host baseline. No sandbox-disabling flags are supplied.
+[Compact full application evidence](halo-browser-host-027-evidence.json).
+
+Required browser origins explicitly include `about:blank` for the fresh isolated
+tab bootstrap, then each intended destination origin; the fixture grants only
+that bootstrap and `http://127.0.0.1:8123`. It grants only isolated profiles and
+the root-managed Chrome executable/window/lifecycle operations listed in
+[e2e/halo/session.sh](../e2e/halo/session.sh). The CI image's root-owned Chrome
+ancestor directories were mode777: provisioning removes group/other write bits
+from `/opt`, `/opt/google`, `/opt/google/chrome` rather than weakening driver
+trust checks. Chrome's sandbox and host namespace/LSM policy are unchanged.
+
+The exact driver binary and its666-unit log were reused from original
+run38908929381 with source, identity and both byte hashes checked before install.
+Those driver units were not rerun in the final job;269 embedded SDK owners and
+all native/browser application outcomes execute afresh. The default workflow
+builds the driver; explicit `reuse_driver` refuses source/hash mismatches.
+
+**Ubuntu host acceptance does not establish Halo's Bookworm container browser
+compatibility.** Bookworm native-only evidence remains separately pinned below;
+its container's Chrome namespace policy is still unqualified here. The earlier
+host failures (desktop readiness, protected headless namesake, writable Chrome
+ancestors, missing blank origin and flattened process-title oracle) remain
+retained. They are not relabeled as successful whole runs.
 
 Whole SDK506pass/1Bun-only skip each Node22/24;269 embedded owners and666Linux
 units pass. All29 required signed-Mac owners pass across18groups. A first
