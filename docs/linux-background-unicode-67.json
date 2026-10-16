@@ -1,0 +1,37 @@
+{
+  "driverSource": "6647fa8d7f5edc0337d0d616f00c202df68b9bc4",
+  "originalProductSource": "0ba206238cf98c9af07a68f1799cd6d67e011c06",
+  "redTestSource": "7a994618ce46a9b39d5355501d5f6a6a3ec462b1",
+  "ownerSourceSHA256": "e5e40c93c3beb533d8bc01b0bb3a78f247c2e4d8f01d80e1d23d4447f1f93751",
+  "originalExpected": "\u00e9\u2014\u4e2d\u6587\ud83d\ude00\u00e9",
+  "originalActual": "\u0000",
+  "beforeWholeBinary": {
+    "passed": 8,
+    "failed": 1,
+    "runId": 38836634554
+  },
+  "afterWholeBinary": {
+    "passed": 9,
+    "failed": 0,
+    "runId": 38837486066
+  },
+  "delayedRespondingClientExactTextOnBothPaths": true,
+  "advertisedNonrespondingClientPrefixOnBothPaths": "\u00e9",
+  "nonrespondingExactError": "X11 application did not acknowledge borrowed-key input within two seconds; delivery is unknown, inspect before retrying",
+  "focusUnchangedOnBothPaths": true,
+  "borrowedMappingsRestoredOnBothPaths": true,
+  "noInputReplay": true,
+  "testsObserveNativeX11ClientEvents": true,
+  "productionTigerVncAtspiChromeAccepted": false,
+  "LinuxUnits": {
+    "platform": 664,
+    "contract": 67,
+    "core": 1050,
+    "driver": 322
+  },
+  "MacAndWindowsWorkflowPending": false,
+  "scope": "Owned actual X11 event-loop fixture under isolated Xvfb, not production app/TigerVNC/browser certification.",
+  "allThreePlatformBuildAndUnitJobsPassed": true,
+  "SDKRelease": "0.2.20",
+  "nativeBookwormAcceptanceRun": 38838190369
+}

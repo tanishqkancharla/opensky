@@ -2,23 +2,26 @@
 
 ## Current pins and verification boundary
 
-The released supported distribution is **SDK0.2.19**, with Driver **0.35.4**,
-runtime source **`0ba206238cf98c9af07a68f1799cd6d67e011c06`**.
-This checkout selects candidate Driver`6647fa8d7f5edc0337d0d616f00c202df68b9bc4`:
-background XSendEvent Unicode now uses the existing per-character recipient
-acknowledgement. Its current Bookworm native run is pending. Foreground XTest,
-the TypeScript host queue, Linux paste capability refusal and grants are unchanged.
-The macOS bundle keeps its stable signing identity and disables automatic termination.
-Historical Linux native acceptance remains pinned to
-Driver`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`; it must not be promoted into
-acceptance of this new Linux input change. Mac and isolated CLI/X11 checks are
-separate from the requested production TigerVNC and sandboxed-browser contract.
-The actual native acceptance run uses SDK`cffb21e803b527f99d6357840619c3980afc99ff`;
-the final distribution has the same TypeScript SDK runtime, with updated
-release metadata, driver pin, CI scope and documentation. The current native
-run verifies saved typing, cancellation/drain, paste refusal and strict bridging.
-The previous compositor-off/on capture matrix used SDKf1b687b7 / Driver0.35.2
-source34f3d150; capture-matrix acceptance is separate from the new native run.
+The supported distribution is **SDK0.2.20**, with Driver **0.35.4**,
+runtime source **`6647fa8d7f5edc0337d0d616f00c202df68b9bc4`**.
+The current [native acceptance run](halo-0220-native-evidence.json) uses
+SDK`d645423b29f3e0b5106e22d95db53ddd509c17f9`; the final distribution has the
+same TypeScript SDK runtime, with updated release metadata and verification docs.
+This run verifies actual saved Unicode, cancellation/drain, actionable paste
+refusal and strict bridging on unprivileged Bookworm/TigerVNC with bounded grants.
+
+Background XSendEvent Unicode now uses the existing per-character acknowledgement
+barrier for the exact receiving client. The separate
+[isolated X11 owner](linux-background-unicode-67.json) verifies delayed delivery,
+unknown-effect stopping, focus preservation and keymap restoration on both paths.
+Foreground XTest, the TypeScript host queue, Linux paste refusal and grants retain
+their public contract. The current [Mac owners](mac-driver-0220-evidence.json)
+preserve stable signing and existing permissions.
+
+[Previous native acceptance](halo-0354-native-evidence.json) remains its own
+SDKcffb21e/Driveraee4fd3 record. The older compositor-off/on capture matrix used
+SDKf1b687b7/Driver0.35.2 source34f3d150. Those records do not establish current
+sandboxed Chrome acceptance, which remains unverified.
 Driver1007552b additionally fixes operator `status --pid-file` selection.
 Its isolated CLI-daemon checks are separate from Halo's embedded SDK/native
 acceptance; status PID-file text is not authenticated ownership or action completion.
@@ -66,22 +69,22 @@ Registry `opensky-cua@0.1.2` does not identify these features. Use an immutable
 built checkout or the declared GitHub release tarball; record the selected
 binary's `--opensky-driver-identity` and avoid pairing it with another daemon.
 
-[Current native application run38652656631](https://github.com/tanishqkancharla/opensky/actions/runs/38652656631)
+[Current native application run38838190369](https://github.com/tanishqkancharla/opensky/actions/runs/38838190369)
 used Node22.23.3 in Debian Bookworm, TigerVNC/X11, XFWM4, real AT-SPI,
 uid1001 and two explicit bounded manifests on one shared session D-Bus.
-[Compact before/after evidence](halo-0354-native-evidence.json):
+[Compact before/after evidence](halo-0220-native-evidence.json):
 
 | Check | Application evidence |
 |---|---|
 | 500ms host wait deadline and active Stop | 42 of1000 Unicode codepoints visible; action stayed active with stopRequested=true |
-| Completion and serialization | typing finished after16.936s; exactly1000 codepoints/2750 UTF-8 bytes saved; following Save began at typing completion |
+| Completion and serialization | typing finished after16.894s; exactly1000 codepoints/2750 UTF-8 bytes saved; following Save began at typing completion |
 | Queued Stop | cancelled callback did not dispatch; MUST-NOT-APPEAR absent from the saved file |
 | ASCII and Unicode native paste | unsupported_native_paste; exact text, selection and clipboard unchanged; saved document remains `replace me` |
 | Cleanup | both SDK domains detached; all seven owned supervisor processes exited without forced termination |
 
-This explicitly native-only run passes all264 required embedded SDK owners,
-499 whole SDK owners with two skips on Linux Node22, and664 Linux platform units.
-Local Node22/24 whole suites each pass500 with one Bun-only skip. The strict
+This explicitly native-only run passes all265 required embedded SDK owners,
+500 whole SDK owners with two skips on Linux Node22, and664 Linux platform units.
+Local Node22/24 whole suites each pass501 with one Bun-only skip. The strict
 bridge retains an exact app handle across a realm await and preserves artifact
 ownership. The external legacy-hook limitation in issue56 remains open.
 [Earlier native evidence](halo-current-native-evidence.json) and

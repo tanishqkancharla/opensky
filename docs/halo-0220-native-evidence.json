@@ -1,0 +1,65 @@
+{
+  "sdkAcceptanceSource": "d645423b29f3e0b5106e22d95db53ddd509c17f9",
+  "driverSource": "6647fa8d7f5edc0337d0d616f00c202df68b9bc4",
+  "driverVersion": "0.35.4",
+  "driverSHA256": "40fdac7443664c0979f1b54e43897c4b4bde322d01ac3acd2a3adfad202c2672",
+  "node": "v22.23.3",
+  "environment": "unprivileged uid1001 DebianBookworm TigerVNC/X11 XFWM4 sharedD-Bus/realAT-SPI; bounded exact PID/window/artifact grants",
+  "hostedRun": "https://github.com/tanishqkancharla/opensky/actions/runs/38838190369",
+  "scope": "native-only",
+  "typing": {
+    "charactersAt500ms": 42,
+    "stateAt500ms": "active",
+    "stopRequested": true,
+    "completedCharacters": 1000,
+    "savedUtf8Bytes": 2750,
+    "savedSHA256": "c872011f389649a8fbaa0152b4ccf9bd5ae7f7f9c6ab7f7a995b54271fb07e6b",
+    "seconds": 16.894,
+    "savedExact": true,
+    "followingSaveAfterTypingCompletion": true,
+    "cancelledQueuedPayloadAbsent": true
+  },
+  "nativePaste": {
+    "availability": "unavailable",
+    "code": "unsupported_native_paste",
+    "asciiAndUnicodeRefused": true,
+    "textSelectionClipboardSentinelUnchanged": true,
+    "savedDocument": "replace me"
+  },
+  "strictBridge": {
+    "sdk": "d645423b29f3e0b5106e22d95db53ddd509c17f9",
+    "node": "v22.23.3",
+    "phases": [
+      "initial-real-AX",
+      "retained-bound-app-after-realm-await"
+    ],
+    "driver": "6647fa8d7f5edc0337d0d616f00c202df68b9bc4",
+    "artifactScopePreserved": true,
+    "ownSessionsDetached": true
+  },
+  "sdkTests": {
+    "linuxWholePassed": 500,
+    "linuxSkipped": 2,
+    "embeddedPassed": 265,
+    "embeddedFailed": 0
+  },
+  "browser": {
+    "name": "foreground-browser",
+    "verified": false,
+    "status": "not_run",
+    "reason": "Explicit native-only contract; sandboxed Chrome acceptance remains separate"
+  },
+  "ownedCleanup": {
+    "supervisorProcessesReaped": 7,
+    "forcedCleanup": false
+  },
+  "grantsSHA256": "ebf4ce3a9d022d526b72b07899f2cb012aa513c74a568864dee3ddb532855a7f",
+  "grantsFile": "native-grants.yaml",
+  "remainingLimitations": [
+    "Sandboxed TigerVNC Chrome not accepted; prior namespace startup refusals remain.",
+    "Native plaintext/rich paste is unavailable; capability error is intentional and no absent tool is dispatched.",
+    "Hard cancellation of already-dispatched OS input is not provided."
+  ],
+  "sdkDistributionVersion": "0.2.20",
+  "sourceAccounting": "Native acceptance uses SDKd645423. Distribution retains the same complete TypeScript runtime; only package metadata, README and verification documentation changed afterward."
+}
