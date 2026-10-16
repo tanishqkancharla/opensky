@@ -5,20 +5,24 @@ function observe(d: DriverDiagnostics, pid = 9, window_id = 22, id = "s1", token
  d.end(d.begin("get_window_state", { pid, window_id }), { structured: { pid, window_id, snapshot_id: id, elements: [{ element_index: 7, element_token: token, role: "AXButton", identifier: "NewTabButton", native_object_id: "object7", actions: [], frame: {x: 10,y: 20,w: 30,h: 40}, label: "private", value: "private", ...extra }] } });
 }
 test("token lineage preserves helper index despite public index remap, and never asserts effect", () => {
+ for (const tool of ["click", "double_click"]) {
  const d = new DriverDiagnostics();d.setCell("rpc-8");observe(d);
- const start = d.begin("click", {pid:9,window_id:22,element_index:23,element_token:"s1:7",snapshot_id:"s1",action:"press",text:"secret"});
+ const start = d.begin(tool, {pid:9,window_id:22,element_index:23,element_token:"s1:7",snapshot_id:"s1",action:"press",text:"secret"});
  d.end(start,{ structured:{route:"accessibility",effect:"unverifiable",delivery:{mode:"foreground",secret:"private"},tree_markdown:"private"}});
  const c = d.artifact().calls.at(-1)!;assert.equal(c.cell,"rpc-8");assert.equal((c.target as any).element_index,23);assert.equal((c.binding as any).element.element_index,7);assert.equal((c.binding as any).status,"matched");assert.equal((c.outcome as any).effect,"unverifiable");assert.ok(!JSON.stringify(d.artifact()).includes("private"));assert.ok(!JSON.stringify(d.artifact()).includes("secret"));
+ }
 });
 test("same token in a different PID/window or snapshot cannot supply authority; probes preserve full observation", () => {
+ for (const tool of ["click", "double_click"]) {
  const d = new DriverDiagnostics();observe(d);
  const args={pid:9,window_id:22,element_token:"s1:7",snapshot_id:"s1"};
- assert.equal((d.begin("click",{...args,pid:10}).binding as any).status,"no_exact_window_snapshot");
- assert.equal((d.begin("click",{...args,window_id:23}).binding as any).status,"no_exact_window_snapshot");
- assert.equal((d.begin("click",{...args,snapshot_id:"s2"}).binding as any).status,"snapshot_mismatch");
+ assert.equal((d.begin(tool,{...args,pid:10}).binding as any).status,"no_exact_window_snapshot");
+ assert.equal((d.begin(tool,{...args,window_id:23}).binding as any).status,"no_exact_window_snapshot");
+ assert.equal((d.begin(tool,{...args,snapshot_id:"s2"}).binding as any).status,"snapshot_mismatch");
  d.end(d.begin("get_window_state",args),{structured:{pid:9,window_id:22,probe_only:true}});
- assert.equal((d.begin("click",args).binding as any).status,"matched");
- observe(d,9,22,"s2","s2:7");assert.equal((d.begin("click",{...args,snapshot_id:"s2"}).binding as any).status,"token_not_in_latest_snapshot");
+ assert.equal((d.begin(tool,args).binding as any).status,"matched");
+ observe(d,9,22,"s2","s2:7");assert.equal((d.begin(tool,{...args,snapshot_id:"s2"}).binding as any).status,"token_not_in_latest_snapshot");
+ }
 });
 test("bounded retention reports missing evidence explicitly and preserves outcome errors", () => {
  const d = new DriverDiagnostics(2,1,1);observe(d);observe(d,9,23,"s2","s2:8");

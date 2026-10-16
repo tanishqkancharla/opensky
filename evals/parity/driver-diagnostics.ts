@@ -14,7 +14,7 @@ const captureMetadata = (v: RecordValue) => {
     if (typeof v[name] === "string" && /^[a-z_]{1,80}$/.test(v[name])) result[name] = v[name];
   return result;
 };
-const inputTools = new Set(["click", "type_text", "press_key", "hotkey", "select_text", "bring_to_front", "native_paste", "set_value", "perform_secondary_action"]);
+const inputTools = new Set(["click", "double_click", "type_text", "press_key", "hotkey", "select_text", "bring_to_front", "native_paste", "set_value", "perform_secondary_action"]);
 type Snapshot = { id: string; elements: Map<string, RecordValue>; dropped: number };
 export class DriverDiagnostics {
   readonly calls: RecordValue[] = [];

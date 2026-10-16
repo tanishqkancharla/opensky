@@ -6218,3 +6218,29 @@ The regression order now starts with the affected viewport and Chrome owners.
 The whole paste group already includes PASTE-N01/PASTE-N04, so its duplicate
 standalone invocation is omitted. Every required contract and owning file is
 still tested; no assertions, cleanup checks or source gates are removed.
+
+
+## SET415 — Retain double-click lineage in passive diagnostics
+
+Paid SDK1688 successfully opens Helvetica with the repaired indexed foreground
+`double_click`, but its private trace lacks the element binding attached to
+ordinary clicks. The parent failure packet also omits double-clicks from its
+last-input list. Both passive allowlists recognized `click` but missed the
+driver's separate `double_click` tool name. This makes an uncertain double-click
+harder to diagnose without changing what happened on screen.
+
+Treat double_click as an input in those two passive projections. Extend the
+existing lineage/stale-window/privacy owners and bounded failure-packet owner
+across both names, retaining every original case. No driver arguments, calls,
+tool-visible output or old transcript is changed. Focused units and fresh
+DOUBLE-N01 evidence are pending; no agent performance gain is claimed.
+
+SET415 verification: the five existing passive SDK owners pass on Node22 and
+Node24 with the added double-click cases; all eight parent GUI feedback owners
+pass. Omitting double-click again from either allowlist makes its expanded
+keeper fail; restoring both passes. Fresh actual DOUBLE-N01 passes with exact
+app cleanup on the unchanged signed32 driver. Its double-click now records
+matched snapshot s000000f1, exact AXGroup34, foreground global_input and the
+subsequent actual Helvetica detail; the bounded parent packet retains that
+same input and binding. No old trace is backfilled, no input is repeated and no
+agent performance change is inferred from this passive repair.
