@@ -25,6 +25,11 @@ on:
         description: Raw GTK AT-SPI paste feasibility on an owned TigerVNC desktop; no SDK acceptance
         type: boolean
         default: false
+      halo_paste_route:
+        description: Independent raw paste probe route; each dispatch uses a fresh desktop
+        type: choice
+        options: ['atspi', 'foreground']
+        default: atspi
       halo_sandbox_probe:
         description: 'Collect ordinary-user Chrome/namespace startup diagnostics without building the driver'
         type: boolean
@@ -110,8 +115,10 @@ jobs:
           node --version > artifacts/paste-readiness/node.txt
           dpkg-query -W > artifacts/paste-readiness/packages.txt
       - name: Probe real clipboard insertion and selected-text behavior
+        env:
+          HALO_PASTE_PROBE_ROUTE: ${{ inputs.halo_paste_route }}
         run: |
-          runuser -u halo -- env HALO_NATIVE_PASTE_PROBE_ONLY=1 HALO_ARTIFACTS="$GITHUB_WORKSPACE/artifacts/paste-readiness" dbus-run-session -- bash e2e/halo/session.sh
+          runuser -u halo -- env HALO_NATIVE_PASTE_PROBE_ONLY=1 HALO_PASTE_PROBE_ROUTE="$HALO_PASTE_PROBE_ROUTE" HALO_ARTIFACTS="$GITHUB_WORKSPACE/artifacts/paste-readiness" dbus-run-session -- bash e2e/halo/session.sh
       - name: Preserve actual GTK buffer, saved bytes, clipboard and exact owned cleanup
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08

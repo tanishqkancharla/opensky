@@ -6294,3 +6294,11 @@ records raw clipboard insertion, selected replacement, actual GTK buffer and
 Ctrl+S saved bytes, payload clipboard retention and exact process cleanup.
 This is feasibility evidence, not SDK/native-agent acceptance. No production
 clipboard fallback or browser sandbox workaround is introduced. Results pending.
+
+SET417 first actual probe38868718952: both AT-SPI PasteText replies are true,
+but ASCII insertion and Unicode selected replacement leave the GTK buffer,
+selection and Ctrl+S saved document unchanged. Clipboard holds each payload.
+All five supervisor processes and two exact clipboard owners exit. This route
+cannot be treated as confirmed delivery. Add a separately dispatched fresh
+desktop XTEST Ctrl+V control; never replay the acknowledged paste in that same
+editor. Production native_paste remains unsupported pending a real contract.

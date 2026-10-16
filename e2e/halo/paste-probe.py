@@ -13,9 +13,15 @@ from gi.repository import Atspi
 out = Path(os.environ["HALO_ARTIFACTS"])
 pid = int(os.environ["HALO_EDITOR_PID"])
 window = os.environ["HALO_EDITOR_WINDOW"]
+route = os.environ.get("HALO_PASTE_PROBE_ROUTE", "atspi")
+if route not in ("atspi", "foreground"):
+    raise ValueError("Unknown private paste probe route")
 clipboards = []
 evidence = {"scope": "raw AT-SPI GTK paste feasibility; no OpenSky/native-agent run",
-            "editorPid": pid, "window": window, "cases": [], "cleanup": []}
+            "editorPid": pid, "window": window, "route": route, "uid": os.geteuid(),
+            "display": os.environ.get("DISPLAY"), "sharedSessionBus": bool(os.environ.get("DBUS_SESSION_BUS_ADDRESS")),
+            "effectiveCapabilities": next(line.split(":", 1)[1].strip() for line in Path("/proc/self/status").read_text().splitlines() if line.startswith("CapEff:")),
+            "cases": [], "cleanup": []}
 
 def wait_for(read, predicate, seconds=5):
     deadline = time.monotonic() + seconds
@@ -76,7 +82,14 @@ try:
             raise RuntimeError("Private caret setup refused")
         before = wait_for(editor_state, lambda s: s.get("selected") == ("replace me" if selected else ""))
         owner = clipboard(payload)
-        accepted = editable.paste_text(position)
+        if route == "atspi":
+            accepted = editable.paste_text(position)
+        else:
+            active = int(subprocess.check_output(["xdotool", "getactivewindow"], timeout=3).strip())
+            if active != int(window, 0) or not before.get("focused"):
+                raise RuntimeError("Exact private editor is not foreground; no paste chord sent")
+            subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+v"], check=True, timeout=5)
+            accepted = "XTEST chord dispatched; actual buffer/saved bytes decide delivery"
         expected = payload if selected else "repla" + payload + "ce me"
         # A D-Bus reply may precede GTK's asynchronous clipboard callback.
         deadline = time.monotonic() + 3
