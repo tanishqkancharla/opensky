@@ -6321,3 +6321,11 @@ checks pass. The first whole run catches app guidance exceeding its existing
 that owner unchanged; original failure logs remain. Driverd8ee0def adds the
 X11 compound tool without changing installed Mac32. Actual bounded-grant SDK
 paste, partial-effect and original cancellation/completion owners are next.
+
+SET417 first driver CI38870153441 compiles, then canonical live-schema owners
+reject five undocumented native_paste parameters. Keep that failure and add
+descriptions at the tool source; do not relax the owner. The new foreground
+field also accurately states that the target stays active, rather than copying
+a stale generic restore description. Actuators/guards/readback are unchanged.
+Stop superseded SDK build38870885505 before its GUI phase and retarget actual
+SDK acceptance to corrected driverc3d284d7. No failed run is promoted or hidden.
