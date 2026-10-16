@@ -1,0 +1,34 @@
+{
+  "runId": 38875586155,
+  "SDKSource": "d14db52b22e63528b335f1ebdc71c02a094cd9dc",
+  "driverSource": "c36e63ef8e7387cd827596169396b63cbfe68f30",
+  "Node": "v22.23.3",
+  "scope": "Bookworm/TigerVNC/X11 native-only shared D-Bus/AT-SPI,uid1001 bounded explicit grants",
+  "asciiAndUnicodeExactSaved": true,
+  "selectionReplacement": true,
+  "clipboardPolicy": "payload-left",
+  "refusals": [
+    "foreground_required",
+    "bounded_resource_outside_manifest (clipboard omitted)",
+    "bounded_resource_outside_manifest (read omitted)"
+  ],
+  "partialSaved": "par",
+  "partialError": "native_paste_unverified",
+  "replayed": false,
+  "typingSavedCodepoints": 1000,
+  "typingElapsedSeconds": 13.781,
+  "ownedProcessesExited": 7,
+  "forcedExits": 0,
+  "sandboxedChromeAccepted": false,
+  "paidAgentRuns": 0,
+  "savedHashes": {
+    "paste-0-saved.txt": "f73573532bec611f3040ed9a695bafb620c5a21ad1b7f6ce65115ffbfad4a495",
+    "paste-1-saved.txt": "82856e8fb41209181e5b0e8ff3a6405a7305bc4c4ddf8e034f62810aebc40159",
+    "paste-partial-saved.txt": "c9d9d2c4be976b707a1acdcaba8495e7e0a7089579da6625a71083d5b0c6bddf",
+    "saved.txt": "c872011f389649a8fbaa0152b4ccf9bd5ae7f7f9c6ab7f7a995b54271fb07e6b"
+  },
+  "requiredEmbeddedOwnersPassed": 266,
+  "LinuxWholeUnitPassed": 666,
+  "SDKWholeNode22Passed": 503,
+  "evidenceURL": "https://github.com/tanishqkancharla/opensky/actions/runs/38875586155"
+}

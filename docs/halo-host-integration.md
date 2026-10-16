@@ -1,8 +1,16 @@
 # Persistent Linux host integration
 
-## Current pins and verification boundary
+## Verified X11 paste candidate
 
-The supported distribution is **SDK0.2.20**, with Driver **0.35.4**,
+The native-only [application run38875586155](https://github.com/tanishqkancharla/opensky/actions/runs/38875586155) verifies SDK **`d14db52b22e63528b335f1ebdc71c02a094cd9dc`** with driver **`c36e63ef8e7387cd827596169396b63cbfe68f30`** (driver version0.35.4). Use these immutable built sources for the new Linux paste contract; the released0.2.23 package predates it. Documentation-only successors do not change that tested runtime. [Compact application evidence](halo-x11-native-paste-evidence.json).
+
+On ordinary uid1001, Bookworm, Node22.23.3, TigerVNC/X11 and a shared D-Bus/AT-SPI session, public `app.paste` saves exact ASCII and Unicode selected replacements. The clipboard is left with the payload. A private GTK handler accepting only three characters produces saved `par`; the SDK reports unknown effect after the host500ms wait deadline and Stop request, with one dispatch and no replay. Missing foreground and missing clipboard resources refuse before mutation; clipboard write does not grant clipboard read. All seven owned supervisor processes exit without forced termination.266 required embedded SDK owners,503 whole Node22 owners and666 Linux units pass; these are separate from application evidence.
+
+The original1000-character Unicode typing owner remains:41 characters are visible at the500ms wait deadline; the action remains active after Stop, finishes in13.781seconds and saves all1000 characters before the following Save starts. Queued cancelled input never dispatches. This is a completion/drain contract, not hard cancellation. Sandboxed Chrome is explicitly not run and remains unverified.
+
+## Previous release pins and verification boundary
+
+The earlier verified distribution is **SDK0.2.20**, with Driver **0.35.4**,
 runtime source **`6647fa8d7f5edc0337d0d616f00c202df68b9bc4`**.
 The current [native acceptance run](halo-0220-native-evidence.json) uses
 SDK`d645423b29f3e0b5106e22d95db53ddd509c17f9`; the final distribution has the
@@ -270,18 +278,75 @@ permission grants or live application readiness. The host must launch its daemon
 from that **same immutable binary**; it must not pair an old daemon with a new
 client binary. An injected transport without registry introspection reports
 `unknown`, not support. Registry inspection errors remain explicit errors.
-The pinned Linux driver has no `native_paste`: availability is `unavailable`,
-formats `[]`, clipboard `untouched`. Both ASCII and Unicode `app.paste` calls
-refuse `unsupported_native_paste` before paste, replacement typing, clipboard
-mutation or paste key dispatch. Selected content is not replaced. Browser paste
-and Mac native paste remain separate capabilities.
+The verified candidate above registers `native_paste` on X11 and reports
+availability `supported`, formats `["text"]`, clipboard `payload-left`.
+This reports the binary capability; it does not grant clipboard/desktop access
+or promise that a particular application's editable can be verified.
+Wayland and old drivers without this tool remain unavailable; injected transports
+without registry inspection remain unknown. Neither case dispatches an absent tool.
 
-Thus exact inserted ASCII/Unicode and selected-text replacement are **unsupported
-Linux native paste outcomes**, not passing acceptance tests. No clipboard
-preservation receipt can be promised for an operation that is unavailable.
-No partial native paste is dispatched by this SDK capability refusal. Existing
-browser/Mac paste errors can follow input: retain receipts, observe effects and
-never automatically replay uncertain delivery.
+```js
+// Run within Halo's persistent desktop host queue. The exact app/window must
+// already be owned/bound; app.paste explicitly chooses foreground native input.
+const action = host.submit(async ({ cua }) => {
+  const app = await cua.getApp('Mousepad');
+  return await app.paste('Café Ελληνικά 中文 🙂\nsecond line');
+}, { label: 'paste plaintext' });
+await host.wait(action.id);
+await host.drain();
+```
+
+The Linux compound operation activates/confirms the exact bound window and
+requires one focused, enabled native AT-SPI editable, a complete scoped read,
+current value/selection, and its own clipboard payload readback before one
+Ctrl+V. It confirms the expected exact resulting value on the same retained
+AT-SPI identity. Password, web content, ambiguous/partial observations and
+unprovable windows refuse. Limits:1..16384 UTF-8 payload bytes and262144 existing
+characters. Rich formats and clipboard restoration are unsupported on X11.
+Do not silently replace paste with typing or synthetic AT-SPI PasteText.
+
+**Clipboard behavior:** payload-left, no snapshot/restore. Success reports
+`target_value_verified:true`, `transfer_verified:false`, `clipboard_policy:"leave"`
+and `clipboard_restored:false`. Value readback is not transfer provenance.
+An observed external clipboard writer is never overwritten; another desktop
+client can still race the final checks. No global atomicity is promised.
+Errors can follow clipboard mutation or partial input. Retain structured
+`input_dispatched`, `effect` and `clipboard_may_have_changed`; a partial or
+unverified paste reports `native_paste_unverified` with unknown effect, never
+permission to replay. A waiter deadline/Stop leaves active work tracked until
+its original action settles. Observe application contents after drain.
+
+Add explicit clipboard access to a **version3** bounded manifest; version1/2
+cannot grant it. This is independent of the exact desktop/window resources and
+tool allowlist:
+
+```yaml
+version: 3
+expires_after: 1h
+idle_timeout: 30m
+resources:
+  clipboard:
+    write: [text]
+  desktop:
+    windows:
+      - pid: 1234
+        window_id: 5678
+allow:
+  tools: [start_session, end_session, native_paste]
+```
+
+Add the required observation/discovery tools and their reviewed resources when
+binding through the facade; see the concrete supervisor template below. The
+native test deliberately allows `clipboard_read` as a tool but omits its read
+resource: it still refuses `bounded_resource_outside_manifest`. Write access
+never exposes prior clipboard text. Native paste privately reads its own payload
+to verify delivery. Version3 has no `mode` field; select bounded mode on daemon
+startup and approve that exact manifest. No unrestricted permission is needed.
+
+The historical0.2.20 driver had no native paste tool and correctly refused
+`unsupported_native_paste` with text, selection and clipboard unchanged. Those
+older unsupported outcomes above remain historical; they are not positive paste
+acceptance. Browser/Mac paste keep their separate capabilities and policies.
 
 ## Target environment and explicit grants
 
