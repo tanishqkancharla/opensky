@@ -6153,3 +6153,20 @@ client with the inherited environment immediately found the same live daemon.
 Retain that probe as setup failure, not slow startup or missing permissions.
 The public option now explicitly documents full-environment semantics; callers
 overriding individual values should pass `{...process.env, ...overrides}`.
+
+SET412/413 current Mac verification: the signed a9eee3da1 driver passes all29
+required Mac owners plus TYPE-N06 across the19 recipe groups. The original
+Finder setup delay is preserved, with exact owned-window recovery and one
+unchanged recipe retry passing; its cause remains unknown. The original Chrome
+PATH refusal is preserved; patched SDK startup with an inherited environment
+without PATH starts the same signed binary in334ms with the actual system PATH,
+250/50 bounds and original Accessibility/Screen Recording grants. Chrome Find,
+background paste refusal and plus-chord owners then pass. All fixtures, apps
+and native helpers pass final independent cleanup; the original Calendar stays.
+Node22/24 each pass502 SDK owners with1 Bun-only skip; build/typecheck pass.
+
+The generated portable contract still incorrectly exposes the Mac-only
+`native_row_scope`; fresh Linux, Windows and generated-client CI catches the
+missing live-schema field. That cross-platform contract correction remains
+required before distribution. These Mac-scoped checks do not accept Linux or
+Windows behavior. Matching Activity Monitor task comparisons remain pending.

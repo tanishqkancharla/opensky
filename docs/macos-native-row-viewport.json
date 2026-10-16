@@ -53,8 +53,9 @@
     "Native original task used a bad process search term; its incomplete result is retained and both backends must rerun the revised task.",
     "Original loose diagnostic hasSearch flag was heuristic; actual new owners identify the search field through its observed process-search parent.",
     "Existing strict Clippy failures in untouched input code are retained; no shipped lint policy was weakened.",
-    "Full current GUI regression and matching paid task verification are pending at this checkpoint.",
-    "First SDK workflow owner assumed a volatile _NS identifier survived public projection; retained pre-input fixture failure, repaired selector to use observed search ancestry."
+    "First SDK workflow owner assumed a volatile _NS identifier survived public projection; retained pre-input fixture failure, repaired selector to use observed search ancestry.",
+    "All29 required Mac GUI owners plus TYPE-N06 pass on the signed candidate. Matching paid Activity Monitor reruns pending.",
+    "CI correctly reports native_row_scope was wrongly added to the portable input schema. Mac live schema supports it, Linux/Windows do not. Correct contract placement before release; no cross-platform acceptance claim."
   ],
   "publicSDKWorkflow": {
     "visibleCharacters": 25941,
@@ -65,5 +66,13 @@
     "actualSelfProcessFilterObserved": true,
     "allRecovery": true
   },
-  "independentParentScreenshotVerified": "Single actual process row under Activity Monitor search; no input-only success inference."
+  "independentParentScreenshotVerified": "Single actual process row under Activity Monitor search; no input-only success inference.",
+  "currentMacRequiredContractsPassed": 29,
+  "additionalLongUnicodeOwnerPassed": true,
+  "currentMacDriverSHA256": "bdabbbc9d70f2e953857f4c65e6af03c0345934f7d6f085e3af639eaf3257d56",
+  "finalIndependentCleanupPassed": true,
+  "originalFailuresRetained": [
+    "Finder Go to Folder setup delay; exact modal close refusal; exact-window recovery and one unchanged recipe retry passed. Cause unknown.",
+    "Chrome setup refusal because launched daemon PATH omitted system lsof; SDK startup forwards selected PATH; actual Chrome retry passed."
+  ]
 }
