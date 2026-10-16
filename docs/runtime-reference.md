@@ -65,6 +65,27 @@ replaying unknown-delivery calls. Low-level `invoke`/`driver.call` with explicit
 session labels are trusted escape hatches, not a sandbox for untrusted consumers.
 
 
+## Native macOS row observations
+
+The default facade `app.getAXState()` requests the driver’s native viewport: rows
+that the collection reports as visible, plus selected rows. The walk leaves other
+native rows unread so a long process table cannot consume the node budget before
+toolbars and search. The text reports unread rows; absence is not a complete
+search result. Unknown or inconsistent visible/selected membership keeps the
+bounded full walk. Web content and other platforms retain their existing routes.
+
+Use `await app.getAXState({collectionScope: "all", disableDiffing: true})` for
+a fresh bounded all-row read (10,000 nodes, five seconds). It may still report a
+partial tree; scroll or use the app’s search when needed. Query/depth-specific
+legacy reads keep their own scopes. No input is replayed or selection changed by
+this observation policy.
+
+Low-level Mac `get_window_state` supports `native_row_scope: "visible" | "all"`
+with `full_output: true`; the driver returns `collapsed_rows` when rows were left
+unread. That explicit scope does not support compact `since` diffs. Omitting it
+keeps the legacy driver walk. Use the pinned OpenSky driver in `driver-source.json`;
+the component version alone does not identify this fork’s capabilities.
+
 ## Browser cleanup ownership
 
 Owned browser sessions have private lease records under

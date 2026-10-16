@@ -4,7 +4,11 @@ import type { SnapshotElement } from "./types.js";
 export function projectNativeCollectionRows(tree: string, elements: SnapshotElement[], value: unknown):
   { tree: string; elements: SnapshotElement[]; hiddenIndices: Set<number> } {
   const structural = (line: string) => /^\s*- (?:\[\d+\] )?AX[A-Za-z]+\b/.test(line);
-  const lines = tree.split("\n"), hiddenLines = new Set<number>(), hiddenIndices = new Set<number>();
+  // Keep the driver's row counts while presenting the public facade's
+  // recovery operation. Wire-only argument names are not facade options.
+  const displayTree = tree.replace(/(^[ \t]*- Native row viewport: \d+ of \d+ rows are offscreen and unselected; not read\.) Scroll\/search, or request native_row_scope:[^\n]+ for a bounded full walk\.$/gm,
+    '$1 Scroll this list or request getAXState({collectionScope:"all"}) for a bounded full read.');
+  const lines = displayTree.split("\n"), hiddenLines = new Set<number>(), hiddenIndices = new Set<number>();
   const annotations = new Map<number, string>();
   const rowLines = new Map<number, number[]>();
   lines.forEach((line, i) => { const m = line.match(/^\s*- \[(\d+)\] AXRow\b/); if (m) rowLines.set(Number(m[1]), [...(rowLines.get(Number(m[1])) ?? []), i]); });

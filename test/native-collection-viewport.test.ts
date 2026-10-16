@@ -38,14 +38,14 @@ test('multiline native action descriptions remain inside their row and never bec
 
 import {makeHarness} from './harness.ts';
 test('viewport projection does not trigger incomplete-walk recollection, and all scope returns a full fresh loaded view',async()=>{
- const {opensky}=await makeHarness();const original=opensky.driver.call.bind(opensky.driver);const depths:unknown[]=[];
+ const {opensky}=await makeHarness();const original=opensky.driver.call.bind(opensky.driver);const depths:unknown[]=[];const rowScopes:unknown[]=[];const caps:unknown[]=[];
  opensky.driver.call=async(tool,args={})=>{const r=await original(tool,args);if(tool!=='get_window_state'||args.probe_only)return r;
- depths.push(args.max_depth);return {...r,structured:{...r.structured,tree_markdown:tree,elements:elements.map(e=>({...e,element_token:'fixture-'+e.element_index})),native_collections:[scope],element_count:8,total_element_count:8,returned_element_count:8,elements_complete:false,truncated:false,nodes_pending:0}};};
+ depths.push(args.max_depth);rowScopes.push(args.native_row_scope);caps.push(args.max_elements);return {...r,structured:{...r.structured,tree_markdown:tree,elements:elements.map(e=>({...e,element_token:'fixture-'+e.element_index})),native_collections:[scope],element_count:8,total_element_count:8,returned_element_count:8,elements_complete:false,truncated:false,nodes_pending:0}};};
  try {
  const visible=await opensky.get_app_state({app:'Calculator',disableDiff:true,includeScreenshot:false});
  assert.match(visible.text,/collection viewport/);assert(!visible.text.includes('Offscreen note'));assert(!visible.text.includes('Accessibility projection:'));
  const all=await opensky.get_app_state({app:'Calculator',collectionScope:'all',includeScreenshot:false});
  assert(all.text.includes('Offscreen note'));assert(!all.text.includes('collection viewport'));assert(!all.text.startsWith('The following is a diff'));
- assert.deepEqual(depths,[undefined,undefined]);
+ assert.deepEqual(depths,[undefined,undefined]);assert.deepEqual(rowScopes,["visible","all"]);assert.deepEqual(caps,[undefined,10000]);
  } finally {await opensky.close();}
 });

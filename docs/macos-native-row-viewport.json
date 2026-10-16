@@ -1,0 +1,69 @@
+{
+  "issue": 68,
+  "driverSource": "a9eee3da1d2b0587f3cecdce5f73a81c990423a5",
+  "driverSHA256": "bdabbbc9d70f2e953857f4c65e6af03c0345934f7d6f085e3af639eaf3257d56",
+  "nativeOriginalRun": 1683,
+  "nativeInitialCharacters": 12278,
+  "originalPublicSDK": {
+    "characters": 152437,
+    "partial": true,
+    "hasCpuToolbarControl": false,
+    "elapsedMs": 765.43225
+  },
+  "largerBudgetControl": {
+    "characters": 524088,
+    "partial": false,
+    "hasCpuToolbarControl": true,
+    "elapsedMs": 2242.781708
+  },
+  "publicSDKAfter": [
+    {
+      "name": "default",
+      "elapsedMs": 354.92554199999995,
+      "characters": 25924,
+      "hasSearch": true,
+      "collapsedRows": 624,
+      "hasCPU": true,
+      "partial": false
+    },
+    {
+      "name": "all-loaded",
+      "elapsedMs": 2166.102708,
+      "characters": 551759,
+      "hasSearch": true,
+      "collapsedRows": 0,
+      "hasCPU": true,
+      "partial": false
+    }
+  ],
+  "canonicalRustOwner": {
+    "allElements": 7520,
+    "collapsedRows": 618,
+    "noInputSent": true,
+    "pid": 99706,
+    "viewportHasToolbarAndCpuAndSearch": true,
+    "visibleElements": 524,
+    "window": 89416
+  },
+  "exactOwnedCleanupPassed": true,
+  "signingIdentityAndGrantsPreserved": true,
+  "paidScoreImprovementClaimed": false,
+  "limits": [
+    "Process counts and cold launch state differ between read-only controls; figures are observations, not a task speed claim.",
+    "Native original task used a bad process search term; its incomplete result is retained and both backends must rerun the revised task.",
+    "Original loose diagnostic hasSearch flag was heuristic; actual new owners identify the search field through its observed process-search parent.",
+    "Existing strict Clippy failures in untouched input code are retained; no shipped lint policy was weakened.",
+    "Full current GUI regression and matching paid task verification are pending at this checkpoint.",
+    "First SDK workflow owner assumed a volatile _NS identifier survived public projection; retained pre-input fixture failure, repaired selector to use observed search ancestry."
+  ],
+  "publicSDKWorkflow": {
+    "visibleCharacters": 25941,
+    "visibleElements": 524,
+    "allCharacters": 546467,
+    "allElements": 7325,
+    "defaultHasSearchAndCpu": true,
+    "actualSelfProcessFilterObserved": true,
+    "allRecovery": true
+  },
+  "independentParentScreenshotVerified": "Single actual process row under Activity Monitor search; no input-only success inference."
+}

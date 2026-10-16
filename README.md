@@ -29,7 +29,7 @@ reports it missing:
 ```sh
 git clone https://github.com/tanishqkancharla/cua.git
 cd cua
-git checkout 6647fa8d7f5edc0337d0d616f00c202df68b9bc4
+git checkout a9eee3da1d2b0587f3cecdce5f73a81c990423a5
 bash libs/cua-driver/scripts/install.sh
 ```
 

@@ -2593,6 +2593,11 @@ export class OpenSky implements OpenSkyApi {
       screenshot_format: this.screenshotFormat,
       screenshot_scale: this.screenshotScale,
       max_depth: options.maxDepth,
+      ...(this.target === "mac" && options.maxDepth === undefined && options.query === undefined
+        && resolved.contentScope !== "web" ? {
+          native_row_scope: options.collectionScope ?? "visible",
+          ...(options.collectionScope === "all" ? { max_elements: 10000 } : {}),
+        } : {}),
     };
     // Full Mac walks use the existing recovery budget directly. The driver
     // returns as soon as collection finishes; a short initial timeout followed
