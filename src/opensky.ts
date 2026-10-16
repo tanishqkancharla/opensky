@@ -437,6 +437,11 @@ export class OpenSky implements OpenSkyApi {
         );
       }
       resolved = bound;
+    } else if (args.scope === "app" && !exactTargetRequested) {
+      // A named app observation is an explicit discovery request. Resolve the
+      // current process into a separate binding; retained handles never move
+      // to a replacement process or lose their exact-window/close authority.
+      resolved = await this.resolveApp(args.app, { launchIfNeeded: this.autoLaunch, freshBinding: true });
     } else {
       resolved = await this.requireResolved(args.app);
     }
@@ -2283,10 +2288,10 @@ export class OpenSky implements OpenSkyApi {
     return resolved;
   }
 
-  private async resolveApp(app: string, options: { launchIfNeeded: boolean }): Promise<ResolvedApp> {
+  private async resolveApp(app: string, options: { launchIfNeeded: boolean; freshBinding?: boolean }): Promise<ResolvedApp> {
     await this.ensureLoaded();
     if (looksLikeTargetHandle(app)) throw unknownTargetHandle(app);
-    const cached = this.targetForSelector(app);
+    const cached = options.freshBinding ? undefined : this.targetForSelector(app);
     const listed = await this.listRawApps();
     const match = findApp(listed, app, true);
     if (match && (match.running || match.pid)) {

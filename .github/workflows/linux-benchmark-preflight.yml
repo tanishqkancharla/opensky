@@ -249,6 +249,14 @@ jobs:
           else
             runuser -u halo -- dbus-run-session -- bash e2e/halo/session.sh
           fi
+      - name: Native process replacement with a separate bounded executable grant
+        if: ${{ inputs.halo_native }}
+        run: |
+          directory="$GITHUB_WORKSPACE/artifacts/halo/app-rebind"
+          mkdir -p "$directory"
+          chown halo:halo "$directory"
+          runuser -u halo -- env HALO_ARTIFACTS="$directory" HALO_REBIND_CONTRACT_ONLY=1 HALO_COMPOSITOR=on \
+            dbus-run-session -- bash e2e/halo/session.sh
       - name: Retain application effects, sandbox status, grants and original logs
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08

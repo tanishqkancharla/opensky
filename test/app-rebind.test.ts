@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {readFile,writeFile} from "node:fs/promises";
+import {join} from "node:path";
+import {createCua} from "../src/cua.js";
+import {createOpenSky} from "../src/opensky.js";
+import {makeHarness} from "./harness.js";
+
+for(const target of ["mac","linux"] as const) test(`${target}: fresh canonical binding after restart preserves retained process identity`,async()=>{
+ const {driver,statePath,dir}=await makeHarness();
+ const sdk=createOpenSky({driver,target,autoLaunch:false,settleDelayMs:0,homeDir:join(dir,"restart-home")});
+ try{
+  await sdk.list_apps();
+  const original=JSON.parse(await readFile(statePath,"utf8"));
+  const app=original.apps.find((a:any)=>a.name==="Calculator");
+  app.name="python3";app.bundle_id=null;app.launch_path=null;
+  app.windows=app.windows.map((w:any)=>({...w,pid:app.pid,is_on_screen:true}));
+  await writeFile(statePath,JSON.stringify(original));
+  const cua=createCua(sdk),old=await cua.getApp("python3"),oldPID=app.pid;
+  const restarted=JSON.parse(await readFile(statePath,"utf8"));
+  const replacement=restarted.apps.find((a:any)=>a.name==="python3");
+  replacement.pid=oldPID+10000;
+  replacement.windows=replacement.windows.map((w:any)=>({...w,pid:replacement.pid,window_id:w.window_id+10000}));
+  await writeFile(statePath,JSON.stringify(restarted));
+  assert.ok((await cua.listApps({emit:false})).some(a=>a.displayName==="python3"&&a.isRunning));
+  const fresh=await cua.getApp("python3");
+  assert.notEqual(fresh.targetHandle,old.targetHandle);
+  const memory=()=>readFile(join(dir,"restart-home/session.json"),"utf8").then(JSON.parse);
+  assert.equal((await memory()).targets[old.targetHandle].pid,oldPID);
+  assert.equal((await memory()).targets[fresh.targetHandle].pid,replacement.pid);
+  await assert.rejects(old.getAXState());await assert.rejects(old.pressKey("Return"));
+  let state=JSON.parse(await readFile(statePath,"utf8"));
+  assert.equal(state.calls.filter((c:any)=>["press_key","hotkey","type_text","click"].includes(c.tool)).length,0);
+  await fresh.pressKey("Return");
+  state=JSON.parse(await readFile(statePath,"utf8"));
+  const inputs=state.calls.filter((c:any)=>["press_key","hotkey","type_text","click"].includes(c.tool));
+  assert.equal(inputs.length,1);assert.equal(inputs[0].args.pid,replacement.pid);assert.equal(inputs[0].args.window_id,replacement.windows[0].window_id);
+  assert.equal(state.calls.filter((c:any)=>c.tool==="launch_app").length,0);
+  assert.equal((await memory()).targets[old.targetHandle].pid,oldPID);
+  const another=await cua.getApp("python3");
+  assert.notEqual(another.targetHandle,fresh.targetHandle,"fresh discovery must not overwrite retained bindings even in the same PID");
+  assert.equal((await memory()).targets[fresh.targetHandle].pid,replacement.pid);
+  const ambiguous=JSON.parse(await readFile(statePath,"utf8"));
+  const sibling=structuredClone(ambiguous.apps.find((a:any)=>a.pid===replacement.pid));
+  sibling.pid+=10000;sibling.windows=sibling.windows.map((w:any)=>({...w,pid:sibling.pid,window_id:w.window_id+10000}));ambiguous.apps.push(sibling);
+  await writeFile(statePath,JSON.stringify(ambiguous));
+  await assert.rejects(cua.getApp("python3"),{code:"ambiguous_app"});
+  assert.equal((await memory()).targets[old.targetHandle].pid,oldPID);
+  assert.equal((await memory()).targets[fresh.targetHandle].pid,replacement.pid);
+ }finally{await sdk.close();}
+});

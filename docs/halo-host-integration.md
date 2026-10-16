@@ -837,3 +837,19 @@ blanket security relaxation or prove that Halo's already sandboxed Chrome
 shares this hosted runner's restriction. Sandboxed browser GUI acceptance remains
 unverified here; no new native-input or paired benchmark score follows from this
 probe. Dispatch `halo_sandbox_probe=true` for this diagnostic alone.
+
+
+## Rebinding a native app after process restart (main candidate, issue72)
+
+A fresh `await cua.getApp(name)` discovers the current native process and returns
+a separate binding. The direct SDK equivalent is
+`await sdk.get_app_state({app: name, scope: "app", includeScreenshot: false})`.
+Keep that returned handle for subsequent actions. After its process exits, a
+retained app/opaque handle refuses; it never migrates to a replacement process.
+Calling `listApps()` is inventory only. It does not change retained handles.
+If several visible processes match the name, fresh discovery still refuses
+ambiguity. Do not invent selector substrings or replay uncertain input.
+
+The change is verified by a real Mac process restart and focused contracts;
+current Bookworm regression and release qualification are pending. The separate
+Mac cold-file launch66 limitation remains open.

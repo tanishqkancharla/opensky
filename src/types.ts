@@ -151,8 +151,9 @@ export interface OpenSky {
      * skip its extraction, and return no AX text. Requires a screenshot. */
     includeAccessibilityTree?: boolean;
     includeAppChrome?: boolean;
-    /** App observations follow its frontmost visible native window and return
-     * a new exact handle when it changes. Existing document handles stay fixed. */
+    /** App observations follow the frontmost visible native window. A name
+     * discovers a fresh process binding; an opaque handle retains its process.
+     * Existing document handles stay fixed. */
     scope?: "window" | "app";
     /** Narrow an exact typed browser snapshot to matching semantic content. */
     query?: string;

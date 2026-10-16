@@ -37,6 +37,10 @@ if (( wm_ready != 1 )); then echo 'Owned XFWM did not advertise EWMH readiness' 
 xprop -root _NET_SUPPORTING_WM_CHECK > "$HALO_ARTIFACTS/window-manager-root.txt"
 xfce4-panel > "$HALO_ARTIFACTS/panel.log" 2>&1 & panel_pid=$!
 gsettings set org.gnome.desktop.interface toolkit-accessibility true
+if [[ "${HALO_REBIND_CONTRACT_ONLY:-0}" == "1" ]]; then
+  timeout --signal=TERM --kill-after=5s 90s node e2e/halo/app-rebind.mjs
+  exit 0
+fi
 /usr/bin/python3 e2e/halo/editor.py > "$HALO_ARTIFACTS/editor.log" 2>&1 & editor_pid=$!
 for attempt in {1..100}; do if [[ -s "$HALO_ARTIFACTS/editor-state.json" ]]; then break; fi; sleep .1; done
 editor_window=$(xdotool search --sync --onlyvisible --name '^Halo Contract Editor$' | head -1)
