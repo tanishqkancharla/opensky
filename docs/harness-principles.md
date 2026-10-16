@@ -215,3 +215,5 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 Describe a first-class operation once. Keep repetitive platform action variants and selector internals in the structured binding map, and verify that the compact view preserves content, capabilities and actual application outcomes.
 
 Verify both full and incremental presentation paths against the same structured authority; they may serialize metadata differently.
+
+- Keep temporary outputs in an explicitly owned writable directory. Preserve task revisions when changing fixture locations, verify the actual retained bytes, and separate common cleanup overhead from interface performance.

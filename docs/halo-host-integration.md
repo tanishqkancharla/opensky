@@ -1,6 +1,47 @@
 # Persistent Linux host integration
 
-## Verified X11 paste distribution
+## Current tested distribution: SDK0.2.26 / Driver0.35.4
+
+SDK0.2.26 pins driver **`4a0189e286cf48c6b05da5bdd76ffebce4accc84`**. Its
+accepted SDK source is **`6201d3fdd5e00e056e0d60ffa6c552e15966e73a`**; the
+release changes documentation/version metadata and preserves all72 compiled SDK
+runtime files. Install the declared GitHub release tarball; registry0.1.2 is older.
+
+[Native application run38889721645](https://github.com/tanishqkancharla/opensky/actions/runs/38889721645)
+verifies Bookworm/Node22.23.3, TigerVNC/X11, XFWM4 and shared D-Bus/AT-SPI with
+explicit bounded grants. Exact ASCII/Unicode selected replacements save correctly
+and leave the clipboard payload. The partial-paste owner saves only `par` and
+returns `native_paste_unverified` with unknown effect and one dispatch. At the
+500ms typing wait deadline43 of1000 Unicode characters are visible; Stop keeps the
+action active, all1000/2750 UTF-8 bytes eventually save, and the following Save
+starts after completion. Queued cancelled input does not run. All seven owned
+supervisor processes exit without force. [Saved-file evidence](halo-026-native-evidence.json).
+
+The shared daemon authorization boundary now preserves a structured error before
+registry/platform dispatch:
+
+```json
+{"status":"refused","refusal":{"code":"permission_denied","message":"Permission denied: …"},"delivery":"not_dispatched"}
+```
+
+CLI exit is nonzero; the request is terminal. The host queue reports `failed`,
+runs the following authorized callback and drains normally. Policy loading and
+evaluation at that boundary use `policy_loading_error` and
+`policy_evaluation_error`, with the same non-dispatch guarantee. No code or
+completion proof is inferred from stderr. Timeouts/disconnects retain the existing
+unknown-completion fence and no-replay contract. Continue using the runnable host,
+paste and foreground browser examples below. [Admission/queue evidence](driver-admission-026.json).
+
+Full browser mode keeps a browser-only manifest and expects typed native-tool
+denial before clipboard access; native-only mode retains its exact missing
+clipboard-resource refusal. Manifests are not widened. The real Mac policy/queue
+probe,29 current Mac GUI owners, whole SDK Node22/24 suites and all five selected
+driver CI workflows pass. **Sandboxed TigerVNC Chrome remains unverified**; the
+new Linux application run explicitly records browser `not_run` and is not full
+production compatibility. No sandbox bypass, privileged container or uinput grant
+was used. Older evidence below retains its original pins and scope.
+
+## Previous0.2.24–0.2.25 X11 paste distribution
 
 The native-only [application run38875586155](https://github.com/tanishqkancharla/opensky/actions/runs/38875586155) verifies SDK **`d14db52b22e63528b335f1ebdc71c02a094cd9dc`** with driver **`c36e63ef8e7387cd827596169396b63cbfe68f30`** (driver version0.35.4). SDK0.2.24 packages this same verified runtime and exact driver pin. SDK0.2.25 retains that input contract and driver pin while compacting Mac observation metadata; its new real-application verification is on Mac. The0.2.23 package predates Linux native paste support. Documentation-only successors do not change that tested runtime. [Compact application evidence](halo-x11-native-paste-evidence.json).
 
@@ -12,7 +53,7 @@ The original1000-character Unicode typing owner remains:41 characters are visibl
 
 The earlier verified distribution is **SDK0.2.20**, with Driver **0.35.4**,
 runtime source **`6647fa8d7f5edc0337d0d616f00c202df68b9bc4`**.
-The current [native acceptance run](halo-0220-native-evidence.json) uses
+That historical [native acceptance run](halo-0220-native-evidence.json) uses
 SDK`d645423b29f3e0b5106e22d95db53ddd509c17f9`; the final distribution has the
 same TypeScript SDK runtime, with updated release metadata and verification docs.
 This run verifies actual saved Unicode, cancellation/drain, actionable paste
@@ -77,7 +118,7 @@ Registry `opensky-cua@0.1.2` does not identify these features. Use an immutable
 built checkout or the declared GitHub release tarball; record the selected
 binary's `--opensky-driver-identity` and avoid pairing it with another daemon.
 
-[Current native application run38838190369](https://github.com/tanishqkancharla/opensky/actions/runs/38838190369)
+[Historical native application run38838190369](https://github.com/tanishqkancharla/opensky/actions/runs/38838190369)
 used Node22.23.3 in Debian Bookworm, TigerVNC/X11, XFWM4, real AT-SPI,
 uid1001 and two explicit bounded manifests on one shared session D-Bus.
 [Compact before/after evidence](halo-0220-native-evidence.json):

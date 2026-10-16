@@ -1,0 +1,57 @@
+{
+  "SDKSource": "6201d3fdd5e00e056e0d60ffa6c552e15966e73a",
+  "driverSource": "4a0189e286cf48c6b05da5bdd76ffebce4accc84",
+  "signedMacDriverSHA256": "9f07b4141f38bd797a15fbbaa0be440744e7286a688b43759fe11e9e98afb94a",
+  "actualPublicSDKProbe": {
+    "exactBrowserOnlyManifest": true,
+    "nativeToolRefusal": "permission_denied",
+    "delivery": "not_dispatched",
+    "actionState": "failed",
+    "followingQueuedRead": "completed",
+    "queueDrained": true,
+    "preservedApplicationContents": true,
+    "ephemeralIndicesExcludedFromContentOracle": true,
+    "focusPreserved": true,
+    "noClipboardRead": true,
+    "noReplay": true
+  },
+  "driverOwners": {
+    "binaryUnits": 327,
+    "canonicalDaemonTransportTests": 14,
+    "originalOwnerOnC36": {
+      "passed": 11,
+      "failed": 3
+    }
+  },
+  "MacGUI": {
+    "currentGroups": 18,
+    "requiredPassedAssertionAndFileOwners": 29,
+    "exactOwnedCleanupPassed": true,
+    "stableSigningAndExistingGrantsPreserved": true,
+    "actualLaunchObservationMs": {
+      "windowChange": 250,
+      "poll": 50
+    }
+  },
+  "SDKOwners": {
+    "wholeNode22": 503,
+    "wholeNode24": 503,
+    "BunOnlySkipEach": 1,
+    "all72CompiledRuntimeFilesUnchanged": true
+  },
+  "driverCI": {
+    "Linux": 38889416564,
+    "Mac": 38889416588,
+    "Windows": 38889416526,
+    "Nix": 38889416496,
+    "contractClients": 38889416480,
+    "allSelectedSuccess": true
+  },
+  "LinuxNativeApplicationRun": 38889721645,
+  "limits": [
+    "Mac policy/queue probe is not a Linux full-browser run.",
+    "Linux native-only saved application effects are separately verified in halo-026-native-evidence.json.",
+    "Sandboxed TigerVNC Chrome remains unverified.",
+    "Standalone unsigned startup failure and initial ephemeral-index oracle failure remain retained; no causal startup diagnosis claimed."
+  ]
+}

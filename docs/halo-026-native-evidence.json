@@ -1,0 +1,38 @@
+{
+  "runId": 38889721645,
+  "artifactId": 12041832749,
+  "artifactZipSHA256": "9579581afca8585989541af9f6edf20f9c2de7bcdfd870066ad9ec5978e901fe",
+  "SDKSource": "6201d3fdd5e00e056e0d60ffa6c552e15966e73a",
+  "driverSource": "4a0189e286cf48c6b05da5bdd76ffebce4accc84",
+  "node": "v22.23.3",
+  "scope": "native-only Bookworm/TigerVNC/shared D-Bus under explicit bounded manifests",
+  "actualArtifactsVerified": true,
+  "asciiAndUnicodeSelectedReplacementSavedExactly": true,
+  "clipboard": "payload-left; write does not grant read",
+  "freshPreInputRefusalPreserved": true,
+  "partialPaste": {
+    "saved": "par",
+    "error": "native_paste_unverified",
+    "effect": "unknown",
+    "activeAt500msAndStop": true,
+    "oneDispatch": true
+  },
+  "typing": {
+    "codepointsAtDeadline": 43,
+    "codepointsSaved": 1000,
+    "UTF8BytesSaved": 2750,
+    "activeAfterStop": true,
+    "followingSaveAfterCompletion": true,
+    "queuedCancelledInputNeverDispatched": true
+  },
+  "ownedSupervisorProcessesExitedWithoutForce": 7,
+  "browser": "not_run; unaccepted",
+  "savedFileSHA256": {
+    "paste-0-saved.txt": "f73573532bec611f3040ed9a695bafb620c5a21ad1b7f6ce65115ffbfad4a495",
+    "paste-1-saved.txt": "82856e8fb41209181e5b0e8ff3a6405a7305bc4c4ddf8e034f62810aebc40159",
+    "paste-partial-saved.txt": "c9d9d2c4be976b707a1acdcaba8495e7e0a7089579da6625a71083d5b0c6bddf",
+    "saved.txt": "c872011f389649a8fbaa0152b4ccf9bd5ae7f7f9c6ab7f7a995b54271fb07e6b"
+  },
+  "applicationRun": "https://github.com/tanishqkancharla/opensky/actions/runs/38889721645",
+  "distribution": "0.2.26"
+}
