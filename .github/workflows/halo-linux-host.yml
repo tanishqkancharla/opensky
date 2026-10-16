@@ -1,6 +1,11 @@
 name: Linux foreground browser host acceptance
 on:
   workflow_dispatch:
+    inputs:
+      readiness_only:
+        description: 'Collect unchanged-policy Chrome sandbox/install facts without building or desktop input'
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -36,13 +41,18 @@ jobs:
           cp /etc/os-release artifacts/halo/os-release.txt
           id > artifacts/halo/desktop-user.txt
           cat /proc/self/status > artifacts/halo/host-process-status.txt
+          namei -l /opt/google/chrome/google-chrome /opt/google/chrome/chrome /usr/bin/google-chrome-stable > artifacts/halo/chrome-installation.txt
+          stat -c '%n uid=%u gid=%g mode=%a type=%F' / /opt /opt/google /opt/google/chrome /opt/google/chrome/google-chrome /opt/google/chrome/chrome > artifacts/halo/chrome-installation-stat.txt
           python3 e2e/halo/sandbox-preflight.py --output artifacts/halo/sandbox-readiness --require-ready
       - uses: dtolnay/rust-toolchain@1.97.1
+        if: ${{ !inputs.readiness_only }}
       - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+        if: ${{ !inputs.readiness_only }}
         with:
           workspaces: 'driver/libs/cua-driver/rust -> target'
           cache-on-failure: true
       - name: Build exact driver and SDK
+        if: ${{ !inputs.readiness_only }}
         run: |
           cargo build --release --locked -p cua-driver --manifest-path driver/libs/cua-driver/rust/Cargo.toml
           cargo test --release --locked -p platform-linux --lib --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/platform-linux-unit.log 2>&1
@@ -53,9 +63,11 @@ jobs:
           node --version > artifacts/halo/node.txt
           dpkg-query -W > artifacts/halo/packages.txt
       - name: Required embedded SDK contracts on Node22
+        if: ${{ !inputs.readiness_only }}
         run: |
           node --import tsx --test --test-timeout=60000 test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
       - name: Existing full contract on ordinary-user TigerVNC and shared bus
+        if: ${{ !inputs.readiness_only }}
         env:
           HALO_NODE22_WHOLE_OUTCOME: not_run_host_lane
         run: dbus-run-session -- bash e2e/halo/session.sh
