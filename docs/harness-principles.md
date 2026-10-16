@@ -133,7 +133,7 @@ desirable contracts, not executable OpenSky APIs.
    # Record public events only; omit hidden reasoning.
    ```
 
-10. Optimize the whole successful workflow. Test fresh users and unseen tasks; include setup, retries and cleanup, and measure efficiency only after correctness.
+10. Optimize the whole successful workflow. Test fresh users and unseen tasks; include setup, retries and cleanup, and measure efficiency only after correctness. A failed reference can still justify a diagnostic candidate run after its protocol and cleanup are verified. Keep admission separate from scoring; compare efficiency only when both outcomes are correct and preserve all failures.
 
     ```text
     for task in held_out_tasks:
