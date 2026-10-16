@@ -1570,7 +1570,7 @@ it("distinguishes a live root item-name editor from a file label without changin
       await writeFile(statePath, JSON.stringify(fixture));
       const state = await opensky.get_app_state({app:app.name, includeScreenshot:false, disableDiff:true});
       assert.equal((state.text.match(/Finder rename:/g) ?? []).length, finder ? 1 : 0);
-      if (finder) assert.match(state.text, /press Return, then observe the inline editor.*Direct setValue.*Automation/);
+      if (finder) assert.match(state.text, /press Return, type the new name, then press Return.*For setValue, observe the inline editor.*Direct setValue.*Automation/);
       assert.doesNotMatch((await opensky.get_app_state({app:state.targetHandle,includeScreenshot:false})).text,/Finder rename:/);
       const after = JSON.parse(await readFile(statePath,"utf8"));
       assert.equal(after.calls.some((call:any)=>["click","set_value","press_key","hotkey"].includes(call.tool)),false);

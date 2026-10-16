@@ -35,7 +35,7 @@ test.for(['list','icon'] as const)('FINDER-N06: clicking an already-selected fil
   await expect.poll(async()=>{state=await app.getAXState({disableDiffing:true,emit:false});return state.includes(`AXWindow "${root.split('/').at(-1)}"`)&&!state.includes('AXSheet');}).toBe(true);
   await app.pressKey(mode==='list'?'super+2':'super+1');state=await app.getAXState({disableDiffing:true,emit:false});
   const field=()=>{const match=state.match(mode==='list'?/\[(\d+)\] AXTextField = "Drafts"/:/\[(\d+)\] AXImage "Drafts"/);expect(match).toBeTruthy();return Number(match![1]);};
-  if(mode==='list')expect(state).toContain('Finder rename: select the item, press Return, then observe the inline editor');
+  if(mode==='list')expect(state).toContain('Finder rename: select the item, press Return, type the new name, then press Return.');
   await app.click(field());state=await app.getAXState({disableDiffing:true,emit:false});expect(state).toContain('[selected]');
   if(process.env.OPENSKY_E2E_ARTIFACT_DIR)await writeFile(join(process.env.OPENSKY_E2E_ARTIFACT_DIR,'selected-field-before.txt'),state);
   await app.click(field());state=await app.getAXState({disableDiffing:true,emit:false});expect(state).toContain('[selected]');
@@ -52,6 +52,15 @@ test.for(['list','icon'] as const)('FINDER-N06: clicking an already-selected fil
    await app.setValue(Number(editor![1]),'Renamed');await app.pressKey('Return');state=await app.getAXState({disableDiffing:true,emit:false});
    expect(state).toContain('AXTextField = "Renamed"');expect((await lstat(join(root,'Renamed'))).isDirectory()).toBe(true);
    await expect(access(join(root,'Drafts'))).rejects.toMatchObject({code:'ENOENT'});openedName='Renamed';
+   // A known UI edit sequence needs no intermediate index. Keep the observed
+   // setValue path above and independently verify the keyboard alternative.
+   const renamedBefore=await lstat(join(root,'Renamed'));
+   await app.pressKey('Return');await app.typeText('Ready');await app.pressKey('Return');
+   state=await app.getAXState({disableDiffing:true,emit:false});
+   expect(state).toContain('AXTextField = "Ready"');
+   const ready=await lstat(join(root,'Ready'));
+   expect([ready.dev,ready.ino]).toEqual([renamedBefore.dev,renamedBefore.ino]);
+   await expect(access(join(root,'Renamed'))).rejects.toMatchObject({code:'ENOENT'});openedName='Ready';
   }
   await app.pressKey('super+o');state=await app.getAXState({disableDiffing:true,emit:false});expect(state).toContain(`AXWindow "${openedName}"`);
   if(process.env.OPENSKY_E2E_ARTIFACT_DIR)await writeFile(join(process.env.OPENSKY_E2E_ARTIFACT_DIR,'selected-field-after.txt'),state);

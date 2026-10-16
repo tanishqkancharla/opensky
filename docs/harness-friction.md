@@ -6244,3 +6244,31 @@ matched snapshot s000000f1, exact AXGroup34, foreground global_input and the
 subsequent actual Helvetica detail; the bounded parent packet retains that
 same input and binding. No old trace is backfilled, no input is repeated and no
 agent performance change is inferred from this passive repair.
+
+
+## SET416 — Offer the supported Finder keyboard rename path
+
+Current native1689 and SDK1690 both finish the requested Alpha/Beta folder
+hierarchy. SDK uses23 cells versus12 native; its first click targets the
+structural list instead of the child image, and later it uses extra explicit
+inline-editor reads. Sort direction is already present on both interfaces, so
+a missing-sort-data fix would be false. The SDK rename hint, however, mandates
+an intermediate observation even when the caller can use a normal keyboard
+edit sequence, which native uses.
+
+Before changing that hint, extend the existing real Finder owner without
+removing any checks: preserve refused file-label setValue and the observed
+inline setValue path, then rename the same inode through Return/typeText/Return
+with no intermediate agent-visible observation. Both list/icon cases and exact
+cleanup pass on the unchanged published runtime. The hint now offers that
+keyboard alternative and conditions the editor observation on setValue.
+No input actuator, permission, replay, stale-token or scripted-rename guard
+changes. Relevant regression and matching SDK task verification remain pending.
+
+SET416 regression verification: whole SDK units pass on Node22 and Node24
+(502 passed, one Bun-only skip on each); build and E2E typecheck pass. The
+original failed old-hint expectation is retained, then its existing owner is
+updated to require both the shorter keyboard sequence and the conditional
+setValue editor observation. Fresh actual FILE-N01 and both FINDER-N06 cases
+pass with exact cleanup on the unchanged signed32 driver. Matching paid SDK
+verification is still pending; no speed improvement is claimed yet.

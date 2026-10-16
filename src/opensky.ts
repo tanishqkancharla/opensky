@@ -540,7 +540,7 @@ export class OpenSky implements OpenSkyApi {
           ? inlineItemEditObservation(snapshot.tree, snapshot.elements) ||
             (resolved.bundleId === "com.apple.finder" && text.includes("file item label") &&
               snapshot.elements.some(isNativeFileItemLabel)
-              ? "\nFinder rename: select the item, press Return, then observe the inline editor; edit that field and press Return. Direct setValue on a file item label uses Automation."
+              ? "\nFinder rename: select the item, press Return, type the new name, then press Return. For setValue, observe the inline editor after the first Return. Direct setValue on a file item label uses Automation."
               : "") : ""),
       ...(snapshot.textSelection ? { textSelection: snapshot.textSelection } : {}),
       degraded: snapshot.degraded,
