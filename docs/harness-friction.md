@@ -6329,3 +6329,19 @@ field also accurately states that the target stays active, rather than copying
 a stale generic restore description. Actuators/guards/readback are unchanged.
 Stop superseded SDK build38870885505 before its GUI phase and retarget actual
 SDK acceptance to corrected driverc3d284d7. No failed run is promoted or hidden.
+
+SET417 actual SDK run38871519468 passes build, all503 Node22 tests, embedded
+contracts and all666 Linux units/10ignored. Its first paste refuses before
+dispatch: bounded_resource_outside_manifest. The protected clipboard adapter
+exists, but the manifest has no clipboard grammar/matcher. Complete that
+existing migration with explicit v3 read/write kind declarations; absent,
+legacy and mismatched grants still refuse. No unrestricted permission fallback.
+Whole core1048/1ignored, Mac641/6ignored, contract67 and SDK106 pass locally.
+The first new legacy-version test omitted allow.tools and failed that earlier
+validity gate; retain it and correct only its setup. A separate local source-
+built Mac live-schema run fails before socket readiness; its original failure
+remains unaccepted and no source-built daemon remains. Signed Mac32 is intact.
+The new actual owner checks a write-only manifest, a same-target denial twin,
+no implicit read permission, fresh post-refusal GTK samples, saved ASCII and
+Unicode, partial insertion after a500ms host wait timeout, no replay, and the
+original1000-character cancellation/drain. Real acceptance on c36 remains pending.

@@ -40,8 +40,7 @@ fi
 mkdir -p "$HALO_ARTIFACTS/capture-sdk-shots"
 chmod 700 "$HALO_ARTIFACTS/capture-sdk-shots"
 cat > "$HALO_ARTIFACTS/native-grants.yaml" <<EOF
-version: 2
-mode: bounded
+version: 3
 expires_after: 1h
 idle_timeout: 30m
 resources:
@@ -58,6 +57,17 @@ resources:
 allow:
   tools: [start_session, end_session, list_apps, list_windows, get_window_state, type_text, hotkey, press_key, bring_to_front, native_paste]
 EOF
+if [[ "${HALO_NATIVE_CAPTURE_ONLY:-0}" != "1" ]]; then
+  /usr/bin/python3 - <<'PY_GRANT'
+import os, pathlib
+p = pathlib.Path(os.environ["HALO_ARTIFACTS"]) / "native-grants.yaml"
+s = p.read_text().replace("resources:\n", "resources:\n  clipboard:\n    write: [text]\n", 1)
+s = s.replace("bring_to_front, native_paste]", "bring_to_front, native_paste, clipboard_read]")
+p.write_text(s)
+PY_GRANT
+else
+  sed -i 's/, native_paste]/]/' "$HALO_ARTIFACTS/native-grants.yaml"
+fi
 cat > "$HALO_ARTIFACTS/browser-grants.yaml" <<EOF
 version: 2
 mode: bounded
@@ -78,6 +88,15 @@ resources:
 allow:
   tools: [start_session, end_session, list_apps, list_windows, get_browser_state, browser_prepare, browser_navigate, browser_click, browser_pointer, browser_key, close_window]
 EOF
+if [[ "${HALO_NATIVE_CONTRACT_ONLY:-0}" == "1" ]]; then
+  # Same native operation/target grants, deliberately no clipboard resource.
+  /usr/bin/python3 - <<'PY_DENIAL'
+import os, pathlib
+out = pathlib.Path(os.environ["HALO_ARTIFACTS"])
+s = (out / "native-grants.yaml").read_text().replace("  clipboard:\n    write: [text]\n", "")
+(out / "browser-grants.yaml").write_text(s)
+PY_DENIAL
+fi
 export OPENSKY_DRIVER_PATH="$PWD/driver/libs/cua-driver/rust/target/release/cua-driver"
 export HALO_DRIVER_SOCKET="$XDG_RUNTIME_DIR/driver.sock"
 "$OPENSKY_DRIVER_PATH" --socket "$HALO_DRIVER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/native.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/native-grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/driver.log" 2>&1 & daemon_pid=$!

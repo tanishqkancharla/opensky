@@ -8,8 +8,10 @@ win.set_default_size(640, 480)
 view = Gtk.TextView(); buffer = view.get_buffer(); buffer.set_text("replace me")
 win.add(view)
 theme = "light"
+sample_sequence = 0
 def snapshot():
-    global theme
+    global theme, sample_sequence
+    sample_sequence += 1
     if theme != "dark" and (out / "request-dark-theme").exists():
         css = Gtk.CssProvider(); css.load_from_data(b"textview, textview text {background-color:#000; color:#fff;}")
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -19,7 +21,7 @@ def snapshot():
     selected = buffer.get_text(*selection, True) if selection else ""
     payload = {"text": buffer.get_text(start, end, True), "selected": selected,
                "clipboard": Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).wait_for_text(),
-               "focused": win.is_active(), "pid": os.getpid(), "theme": theme}
+               "focused": win.is_active(), "pid": os.getpid(), "theme": theme, "sampleSequence": sample_sequence}
     temporary = out / "editor-state.tmp"; temporary.write_text(json.dumps(payload, ensure_ascii=False))
     temporary.replace(out / "editor-state.json")
     return True

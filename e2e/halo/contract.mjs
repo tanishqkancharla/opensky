@@ -12,6 +12,11 @@ const poll = async (predicate, timeout = 10000) => {
   const deadline = Date.now() + timeout; do { try { if (await predicate()) return; } catch (error) { if (error.code !== "ENOENT") throw error; } await sleep(50); } while (Date.now() < deadline);
   throw new Error("Application postcondition did not become true");
 };
+// Refusal checks need a sample taken after the request, not unchanged stale JSON.
+const freshState = async () => {
+  const sequence=(await state()).sampleSequence;assert.ok(Number.isInteger(sequence));
+  let observed;await poll(async()=>{observed=await state();return observed.sampleSequence>sequence;});return observed;
+};
 const record = (name, details) => evidence.results.push({ name, ...details });
 const driver = new CuaDriverClient({ binaryPath: process.env.OPENSKY_DRIVER_PATH, socket: process.env.HALO_DRIVER_SOCKET, session: "halo-contract", autoStart: false, timeoutMs: null });
 const sdk = createOpenSky({ driver, target: "linux", homeDir: join(out, "sdk-home"), screenshotDir: join(out, "screenshots"), autoLaunch: false, settleDelayMs: 0 });
@@ -47,10 +52,12 @@ try {
   assert.deepEqual(capability.nativePaste.formats, ["text"]);
   const exact = {pid:Number(process.env.HALO_EDITOR_PID),window_id:Number(process.env.HALO_EDITOR_WINDOW),text:"must not paste",format:"text",clipboard_policy:"leave"};
   await assert.rejects(queue.submit(()=>driver.call("native_paste",{...exact,delivery_mode:"background"})).wait(),{code:"foreground_required"});
-  // The independently bounded browser-only daemon grants no native-paste operation.
-  await assert.rejects(queue.submit(()=>browserDriver.call("native_paste",{...exact,delivery_mode:"foreground"})).wait(),{code:"permission_denied"});
-  const refused=await state();assert.equal(refused.text,before.text);assert.equal(refused.selected,before.selected);assert.equal(refused.clipboard,before.clipboard);
-  record("native-paste-preinput-refusals",{before,after:refused,missingForeground:true,missingGrant:true});
+  // The second bounded daemon grants this native operation/target, but omits clipboard access.
+  await assert.rejects(queue.submit(()=>browserDriver.call("native_paste",{...exact,delivery_mode:"foreground"})).wait(),{code:"bounded_resource_outside_manifest"});
+  // Write access never implies permission to expose existing clipboard text.
+  await assert.rejects(queue.submit(()=>driver.call("clipboard_read",{include_text:true})).wait(),{code:"bounded_resource_outside_manifest"});
+  const refused=await freshState();assert.equal(refused.text,before.text);assert.equal(refused.selected,before.selected);assert.equal(refused.clipboard,before.clipboard);
+  record("native-paste-preinput-refusals",{before,after:refused,missingForeground:true,missingClipboardGrant:true,writeDoesNotGrantRead:true});
   const pasteCalls=[];const originalSDKCall=sdk.driver.call.bind(sdk.driver);
   sdk.driver.call=async(tool,args={})=>{
     try {const result=await originalSDKCall(tool,args);if(tool==="native_paste")pasteCalls.push({tool,args,structured:result.structured});return result;}
@@ -72,7 +79,12 @@ try {
   await writeFile(join(out,"request-partial-paste"),"private app prefix limit");
   const partialPayload="partial application result Ω";
   await queue.submit(()=>driver.call("hotkey",{scope:"desktop",keys:["ctrl","a"]})).wait();
-  await assert.rejects(queue.submit(()=>app.paste(partialPayload)).wait(),{code:"native_paste_unverified"});
+  const pasteStop=new AbortController();
+  const uncertainAction=queue.submit(()=>app.paste(partialPayload),{signal:pasteStop.signal});
+  await assert.rejects(uncertainAction.wait({timeoutMs:500}),{code:"desktop_wait_timeout"});
+  pasteStop.abort();const pasteAtDeadline={action:uncertainAction.query(),application:await freshState()};
+  assert.equal(pasteAtDeadline.action.state,"active");
+  await assert.rejects(uncertainAction.wait(),{code:"native_paste_unverified"});
   await poll(async()=>(await state()).text==="par");const partialPaste=await state();
   assert.equal(partialPaste.clipboard,partialPayload);assert.equal(pasteCalls.length,3,"two successes and one uncertain input; no replay");
   const uncertain=pasteCalls.at(-1).error;assert.equal(uncertain.details.effect,"unknown");
@@ -80,7 +92,7 @@ try {
   await queue.submit(()=>driver.call("hotkey",{scope:"desktop",keys:["ctrl","s"]})).wait();
   await poll(async()=>(await readFile(join(out,"saved.txt"),"utf8"))==="par");
   await writeFile(join(out,"paste-partial-saved.txt"),await readFile(join(out,"saved.txt")));
-  record("native-paste-partial",{payload:partialPayload,after:partialPaste,saved:"par",error:uncertain,oneDispatch:true});
+  record("native-paste-partial",{payload:partialPayload,after:partialPaste,saved:"par",error:uncertain,pasteAtDeadline,oneDispatch:true});
   const {unlink}=await import("node:fs/promises");await unlink(join(out,"request-partial-paste"));
   await writeFile(join(out,"native-paste-calls.json"),JSON.stringify(pasteCalls,null,2));
   // Preserve the original long-Unicode cancellation/completion owner: replace
