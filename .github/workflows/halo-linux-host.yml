@@ -1,0 +1,69 @@
+name: Linux foreground browser host acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  halo-host:
+    # This is separate Linux browser evidence, not Bookworm container acceptance.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    env:
+      HALO_DRIVER_REF: 4a0189e286cf48c6b05da5bdd76ffebce4accc84
+      CUA_DRIVER_SOURCE_SHA: 4a0189e286cf48c6b05da5bdd76ffebce4accc84
+      CARGO_PROFILE_RELEASE_LTO: 'false'
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: tanishqkancharla/cua
+          ref: ${{ env.HALO_DRIVER_REF }}
+          path: driver
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install build and TigerVNC desktop packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang pkg-config libdbus-1-dev libx11-dev libxi-dev libxtst-dev libxext-dev libxkbcommon-dev libssl-dev curl ca-certificates tigervnc-standalone-server xfwm4 xfce4-panel dbus-x11 gsettings-desktop-schemas dconf-gsettings-backend at-spi2-core libatk-adaptor python3-gi python3-pil gir1.2-gtk-3.0 x11-utils xdotool wmctrl xclip fonts-dejavu fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji
+          curl -fSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o /tmp/halo-chrome.deb
+          sudo apt-get install -y /tmp/halo-chrome.deb
+      - name: Require ordinary-user sandbox startup before building
+        run: |
+          mkdir -p artifacts/halo
+          cp /etc/os-release artifacts/halo/os-release.txt
+          id > artifacts/halo/desktop-user.txt
+          cat /proc/self/status > artifacts/halo/host-process-status.txt
+          python3 e2e/halo/sandbox-preflight.py --output artifacts/halo/sandbox-readiness --require-ready
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+        with:
+          workspaces: 'driver/libs/cua-driver/rust -> target'
+          cache-on-failure: true
+      - name: Build exact driver and SDK
+        run: |
+          cargo build --release --locked -p cua-driver --manifest-path driver/libs/cua-driver/rust/Cargo.toml
+          cargo test --release --locked -p platform-linux --lib --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/platform-linux-unit.log 2>&1
+          driver/libs/cua-driver/rust/target/release/cua-driver --opensky-driver-identity > artifacts/halo/identity.json
+          sha256sum driver/libs/cua-driver/rust/target/release/cua-driver > artifacts/halo/driver-sha256.txt
+          npm ci --ignore-scripts
+          npm run build
+          node --version > artifacts/halo/node.txt
+          dpkg-query -W > artifacts/halo/packages.txt
+      - name: Required embedded SDK contracts on Node22
+        run: |
+          node --import tsx --test --test-timeout=60000 test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
+      - name: Existing full contract on ordinary-user TigerVNC and shared bus
+        env:
+          HALO_NODE22_WHOLE_OUTCOME: not_run_host_lane
+        run: dbus-run-session -- bash e2e/halo/session.sh
+      - name: Preserve actual effects and sandbox evidence with host environment label
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: halo-ubuntu22-host-contract
+          path: artifacts/halo
+          if-no-files-found: warn
+          retention-days: 90
