@@ -1,0 +1,68 @@
+{
+  "SDKSource": "43098d434b81b2fe8911b287205bf2befda4f4a5",
+  "SDKVersion": "0.2.28",
+  "SDKApplicationRuntime": "d7034226852823a2a9dd26eb962e6a67b62c870e",
+  "driverSource": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+  "driverVersion": "0.36.0",
+  "Node": "v22.23.3",
+  "sourceSelection": {
+    "source": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+    "supported": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+    "selection": "sdk-pin"
+  },
+  "nativeRun": 38934464996,
+  "sandboxProbeRun": 38934689420,
+  "environment": "Debian Bookworm node22 container; ordinary uid1001/CapEff0; TigerVNC DISPLAY=:1/XFWM4 and shared D-Bus/AT-SPI",
+  "nativeEvidence": {
+    "savedASCIIBytes": 29,
+    "savedUnicodeBytes": 46,
+    "replacementExact": true,
+    "clipboardPolicy": "leave observed payload",
+    "partialPaste": "saved par, one dispatch, native_paste_unverified/effect unknown; no replay",
+    "codepointsAt500ms": 53,
+    "finalSavedCodepoints": 1000,
+    "finalSavedUTF8Bytes": 2750,
+    "activeAfterStop": true,
+    "queuedCancelledWithoutDispatch": true,
+    "followingSaveAfterCompletion": true,
+    "strictRealmAwaitAndArtifactOwnership": true,
+    "wholeNode22": {
+      "pass": 508,
+      "skip": 2,
+      "fail": 0
+    },
+    "embeddedSDKPass": 269,
+    "LinuxUnits": {
+      "pass": 669,
+      "ignored": 10,
+      "fail": 0
+    },
+    "sevenSupervisorsExitedWithoutForce": true
+  },
+  "browserEvidence": {
+    "BookwormBrowserAccepted": false,
+    "Chrome": "Google Chrome 155.0.8059.84",
+    "kernel": "6.17.0-1022-azure",
+    "lsmProfile": "docker-default (enforce)",
+    "namespaceChecks": "all4 EPERM",
+    "chromeExitCode": -6,
+    "policyChanged": false,
+    "ownedProbeReaped": true,
+    "limitation": "Native success does not establish Chrome sandbox/browser input compatibility; no sandbox, namespace or LSM bypass."
+  },
+  "driverBinaryHashReportedByCI": "a55b7e50b5f579f4d4c0648e2e484d526e6a3c85447b492113ac8f433bf2611a",
+  "binaryIndependentlyDownloaded": false,
+  "rawFiles": {
+    "evidence.json": "d8b2c000a4cbd5182418c3e1e704083381befd5176a1cde84138cf2d077dff81",
+    "saved.txt": "c872011f389649a8fbaa0152b4ccf9bd5ae7f7f9c6ab7f7a995b54271fb07e6b",
+    "paste-0-saved.txt": "f73573532bec611f3040ed9a695bafb620c5a21ad1b7f6ce65115ffbfad4a495",
+    "paste-1-saved.txt": "82856e8fb41209181e5b0e8ff3a6405a7305bc4c4ddf8e034f62810aebc40159",
+    "paste-partial-saved.txt": "c9d9d2c4be976b707a1acdcaba8495e7e0a7089579da6625a71083d5b0c6bddf",
+    "native-grants.yaml": "a090ebfb707ca67bac2a55990ffc6bef177dfcb054bed27b93a43cce17f6526c",
+    "strict-bridge-evidence.json": "a8220b6cd10221d7e82cac99d4027b568474984a906fc4a7bc46ea272321af36",
+    "supervisor-cleanup.txt": "63b87e839ac972392e965117d2434852c5bc8de126bab26eb91bc834e5d11357"
+  },
+  "newPaidAgents": 0,
+  "newScoreRows": 0,
+  "verificationNote": "Initial parent whole-state comparison rejected advancing sampleSequence; corrected oracle checks all six application state fields equal and requires sequence to advance. No desktop assertion was relaxed."
+}

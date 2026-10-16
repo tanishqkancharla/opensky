@@ -1,5 +1,34 @@
 # Persistent Linux host integration
 
+## Current Bookworm native-only verification
+
+[Fresh run38934464996](https://github.com/tanishqkancharla/opensky/actions/runs/38934464996)
+builds supported driver9e/0.36 from SDK43098d4/0.2.28 on Node22.23.3 in an
+ordinary-user Debian Bookworm container, TigerVNC:1, XFWM4 and shared D-Bus/AT-SPI.
+Exact saved ASCII/Unicode selection replacement, payload-left clipboard behavior,
+partial unknown paste with one dispatch/no replay, and Stop/drain all pass.
+At500ms53/1000 codepoints are visible; all1000/2750UTF-8bytes eventually save,
+queued input is cancelled and the following Save starts after completion.
+The strict realm-await/artifact-ownership owner passes, as do508whole SDK tests
+(two skips),269embedded owners and669Linux units (ten ignored desktop cases).
+All seven owned supervisors exit without force. See [exact pins, hashes and
+scope](bookworm-native036.json); the existing runnable host examples below apply.
+
+Tested desktop packages include TigerVNC1.12.0, XFWM4.18.0, D-Bus1.14.10 and
+AT-SPI2.46.0. The explicit version3 grant manifest names only the owned editor
+PID/window, display access, plaintext clipboard write and a nonrecursive screenshot
+output directory. Clipboard read remains denied despite the tool name being
+listed. Host/session lifecycle and active-stop limitations below are unchanged.
+
+[Separate sandbox probe38934689420](https://github.com/tanishqkancharla/opensky/actions/runs/38934689420)
+fails: Chrome155.0.8059.84 under docker-default/enforced AppArmor on kernel
+6.17.0-1022-azure cannot create any of the four probed namespaces (EPERM).
+No policy is changed and the probe is reaped. **Sandboxed Bookworm browser
+compatibility remains unverified**; Ubuntu22 host browser evidence is separate.
+Native success does not certify browser input or persistence across host restarts.
+The Bookworm binary hash is recorded by CI; its binary was not exported/rehashed
+locally for reuse.
+
 ## Current tested distribution: SDK0.2.28 / Driver0.36.0
 
 The driver pin advances to **`9e9219a0ca84ea195b9cf3be35b42a6379699448`**, the
