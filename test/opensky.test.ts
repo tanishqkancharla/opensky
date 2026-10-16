@@ -31,6 +31,61 @@ import type { SnapshotElement } from "../src/types.js";
 import { OpenSkyError } from "../src/errors.js";
 import { makeHarness } from "./harness.ts";
 
+describe("native app process identity", () => {
+  async function withApps(target: "linux" | "mac", inventory: (gui: any) => any[], verify: (context: any) => Promise<void>) {
+    // This transport fixture models one session lifetime; each counterexample
+    // owns a fresh fixture rather than borrowing an already-ended fake session.
+    const {driver,dir,opensky,statePath}=await makeHarness();await opensky.list_apps();
+    const base=JSON.parse(await readFile(statePath,"utf8")).apps.find((app:any)=>app.name==="Calculator");
+    const gui={...base,name:"python3",bundle_id:null,launch_path:null,windows:base.windows.map((window:any)=>({...window,pid:base.pid,is_on_screen:true}))};
+    const apps=inventory(gui),call=driver.call.bind(driver),probed:number[]=[],downstream:string[]=[];
+    driver.call=async(tool,args={})=>{
+      if(tool==="list_apps")return{structured:{apps},text:""};
+      if(["list_windows","get_window_state","launch_app","click","type_text"].includes(tool))downstream.push(tool);
+      if(tool==="list_windows"||tool==="get_window_state")probed.push(Number(args.pid));
+      if(args.pid===645)throw new OpenSkyError("outside the capability manifest","bounded_resource_outside_manifest");
+      return call(tool,args);
+    };
+    const sdk=createOpenSky({driver,target,homeDir:join(dir,"identity-home"),autoLaunch:true,settleDelayMs:0});
+    try{await verify({sdk,gui,probed,downstream});}finally{await sdk.close();}
+  }
+
+  it("binds the sole visible same-name GUI process without probing headless namesakes", async () => {
+    for(const target of ["linux","mac"] as const)for(const reverse of [false,true]){
+      await withApps(target,gui=>reverse?[gui,{...gui,pid:645,windows:[]}]:[{...gui,pid:645,windows:[]},gui],async({sdk,gui,probed})=>{
+        const state=await sdk.get_app_state({app:"python3",includeScreenshot:false});
+        assert.equal(state.app,"python3");assert.match(state.targetHandle,/^tgt_/);
+        assert.ok(probed.length>0);assert.ok(probed.every((pid:number)=>pid===gui.pid));
+      });
+    }
+  });
+
+  it("refuses ambiguous or unproved GUI identity before window reads or launch", async () => {
+    const variants=["two-gui","foreign","hidden","other-space","missing-id","tiny"];
+    for(const variant of variants)await withApps("linux",gui=>{
+      const window=gui.windows[0];
+      if(variant==="two-gui")return[gui,{...gui,pid:645,windows:[{...window,pid:645,window_id:987}]}];
+      const invalid=variant==="foreign"?{...window,pid:999}:variant==="hidden"?{...window,is_on_screen:false}:variant==="other-space"?{...window,on_current_space:false}:variant==="missing-id"?{...window,window_id:undefined}:{...window,frame:{x:0,y:0,width:10,height:10}};
+      return[{...gui,windows:[invalid]},{...gui,pid:645,windows:[]}];
+    },async({sdk,downstream})=>{
+      await assert.rejects(sdk.get_app_state({app:"python3",includeScreenshot:false}),(error:any)=>{assert.equal(error.code,"ambiguous_app");assert.deepEqual(error.details,{delivery:"not_dispatched"});return true;});
+      assert.deepEqual(downstream,[]);
+    });
+  });
+
+  it("retains identity precedence and accepts duplicate rows only for the same proven GUI PID", async () => {
+    await withApps("linux",gui=>[gui,{...gui}],async({sdk,gui,probed})=>{
+      assert.equal((await sdk.get_app_state({app:"python3",includeScreenshot:false})).app,"python3");assert.ok(probed.length>0);assert.ok(probed.every((pid:number)=>pid===gui.pid));
+    });
+    await withApps("linux",gui=>[{...gui,pid:undefined,running:false,windows:[]},gui],async({sdk,gui,probed})=>{
+      assert.equal((await sdk.get_app_state({app:"python3",includeScreenshot:false})).app,"python3");assert.ok(probed.length>0);assert.ok(probed.every((pid:number)=>pid===gui.pid));
+    });
+    await withApps("linux",gui=>[{...gui,pid:645,windows:[]},{...gui,name:"python3-editor"}],async({sdk,probed})=>{
+      await assert.rejects(sdk.get_app_state({app:"python3",includeScreenshot:false}),{code:"bounded_resource_outside_manifest"});assert.deepEqual(probed,[645]);
+    });
+  });
+});
+
 describe("Linux advertised primary action", () => {
   it("press uses the existing exact indexed click without a retired action field or replay", async () => {
     const { driver, dir, statePath } = await makeHarness();

@@ -2288,7 +2288,7 @@ export class OpenSky implements OpenSkyApi {
     if (looksLikeTargetHandle(app)) throw unknownTargetHandle(app);
     const cached = this.targetForSelector(app);
     const listed = await this.listRawApps();
-    const match = findApp(listed, app);
+    const match = findApp(listed, app, true);
     if (match && (match.running || match.pid)) {
       let source = match;
       let pid = Number(match.pid);
@@ -3739,15 +3739,38 @@ function formatElement(element: SnapshotElement): string {
   return `[${element.element_index}] ${element.role ?? "AXUnknown"} ${primary}${value}${identifier}${url}${semantics}${placeholder}${description}`;
 }
 
-function findApp(apps: Record<string, unknown>[], query: string): Record<string, unknown> | undefined {
+function findApp(apps: Record<string, unknown>[], query: string, resolveProcess = false): Record<string, unknown> | undefined {
   const q = query.trim().toLowerCase();
-  return (
-    apps.find((app) => optionalString(app.bundle_id)?.toLowerCase() === q) ||
-    apps.find((app) => optionalString(app.launch_path)?.toLowerCase() === q) ||
-    apps.find((app) => optionalString(app.name)?.toLowerCase() === q) ||
-    apps.find((app) => optionalString(app.launch_path)?.toLowerCase().endsWith(q)) ||
-    apps.find((app) => optionalString(app.name)?.toLowerCase().includes(q))
-  );
+  const levels = [
+    (app: Record<string, unknown>) => optionalString(app.bundle_id)?.toLowerCase() === q,
+    (app: Record<string, unknown>) => optionalString(app.launch_path)?.toLowerCase() === q,
+    (app: Record<string, unknown>) => optionalString(app.name)?.toLowerCase() === q,
+    (app: Record<string, unknown>) => optionalString(app.launch_path)?.toLowerCase().endsWith(q),
+    (app: Record<string, unknown>) => optionalString(app.name)?.toLowerCase().includes(q),
+  ];
+  for (const matchesIdentity of levels) {
+    const matches = apps.filter(matchesIdentity);
+    if (!matches.length) continue;
+    // Launch/browser discovery uses identity metadata, not a selected process.
+    if (!resolveProcess || matches.length === 1) return matches[0];
+    // Linux inventories also contain headless processes with the same name.
+    // Choose from attested inventory only; never probe/refuse/retry namesakes.
+    const running = matches.filter(app => app.running !== false && Number.isSafeInteger(app.pid) && Number(app.pid) > 0);
+    // Installed-app metadata may duplicate the one running process. Keep its
+    // existing cold/windowless launch behavior rather than inventing ambiguity.
+    if (new Set(running.map(app => app.pid)).size === 1) return running[0];
+    const windowed = running.filter(app =>
+      asArray<Record<string, unknown>>(app.windows).some(window =>
+        window.pid === app.pid && Number.isSafeInteger(window.window_id) && Number(window.window_id) > 0 &&
+        window.is_on_screen === true && window.on_current_space !== false && isOrdinaryWindow(window)));
+    if (new Set(windowed.map(app => app.pid)).size === 1) return windowed[0];
+    throw new OpenSkyError(
+      `Ambiguous app ${JSON.stringify(query)} matches multiple processes. ` +
+      "Use an unambiguous app identifier or exact PID/window driver calls; no process was selected and no input was sent.",
+      "ambiguous_app", { delivery: "not_dispatched" },
+    );
+  }
+  return undefined;
 }
 
 function sameAppIdentity(candidate: Record<string, unknown>, reference?: Record<string, unknown>): boolean {
