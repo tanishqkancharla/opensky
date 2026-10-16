@@ -1,3 +1,4 @@
+import {hasChromeSwitch,processStartTicks as processStart} from "./chrome-process.mjs";
 import assert from "node:assert/strict";
 import { readFile, writeFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -23,7 +24,6 @@ const sdk = createOpenSky({ driver, target: "linux", homeDir: join(out, "sdk-hom
 const cua = createCua(sdk, { emit: () => undefined }); const queue = new DesktopActionQueue();
 const browserDriver = new CuaDriverClient({ binaryPath: process.env.OPENSKY_DRIVER_PATH, socket: process.env.HALO_BROWSER_SOCKET, session: "halo-browser-contract", autoStart: false, timeoutMs: null });
 const browserPreparations=[];
-const processStart=stat=>stat.slice(stat.lastIndexOf(")")+2).trim().split(/\s+/)[19];
 const browserCall=browserDriver.call.bind(browserDriver);
 browserDriver.call=async(tool,args={})=>{
   const result=await browserCall(tool,args);
@@ -38,8 +38,8 @@ const browserSdk = createOpenSky({ driver: browserDriver, target: "linux", homeD
 const browserCua = createCua(browserSdk, { emit: () => undefined });
 let tab, browser = { clicks: 0, scrollY: 0, focused: false, trusted: false };
 const page = `<!doctype html><title>Halo Browser Contract</title><style>body{height:4000px;margin:0}button{position:absolute;left:40px;top:40px;width:180px;height:80px}</style><button>Count trusted click</button><script>
-let clicks=0; function report(trusted=false){fetch('/report',{method:'POST',body:JSON.stringify({clicks,scrollY:scrollY,focused:document.hasFocus(),trusted})})}
-document.querySelector('button').onclick=e=>{clicks++;report(e.isTrusted)}; addEventListener('scroll',()=>report()); addEventListener('focus',()=>report()); report();</script>`;
+let clicks=0,wheelTrusted=null; function report(trusted=false){fetch('/report',{method:'POST',body:JSON.stringify({clicks,scrollY:scrollY,focused:document.hasFocus(),trusted,wheelTrusted})})}
+document.querySelector('button').onclick=e=>{clicks++;report(e.isTrusted)}; addEventListener('wheel',e=>{wheelTrusted=e.isTrusted},{passive:true}); addEventListener('scroll',()=>report()); addEventListener('focus',()=>report()); report();</script>`;
 const server = createServer(async (req, res) => { if (req.url === "/report") { let text = ""; for await (const chunk of req) text += chunk; browser = JSON.parse(text); await writeFile(join(out, "browser-state.json"), text); res.end("ok"); } else { res.setHeader("content-type", "text/html"); res.end(page); } });
 await new Promise(resolve => server.listen(8123, "127.0.0.1", resolve));
 try {
@@ -170,8 +170,8 @@ try {
     const baseFilters = Number(baseline.match(/^Seccomp_filters:\s*(\d+)/m)?.[1] ?? 0);
     const rendererEvidence = [];
     for(const {pid,argv,status}of owned){
-      assert.ok(!/(?:^|\s)--(?:no-sandbox|disable-setuid-sandbox|disable-seccomp-filter-sandbox)(?=\s|$)/.test(argv.join(" ")));
-      if(!argv.includes("--type=renderer"))continue;
+      assert.ok(["--no-sandbox","--disable-setuid-sandbox","--disable-seccomp-filter-sandbox"].every(flag=>!hasChromeSwitch(argv,flag)));
+      if(!hasChromeSwitch(argv,"--type=renderer"))continue;
       assert.match(status,/^NoNewPrivs:\s*1$/m);assert.match(status,/^Seccomp:\s*2$/m);
       assert.ok(Number(status.match(/^Seccomp_filters:\s*(\d+)/m)?.[1]??0)>baseFilters,"renderer has an additional sandbox filter beyond the host baseline");
       rendererEvidence.push({pid,argv,status});
@@ -184,12 +184,14 @@ try {
     await assert.rejects(queue.submit(() => tab.click([80, 80])).wait(), error => ["browser_input_trust_unavailable", "route_unavailable"].includes(error.code));
     assert.equal(browser.clicks, 0); assert.equal(execFileSync("xdotool", ["getwindowfocus"], { encoding: "utf8" }).trim(), focusBefore);
     await tab.getScreenshot({ emit: false }); await queue.submit(() => tab.click([80, 80], { deliveryMode: "foreground" })).wait();
-    await poll(() => browser.clicks === 1); assert.equal(browser.trusted, true);
+    await poll(() => browser.clicks === 1); assert.equal(browser.trusted, true); assert.equal(browser.focused,true);
     await assert.rejects(queue.submit(() => tab.click([80, 80], { deliveryMode: "foreground" })).wait(), /fresh exact-tab screenshot/);
     assert.equal(browser.clicks, 1); const clicked = { ...browser }; await tab.getScreenshot({ emit: false });
-    await queue.submit(() => tab.scroll([300, 300], "down", 1, { deliveryMode: "foreground" })).wait(); await poll(() => browser.scrollY > 0);
+    await queue.submit(() => tab.scroll([300, 300], "down", 1, { deliveryMode: "foreground" })).wait(); await poll(() => browser.scrollY > 0); assert.equal(browser.wheelTrusted,true);
+    const activeWindow=execFileSync("xdotool",["getactivewindow"],{encoding:"utf8"}).trim();
+    const activePID=Number(execFileSync("xdotool",["getwindowpid",activeWindow],{encoding:"utf8"}).trim());assert.equal(activePID,rootPID,"foreground input must activate the exact owned browser process");
     await writeFile(join(out, "browser-after.png"), await tab.getScreenshot({ emit: false }));
-    record("foreground-browser", { clicked, scrolled: { ...browser }, focusBefore, focusAfter: execFileSync("xdotool", ["getwindowfocus"], { encoding: "utf8" }).trim(), staleRefusal: true, absentOptInRefusal: true });
+    record("foreground-browser", { clicked, scrolled: { ...browser }, focusBefore, focusAfter: execFileSync("xdotool", ["getwindowfocus"], { encoding: "utf8" }).trim(), staleRefusal: true, absentOptInRefusal: true, activeWindow, activePID, trustedWheel:true });
   } catch (error) { record("foreground-browser", { verified: false, error: String(error), code: error.code }); throw error; }
   }
 } catch (error) { evidence.error = String(error); evidence.errorCode = error.code; evidence.errorStack = error.stack; process.exitCode = 1; }
