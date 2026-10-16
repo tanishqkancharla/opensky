@@ -2,6 +2,10 @@ name: Linux foreground browser host acceptance
 on:
   workflow_dispatch:
     inputs:
+      driver_ref:
+        description: 'Exact forty-character fork commit to qualify; does not change the supported SDK pin'
+        type: string
+        default: '4a0189e286cf48c6b05da5bdd76ffebce4accc84'
       readiness_only:
         description: 'Collect unchanged-policy Chrome sandbox/install facts without building or desktop input'
         type: boolean
@@ -19,12 +23,14 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     env:
-      HALO_DRIVER_REF: 4a0189e286cf48c6b05da5bdd76ffebce4accc84
-      CUA_DRIVER_SOURCE_SHA: 4a0189e286cf48c6b05da5bdd76ffebce4accc84
+      HALO_DRIVER_REF: ${{ inputs.driver_ref || '4a0189e286cf48c6b05da5bdd76ffebce4accc84' }}
+      CUA_DRIVER_SOURCE_SHA: ${{ inputs.driver_ref || '4a0189e286cf48c6b05da5bdd76ffebce4accc84' }}
       CARGO_PROFILE_RELEASE_LTO: 'false'
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
       CARGO_INCREMENTAL: '0'
     steps:
+      - name: Require an immutable driver source
+        run: '[[ "$HALO_DRIVER_REF" =~ ^[0-9a-f]{40}$ ]]'
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
