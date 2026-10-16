@@ -1,6 +1,37 @@
 # Persistent Linux host integration
 
-## Current tested distribution: SDK0.2.27 / Driver0.35.4
+## SDK0.2.28 candidate / Driver0.36.0
+
+The driver pin advances to **`9e9219a0ca84ea195b9cf3be35b42a6379699448`**, the
+canonical0.36.0 history plus retained OpenSky exact-target, permission, native
+paste and uncertain-delivery contracts. SDK application code is unchanged from
+0.2.27; package validation and final signed-Mac binary qualification are pending.
+This candidate has not been published as a release yet.
+
+[Whole Linux regression38920060955](https://github.com/tanishqkancharla/cua/actions/runs/38920060955)
+and [fresh host contract38920063943](https://github.com/tanishqkancharla/opensky/actions/runs/38920063943)
+pass. The sixteen actual X11 keyboard owners include delayed foreground and
+background consumers: an original NUL-prefix regression after a missed ping now
+retains the exact é prefix, returns unknown delivery, and never replays input or
+sends the remaining batch. All669 Linux library unit tests pass with10 desktop
+cases ignored in that separate unit command.
+
+The bounded-grant Ubuntu22 host/Node22/TigerVNC/shared-bus run freshly rebuilds
+the driver and verifies exact saved ASCII/Unicode replacements, one uncertain
+partial paste,51 codepoints at500ms then all1000 saved, queued cancellation and
+following Save serialization. One trusted browser click and600px trusted wheel
+scroll, exact foreground PID, missing-opt-in/stale refusals, and five owned
+kernel-sandboxed renderers pass. All seven supervisors exit without force.
+Chrome's sandbox and host namespace/LSM policy remain unchanged. **The exact
+Bookworm container browser remains unqualified.** Required packages, grants,
+clipboard behavior and lifecycle examples below still apply.
+
+Initial signed-Mac0.36 sourcef069 passes all29 required contracts across18groups
+with exact cleanup; final9e binary qualification follows. The Mac signing
+identity, bundle identifier and existing AX/Screen Recording grants are preserved.
+This upgrade does not claim a new paid benchmark score.
+
+## Previous tested distribution: SDK0.2.27 / Driver0.35.4
 
 SDK0.2.27 retains driver pin **`4a0189e286cf48c6b05da5bdd76ffebce4accc84`**.
 Accepted SDK runtime source is **`d7034226852823a2a9dd26eb962e6a67b62c870e`**.
