@@ -1,6 +1,6 @@
 {
   "issue": 72,
-  "status": "Verified on real Mac and Bookworm/TigerVNC; releasing0.2.30",
+  "status": "Verified and released in0.2.30; issue72 closed",
   "runtimeSource": "452bc212706c0e33edb5b214c56b4179971995a7",
   "driverSource": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
   "contract": {
@@ -83,5 +83,15 @@
   },
   "newPaidArms": 0,
   "newScoreRows": 0,
-  "releasePublished": false
+  "releasePublished": true,
+  "issueClosed": true,
+  "distribution": {
+    "tag": "v0.2.30",
+    "releaseSource": "eadb0e1ea6ae82f6aeca3022d34dae1d05b1435c",
+    "sha256": "0d33b32dd18a0ad71c40b23bd60f485fbe1a33d1e746f76e3853f414a78270b4",
+    "publicDownloadMatchesTestedPackage": true,
+    "checksumFileIdentical": true,
+    "qualifiedRuntime": "452bc212706c0e33edb5b214c56b4179971995a7",
+    "installedNode22And24SmokesPassed": true
+  }
 }
