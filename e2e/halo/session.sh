@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 export DISPLAY=:1 XDG_SESSION_TYPE=x11 NO_AT_BRIDGE=0 GTK_MODULES=gail:atk-bridge
+export XDG_CURRENT_DESKTOP=XFCE XDG_SESSION_DESKTOP=xfce DESKTOP_SESSION=xfce
 export HALO_ARTIFACTS="${HALO_ARTIFACTS:-$PWD/artifacts/halo}"
 mkdir -p "$HALO_ARTIFACTS"
 export XDG_RUNTIME_DIR="$(mktemp -d /tmp/halo-runtime.XXXXXX)"
@@ -25,12 +26,29 @@ Xtigervnc :1 -localhost -SecurityTypes None -geometry 1280x900 -depth 24 > "$HAL
 for attempt in {1..100}; do if xdpyinfo >/dev/null 2>&1; then break; fi; sleep .1; done
 xdpyinfo > "$HALO_ARTIFACTS/xdpyinfo.txt"
 xfwm4 --replace --compositor="${HALO_COMPOSITOR:-off}" > "$HALO_ARTIFACTS/xfwm.log" 2>&1 & wm_pid=$!
+# Launching clients before the WM owns its EWMH selection races startup.
+wm_ready=0
+for attempt in {1..100}; do
+  if ! kill -0 "$wm_pid" 2>/dev/null; then echo 'Owned XFWM exited before readiness' >&2; exit 1; fi
+  if wmctrl -m > "$HALO_ARTIFACTS/window-manager.txt" 2>/dev/null && [[ "$(cat "$HALO_ARTIFACTS/window-manager.txt")" == *"Name: Xfwm4"* ]]; then wm_ready=1; break; fi
+  sleep .1
+done
+if (( wm_ready != 1 )); then echo 'Owned XFWM did not advertise EWMH readiness' >&2; exit 1; fi
+xprop -root _NET_SUPPORTING_WM_CHECK > "$HALO_ARTIFACTS/window-manager-root.txt"
 xfce4-panel > "$HALO_ARTIFACTS/panel.log" 2>&1 & panel_pid=$!
 gsettings set org.gnome.desktop.interface toolkit-accessibility true
 /usr/bin/python3 e2e/halo/editor.py > "$HALO_ARTIFACTS/editor.log" 2>&1 & editor_pid=$!
 for attempt in {1..100}; do if [[ -s "$HALO_ARTIFACTS/editor-state.json" ]]; then break; fi; sleep .1; done
 editor_window=$(xdotool search --sync --onlyvisible --name '^Halo Contract Editor$' | head -1)
 wmctrl -ia "$editor_window"
+editor_ready=0
+for attempt in {1..100}; do
+  if ! kill -0 "$wm_pid" 2>/dev/null; then echo 'Owned XFWM exited before editor activation' >&2; exit 1; fi
+  if [[ "$(xdotool getactivewindow 2>/dev/null || true)" == "$editor_window" ]]; then editor_ready=1; break; fi
+  sleep .1
+done
+if (( editor_ready != 1 )); then echo 'Owned editor never became the active EWMH window' >&2; exit 1; fi
+printf '{"windowManagerPID":%s,"editorWindow":%s,"activeEditorVerified":true}\n' "$wm_pid" "$editor_window" > "$HALO_ARTIFACTS/desktop-readiness.json"
 printf 'preserved clipboard sentinel Ελληνικά' | xclip -selection clipboard -loops 0 -quiet & clipboard_pid=$!
 export HALO_EDITOR_PID="$editor_pid" HALO_EDITOR_WINDOW="$editor_window"
 if [[ "${HALO_NATIVE_PASTE_PROBE_ONLY:-0}" == "1" ]]; then
