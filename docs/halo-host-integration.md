@@ -2,15 +2,17 @@
 
 ## Current pins and verification boundary
 
-The current supported distribution is **SDK0.2.16**, with Driver **0.35.4**,
-runtime source **`a164e38e89958b3b26cfc7914f82b85cc7deda28`**.
-The macOS bundle disables AppKit automatic termination; explicit driver Stop remains available.
-Linux native acceptance remains pinned to Driver`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`;
-intervening production changes are macOS bundle metadata, the SCK worker autorelease pool,
-shared browser delivery-result reporting, operator CLI status PID-file selection,
-and native permission-status schema/endpoint reporting.
-Linux native input and the TypeScript host action queue are unchanged; native acceptance
-is not recertified by Mac capture/browser or isolated CLI tests.
+The released supported distribution is **SDK0.2.19**, with Driver **0.35.4**,
+runtime source **`0ba206238cf98c9af07a68f1799cd6d67e011c06`**.
+This checkout selects candidate Driver`6647fa8d7f5edc0337d0d616f00c202df68b9bc4`:
+background XSendEvent Unicode now uses the existing per-character recipient
+acknowledgement. Its current Bookworm native run is pending. Foreground XTest,
+the TypeScript host queue, Linux paste capability refusal and grants are unchanged.
+The macOS bundle keeps its stable signing identity and disables automatic termination.
+Historical Linux native acceptance remains pinned to
+Driver`aee4fd3a6e8ae3452bb1a5eb23b67093a2d4e7d1`; it must not be promoted into
+acceptance of this new Linux input change. Mac and isolated CLI/X11 checks are
+separate from the requested production TigerVNC and sandboxed-browser contract.
 The actual native acceptance run uses SDK`cffb21e803b527f99d6357840619c3980afc99ff`;
 the final distribution has the same TypeScript SDK runtime, with updated
 release metadata, driver pin, CI scope and documentation. The current native

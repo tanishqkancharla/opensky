@@ -67,3 +67,23 @@ These are deterministic SDK regressions, not new agent scores. The original and
 repeat 20-task results remain frozen. No evaluation model calls were made for
 this correction. Ready source to first relevant result took 374 seconds, so the
 five-minute feedback target was not achieved on this iteration.
+
+
+## Background XSendEvent candidate (issue67)
+
+The next driver candidate is `6647fa8d7f5edc0337d0d616f00c202df68b9bc4`.
+The same existing delayed-X11-client owner now covers both foreground XTest and
+background XSendEvent. The unchanged product failed the background case: a650ms
+client delay yielded a NUL instead of `é—中文😀é`. Candidate application effects
+are pending [the whole X11 owner run](https://github.com/tanishqkancharla/cua/actions/runs/38837486066).
+
+The candidate shares the per-character barrier with the exact background
+recipient, without activating it. It only accepts a ping ancestor from that
+same X11 client. Advertised but unconfirmed processing returns unknown delivery
+and stops the remaining text; it never replays input. The owner checks actual
+received Unicode, the nonresponding-client prefix and exact error, unchanged
+focus, and restoration of borrowed mappings on both paths. Clients without ping,
+named-key remapping and the final focus-check/input race retain their limitations.
+This fixture is neither a production TigerVNC/AT-SPI/Chrome acceptance claim nor
+a new native/SDK agent score. The released0.2.19 pin remains0ba206238 until a
+verified candidate is released.
