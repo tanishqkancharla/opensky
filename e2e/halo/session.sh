@@ -33,6 +33,10 @@ editor_window=$(xdotool search --sync --onlyvisible --name '^Halo Contract Edito
 wmctrl -ia "$editor_window"
 printf 'preserved clipboard sentinel Ελληνικά' | xclip -selection clipboard -loops 0 -quiet & clipboard_pid=$!
 export HALO_EDITOR_PID="$editor_pid" HALO_EDITOR_WINDOW="$editor_window"
+if [[ "${HALO_NATIVE_PASTE_PROBE_ONLY:-0}" == "1" ]]; then
+  timeout --signal=TERM --kill-after=5s 45s /usr/bin/python3 e2e/halo/paste-probe.py
+  exit 0
+fi
 mkdir -p "$HALO_ARTIFACTS/capture-sdk-shots"
 chmod 700 "$HALO_ARTIFACTS/capture-sdk-shots"
 cat > "$HALO_ARTIFACTS/native-grants.yaml" <<EOF

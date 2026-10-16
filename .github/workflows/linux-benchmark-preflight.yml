@@ -21,6 +21,10 @@ on:
         description: 'Build once and validate fresh compositor-off/on native desktops serially'
         type: boolean
         default: false
+      halo_paste_probe:
+        description: Raw GTK AT-SPI paste feasibility on an owned TigerVNC desktop; no SDK acceptance
+        type: boolean
+        default: false
       halo_sandbox_probe:
         description: 'Collect ordinary-user Chrome/namespace startup diagnostics without building the driver'
         type: boolean
@@ -33,7 +37,7 @@ permissions:
   contents: read
 jobs:
   controls:
-    if: ${{ !(inputs.halo_contract || inputs.halo_native || inputs.halo_capture || inputs.halo_capture_matrix || inputs.halo_sandbox_probe) }}
+    if: ${{ !(inputs.halo_contract || inputs.halo_native || inputs.halo_capture || inputs.halo_capture_matrix || inputs.halo_sandbox_probe || inputs.halo_paste_probe) }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -87,6 +91,34 @@ jobs:
           name: linux-grading-controls
           path: artifacts
           if-no-files-found: warn
+          retention-days: 90
+
+  paste-readiness:
+    if: ${{ inputs.halo_paste_probe }}
+    runs-on: ubuntu-24.04
+    container: node:22-bookworm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Install the ordinary-user native desktop experiment
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends python3 python3-gi python3-pyatspi gir1.2-atspi-2.0 gir1.2-gtk-3.0 tigervnc-standalone-server xfwm4 xfce4-panel dbus-x11 gsettings-desktop-schemas dconf-gsettings-backend at-spi2-core libatk-adaptor x11-utils xdotool wmctrl xclip fonts-dejavu
+          useradd --create-home --uid 1001 halo
+          mkdir -p artifacts/paste-readiness
+          chown -R halo:halo artifacts/paste-readiness
+          node --version > artifacts/paste-readiness/node.txt
+          dpkg-query -W > artifacts/paste-readiness/packages.txt
+      - name: Probe real clipboard insertion and selected-text behavior
+        run: |
+          runuser -u halo -- env HALO_NATIVE_PASTE_PROBE_ONLY=1 HALO_ARTIFACTS="$GITHUB_WORKSPACE/artifacts/paste-readiness" dbus-run-session -- bash e2e/halo/session.sh
+      - name: Preserve actual GTK buffer, saved bytes, clipboard and exact owned cleanup
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: halo-native-paste-readiness
+          path: artifacts/paste-readiness
+          if-no-files-found: error
           retention-days: 90
 
   sandbox-readiness:

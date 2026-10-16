@@ -6283,3 +6283,14 @@ rename. Therefore the descriptive improvement is retained without attributing
 it to the hint. Both direct-label input refusal and supported editor path stay
 intact. Current-candidate Notes and Reminders pairs also complete with exact
 styled body/item states and independently verified owned retention/cleanup.
+
+## SET417 — Establish Linux clipboard paste semantics before adding a tool
+
+Current Linux registry lacks native_paste; the SDK correctly refuses it before
+mutation. Existing X11 clipboard infrastructure does not establish a compound
+paste contract. Before implementation, add an opt-in no-build GTK/AT-SPI paste
+probe on the existing ordinary-user Bookworm/TigerVNC/shared-bus fixture. It
+records raw clipboard insertion, selected replacement, actual GTK buffer and
+Ctrl+S saved bytes, payload clipboard retention and exact process cleanup.
+This is feasibility evidence, not SDK/native-agent acceptance. No production
+clipboard fallback or browser sandbox workaround is introduced. Results pending.
