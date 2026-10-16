@@ -1,6 +1,36 @@
 # Persistent Linux host integration
 
-## Current Bookworm native-only verification
+## Current tested distribution: SDK0.2.29 / Driver0.36.0
+
+SDK runtime **`cb13ce95b535fcc3a166e478ce75c4d1055954b5`** adds a typed,
+actionable refusal for unsafe Node promise tracking in the optional strict
+AsyncRepl. See [host instrumentation semantics](#host-instrumentation-refusal-sdk0229)
+and [exact before/after evidence](strict-runtime-56-refusal.json). The driver
+stays at **`9e9219a0ca84ea195b9cf3be35b42a6379699448`**. Install the attached
+[GitHub tarball](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.29);
+no npm registry publication is claimed. All72 installed compiled files match
+the qualified runtime; twelve installed Node22/24 process probes pass.
+
+[Bookworm38939166394](https://github.com/tanishqkancharla/opensky/actions/runs/38939166394)
+passes the real strict CUA bridge, retained app across realm await, original
+artifact attribution, saved ASCII/Unicode, uncertain partial paste/no replay,
+Stop/drain and following Save ordering. At500ms52codepoints are visible;
+all1000/2750UTF-8bytes eventually save. Whole SDK514pass/two skips,
+269embedded contracts and669Linux units/ten ignored pass; all seven supervisors
+exit without force. It uses the same explicit grants and native environment
+below. **Sandboxed Bookworm Chrome remains unverified.**
+
+[Ubuntu22host38939170188](https://github.com/tanishqkancharla/opensky/actions/runs/38939170188)
+passes strict/native effects plus a trusted click,600px trusted wheel, exact
+owned foreground PID, stale/missing-opt-in refusals and five kernel-sandboxed
+renderers. Driver bytes/669-unit log are reused from38920063943 by independent
+source/hash verification;269embedded and all desktop effects run freshly.
+All seven supervisors exit without force; sandbox and namespace/LSM policy are
+unchanged. Local Node22/24 each pass515SDK tests/one Bun skip. Two read-only
+Mac strict cells preserve the original Calendar window. Mac cold-launch issues
+19/66 remain open; no new paired score or full desktop parity is claimed.
+
+## Previous Bookworm native-only verification
 
 [Fresh run38934464996](https://github.com/tanishqkancharla/opensky/actions/runs/38934464996)
 builds supported driver9e/0.36 from SDK43098d4/0.2.28 on Node22.23.3 in an
@@ -29,7 +59,7 @@ Native success does not certify browser input or persistence across host restart
 The Bookworm binary hash is recorded by CI; its binary was not exported/rehashed
 locally for reuse.
 
-## Current tested distribution: SDK0.2.28 / Driver0.36.0
+## Previous tested distribution: SDK0.2.28 / Driver0.36.0
 
 The driver pin advances to **`9e9219a0ca84ea195b9cf3be35b42a6379699448`**, the
 canonical0.36.0 history plus retained OpenSky exact-target, permission, native
@@ -729,7 +759,7 @@ supervisor processes and both occluders exit without forced shutdown. This
 observation control sends no input and does not establish new typing, browser
 or paired benchmark acceptance. [Evidence](linux-strict-bridge-56.json).
 
-### Host instrumentation refusal (current candidate)
+### Host instrumentation refusal (SDK0.2.29)
 
 Strict evaluation now checks Node promise execution tracking before a first cell
 and each awaited VM resume. When active, it refuses with public
@@ -761,8 +791,8 @@ can enable incompatible instrumentation inside an already-entered synchronous
 VM turn: a check between turns cannot preempt arbitrary host code during a turn.
 The SDK supplies no process isolation or crash recovery. Both Node22/24 retain
 synchronous/microtask deadlines, timeout poisoning and stale capability refusal.
-[Before/after probe evidence](strict-runtime-56-refusal.json). Hosted actual bridge
-verification for this candidate is pending; prior native and browser evidence
+[Before/after probe evidence](strict-runtime-56-refusal.json). Actual bridge verification passes on current Bookworm native and Ubuntu22
+sandboxed-browser host desktops; the Mac control is read-only. Prior evidence
 retains its original source pins and environment scope.
 
 

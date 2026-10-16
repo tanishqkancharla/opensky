@@ -1,6 +1,6 @@
 {
   "issue": 56,
-  "status": "implemented; hosted actual bridge validation pending",
+  "status": "reported preloaded/late/between-turn tracking refusal verified; package qualified",
   "SDKBase": "f885b8b9de9b85b61d86bfaec5df5e94cea6c3fa",
   "driverSource": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
   "driverChanged": false,
@@ -60,6 +60,103 @@
     "Trusted host code must not enable incompatible instrumentation from inside an already-entered synchronous VM turn. Use separately supervised processes when host instrumentation can change arbitrarily.",
     "Refusal does not cancel or roll back previously dispatched host actions. Host action completion/drain remains separate.",
     "Node test runner enables promise execution tracking: unchanged positive assertions execute in bounded standalone subprocesses; refusals are separately verified.",
-    "No fresh desktop acceptance, benchmark score or Bookworm sandboxed browser acceptance from CPU owners."
-  ]
+    "No new benchmark score. Exact Bookworm sandboxed browser remains unverified; Mac cold launch issues19/66 remain open. Ubuntu host browser evidence is separate."
+  ],
+  "SDKRuntimeSource": "cb13ce95b535fcc3a166e478ce75c4d1055954b5",
+  "SDKVersion": "0.2.29",
+  "packageSHA256": "2ae0bd193c40d89ba31c84016e114ef33c0c9d478de0f8124e2e3a7afc3adb87",
+  "actualDesktop": {
+    "Bookworm": {
+      "source": "cb13ce95b535fcc3a166e478ce75c4d1055954b5",
+      "driver": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+      "run": 38939166394,
+      "environment": "Debian Bookworm container, ordinary uid1001/CapEff0, Node22.23.3, TigerVNC/XFWM/shared D-Bus/AT-SPI",
+      "strictBridge": {
+        "realAXAcrossRealmAwait": true,
+        "retainedApp": true,
+        "originalArtifactOwnership": true,
+        "sessionsDetached": true
+      },
+      "native": {
+        "exactSavedASCIIBytes": 29,
+        "exactSavedUnicodeBytes": 46,
+        "partial": "par, unknown effect, one dispatch",
+        "at500msCodepoints": 52,
+        "finalSavedCodepoints": 1000,
+        "finalSavedBytes": 2750,
+        "activeAfterStop": true,
+        "queuedCancelledBeforeDispatch": true,
+        "followingSaveSerialized": true,
+        "missingForegroundAndClipboardGrantsPreserveAppState": true
+      },
+      "wholeNode22": {
+        "passed": 514,
+        "skipped": 2,
+        "failed": 0
+      },
+      "embeddedSDK": 269,
+      "freshLinuxUnits": {
+        "passed": 669,
+        "ignored": 10,
+        "failed": 0
+      },
+      "supervisorsExitedWithoutForce": 7,
+      "BookwormContainerBrowserAccepted": false,
+      "paidArms": 0,
+      "binaryIndependentlyDownloaded": false
+    },
+    "UbuntuHost": {
+      "source": "cb13ce95b535fcc3a166e478ce75c4d1055954b5",
+      "driver": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+      "run": 38939170188,
+      "environment": "Ubuntu22 host, ordinary uid1001/CapEff0, Node22.23.3, TigerVNC/XFWM/shared D-Bus/AT-SPI; Chrome sandbox unchanged",
+      "strictBridge": {
+        "realAXAcrossRealmAwait": true,
+        "retainedApp": true,
+        "originalArtifactOwnership": true,
+        "sessionsDetached": true
+      },
+      "native": {
+        "exactSavedASCIIBytes": 29,
+        "exactSavedUnicodeBytes": 46,
+        "partial": "par, unknown effect, one dispatch",
+        "at500msCodepoints": 50,
+        "finalSavedCodepoints": 1000,
+        "finalSavedBytes": 2750,
+        "activeAfterStop": true,
+        "queuedCancelledBeforeDispatch": true,
+        "followingSaveSerialized": true
+      },
+      "browser": {
+        "trustedClickCount": 1,
+        "trustedScrollPixels": 600,
+        "exactOwnedForegroundPID": 15313,
+        "missingOptInAndStaleRefusals": true,
+        "ownedRenderersWithKernelSandbox": 5,
+        "screenshotsVisuallyReviewed": true
+      },
+      "cleanup": {
+        "supervisorsExitedWithoutForce": 7
+      },
+      "driverBuild": "reused original38920063943; source/binary/669-unit-log hashes independently verified, no new driver unit execution",
+      "BookwormContainerBrowserAccepted": false,
+      "paidArms": 0
+    },
+    "Mac": {
+      "control": "read-only existing Calendar exact window across two strict cells; stable target handle and original baseline preserved",
+      "applicationOpened": false,
+      "inputDispatched": false,
+      "driverRebuilt": false,
+      "cleanupVerified": true,
+      "firstParentProbe": "optional target-field assumption failed; corrected to independently exact driver args/returned PID/window; original refusal retained"
+    }
+  },
+  "installedPackage": {
+    "node22And24Probes": 12,
+    "allNaturalExitZero": true,
+    "compiledFilesEach": 72,
+    "bytesIdenticalToQualifiedRuntime": true,
+    "driverInvocations": 0,
+    "npmRegistryPublished": false
+  }
 }
