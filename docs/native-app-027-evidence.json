@@ -1,0 +1,45 @@
+{
+  "SDKSource": "d7034226852823a2a9dd26eb962e6a67b62c870e",
+  "SDKRuntimeSource": "d7034226852823a2a9dd26eb962e6a67b62c870e",
+  "driverSource": "4a0189e286cf48c6b05da5bdd76ffebce4accc84",
+  "driverVersion": "0.35.4",
+  "SDKVersion": "0.2.27-candidate",
+  "actualRun": 38905764063,
+  "runConclusion": "failure: browser installation trust preflight; native/strict phases independently verified",
+  "environment": "Ubuntu22 ordinary-user host; Node22.23.3, TigerVNC/XFWM/shared D-Bus and AT-SPI; bounded native/browser manifests; Chrome sandbox startup passed",
+  "driverSHA256": "d9fcfd485030a1e8d0064ab834928a38ae8ae1fcbab15d90e7cda9c5193fe4f8",
+  "strictBridge": "passed; real AX binding retained across realm await",
+  "nativeAppIdentity": "same-name headless Python records no longer steal the GUI binding; unchanged exact PID/window grants",
+  "asciiSavedExact": true,
+  "unicodeSavedExact": true,
+  "selectionReplaced": true,
+  "clipboard": "payload-left",
+  "transferVerified": false,
+  "preinputRefusalsPreserveFreshTextSelectionClipboard": true,
+  "partialPaste": {
+    "saved": "par",
+    "effect": "unknown",
+    "oneDispatch": true,
+    "noReplay": true
+  },
+  "typing": {
+    "codepointsAt500ms": 44,
+    "codepointsSaved": 1000,
+    "UTF8BytesSaved": 2750,
+    "StopRemainedActive": true,
+    "followingSaveAfterCompletion": true,
+    "queuedInputCancelled": true
+  },
+  "ownedSupervisorsExitedWithoutForce": 7,
+  "browserAccepted": false,
+  "browserRefusal": "Error: no root-owned, non-writable system Chromium executable is available for isolated launch",
+  "bookwormContainerBrowserAccepted": false,
+  "wholeSDKNode22And24": {
+    "passedEach": 506,
+    "BunOnlySkippedEach": 1
+  },
+  "embeddedSDKOwnersPassed": 269,
+  "LinuxUnitsPassed": 666,
+  "LinuxUnitsIgnored": 10,
+  "artifactSHA256": "84349a072c20f8589179d6892799188a10d983c962c5ba62a1ef74728184f996"
+}

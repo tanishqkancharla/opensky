@@ -1,6 +1,47 @@
 # Persistent Linux host integration
 
-## Current tested distribution: SDK0.2.26 / Driver0.35.4
+## Current tested distribution: SDK0.2.27 / Driver0.35.4
+
+SDK0.2.27 retains driver pin **`4a0189e286cf48c6b05da5bdd76ffebce4accc84`**.
+Accepted SDK runtime source is **`d7034226852823a2a9dd26eb962e6a67b62c870e`**.
+Use the GitHub release tarball; no new npm registry publication is claimed.
+
+Native `cua.getApp("python3")` now resolves the sole attested GUI process among
+same-name headless processes before probing windows. Existing identifier
+precedence, exact target/stale checks and metadata-only cold launch remain.
+Multiple live GUI processes or unproved live identity refuse with
+`ambiguous_app` and `error.details.delivery === "not_dispatched"`; no input is
+sent. Use an unambiguous app identifier or exact PID/window driver calls when
+several GUI processes share one name. Keep all host mutations in the shared
+`DesktopActionQueue` described below; no action is automatically replayed.
+
+[Actual run38905764063](https://github.com/tanishqkancharla/opensky/actions/runs/38905764063)
+on an ordinary-user **Ubuntu22 host**, Node22.23.3, TigerVNC/XFWM and shared
+D-Bus/AT-SPI verifies both the strict-worker binding and direct SDK, under
+unchanged bounded grants. Exact saved ASCII/Unicode replacements, payload-left
+clipboard, typed pre-input refusals, one partial paste with unknown effect/no
+replay, queued cancellation and eventual1000-codepoint/2750-byte saved typing
+all pass.44codepoints are visible at the500ms deadline; Stop leaves that action
+active and following Save starts only after completion. Seven supervisors exit
+without force. [Compact native effect evidence](native-app-027-evidence.json).
+
+**That overall run fails in browser preparation:** no root-owned/non-writable
+system Chromium executable is accepted. Sandbox startup itself passes, but no
+browser click/scroll is certified. This Ubuntu host evidence does not establish
+Halo's Bookworm container compatibility; the prior Bookworm native-only evidence
+below stays separately pinned. Foreground browser examples remain the supported
+API shape with actual sandboxed TigerVNC browser acceptance still pending.
+
+Whole SDK506pass/1Bun-only skip each Node22/24;269 embedded owners and666Linux
+units pass. All29 required signed-Mac owners pass across18groups. A first
+competing-copy watcher identity refusal is retained; its exact paste saved and
+cleanup passed, then an unchanged fresh fixture retry passes. Final SDKd703 only
+adds the guarded metadata-only cold compatibility branch to the real-Mac tested
+652source; the successful GUI paths are unchanged. Signing identity/grants stay
+unchanged. This release claims no new benchmark performance gain.
+
+
+## Previous tested distribution: SDK0.2.26 / Driver0.35.4
 
 SDK0.2.26 pins driver **`4a0189e286cf48c6b05da5bdd76ffebce4accc84`**. Its
 accepted SDK source is **`6201d3fdd5e00e056e0d60ffa6c552e15966e73a`**; the
