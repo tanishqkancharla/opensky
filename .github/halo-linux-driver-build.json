@@ -1,0 +1,9 @@
+{
+  "source": "4a0189e286cf48c6b05da5bdd76ffebce4accc84",
+  "run": 38908929381,
+  "artifact": "halo-ubuntu22-host-contract",
+  "binarySHA256": "d9fcfd485030a1e8d0064ab834928a38ae8ae1fcbab15d90e7cda9c5193fe4f8",
+  "unitLogSHA256": "48854e87c9ff818c8cd8ea72cc2e9af22282f35acaafb90167e9423879cd6810",
+  "platform": "Ubuntu22 x86_64",
+  "qualification": "Driver build/666Linux units and native SDK effects passed; overall source run fails renderer observer. No whole-run acceptance inferred."
+}

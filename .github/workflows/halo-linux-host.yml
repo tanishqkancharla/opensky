@@ -6,8 +6,13 @@ on:
         description: 'Collect unchanged-policy Chrome sandbox/install facts without building or desktop input'
         type: boolean
         default: false
+      reuse_driver:
+        description: 'Reuse the pinned independently verified Ubuntu22 driver artifact; source/hash mismatches refuse'
+        type: boolean
+        default: false
 permissions:
   contents: read
+  actions: read
 jobs:
   halo-host:
     # This is separate Linux browser evidence, not Bookworm container acceptance.
@@ -54,17 +59,32 @@ jobs:
           stat -c '%n uid=%u gid=%g mode=%a type=%F' / /opt /opt/google /opt/google/chrome /opt/google/chrome/google-chrome /opt/google/chrome/chrome > artifacts/halo/chrome-installation-stat.txt
           python3 e2e/halo/sandbox-preflight.py --output artifacts/halo/sandbox-readiness --require-ready
       - uses: dtolnay/rust-toolchain@1.97.1
-        if: ${{ !inputs.readiness_only }}
+        if: ${{ !inputs.readiness_only && !inputs.reuse_driver }}
       - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
-        if: ${{ !inputs.readiness_only }}
+        if: ${{ !inputs.readiness_only && !inputs.reuse_driver }}
         with:
           workspaces: 'driver/libs/cua-driver/rust -> target'
           cache-on-failure: true
+      - name: Retrieve the pinned first-party build without executing it
+        if: ${{ !inputs.readiness_only && inputs.reuse_driver }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: halo-ubuntu22-host-contract
+          run-id: '38908929381'
+          github-token: ${{ github.token }}
+          path: prebuilt-halo
       - name: Build exact driver and SDK
         if: ${{ !inputs.readiness_only }}
+        env:
+          HALO_REUSE_DRIVER_BUILD: ${{ inputs.reuse_driver && '1' || '0' }}
         run: |
-          cargo build --release --locked -p cua-driver --manifest-path driver/libs/cua-driver/rust/Cargo.toml
-          cargo test --release --locked -p platform-linux --lib --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/platform-linux-unit.log 2>&1
+          if [[ "$HALO_REUSE_DRIVER_BUILD" == "1" ]]; then
+            node e2e/halo/verify-driver-build.mjs prebuilt-halo "$HALO_DRIVER_REF" driver/libs/cua-driver/rust/target/release/cua-driver artifacts/halo/driver-build-proof.json
+          else
+            cargo build --release --locked -p cua-driver --manifest-path driver/libs/cua-driver/rust/Cargo.toml
+            cargo test --release --locked -p platform-linux --lib --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/platform-linux-unit.log 2>&1
+            printf '{"mode":"fresh-driver-build","freshDriverUnits":true}\n' > artifacts/halo/driver-build-proof.json
+          fi
           driver/libs/cua-driver/rust/target/release/cua-driver --opensky-driver-identity > artifacts/halo/identity.json
           sha256sum driver/libs/cua-driver/rust/target/release/cua-driver > artifacts/halo/driver-sha256.txt
           cp driver/libs/cua-driver/rust/target/release/cua-driver artifacts/halo/opensky-driver

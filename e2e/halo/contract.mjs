@@ -22,6 +22,18 @@ const driver = new CuaDriverClient({ binaryPath: process.env.OPENSKY_DRIVER_PATH
 const sdk = createOpenSky({ driver, target: "linux", homeDir: join(out, "sdk-home"), screenshotDir: join(out, "screenshots"), autoLaunch: false, settleDelayMs: 0 });
 const cua = createCua(sdk, { emit: () => undefined }); const queue = new DesktopActionQueue();
 const browserDriver = new CuaDriverClient({ binaryPath: process.env.OPENSKY_DRIVER_PATH, socket: process.env.HALO_BROWSER_SOCKET, session: "halo-browser-contract", autoStart: false, timeoutMs: null });
+const browserPreparations=[];
+const processStart=stat=>stat.slice(stat.lastIndexOf(")")+2).trim().split(/\s+/)[19];
+const browserCall=browserDriver.call.bind(browserDriver);
+browserDriver.call=async(tool,args={})=>{
+  const result=await browserCall(tool,args);
+  if(tool==="browser_prepare"&&result.structured?.prepared===true){
+    const pid=Number(result.structured.prepared_pid);assert.ok(Number.isSafeInteger(pid)&&pid>0);
+    const receipt={session:args.session,prepared:result.structured,startTimeTicks:processStart(await readFile(`/proc/${pid}/stat`,"utf8"))};
+    browserPreparations.push(receipt);await writeFile(join(out,"browser-prepare-receipts.json"),JSON.stringify(browserPreparations,null,2));
+  }
+  return result;
+};
 const browserSdk = createOpenSky({ driver: browserDriver, target: "linux", homeDir: join(out, "browser-sdk-home"), screenshotDir: join(out, "browser-screenshots"), autoLaunch: false, settleDelayMs: 0 });
 const browserCua = createCua(browserSdk, { emit: () => undefined });
 let tab, browser = { clicks: 0, scrollY: 0, focused: false, trusted: false };
@@ -135,20 +147,34 @@ try {
     const sandbox = execFileSync("google-chrome-stable", ["--headless", "--disable-gpu", "--no-first-run", "--user-data-dir=" + join(process.env.XDG_RUNTIME_DIR, "sandbox-probe"), "--dump-dom", "chrome://sandbox"], { timeout: 15000, encoding: "utf8" });
     await writeFile(join(out, "chrome-sandbox.html"), sandbox);
     tab = await queue.submit(() => browserCua.createBrowserTab("chrome", "http://127.0.0.1:8123/")).wait();
+    // The existing page-report postcondition proves the renderer has started
+    // before its process/sandbox audit; retain raw owned records before asserting.
+    await poll(async () => JSON.parse(await readFile(join(out, "browser-state.json"), "utf8")).clicks === 0);
+    assert.equal(browserPreparations.length,1);
+    const rootPID=Number(browserPreparations[0].prepared.prepared_pid),processes=[];
+    for(const pid of (await readdir("/proc")).filter(pid=>/^\d+$/.test(pid))){
+      try{
+        const stat=await readFile(`/proc/${pid}/stat`,"utf8"),status=await readFile(`/proc/${pid}/status`,"utf8");
+        const argv=(await readFile(`/proc/${pid}/cmdline`,"utf8")).split("\0").filter(Boolean);
+        const startTimeTicks=processStart(stat);
+        if(startTimeTicks!==processStart(await readFile(`/proc/${pid}/stat`,"utf8")))continue;
+        processes.push({pid:Number(pid),parentPID:Number(status.match(/^PPid:\s*(\d+)/m)?.[1]),startTimeTicks,argv,status});
+      }catch(error){if(!["ENOENT","ESRCH"].includes(error.code))throw error;}
+    }
+    const ownedPIDs=new Set([rootPID]);let changed=true;
+    while(changed){changed=false;for(const process of processes)if(ownedPIDs.has(process.parentPID)&&!ownedPIDs.has(process.pid)){ownedPIDs.add(process.pid);changed=true;}}
+    const owned=processes.filter(process=>ownedPIDs.has(process.pid));
+    await writeFile(join(out,"owned-browser-process-audit.json"),JSON.stringify({rootPID,prepared:browserPreparations[0],owned},null,2));
+    assert.equal(owned.find(process=>process.pid===rootPID)?.startTimeTicks,browserPreparations[0].startTimeTicks,"owned root process identity changed");
     const baseline = await readFile("/proc/self/status", "utf8");
     const baseFilters = Number(baseline.match(/^Seccomp_filters:\s*(\d+)/m)?.[1] ?? 0);
     const rendererEvidence = [];
-    for (const pid of (await readdir("/proc")).filter(pid => /^\d+$/.test(pid))) {
-      try {
-        const argv = (await readFile(`/proc/${pid}/cmdline`, "utf8")).split("\0").filter(Boolean);
-        if (!argv.some(arg => arg.includes("/opt/google/chrome/"))) continue;
-        assert.ok(!argv.includes("--no-sandbox") && !argv.includes("--disable-setuid-sandbox") && !argv.includes("--disable-seccomp-filter-sandbox"));
-        if (!argv.includes("--type=renderer")) continue;
-        const status = await readFile(`/proc/${pid}/status`, "utf8");
-        assert.match(status, /^NoNewPrivs:\s*1$/m); assert.match(status, /^Seccomp:\s*2$/m);
-        assert.ok(Number(status.match(/^Seccomp_filters:\s*(\d+)/m)?.[1] ?? 0) > baseFilters, "renderer has an additional sandbox filter beyond the container baseline");
-        rendererEvidence.push({ pid, argv, status });
-      } catch (error) { if (!["ENOENT", "ESRCH"].includes(error.code)) throw error; }
+    for(const {pid,argv,status}of owned){
+      assert.ok(!/(?:^|\s)--(?:no-sandbox|disable-setuid-sandbox|disable-seccomp-filter-sandbox)(?=\s|$)/.test(argv.join(" ")));
+      if(!argv.includes("--type=renderer"))continue;
+      assert.match(status,/^NoNewPrivs:\s*1$/m);assert.match(status,/^Seccomp:\s*2$/m);
+      assert.ok(Number(status.match(/^Seccomp_filters:\s*(\d+)/m)?.[1]??0)>baseFilters,"renderer has an additional sandbox filter beyond the host baseline");
+      rendererEvidence.push({pid,argv,status});
     }
     assert.ok(rendererEvidence.length > 0, "owned Chrome has a sandboxed renderer");
     await writeFile(join(out, "renderer-sandbox.json"), JSON.stringify({ baseline, rendererEvidence }, null, 2));
