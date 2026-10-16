@@ -1,0 +1,61 @@
+{
+  "issue": 72,
+  "status": "Implemented on main; actual Bookworm acceptance pending",
+  "runtimeSource": "452bc212706c0e33edb5b214c56b4179971995a7",
+  "driverSource": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+  "contract": {
+    "freshNamedFacade": "await cua.getApp(name)",
+    "freshNamedSDK": "await sdk.get_app_state({app:name,scope:\"app\",includeScreenshot:false})",
+    "newBinding": true,
+    "retainedHandleProcessMigration": false,
+    "ambiguousNamesakes": "refuse before input",
+    "listApps": "inventory only; does not refresh retained handles",
+    "newGrantOrInputReplay": false
+  },
+  "actualMac": {
+    "app": "Calculator",
+    "baseline": "0.2.29 runtime with docs-only536aeb4 head",
+    "beforePIDs": [
+      54916,
+      57245
+    ],
+    "before": "replacement window visible and inventory running; canonical getApp still probes exited PID and refuses",
+    "afterPIDs": [
+      87069,
+      89387
+    ],
+    "after": "same SDK/facade freshly binds replacement PID; retained original read refuses and keeps original PID",
+    "source": "Working product code later committed as452bc21; same driver9e",
+    "inputDispatched": false,
+    "ownedProcessesCleaned": true,
+    "initialObserverErrors": "Two separately retained attempts failed on the helper path and AppInfo.name assumption before reaching the bug; fixed observer uses displayName. Original outcomes retained."
+  },
+  "localTests": {
+    "node22": {
+      "passed": 517,
+      "skippedBun": 1,
+      "failed": 0
+    },
+    "node24": {
+      "passed": 517,
+      "skippedBun": 1,
+      "failed": 0
+    },
+    "buildAndE2ETypecheck": true,
+    "focusedPassed": 134,
+    "existingRealMacPassed": [
+      "CLICK-N01",
+      "DIFF-N01"
+    ],
+    "existingRealMacUnaccepted": "FOCUS-N01 setup reproduces independent66 before test input; original failure stays failed, separate exact process/artifact cleanup retained"
+  },
+  "Linux": {
+    "run": 38981264234,
+    "SDKSource": "452bc212706c0e33edb5b214c56b4179971995a7",
+    "accepted": false,
+    "pending": "Real GTK stop/start; fresh canonical lookup; retained stale paste refusal; exact Unicode saved bytes. Separate bounded canonical-executable native grant; no unrestricted permissions."
+  },
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "releasePublished": false
+}

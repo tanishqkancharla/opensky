@@ -121,5 +121,29 @@
     "correctionDemonstrated": false,
     "runtimeChanged": false,
     "noGrantChangeOrReplay": true
+  },
+  "secondSDKCounterexample": {
+    "SDKSource": "452bc212706c0e33edb5b214c56b4179971995a7",
+    "fileOpenLogicUnchanged": true,
+    "contract": "FOCUS-N01 setup",
+    "pid": 65604,
+    "windowId": 95556,
+    "oldASN": "0x0-0x16ce6cd",
+    "newASN": "0x0-0x8ea1e99",
+    "nativeTrace": "Same-PID/different-ASN conflict at23:19:18.204025UTC; CoreServicesUIAgent sends odoc to kpid65604 at.204101; no process odoc receipt observed in bounded capture. Absence is not proof of causation.",
+    "passivePostRefusalSamples": 3,
+    "sampleOffsetsSeconds": [
+      0,
+      3,
+      6
+    ],
+    "allSamples": "Untitled/document_url null",
+    "inputDispatched": false,
+    "openReplayed": false,
+    "correlationBoundChanged": false,
+    "exactOuterQuitVerified": true,
+    "wholeOriginalScratchInodeAndPayloadRetained": true,
+    "testAcceptance": false,
+    "causeOrPermanentCorrectionEstablished": false
   }
 }
