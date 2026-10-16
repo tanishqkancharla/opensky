@@ -3696,7 +3696,12 @@ function formatAddedElement(tree: string, element: SnapshotElement): string {
   if (line !== undefined) return line;
   // A rendered line is only the beginning of a multiline field. Serialize
   // the complete structured value so its body remains evidence, never rows.
-  const actions = element.actions?.length ? ` [actions=[${element.actions.join(",")}]]` : "";
+  // Build metadata independently of the complete serialized value. This also
+  // covers aggregate/multiline added rows that cannot borrow a tree line.
+  const pageActions = redundantNativePageActions(element.actions ?? []);
+  const visibleActions = element.actions?.filter(action =>
+    !pageActions.has(action.replace(/^AX/i, "").toLowerCase()));
+  const actions = visibleActions?.length ? ` [actions=[${visibleActions.join(",")}]]` : "";
   const settable = element.settable === true ? " [settable]" : "";
   return `${formatElement(element)}${actions}${settable}`;
 }
@@ -4553,6 +4558,19 @@ function primaryDocumentFingerprint(elements: SnapshotElement[]): string | undef
   return label ? `label:${label}` : undefined;
 }
 
+function redundantNativePageActions(rawActions: readonly string[]): Set<string> {
+  // Primary scroll() is documented. Keep canonical page-scroll authority in
+  // raw inventories, while custom readable names remain explicit.
+  const pagePattern = /^AXScroll(?:Down|Left|Right|Up)ByPage$/;
+  const pageActions = new Set(rawActions.filter(action => pagePattern.test(action))
+    .map(action => action.slice(2).toLowerCase()));
+  for (const action of rawActions.filter(action => !pagePattern.test(action))) {
+    const name = action.split("\n", 1)[0]!.replace(/^Name:/i, "").replace(/^AX/, "").trim().toLowerCase();
+    pageActions.delete(name);
+  }
+  return pageActions;
+}
+
 /**
  * Keep useful AX hints while compacting implicit selection and private IDs.
  * The structured element map retains every action, so this only reduces the
@@ -4571,16 +4589,7 @@ export function compactTreeActionHints(tree: string, elements: SnapshotElement[]
       if (role !== control![2]) return line;
       if ([element?.value, element?.formattedValue, element?.label].some(value => value?.includes("\n"))) return line;
       const rawActions = element?.actions ?? [];
-      // Primary scroll() is already documented. Repeating UIKit's canonical
-      // page-scroll names on every card row adds no model-facing operation.
-      // Keep the raw inventory for dispatch; custom names remain explicit.
-      const pagePattern = /^AXScroll(?:Down|Left|Right|Up)ByPage$/;
-      const pageActions = new Set(rawActions.filter(action => pagePattern.test(action))
-        .map(action => action.slice(2).toLowerCase()));
-      for (const action of rawActions.filter(action => !pagePattern.test(action))) {
-        const name = action.split("\n", 1)[0]!.replace(/^Name:/i, "").replace(/^AX/, "").trim().toLowerCase();
-        pageActions.delete(name); // Preserve a colliding custom readable name.
-      }
+      const pageActions = redundantNativePageActions(rawActions);
       let compact = compactGeneratedIdentifier(line, element);
       const selectable = role === "AXRow" && rawActions.some(action =>
         /^(?:AX)?Show(?:Default|Alternate)UI$/i.test(action));

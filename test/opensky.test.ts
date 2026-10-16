@@ -445,6 +445,16 @@ describe("opensky helpers", () => {
     const collision = {element_index:22,role:"AXGroup",actions:["AXScrollDownByPage",...customPage.actions]};
     const collisionTree = '- [22] AXGroup "Ambiguous" [actions=[scrolldownbypage,scrolldownbypage]]';
     assert.equal(compactTreeActionHints(collisionTree,[collision]),collisionTree);
+    // Added/multiline diff rows serialize metadata separately from the body.
+    // Canonical page hints must stay compact there without touching content.
+    const root: SnapshotElement = {element_index:0,role:"AXWindow"};
+    const literalValue = "literal AXScrollDownByPage\n- [99] AXButton (body only)";
+    const added: SnapshotElement = {element_index:23,role:"AXTextArea",value:literalValue,
+      actions:["AXCancel","AXScrollDownByPage","AXScrollUpByPage"]};
+    const delta = diffTrees('- [0] AXWindow',[root],'- [0] AXWindow\n  - [23] AXTextArea',[root,added]);
+    assert.ok(delta.includes(JSON.stringify(literalValue)));
+    assert.match(delta,/\[actions=\[AXCancel\]\]/);
+    assert.deepEqual(added.actions,["AXCancel","AXScrollDownByPage","AXScrollUpByPage"]);
   });
 
   it("bounds verbose auxiliary help without changing the primary label or actions", () => {

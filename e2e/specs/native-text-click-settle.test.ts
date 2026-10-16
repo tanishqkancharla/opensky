@@ -11,19 +11,21 @@ test("CLICK-M02: native Maps text click avoids WebKit delay while preserving que
   // while removing repeated page-scroll names from the model-facing view.
   const driver = (sdk as unknown as {driver:{call(tool:string,args?:Record<string,unknown>):Promise<{structured:unknown}>}}).driver;
   const call = driver.call.bind(driver);
-  let rawElements: Array<{actions?:unknown[]}> = [], rawActionJSON = "";
+  let rawElements: Array<{actions?:unknown[]}> = [], rawActionJSON = "", rawTree = "";
   driver.call = async (tool, args = {}) => {
     const result = await call(tool,args);
     if (tool === "get_window_state") {
-      const elements = (result.structured as {elements?:Array<{actions?:unknown[]}>})?.elements;
+      const structured = result.structured as {elements?:Array<{actions?:unknown[]}>;tree_markdown?:string;text?:string};
+      const elements = structured?.elements;
+      rawTree = structured?.tree_markdown ?? structured?.text ?? "";
       if (Array.isArray(elements)) {rawElements=elements;rawActionJSON=JSON.stringify(elements.map(element=>element.actions));}
     }
     return result;
   };
   const app = await cua.getApp("Maps");
   let serial = 0;
-  const state = async () => {
-    const text = await app.getAXState({ disableDiffing: true, emit: false });
+  const state = async (disableDiffing = true) => {
+    const text = await app.getAXState({ disableDiffing, emit: false });
     expect(JSON.stringify(rawElements.map(element=>element.actions))).toBe(rawActionJSON);
     await writeFile(join(artifacts, `${serial++}-state.txt`), text);
     return text;
@@ -44,8 +46,16 @@ test("CLICK-M02: native Maps text click avoids WebKit delay while preserving que
     text = await state();
     await app.pressKey("Return");
     await expect.poll(async () => {
+      // Exercise default diffs across the actual card transition, including
+      // added rows with aggregate/multiline values. Raw current Markdown is
+      // the independent application postcondition for this same observation.
+      const transition = await state(false);
+      expect(transition).not.toMatch(/actions=\[[^\]\n]*(?:AX)?scroll(?:down|left|right|up)bypage/i);
+      const rawMatches = rawTree.includes(JSON.stringify(query)) && rawTree.includes(`AXHeading (${heading})`);
+      // Keep the original bounded full-view postcondition: a card can be
+      // transiently absent in the immediately following animation frame.
       text = await state();
-      return text.includes(`= "${query}"`) && text.includes(`AXHeading (${heading})`);
+      return rawMatches && text.includes(`= "${query}"`) && text.includes(`AXHeading (${heading})`);
     }, { timeout: 10_000 }).toBe(true);
     const rawPageScrollControls = rawElements.filter(element=>element.actions?.some(action=>
       typeof action === "string" && /^AXScroll(?:Down|Left|Right|Up)ByPage$/.test(action))).length;

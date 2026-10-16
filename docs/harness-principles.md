@@ -213,3 +213,5 @@ Retain structured uncertainty and exact dispatch lineage at the original failure
 ### Keep implementation detail out of routine observations
 
 Describe a first-class operation once. Keep repetitive platform action variants and selector internals in the structured binding map, and verify that the compact view preserves content, capabilities and actual application outcomes.
+
+Verify both full and incremental presentation paths against the same structured authority; they may serialize metadata differently.
