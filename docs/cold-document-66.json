@@ -56,5 +56,7 @@
     "behavior": "After original failed public open only: independently identify one fresh process and collect passive exact-PID snapshots at0/3/6seconds. No open/input replay, no adoption, no larger correlation bound and no reclassification of original test or cleanup. Diagnostic IO failure cannot replace original refusal.",
     "publishedRuntimeChanged": false
   },
-  "status": "Open; not fixed. Paid candidate blocked pending diagnosed correction and affected qualification."
+  "status": "Open; not fixed. Paid candidate blocked pending diagnosed correction and affected qualification.",
+  "subsequentControls": "cold-document-66-controls.json",
+  "subsequentStatus": "Issue remains open on unchanged file-opening components through0.2.29; no unsafe staged recipient substitution is adopted."
 }

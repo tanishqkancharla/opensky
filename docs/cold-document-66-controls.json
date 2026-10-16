@@ -1,0 +1,108 @@
+{
+  "issue": 66,
+  "status": "Open; diagnosed alternatives are not a fix",
+  "SDKRelease": "0.2.29",
+  "SDKReleaseSource": "d17da0fece49b789b285950c22404d3e33d38296",
+  "driverSource": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+  "MacBinarySHA256": "02c754f88b78406cda2b3a9e498e54ea6b733eaf11b18cc74f9925999fd1244c",
+  "originalCounterexample": "cold-document-66.json",
+  "originalFileOpeningComponentsUnchangedFromD703": {
+    "src/opensky.ts": "f4d2d850b146bccaac87f6287d4e5a37278c5c2f45391099ec909623b39c5d2c",
+    "src/cua.ts": "a695c04f4a587a73bc35267185e744c6c4d7485ff278fb82311fa6eb35a060cb",
+    "src/driver.ts": "ce836e076cb05c4f3b45bb4691e85b526d67000fa6f83200ca8456f426b5677f"
+  },
+  "routingEvidence": {
+    "previousSuccessfulOpensCompared": 8,
+    "all8LoggedDocumentReceipt": true,
+    "all8SamePIDRegistrationConflict": false,
+    "failedProcess": 39489,
+    "failedSendAddress": "kpid39489 following same-PID/different-ASN hint conflict",
+    "newMainAndWorkerSuccessfulSendAddress": "hinted Mach port, both CoreServicesUIAgent",
+    "mainCallbackMs": 101.2420654296875,
+    "workerCallbackMs": 102.4540662765503,
+    "noPromptControl": "also uses CoreServicesUIAgent/hinted port; no correction demonstrated",
+    "limit": "Correlation narrows the native routing boundary. It does not establish exact misrouting of the original event or the owner/cause of the stale registration."
+  },
+  "OSControls": {
+    "newAppCreatingControls": 9,
+    "newProcesses": 10,
+    "URIAndNoncePayloadObserved": 5,
+    "initialDocumentEvent": "one openApplication call with configured aevt/odoc succeeds once; no correction demonstrated",
+    "mainVsWorker": "both native document operations succeed; changing request thread is not justified as a fix",
+    "startupArguments": {
+      "arrayXML": "no requested document in unchanged5s bound or10s passive postmortem",
+      "singlePathString": "no requested document in unchanged5s bound or10s passive postmortem",
+      "argumentDomainEncodingIndependentlyObserved": [
+        "XML becomes NSArray",
+        "OpenStep becomes NSArray",
+        "single path remains NSString"
+      ],
+      "causeOfFailure": "unproven; no sandbox-denial log observed in the scoped capture"
+    },
+    "directPSN": {
+      "freshAppFinishedLaunching": true,
+      "exactPSNReversePIDVerified": true,
+      "noPromptPermissionCode": -1744,
+      "documentEventAttempts": 0,
+      "permissionChanged": false,
+      "limitation": "This is the unbundled control caller, not an installed-driver permission result. No new supported SDK path is established. Public deprecated Process Manager C APIs require a diagnostic shim because Swift marks the old declarations unavailable."
+    },
+    "competingInstances": {
+      "ownedPIDs": [
+        69996,
+        69997
+      ],
+      "defaultSelectedPID": 69996,
+      "explicitDocumentEventTargetPID": 69997,
+      "NSWorkspaceCallbackPID": 69996,
+      "documentURIObservedInPIDs": [
+        69996
+      ],
+      "documentEventAttempts": 1,
+      "requestedPIDHadDocument": false,
+      "directAppleEventSend": false,
+      "limit": "Exact URI mismatch observed before cleanup. No body snapshot was read from the other instance. Both app instances and the source file were privately created by the control.",
+      "explicitPSNMatchesRequestedProcessOSCheckin": true,
+      "documentReceiptLoggedInOtherProcess": 69996
+    },
+    "competingProcedure": [
+      "Require an empty independent TextEdit baseline.",
+      "Launch two fresh instances with the same application URL, createsNewApplicationInstance=true, activates=false, addsToRecentItems=false, -ApplePersistenceIgnoreState YES and standard ascr/noop launch event.",
+      "Wait for both actual processes to finish launching; retain PID/launch epoch.",
+      "Use a no-document openApplication reference request with createsNewApplicationInstance=false to discover the default receiver.",
+      "Construct exactly one aevt/odoc event addressed to the other live owned process serial number, carrying one private fileURL descriptor in keyDirectObject.",
+      "Pass that event to openApplication at the same application URL, createsNewApplicationInstance=false.",
+      "Observe exact native document URLs for both owned PIDs before cleanup. The configured receiver is not honored in this run."
+    ],
+    "initialHarnessError": "A Swift-only deprecated-API compile attempt failed; its following control refused an unknown mode before creating an app or scratch file. Original logs and empty cleanup retained."
+  },
+  "decision": "Do not substitute NSWorkspace staging for exact-target file handoff, adopt another window, replay document open, raise the5s bound, reset services or add consent automatically. The original SDK refusal remains valid; issue66 and paid admission stay blocked.",
+  "cleanup": {
+    "all10FreshProcessesExited": true,
+    "all9OriginalScratchInodesAndPayloadBytesRetained": true,
+    "CalendarOriginalPID": 84295,
+    "CalendarOriginalWindow": 54774,
+    "CalendarBaselinePreserved": true,
+    "newPaidAgents": 0,
+    "newScoreRows": 0,
+    "signerAndDriverUnchanged": true
+  },
+  "parentSourceMaintenance": {
+    "change": "Swift source files now participate in the existing local recoverable checkpoint. Original helper versions and compiled identities were retained before edits. No source/admission/pairing/cleanup gate is relaxed.",
+    "SwiftSourcesActuallyVerified": 14
+  },
+  "references": [
+    {
+      "purpose": "NSWorkspace initial Apple event contract",
+      "url": "https://developer.apple.com/documentation/appkit/nsworkspace/openconfiguration/appleevent"
+    },
+    {
+      "purpose": "No-prompt event permission probe",
+      "url": "https://developer.apple.com/documentation/coreservices/3025784-aedeterminepermissiontoautomatet"
+    },
+    {
+      "purpose": "Automation permission boundary and NSWorkspace exceptions",
+      "url": "https://developer.apple.com/videos/play/wwdc2019/701/"
+    }
+  ]
+}
