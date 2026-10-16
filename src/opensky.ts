@@ -228,7 +228,7 @@ export class OpenSky implements OpenSkyApi {
       availability: supported ? "supported" : tools ? "unavailable" : "unknown",
       formats: supported ? this.target === "mac" ? ["text", "html", "md"] : ["text"] : [],
       reason: supported ? undefined : tools ? "native_paste is absent from the installed platform registry; permissions cannot add it." : "Injected transport does not expose registry introspection.",
-      clipboard: supported ? this.target === "mac" ? "preserved-with-receipt" : "unknown" : tools ? "untouched" : "unknown",
+      clipboard: supported ? this.target === "mac" ? "preserved-with-receipt" : "payload-left" : tools ? "untouched" : "unknown",
     }};
   }
 
@@ -1670,11 +1670,14 @@ export class OpenSky implements OpenSkyApi {
           window_id: resolved.windowId,
           text: args.text,
           format,
-          ...(this.target === "mac" ? { clipboard_policy: "restore", delivery_mode: "foreground" } : {}),
+          clipboard_policy: this.target === "mac" ? "restore" : "leave",
+          delivery_mode: "foreground",
         });
         const outcome = asRecord(result.structured);
         const verified = this.target === "linux"
-          ? outcome?.status === "completed" && outcome.transfer_verified === true
+          ? outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false &&
+            outcome.clipboard_policy === "leave" && outcome.clipboard_restored === false &&
+            (outcome.clipboard_status === "payload_left" || outcome.clipboard_status === "newer_writer_observed")
           : outcome?.status === "completed" && outcome.target_value_verified === true && outcome.transfer_verified === false &&
             outcome.clipboard_policy === "restore" && (
               (outcome.clipboard_restore_status === "restored" && outcome.clipboard_restored === true) ||

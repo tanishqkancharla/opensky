@@ -191,8 +191,8 @@ const APP_DOCUMENTATION =
   "setValue replaces the value; focus the intended field before sending keys. " +
   'selectText selectionType is "text" | "cursor_before" | "cursor_after" (default text). ' +
   "Mac pressKey supports named symbols plus, asterisk, minus, and slash; use names in key combinations. " +
-  "Paste format is \"text\" | \"html\" | \"md\" (default text). Mac renders HTML/CommonMark; query paste capabilities on Linux. " +
-  "Mac paste preserves prior clipboard; newer observed copies are kept. Verify rich styles and saving. " +
+  "Paste formats: text (default), html, md; Mac renders rich text. Query Linux capabilities. " +
+  "Paste: Mac restores prior clipboard, preserving newer copies; X11 uses foreground and leaves payload. Verify styles/saving. " +
   "Creation and observations emit automatically; emit:false suppresses observation output.";
 
 export class CuaFacade {

@@ -6302,3 +6302,22 @@ All five supervisor processes and two exact clipboard owners exit. This route
 cannot be treated as confirmed delivery. Add a separately dispatched fresh
 desktop XTEST Ctrl+V control; never replay the acknowledged paste in that same
 editor. Production native_paste remains unsupported pending a real contract.
+
+SET417 fresh foreground control38869048206 passes exact ASCII insertion and
+Unicode selected replacement in both GTK buffer and Ctrl+S UTF-8 saved bytes.
+uid1001, zero effective capabilities, shared bus, all owned processes reaped.
+Implement the existing native_paste contract on X11 with upfront explicit
+foreground/leave policy, exact live editable/selection/value/clipboard checks,
+one existing XTEST Ctrl+V and same-object value verification. No raw AT-SPI
+PasteText, typing fallback or uncertain replay. SDK existing app.paste selects
+that compound route as it already does on Mac; Linux verifies actual target
+value plus leave receipt rather than claiming transfer provenance. Candidate
+units/real SDK bounded-grant checks remain pending; no released fix is claimed.
+
+SET417 candidate validation: whole SDK503 tests pass on each Node22/24, one
+Bun-only skip each; build/E2E typecheck and actionlint/Python/shell/JS syntax
+checks pass. The first whole run catches app guidance exceeding its existing
+1200-character budget. Condense the same semantics to1190 characters and keep
+that owner unchanged; original failure logs remain. Driverd8ee0def adds the
+X11 compound tool without changing installed Mac32. Actual bounded-grant SDK
+paste, partial-effect and original cancellation/completion owners are next.

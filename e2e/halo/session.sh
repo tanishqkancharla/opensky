@@ -56,7 +56,7 @@ resources:
       - pid: $editor_pid
         window_id: $editor_window
 allow:
-  tools: [start_session, end_session, list_apps, list_windows, get_window_state, type_text, hotkey, press_key, bring_to_front]
+  tools: [start_session, end_session, list_apps, list_windows, get_window_state, type_text, hotkey, press_key, bring_to_front, native_paste]
 EOF
 cat > "$HALO_ARTIFACTS/browser-grants.yaml" <<EOF
 version: 2

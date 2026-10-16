@@ -1,6 +1,6 @@
 import gi, json, os, pathlib
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GLib
+from gi.repository import Gtk, Gdk, GLib, GObject
 out = pathlib.Path(os.environ["HALO_ARTIFACTS"])
 win = Gtk.Window(title="Halo Contract Editor")
 win.set_wmclass("halo-contract-editor", "HaloContractEditor")
@@ -29,5 +29,16 @@ def key(widget, event):
         (out / "saved.txt").write_text(buffer.get_text(start, end, True), encoding="utf-8")
         snapshot(); return True
     return False
+# Private fixture emulates an app that accepts only a prefix of clipboard text.
+# No test switch is present in the shipped driver or SDK.
+def paste(widget):
+    if (out / "request-partial-paste").exists():
+        payload = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).wait_for_text()
+        GObject.signal_stop_emission_by_name(widget, "paste-clipboard")
+        if payload is not None:
+            buffer.delete_selection(True, True)
+            buffer.insert_at_cursor(payload[:3])
+        snapshot()
+view.connect("paste-clipboard", paste)
 win.connect("key-press-event", key); win.connect("destroy", Gtk.main_quit)
 win.show_all(); view.grab_focus(); GLib.timeout_add(50, snapshot); snapshot(); Gtk.main()

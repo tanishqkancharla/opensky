@@ -41,13 +41,52 @@ try {
   assert.match(beforeAX, /replace me/, "real AT-SPI snapshot exposes editor contents");
   await queue.submit(() => driver.call("hotkey", { scope: "desktop", keys: ["ctrl", "a"] })).wait();
   await poll(async () => (await state()).selected === "replace me" && (await state()).clipboard === "preserved clipboard sentinel Ελληνικά");
-  const before = await state(); const capability = await sdk.get_capabilities(); assert.equal(capability.nativePaste.availability, "unavailable");
-  for (const text of ["ASCII replacement", "Café Ελληνικά 中文 🙂"]) await assert.rejects(queue.submit(() => app.paste(text)).wait(), { code: "unsupported_native_paste" });
-  const after = await state(); assert.equal(after.text, before.text); assert.equal(after.selected, before.selected); assert.equal(after.clipboard, before.clipboard);
-  await queue.submit(() => driver.call("hotkey", { scope: "desktop", keys: ["ctrl", "s"] })).wait();
-  await poll(async () => (await readFile(join(out, "saved.txt"), "utf8")) === before.text);
-  await writeFile(join(out, "paste-refusal-saved.txt"), await readFile(join(out, "saved.txt")));
-  record("native-paste-capability", { before, after, capability, saved: before.text, supportedInsertion: false });
+  const before = await state(); const capability = await sdk.get_capabilities();
+  assert.equal(capability.nativePaste.availability, "supported");
+  assert.equal(capability.nativePaste.clipboard, "payload-left");
+  assert.deepEqual(capability.nativePaste.formats, ["text"]);
+  const exact = {pid:Number(process.env.HALO_EDITOR_PID),window_id:Number(process.env.HALO_EDITOR_WINDOW),text:"must not paste",format:"text",clipboard_policy:"leave"};
+  await assert.rejects(queue.submit(()=>driver.call("native_paste",{...exact,delivery_mode:"background"})).wait(),{code:"foreground_required"});
+  // The independently bounded browser-only daemon grants no native-paste operation.
+  await assert.rejects(queue.submit(()=>browserDriver.call("native_paste",{...exact,delivery_mode:"foreground"})).wait(),{code:"permission_denied"});
+  const refused=await state();assert.equal(refused.text,before.text);assert.equal(refused.selected,before.selected);assert.equal(refused.clipboard,before.clipboard);
+  record("native-paste-preinput-refusals",{before,after:refused,missingForeground:true,missingGrant:true});
+  const pasteCalls=[];const originalSDKCall=sdk.driver.call.bind(sdk.driver);
+  sdk.driver.call=async(tool,args={})=>{
+    try {const result=await originalSDKCall(tool,args);if(tool==="native_paste")pasteCalls.push({tool,args,structured:result.structured});return result;}
+    catch(error){if(tool==="native_paste")pasteCalls.push({tool,args,error:{code:error.code,details:error.details}});throw error;}
+  };
+  for(const [index,payload] of ["ASCII replacement\nsecond line","Café Ελληνικά 中文 🙂\nsecond line"].entries()) {
+    const initial=await state();await queue.submit(()=>driver.call("hotkey",{scope:"desktop",keys:["ctrl","a"]})).wait();
+    await poll(async()=>(await state()).selected===initial.text);
+    await queue.submit(()=>app.paste(payload)).wait();await poll(async()=>(await state()).text===payload);
+    await queue.submit(()=>driver.call("hotkey",{scope:"desktop",keys:["ctrl","s"]})).wait();
+    await poll(async()=>(await readFile(join(out,"saved.txt"),"utf8"))===payload);
+    const after=await state();assert.equal(after.clipboard,payload);assert.equal(after.selected,"");
+    const call=pasteCalls.at(-1);assert.equal(call.args.pid,exact.pid);assert.equal(call.args.window_id,exact.window_id);
+    assert.equal(call.args.delivery_mode,"foreground");assert.equal(call.args.clipboard_policy,"leave");
+    assert.equal(call.structured.target_value_verified,true);assert.equal(call.structured.transfer_verified,false);
+    await writeFile(join(out,`paste-${index}-saved.txt`),payload);
+    record("native-paste-insertion",{initial,payload,after,saved:payload,driverReceipt:call.structured});
+  }
+  await writeFile(join(out,"request-partial-paste"),"private app prefix limit");
+  const partialPayload="partial application result Ω";
+  await queue.submit(()=>driver.call("hotkey",{scope:"desktop",keys:["ctrl","a"]})).wait();
+  await assert.rejects(queue.submit(()=>app.paste(partialPayload)).wait(),{code:"native_paste_unverified"});
+  await poll(async()=>(await state()).text==="par");const partialPaste=await state();
+  assert.equal(partialPaste.clipboard,partialPayload);assert.equal(pasteCalls.length,3,"two successes and one uncertain input; no replay");
+  const uncertain=pasteCalls.at(-1).error;assert.equal(uncertain.details.effect,"unknown");
+  assert.equal(uncertain.details.input_dispatched,true);assert.equal(uncertain.details.clipboard_may_have_changed,true);
+  await queue.submit(()=>driver.call("hotkey",{scope:"desktop",keys:["ctrl","s"]})).wait();
+  await poll(async()=>(await readFile(join(out,"saved.txt"),"utf8"))==="par");
+  await writeFile(join(out,"paste-partial-saved.txt"),await readFile(join(out,"saved.txt")));
+  record("native-paste-partial",{payload:partialPayload,after:partialPaste,saved:"par",error:uncertain,oneDispatch:true});
+  const {unlink}=await import("node:fs/promises");await unlink(join(out,"request-partial-paste"));
+  await writeFile(join(out,"native-paste-calls.json"),JSON.stringify(pasteCalls,null,2));
+  // Preserve the original long-Unicode cancellation/completion owner: replace
+  // the known current buffer, then verify queued input cancellation and drain.
+  await queue.submit(()=>driver.call("hotkey",{scope:"desktop",keys:["ctrl","a"]})).wait();
+  await poll(async()=>(await state()).selected==="par");
   const text = "éΩ中🙂".repeat(250); assert.equal([...text].length, 1000);
   const stop = new AbortController();
   const active = queue.submit(() => driver.call("type_text", { scope: "desktop", text }), { signal: stop.signal });

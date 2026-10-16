@@ -10,7 +10,7 @@ on:
         type: boolean
         default: false
       halo_native:
-        description: 'Native typing completion and paste refusal on TigerVNC; no browser acceptance'
+        description: 'Native typing completion and verified plaintext paste on TigerVNC; no browser acceptance'
         type: boolean
         default: false
       halo_capture:
@@ -161,8 +161,8 @@ jobs:
     container: node:22-bookworm
     timeout-minutes: 40
     env:
-      HALO_DRIVER_REF: 6647fa8d7f5edc0337d0d616f00c202df68b9bc4
-      CUA_DRIVER_SOURCE_SHA: 6647fa8d7f5edc0337d0d616f00c202df68b9bc4
+      HALO_DRIVER_REF: d8ee0def2327b91c086ab08da7f7b82b7913400f
+      CUA_DRIVER_SOURCE_SHA: d8ee0def2327b91c086ab08da7f7b82b7913400f
       CARGO_PROFILE_RELEASE_LTO: 'false'
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
       CARGO_INCREMENTAL: '0'

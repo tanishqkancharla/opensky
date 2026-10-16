@@ -416,7 +416,7 @@ export interface OpenSkyCapabilities {
     availability: "supported" | "unavailable" | "unknown";
     formats: PasteFormat[];
     reason?: string;
-    clipboard: "preserved-with-receipt" | "untouched" | "unknown";
+    clipboard: "preserved-with-receipt" | "payload-left" | "untouched" | "unknown";
   };
 }
 
