@@ -38,16 +38,17 @@ describe("native app process identity", () => {
     const {driver,dir,opensky,statePath}=await makeHarness();await opensky.list_apps();
     const base=JSON.parse(await readFile(statePath,"utf8")).apps.find((app:any)=>app.name==="Calculator");
     const gui={...base,name:"python3",bundle_id:null,launch_path:null,windows:base.windows.map((window:any)=>({...window,pid:base.pid,is_on_screen:true}))};
-    const apps=inventory(gui),call=driver.call.bind(driver),probed:number[]=[],downstream:string[]=[];
+    const apps=inventory(gui),call=driver.call.bind(driver),probed:number[]=[],downstream:string[]=[],launchArgs:Record<string,unknown>[]=[];
     driver.call=async(tool,args={})=>{
       if(tool==="list_apps")return{structured:{apps},text:""};
       if(["list_windows","get_window_state","launch_app","click","type_text"].includes(tool))downstream.push(tool);
+      if(tool==="launch_app")launchArgs.push({...args});
       if(tool==="list_windows"||tool==="get_window_state")probed.push(Number(args.pid));
       if(args.pid===645)throw new OpenSkyError("outside the capability manifest","bounded_resource_outside_manifest");
       return call(tool,args);
     };
     const sdk=createOpenSky({driver,target,homeDir:join(dir,"identity-home"),autoLaunch:true,settleDelayMs:0});
-    try{await verify({sdk,gui,probed,downstream});}finally{await sdk.close();}
+    try{await verify({sdk,gui,probed,downstream,launchArgs});}finally{await sdk.close();}
   }
 
   it("binds the sole visible same-name GUI process without probing headless namesakes", async () => {
@@ -79,6 +80,12 @@ describe("native app process identity", () => {
     });
     await withApps("linux",gui=>[{...gui,pid:undefined,running:false,windows:[]},gui],async({sdk,gui,probed})=>{
       assert.equal((await sdk.get_app_state({app:"python3",includeScreenshot:false})).app,"python3");assert.ok(probed.length>0);assert.ok(probed.every((pid:number)=>pid===gui.pid));
+    });
+    await withApps("linux",gui=>[{...gui,pid:undefined,running:false,windows:[]},{...gui,pid:undefined,running:false,windows:[]}],async({sdk,downstream,launchArgs})=>{
+      // The legacy fake gives name-only launches a placeholder display name;
+      // assert the original requested identity and completed opaque binding.
+      assert.match((await sdk.get_app_state({app:"python3",includeScreenshot:false})).targetHandle,/^tgt_/);
+      assert.equal(downstream.filter((tool:string)=>tool==="launch_app").length,1);assert.equal(launchArgs[0].name,"python3");
     });
     await withApps("linux",gui=>[{...gui,pid:645,windows:[]},{...gui,name:"python3-editor"}],async({sdk,probed})=>{
       await assert.rejects(sdk.get_app_state({app:"python3",includeScreenshot:false}),{code:"bounded_resource_outside_manifest"});assert.deepEqual(probed,[645]);

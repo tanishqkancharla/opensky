@@ -3756,6 +3756,7 @@ function findApp(apps: Record<string, unknown>[], query: string, resolveProcess 
     // Linux inventories also contain headless processes with the same name.
     // Choose from attested inventory only; never probe/refuse/retry namesakes.
     const running = matches.filter(app => app.running !== false && Number.isSafeInteger(app.pid) && Number(app.pid) > 0);
+    if (!running.length) return matches[0]; // Metadata-only cold launch keeps its existing identity tier.
     // Installed-app metadata may duplicate the one running process. Keep its
     // existing cold/windowless launch behavior rather than inventing ambiguity.
     if (new Set(running.map(app => app.pid)).size === 1) return running[0];
