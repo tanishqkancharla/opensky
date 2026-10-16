@@ -1,12 +1,14 @@
 # Persistent Linux host integration
 
-## SDK0.2.28 candidate / Driver0.36.0
+## Current tested candidate: SDK0.2.28 / Driver0.36.0
 
 The driver pin advances to **`9e9219a0ca84ea195b9cf3be35b42a6379699448`**, the
 canonical0.36.0 history plus retained OpenSky exact-target, permission, native
 paste and uncertain-delivery contracts. SDK application code is unchanged from
-0.2.27; package validation and final signed-Mac binary qualification are pending.
-This candidate has not been published as a release yet.
+0.2.27: all72 compiled files are byte-identical. Whole SDK509pass/1Bun-only
+skip each on Node22/24, build and E2E typecheck pass. Final signed-Mac9e passes
+all29 required contracts across18groups, with exact cleanup and existing grants.
+Publication follows installed-package verification.
 
 [Whole Linux regression38920060955](https://github.com/tanishqkancharla/cua/actions/runs/38920060955)
 and [fresh host contract38920063943](https://github.com/tanishqkancharla/opensky/actions/runs/38920063943)
@@ -26,10 +28,18 @@ Chrome's sandbox and host namespace/LSM policy remain unchanged. **The exact
 Bookworm container browser remains unqualified.** Required packages, grants,
 clipboard behavior and lifecycle examples below still apply.
 
-Initial signed-Mac0.36 sourcef069 passes all29 required contracts across18groups
-with exact cleanup; final9e binary qualification follows. The Mac signing
+The final signed-Mac0.36 source9e passes all29 required contracts across18groups
+with exact cleanup. The Mac signing
 identity, bundle identifier and existing AX/Screen Recording grants are preserved.
 This upgrade does not claim a new paid benchmark score.
+[Exact driver/runtime application evidence](driver036-evidence.json).
+
+The actual `browser_prepare` response declares isolated-browser ownership by the
+session, process termination with the session, a temporary profile, and an idle
+expiry of300seconds. Keep the SDK/host session at workspace scope and revalidate
+tabs after idle periods. The metadata/session cleanup is verified here; a
+wall-clock300second expiry was not tested. Grant-manifest expiry below is a
+separate authorization lifetime.
 
 ## Previous tested distribution: SDK0.2.27 / Driver0.35.4
 
