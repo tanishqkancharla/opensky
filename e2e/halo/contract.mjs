@@ -52,12 +52,25 @@ try {
   assert.deepEqual(capability.nativePaste.formats, ["text"]);
   const exact = {pid:Number(process.env.HALO_EDITOR_PID),window_id:Number(process.env.HALO_EDITOR_WINDOW),text:"must not paste",format:"text",clipboard_policy:"leave"};
   await assert.rejects(queue.submit(()=>driver.call("native_paste",{...exact,delivery_mode:"background"})).wait(),{code:"foreground_required"});
-  // The second bounded daemon grants this native operation/target, but omits clipboard access.
-  await assert.rejects(queue.submit(()=>browserDriver.call("native_paste",{...exact,delivery_mode:"foreground"})).wait(),{code:"bounded_resource_outside_manifest"});
+  const nativeOnly = process.env.HALO_NATIVE_CONTRACT_ONLY === "1";
+  // Native-only mode grants this operation/target without clipboard access.
+  // Full mode keeps the separate browser-only domain: tool admission refuses
+  // native input before any clipboard or platform operation can begin.
+  const deniedNativeTool = queue.submit(()=>browserDriver.call("native_paste",{...exact,delivery_mode:"foreground"}));
+  await assert.rejects(deniedNativeTool.wait(), nativeOnly
+    ? {code:"bounded_resource_outside_manifest"}
+    : error => {
+      assert.equal(error.code,"permission_denied");
+      assert.equal(error.details.delivery,"not_dispatched");
+      assert.equal(error.message,"Permission denied: tool 'native_paste' is outside the capability manifest");
+      return true;
+    });
+  assert.equal(deniedNativeTool.query().state,"failed");
+  await queue.drain();
   // Write access never implies permission to expose existing clipboard text.
   await assert.rejects(queue.submit(()=>driver.call("clipboard_read",{include_text:true})).wait(),{code:"bounded_resource_outside_manifest"});
   const refused=await freshState();assert.equal(refused.text,before.text);assert.equal(refused.selected,before.selected);assert.equal(refused.clipboard,before.clipboard);
-  record("native-paste-preinput-refusals",{before,after:refused,missingForeground:true,missingClipboardGrant:true,writeDoesNotGrantRead:true});
+  record("native-paste-preinput-refusals",{before,after:refused,missingForeground:true,missingClipboardGrant:nativeOnly,browserDomainNativeToolDenied:!nativeOnly,nativeToolRefusal:deniedNativeTool.query(),writeDoesNotGrantRead:true});
   const pasteCalls=[];const originalSDKCall=sdk.driver.call.bind(sdk.driver);
   sdk.driver.call=async(tool,args={})=>{
     try {const result=await originalSDKCall(tool,args);if(tool==="native_paste")pasteCalls.push({tool,args,structured:result.structured});return result;}

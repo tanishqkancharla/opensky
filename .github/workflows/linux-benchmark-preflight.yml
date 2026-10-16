@@ -161,8 +161,8 @@ jobs:
     container: node:22-bookworm
     timeout-minutes: 40
     env:
-      HALO_DRIVER_REF: c36e63ef8e7387cd827596169396b63cbfe68f30
-      CUA_DRIVER_SOURCE_SHA: c36e63ef8e7387cd827596169396b63cbfe68f30
+      HALO_DRIVER_REF: 4a0189e286cf48c6b05da5bdd76ffebce4accc84
+      CUA_DRIVER_SOURCE_SHA: 4a0189e286cf48c6b05da5bdd76ffebce4accc84
       CARGO_PROFILE_RELEASE_LTO: 'false'
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
       CARGO_INCREMENTAL: '0'
