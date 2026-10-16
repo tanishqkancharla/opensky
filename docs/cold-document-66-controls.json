@@ -104,5 +104,22 @@
       "purpose": "Automation permission boundary and NSWorkspace exceptions",
       "url": "https://developer.apple.com/videos/play/wwdc2019/701/"
     }
-  ]
+  ],
+  "synchronousLegacyControl": {
+    "api": "Public deprecated LSOpenURLsWithRole; one file URL, explicit application FSRef, new instance/dont-switch/dont-add-recents, no async flag",
+    "pid": 80778,
+    "PSN": [
+      0,
+      149479045
+    ],
+    "callbackMs": 89.8599624633789,
+    "oneDocumentAttempt": true,
+    "exactDocumentURIAndNonceBodyObserved": true,
+    "nativeTrace": "CoreServicesUIAgent creates a hinted port and sends odoc before target checkin; TextEdit later logs receipt. Synchronous flag does not change this observed ordering.",
+    "freshProcessExited": true,
+    "wholeSourceScratchInodeAndUTF8BytesRetained": true,
+    "correctionDemonstrated": false,
+    "runtimeChanged": false,
+    "noGrantChangeOrReplay": true
+  }
 }

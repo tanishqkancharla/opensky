@@ -1,0 +1,68 @@
+{
+  "scope": "Model-free Mac observations; not an agent comparison or paired performance score",
+  "SDKSource": "16d6b8ad296440ca5b7a279b9d0aa40bf98bc59c",
+  "SDKRuntimeSource": "cb13ce95b535fcc3a166e478ce75c4d1055954b5",
+  "SDKRelease": "0.2.29",
+  "driverSource": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+  "node": "v24.19.0",
+  "transport": {
+    "oneWarmupEach": true,
+    "pairedAlternatingMeasuredReads": 12,
+    "sameExactPIDAndWindow": true,
+    "all26TreeHashesIdentical": true,
+    "summary": {
+      "cli": {
+        "n": 12,
+        "meanMs": 156.99519433333327,
+        "p50Ms": 154.4532909999998,
+        "p90Ms": 164.46887500000003,
+        "totalMs": 1883.9423319999992
+      },
+      "mcp": {
+        "n": 12,
+        "meanMs": 126.15715966666669,
+        "p50Ms": 126.628917,
+        "p90Ms": 133.225958,
+        "totalMs": 1513.8859160000002
+      }
+    },
+    "p50Ratio": 0.8198525015566043,
+    "setup": [
+      {
+        "backend": "cli",
+        "ms": 41.933458
+      },
+      {
+        "backend": "mcp",
+        "ms": 59.20737500000001
+      }
+    ],
+    "ownedProxyUnforcedExit": true,
+    "bothSessionsDetached": true,
+    "defaultChanged": false
+  },
+  "actualCampaignFrontend": {
+    "path": "evals/parity/opensky-mcp.ts",
+    "launch": "node --import tsx evals/parity/opensky-mcp.ts",
+    "initializeAndToolsList": true,
+    "cells": [
+      "var calendar = await cua.getApp(\"Calendar\");",
+      "var state = await calendar.getAXState(); nodeRepl.write(state);",
+      "var next = await calendar.getAXState(); nodeRepl.write(next);"
+    ],
+    "retainedExactPIDAndWindow": true,
+    "strictEvaluatorUsableAll3Cells": true,
+    "fullStoredTreeAndDefaultDiffsValidated": true,
+    "stdinClosedAndUnforcedExit0": true,
+    "initialObserverFailureRetained": "The first observer incorrectly required the Month heading in every diff. Original three successful real cells and failed observer assertion retained; corrected observer checks initial and stored full tree, exact target handle, and emitted full-state-or-diff output."
+  },
+  "limits": [
+    "One preserved native application/window; no browser, Linux, concurrent clients, input, launch, or model cost measurement.",
+    "Warm read saving is approximately28ms; startup is approximately17ms higher. This alone does not justify a default change.",
+    "No task score, benchmark admission, source certification, or launch66 fix is established."
+  ],
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "runtimeChanged": false,
+  "cleanup": "Original Calendar and daemon preserved; owned sessions/proxy exited."
+}
