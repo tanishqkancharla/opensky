@@ -1,0 +1,78 @@
+name: Qualify Linux driver release archive
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bookworm-amd64:
+    runs-on: ubuntu-24.04
+    container: node:22-bookworm
+    timeout-minutes: 60
+    env:
+      CARGO_PROFILE_RELEASE_LTO: 'false'
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Select the exact SDK driver pin
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync,appendFileSync} from 'node:fs';
+          const source=JSON.parse(readFileSync('driver-source.json','utf8')).verifiedCommit;
+          if (!/^[0-9a-f]{40}$/.test(source)) throw new Error('Exact driver pin required');
+          appendFileSync(process.env.GITHUB_ENV, `DRIVER_REF=${source}\nCUA_DRIVER_SOURCE_SHA=${source}\n`);
+          JS
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: tanishqkancharla/cua
+          ref: ${{ env.DRIVER_REF }}
+          path: driver
+      - name: Install build and ordinary-user native desktop prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends clang binutils pkg-config libdbus-1-dev libx11-dev libxi-dev libxtst-dev libxext-dev libxkbcommon-dev libssl-dev ca-certificates tigervnc-standalone-server xfwm4 xfce4-panel dbus-x11 gsettings-desktop-schemas dconf-gsettings-backend at-spi2-core libatk-adaptor python3-gi gir1.2-gtk-3.0 x11-utils xdotool wmctrl xclip fonts-dejavu fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji
+          useradd --create-home --uid 1001 halo
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+        with:
+          workspaces: 'driver/libs/cua-driver/rust -> target'
+          cache-on-failure: true
+      - name: Build exact source and package provenance, ABI and notices
+        run: |
+          mkdir -p artifacts/halo
+          cargo build --release --locked -p cua-driver --manifest-path driver/libs/cua-driver/rust/Cargo.toml
+          cargo test --release --locked -p platform-linux --lib --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/platform-linux-unit.log 2>&1
+          python3 e2e/halo/package-linux-driver.py
+          driver/libs/cua-driver/rust/target/release/cua-driver --opensky-driver-identity > artifacts/halo/identity.json
+          sha256sum driver/libs/cua-driver/rust/target/release/cua-driver > artifacts/halo/driver-sha256.txt
+          npm ci --ignore-scripts
+          npm run build
+          node --version > artifacts/halo/node.txt
+          dpkg-query -W > artifacts/halo/packages.txt
+      - name: Required Node22 embedded SDK contracts
+        run: |
+          node --import tsx --test --test-timeout=60000 test/app-rebind.test.ts test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
+      - name: Verify extracted binary native effects, strict bridge, timeout and Stop drain
+        env:
+          HALO_NODE22_WHOLE_OUTCOME: not_run_release_lane
+        run: |
+          chown -R halo:halo "$GITHUB_WORKSPACE"
+          runuser -u halo -- env HALO_NATIVE_CONTRACT_ONLY=1 HALO_COMPOSITOR=on dbus-run-session -- bash e2e/halo/session.sh
+      - name: Verify replacement process binding with extracted binary
+        run: |
+          directory="$GITHUB_WORKSPACE/artifacts/halo/app-rebind"
+          mkdir -p "$directory"
+          chown halo:halo "$directory"
+          runuser -u halo -- env HALO_ARTIFACTS="$directory" HALO_REBIND_CONTRACT_ONLY=1 HALO_COMPOSITOR=on dbus-run-session -- bash e2e/halo/session.sh
+      - name: Retain archive and independent application receipts
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: linux-driver-release-candidate
+          path: |
+            artifacts/driver-release/*.tar.gz
+            artifacts/driver-release/*.json
+            artifacts/driver-release/SHA256SUMS
+            artifacts/halo
+          if-no-files-found: warn
+          retention-days: 90
