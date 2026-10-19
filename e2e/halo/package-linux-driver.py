@@ -10,6 +10,10 @@ import tarfile
 
 
 def run(*args, cwd=None):
+    if args[0] == "git":
+        # Rust actions may change HOME after checkout registered safe.directory.
+        # Trust only this owned checkout for this invocation; no global exception.
+        args = ("git", "-c", f"safe.directory={Path(cwd or Path.cwd()).resolve()}", *args[1:])
     return subprocess.check_output(args, cwd=cwd, text=True, timeout=120).strip()
 
 
@@ -26,6 +30,7 @@ out.mkdir(parents=True, exist_ok=True)
 pin = json.loads((root / "driver-source.json").read_text())["verifiedCommit"]
 assert re.fullmatch(r"[0-9a-f]{40}", pin)
 assert run("git", "rev-parse", "HEAD", cwd=source) == pin
+assert run("git", "rev-parse", "HEAD") == os.environ["GITHUB_SHA"]
 assert not run("git", "status", "--porcelain", "--untracked-files=no", cwd=source)
 identity = json.loads(run(str(binary), "--opensky-driver-identity"))
 assert identity["source"] == pin and identity["product"] == "opensky-driver"
