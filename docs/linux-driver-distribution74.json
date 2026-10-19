@@ -1,0 +1,61 @@
+{
+  "accepted": true,
+  "sdkCommit": "8644ea462f8efe483436aa9b61b712fc7599f93a",
+  "binaryBuildSDKCommit": "8644ea462f8efe483436aa9b61b712fc7599f93a",
+  "driverSource": "034fd65a068f303e863af09ab035b12b94dd27e1",
+  "archive": {
+    "file": "opensky-driver-0.36.0-034fd65a068f303e863af09ab035b12b94dd27e1-linux-x86_64-gnu-bookworm.tar.gz",
+    "sha256": "b90923f16e2f8b53ec310ba4d12b7e05321fcb8bf04657aa6c5bf84c95063356",
+    "binarySHA256": "7ba6c7fb7cbe1e790a4005b2c089fa3b883d3f970e5ac8f058e5a7a85322b461",
+    "directory": "opensky-driver-0.36.0-034fd65a068f303e863af09ab035b12b94dd27e1-linux-x86_64-gnu-bookworm",
+    "sourceCommit": "034fd65a068f303e863af09ab035b12b94dd27e1",
+    "version": "0.36.0"
+  },
+  "LinuxUnitsPassed": 669,
+  "embeddedPassed": 271,
+  "nativeSavedByteCounts": [
+    29,
+    46
+  ],
+  "partialSaved": "par",
+  "partialEffect": "unknown",
+  "partialOneDispatch": true,
+  "typingAtDeadlineCodepoints": 52,
+  "typingFinalCodepoints": 1000,
+  "typingSavedBytes": 2750,
+  "queuedCancelledBeforeDispatch": true,
+  "followingWaitsForCompletion": true,
+  "strictBridgeRetainsApp": true,
+  "originalPID": 13902,
+  "replacementPID": 13964,
+  "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+  "ownedChildrenExitedUnforced": 3,
+  "supervisorsExitedUnforced": [
+    7,
+    3
+  ],
+  "browserAccepted": false,
+  "paidArms": 0,
+  "issue": 74,
+  "status": "Actual source-exact qualification passed; preparing0.2.32",
+  "qualificationRun": 39217544182,
+  "archiveFileChecksumsVerified": 766,
+  "sourceBuildFallback": true,
+  "provenanceAsset": "opensky-driver-0.36.0-034fd65a068f303e863af09ab035b12b94dd27e1-linux-x86_64-gnu-bookworm.provenance.json",
+  "requiredPackages": [
+    "libc6",
+    "libgcc-s1",
+    "libdbus-1-3",
+    "libx11-6",
+    "libxi6",
+    "libxtst6",
+    "libxext6",
+    "libxkbcommon0",
+    "libssl3",
+    "libxrender1",
+    "libxfixes3",
+    "libxrandr2",
+    "libxcursor1"
+  ],
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.32"
+}

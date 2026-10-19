@@ -1,0 +1,62 @@
+{
+  "actualSDK": true,
+  "beforeDriver": {
+    "inputCompatibility": "token-only-v1",
+    "product": "opensky-driver",
+    "protocolVersion": 1,
+    "source": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+    "version": "0.36.0",
+    "windowStateViewCompatibility": "compact-v1"
+  },
+  "afterDriver": {
+    "inputCompatibility": "token-only-v1",
+    "product": "opensky-driver",
+    "protocolVersion": 1,
+    "source": "034fd65a068f303e863af09ab035b12b94dd27e1",
+    "version": "0.36.0",
+    "windowStateViewCompatibility": "compact-v1"
+  },
+  "beforeMedianMs": 446.7486665,
+  "afterMedianMs": 33.07831250000001,
+  "ratio": 0.07404233068930718,
+  "samplesPerSource": 7,
+  "warmupsOmitted": 1,
+  "allPublicAppFieldsIdentical": true,
+  "appCount": 82,
+  "retainedCalendarBeforeAfter": true,
+  "CalendarPID": 84295,
+  "CalendarWindow": 54774,
+  "inputCalls": 0,
+  "newApps": 0,
+  "paidArms": 0,
+  "newScoreRows": 0,
+  "source": "same public cua.listApps call; raw seven observations retained",
+  "issue": 74,
+  "driverEvidenceHead": "bbcf906ad132224a1350b33b90dcb631ef5462a1",
+  "macUnits": {
+    "passed": 681,
+    "failed": 0,
+    "ignored": 6
+  },
+  "canonicalCargoLocks": {
+    "checked": 16,
+    "failed": 0
+  },
+  "originalCalculatorOwners": [
+    "CLICK-N01",
+    "DIFF-N01"
+  ],
+  "exactCalculatorCleanupPassed": true,
+  "stableSigningRequirementPreserved": true,
+  "accessibilityPermissionRetained": true,
+  "screenRecordingPermissionRetained": true,
+  "Mac66Resolved": false,
+  "paidDispatchAllowed": false,
+  "linuxQualification": {
+    "runId": 39217544182,
+    "status": "passed; original effects independently reviewed",
+    "nativeAccepted": true,
+    "sandboxedBookwormBrowserAccepted": false
+  },
+  "status": "Signed Mac SDK and source-exact Bookworm native distribution qualified; preparing0.2.32"
+}

@@ -1,8 +1,57 @@
 {
   "schemaVersion": 1,
-  "sdkVersion": "0.2.32-dev",
+  "sdkVersion": "0.2.32",
   "sourceRepository": "https://github.com/tanishqkancharla/cua",
   "sourceCommit": "034fd65a068f303e863af09ab035b12b94dd27e1",
   "automaticInstallation": false,
-  "assets": []
+  "assets": [
+    {
+      "platform": "linux",
+      "arch": "x64",
+      "target": "x86_64-unknown-linux-gnu",
+      "version": "0.36.0",
+      "releaseTag": "v0.2.32",
+      "file": "opensky-driver-0.36.0-034fd65a068f303e863af09ab035b12b94dd27e1-linux-x86_64-gnu-bookworm.tar.gz",
+      "url": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.32/opensky-driver-0.36.0-034fd65a068f303e863af09ab035b12b94dd27e1-linux-x86_64-gnu-bookworm.tar.gz",
+      "sha256": "b90923f16e2f8b53ec310ba4d12b7e05321fcb8bf04657aa6c5bf84c95063356",
+      "binarySHA256": "7ba6c7fb7cbe1e790a4005b2c089fa3b883d3f970e5ac8f058e5a7a85322b461",
+      "archiveRoot": "opensky-driver-0.36.0-034fd65a068f303e863af09ab035b12b94dd27e1-linux-x86_64-gnu-bookworm",
+      "executable": "opensky-driver",
+      "abi": {
+        "distribution": "Debian",
+        "version": "12",
+        "codename": "bookworm",
+        "libc": "glibc",
+        "libcVersion": "2.36"
+      },
+      "runtimePackages": [
+        "libc6",
+        "libgcc-s1",
+        "libdbus-1-3",
+        "libx11-6",
+        "libxi6",
+        "libxtst6",
+        "libxext6",
+        "libxkbcommon0",
+        "libssl3",
+        "libxrender1",
+        "libxfixes3",
+        "libxrandr2",
+        "libxcursor1"
+      ],
+      "provenanceUrl": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.32/opensky-driver-0.36.0-034fd65a068f303e863af09ab035b12b94dd27e1-linux-x86_64-gnu-bookworm.provenance.json",
+      "qualification": {
+        "run": "https://github.com/tanishqkancharla/opensky/actions/runs/39217544182",
+        "sdkCommit": "8644ea462f8efe483436aa9b61b712fc7599f93a",
+        "binaryBuildSDKCommit": "8644ea462f8efe483436aa9b61b712fc7599f93a",
+        "originalBuildRun": "https://github.com/tanishqkancharla/opensky/actions/runs/39217544182",
+        "node": "22.23.3",
+        "display": "TigerVNC X11 :1, XFWM4 compositor on, shared D-Bus/AT-SPI",
+        "nativeAccepted": true,
+        "sandboxedBookwormBrowserAccepted": false,
+        "unrestrictedPermissions": false,
+        "rustBuildInConsumer": false
+      }
+    }
+  ]
 }
