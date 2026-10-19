@@ -1,0 +1,71 @@
+{
+  "driverSource": "5a9a4483c54761b733940d2fa894cbed66336ce1",
+  "SDKRuntimeSource": "452bc212706c0e33edb5b214c56b4179971995a7",
+  "status": "Mac and hermetic source accepted; Linux distribution pending",
+  "sourceCommits": [
+    {
+      "upstream": "c2b20141b5607cab1b39ffaac4416d9978901da3",
+      "fork": "65e51989a",
+      "author": "injaneity"
+    },
+    {
+      "upstream": "d52ec6ebea78a8b7fcbb1d56ef8cf72f9eedea22",
+      "fork": "678ab34d9",
+      "author": "injaneity"
+    },
+    {
+      "fork": "5a9a4483c54761b733940d2fa894cbed66336ce1",
+      "change": "Use bounded nonblocking poll for Unix replies; preserve buffered data after peer close."
+    }
+  ],
+  "nativeMac": {
+    "beforeSource": "fc1b38e8bd1f5fbbde865c62c4f703c736624775",
+    "beforePID": 83686,
+    "afterPID": 89365,
+    "beforeCode": "background_unavailable",
+    "afterCode": "window_not_key",
+    "beforeWindowsClosed": [
+      false,
+      false
+    ],
+    "afterWindowsClosed": [
+      false,
+      false
+    ],
+    "bothFilesUnchanged": true,
+    "CalendarRemainedForeground": true,
+    "requestedWindow": 95679,
+    "siblingWindow": 95680,
+    "wrongWindowMutationReproduced": false,
+    "coldPublicSDKDocumentLaunchQualified": false,
+    "preparation": "Two exact saved documents opened by owned native NSWorkspace helper, not SDK open_target."
+  },
+  "UnixTransport": {
+    "stable0233Affected": false,
+    "upstreamCandidateFailedSDKCounts": [
+      1,
+      4
+    ],
+    "DarwinClosedPeerSO_RCVTIMEOErrors": 3,
+    "DarwinBufferedRepliesStillReadable": 3,
+    "deterministicOriginalClosedPeerOwner": "fails with EINVAL",
+    "correctedWholeCorePass": 1061,
+    "correctedWholeSDKPass": 106,
+    "correctedWholeMacPass": 685,
+    "remainingDeadlineAndFramingOwners": 4,
+    "SDKDeadlineChanged": false,
+    "requestReplay": false
+  },
+  "existingMacGUI": [
+    "CLICK-N01",
+    "DIFF-N01",
+    "WINDOW-N01"
+  ],
+  "allOwnedAppCleanupPassed": true,
+  "permissionsChanged": false,
+  "stableSigningIdentityPreserved": true,
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "Mac66Closed": false,
+  "BookwormBrowserAccepted": false
+}

@@ -1,0 +1,11 @@
+# Background menu target guards and daemon reply budgets
+
+Development candidate only. Supported 0.2.33 is unchanged until distribution qualification completes.
+
+Backport upstream c2b20141 and d52ec6eb with injaneity’s original authorship. The Rust daemon clients allow the maximum 120-second tool budget plus 30 seconds of response overhead. The TypeScript SDK’s explicit client deadline, unknown-delivery warning, host completion tracking and no-replay behavior are unchanged. Background application-menu actions must confirm both the exact focused and main window before lookup and dispatch; hotkeys preserve safety refusals instead of falling through to key events.
+
+The upstream deadline implementation exposed a Darwin regression: setting SO_RCVTIMEO after the server replies and closes returns EINVAL even when a complete response is buffered. A native Unix socket-pair control reproduces this three times. The imported Rust SDK suite initially fails one and then four actual transport owners. The new closed-peer owner deterministically fails before the correction. A nonblocking poll bounded by the remaining deadline preserves replies, EOF/newline framing and uncertainty guidance. Four real socket owners cover closed buffered replies, fragments, empty EOF and a short deadline. Whole core/SDK/Mac suites pass 1061/106/685 tests respectively (one core and six Mac desktop owners ignored).
+
+Two owned TextEdit document windows are prepared with the native NSWorkspace helper. With Calendar in front, an SDK driver invoke_menu(File > Close) naming the nonfocused document returns background_unavailable on stable fc1 and window_not_key on the candidate. Both documents and files remain unchanged on both sources; Calendar stays in front. This is verified refusal behavior, not a reproduction of wrong-window mutation or a fix for cold public SDK document launch. Existing CLICK-N01, DIFF-N01 and WINDOW-N01 pass; all owned TextEdit/Calculator/Safari processes exit. Signing identity, existing grants and actual daemon 250/50 ms launch observation settings are preserved.
+
+Exact-source Linux archive/consumer qualification and publication remain pending. No paid pair, score improvement, canonical AppKit desktop execution, Mac19/66 closure or sandboxed Bookworm browser acceptance is claimed. See [bounded evidence](native-menu-transport76.json).
