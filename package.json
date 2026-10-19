@@ -1,6 +1,6 @@
 {
   "name": "opensky-cua",
-  "version": "0.2.30",
+  "version": "0.2.31",
   "description": "Open computer-use library with legacy and native-style CUA APIs, backed by OpenSky Driver",
   "type": "module",
   "bin": {
@@ -8,13 +8,15 @@
   },
   "exports": {
     ".": "./dist/index.js",
-    "./opensky": "./dist/opensky.js"
+    "./opensky": "./dist/opensky.js",
+    "./driver-assets.json": "./driver-assets.json"
   },
   "files": [
     "dist",
     "skills",
     "driver-source.json",
-    "README.md"
+    "README.md",
+    "driver-assets.json"
   ],
   "engines": {
     "node": ">=20",

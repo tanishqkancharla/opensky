@@ -1,3 +1,15 @@
+## Linux binary distribution in0.2.31
+
+[The SDK release](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.31)
+includes a Linux amd64 Bookworm archive for the unchanged9e/0.36.0 driver pin,
+with source/toolchain/ABI provenance, checksums and exported `driver-assets.json`.
+[Installation and exact-source checks](linux-driver-distribution.md) let Halo
+remove its Rust compilation stage. Fresh clean-consumer39195336821 verifies the
+same native, strict, Stop/drain and process-rebind effects with the extracted
+binary and bounded grants. [Exact evidence](linux-driver-distribution73.json).
+This changes distribution/metadata only; the TypeScript operation runtime stays
+452bc21/0.2.30. Sandboxed Bookworm Chrome and Mac cold-file19/66 remain unqualified.
+
 # Persistent Linux host integration
 
 ## Current tested distribution: SDK0.2.30 / Driver0.36.0

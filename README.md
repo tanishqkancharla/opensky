@@ -13,12 +13,12 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.30/opensky-cua-0.2.30.tgz
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.31/opensky-cua-0.2.31.tgz
 opensky doctor
 opensky skill install -g
 ```
 
-[OpenSky 0.2.30](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.30)
+[OpenSky 0.2.31](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.31)
 is distributed as the attached npm tarball with a published SHA-256 checksum.
 Registry publication awaits publisher authentication; the command above selects
 the released SDK directly. For a local project, omit `-g`.
@@ -36,8 +36,11 @@ bash libs/cua-driver/scripts/install.sh
 Use `libs/cua-driver/scripts/install.ps1` instead on Windows. The
 machine-readable source contract is [driver-source.json](driver-source.json).
 Its `verifiedCommit` records the tested source; it does not enable automatic installation.
-Building requires Rust and platform build tools. Automatic fork release
-downloads are not available; OpenSky never falls back to upstream CUA Driver.
+Linux amd64 consumers can use the pinned Bookworm binary attached to the SDK
+release; [download, checksum, ABI and source-check instructions](docs/linux-driver-distribution.md)
+replace the Rust build step. `opensky-cua/driver-assets.json` exports the exact
+asset/source/checksum contract. Other platforms can use the source build above.
+Automatic installation remains disabled; OpenSky never falls back to upstream CUA Driver.
 
 On macOS, grant Accessibility and Screen Recording to
 `/Applications/OpenSkyDriver.app`, displayed as **OpenSky Driver**. Its permission
@@ -140,8 +143,10 @@ requires the driver's `existing-profile` grant; OpenSky requests it when startin
 its own helper, so restart an older already-running daemon after upgrading.
 Coordinates use the latest screenshot's pixels. Mac native paste is supported with the documented
 [text and clipboard restrictions](skills/opensky/references/text-input.md).
-Linux native paste is unavailable in the current driver registry; query
-`sdk.get_capabilities()` before offering it. Browser paste remains separate.
+Linux X11 native plaintext paste is supported with the current pinned driver,
+explicit foreground delivery and clipboard-text-write grants; see the
+[verified host contract](docs/halo-host-integration.md). Query `sdk.get_capabilities()`
+for the selected platform/driver. Browser paste remains separate.
 See [the persistent Node host contract](docs/halo-host-integration.md) for
 cancellation, completion tracking and explicit foreground browser input.
 
