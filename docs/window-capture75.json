@@ -264,7 +264,7 @@
   "newScoreRows": 0,
   "Mac66Resolved": false,
   "source": "original raw PNG alpha and driver geometry receipts; no screenshot reconstruction",
-  "status": "Actual signed Mac before/after verified; source-exact distribution pending",
+  "status": "Signed Mac screenshot correction and source-exact Bookworm native distribution accepted; preparing0.2.33",
   "upstreamSource": "757ae8cedb87f8c8d2441f748aee7236767b18a0",
   "originalContributor": "f-trycua (Francesco Bonacci)",
   "sourceAuthorshipPreserved": true,
@@ -275,7 +275,7 @@
   "LinuxQualification": {
     "runId": 39244867947,
     "SDKSource": "a4f9470e30f7395c5058e25ee5bc7b8024b7ff43",
-    "nativeAccepted": false,
+    "nativeAccepted": true,
     "sandboxedBookwormBrowserAccepted": false
   },
   "images": [
