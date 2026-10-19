@@ -6596,3 +6596,6 @@ SET435 exact-source distribution acceptance: Linux39244867947 freshly builds fc1
 
 
 SET435 release regressions: all518SDK owners pass with one Bun-only skip on each Node22/24, all five package/extraction owners, E2E typecheck and workflow expression validation pass. Approved-source archive reuse verifies the new original build hashes without executing it. Public/CLI metadata preparation changes no TypeScript operation runtime; isolated packed installs and immutable publication follow.
+
+
+SET435 distribution closure: immutable 0.2.33 at4349599 publishes SDK655e108c, exact-source Bookworm archivebbafde82/executable7a0783f3, provenance, asset metadata and checksums. All five anonymous assets match; exact frozen tag/source and signed SDK/driver attestations verify. The reusable committed-source package verifier confirms all72 unchanged compiled operation files and isolated Node22/24 public exports/metadata/CLI with zero desktop calls. Before/after PNGs remain original bytes, with explicit Mac screenshot versus Linux native distribution scope. Qualification/publication address75; no npm registry publication or new paired score is claimed. Source/ownership/Mac66 gates remain false, budget unchanged and all owned cleanup clear.

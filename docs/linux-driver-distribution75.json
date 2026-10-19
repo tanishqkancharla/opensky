@@ -37,7 +37,7 @@
   "browserAccepted": false,
   "paidArms": 0,
   "issue": 75,
-  "status": "Fresh exact-source archive and native consumer accepted; preparing0.2.33",
+  "status": "Verified and published in immutable 0.2.33; issue75 qualification/release scope addressed",
   "qualificationRun": 39244867947,
   "archiveFileChecksumsVerified": 766,
   "sourceBuildFallback": true,
@@ -57,5 +57,10 @@
     "libxrandr2",
     "libxcursor1"
   ],
-  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.33"
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.33",
+  "releaseSource": "4349599f073a7fad800fdde9eb639ab608e32443",
+  "immutable": true,
+  "anonymousAssetsRoundTrip": true,
+  "signedSDKAndDriverReleaseAttestationsVerified": true,
+  "paidDispatchAllowed": false
 }

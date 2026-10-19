@@ -80,7 +80,7 @@ The archive checksum is `bbafde8223ab14fda3065f9fb35484467b28534c420bbbf0b301f62
 No model agents are used in distribution qualification and it earns no benchmark
 score. Sandboxed Chrome in the Bookworm container remains unqualified; this
 release does not disable its sandbox or claim browser compatibility from native
-app tests. The selected Mac source excludes the hardware pointer from native single-window captures. The actual signed SDK before/after comparison restores full image content when the pointer sits above the target, retaining the same reported dimensions and exact-target checks ([original PNGs and evidence](window-capture75.md)). Stable signing/permissions are retained. Earlier in-process bundle plist reads remain unchanged; historical latency measurements on source034 are retained separately in [Mac inventory evidence](mac-plist74.json). Unresolved Mac cold-file issues remain; no whole-task gain is inferred.
+app tests. The selected Mac source excludes the hardware pointer from native single-window captures. The actual signed SDK before/after comparison restores full image content when the pointer sits above the target, retaining the same reported dimensions and exact-target checks ([original PNGs and evidence](window-capture75.md)). Stable signing/permissions are retained. Earlier in-process bundle plist reads remain unchanged; historical latency measurements on source `034fd65` are retained separately in [Mac inventory evidence](mac-plist74.json). Unresolved Mac cold-file issues remain; no whole-task gain is inferred.
 
 Source builds remain supported: check out the exact `driver-source.json` commit
 in `tanishqkancharla/cua`, then run `cargo build --release --locked -p cua-driver`

@@ -264,7 +264,7 @@
   "newScoreRows": 0,
   "Mac66Resolved": false,
   "source": "original raw PNG alpha and driver geometry receipts; no screenshot reconstruction",
-  "status": "Signed Mac screenshot correction and source-exact Bookworm native distribution accepted; preparing0.2.33",
+  "status": "Verified and published in immutable 0.2.33; issue75 qualification/release scope addressed",
   "upstreamSource": "757ae8cedb87f8c8d2441f748aee7236767b18a0",
   "originalContributor": "f-trycua (Francesco Bonacci)",
   "sourceAuthorshipPreserved": true,
@@ -292,5 +292,10 @@
       "originalBytesUnchanged": true
     }
   ],
-  "paidDispatchAllowed": false
+  "paidDispatchAllowed": false,
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.33",
+  "releaseSource": "4349599f073a7fad800fdde9eb639ab608e32443",
+  "immutable": true,
+  "anonymousAssetsRoundTrip": true,
+  "signedSDKAndDriverReleaseAttestationsVerified": true
 }
