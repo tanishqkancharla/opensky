@@ -1,0 +1,242 @@
+{
+  "driverSource": "034fd65a068f303e863af09ab035b12b94dd27e1",
+  "actualSDK": true,
+  "sameImageDimensions": true,
+  "reportedFrameValid": true,
+  "samples": [
+    {
+      "name": "inside",
+      "width": 674,
+      "height": 408,
+      "alphaBounds": [
+        0,
+        0,
+        674,
+        408
+      ],
+      "samples": [
+        {
+          "point": [
+            337,
+            4
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            168,
+            4
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            505,
+            4
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            669,
+            204
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            669,
+            102
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            337,
+            403
+          ],
+          "alpha": 255
+        }
+      ]
+    },
+    {
+      "name": "above",
+      "width": 674,
+      "height": 408,
+      "alphaBounds": [
+        0,
+        2,
+        630,
+        408
+      ],
+      "samples": [
+        {
+          "point": [
+            337,
+            4
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            168,
+            4
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            505,
+            4
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            669,
+            204
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            669,
+            102
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            337,
+            403
+          ],
+          "alpha": 255
+        }
+      ]
+    },
+    {
+      "name": "above-repeat",
+      "width": 674,
+      "height": 408,
+      "alphaBounds": [
+        0,
+        2,
+        630,
+        408
+      ],
+      "samples": [
+        {
+          "point": [
+            337,
+            4
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            168,
+            4
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            505,
+            4
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            669,
+            204
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            669,
+            102
+          ],
+          "alpha": 0
+        },
+        {
+          "point": [
+            337,
+            403
+          ],
+          "alpha": 255
+        }
+      ]
+    },
+    {
+      "name": "inside-repeat",
+      "width": 674,
+      "height": 408,
+      "alphaBounds": [
+        0,
+        0,
+        674,
+        408
+      ],
+      "samples": [
+        {
+          "point": [
+            337,
+            4
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            168,
+            4
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            505,
+            4
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            669,
+            204
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            669,
+            102
+          ],
+          "alpha": 255
+        },
+        {
+          "point": [
+            337,
+            403
+          ],
+          "alpha": 255
+        }
+      ]
+    }
+  ],
+  "pointerRestored": true,
+  "exactCalculatorCleanupPassed": true,
+  "benchmarkScore": false,
+  "issue": 75,
+  "status": "Actual signed SDK baseline defect reproduced; backport units/compile pass; signed after and distribution pending",
+  "candidateSource": "fc1b38e8bd1f5fbbde865c62c4f703c736624775",
+  "upstreamSource": "757ae8cedb87f8c8d2441f748aee7236767b18a0",
+  "macUnitsPassed": 682,
+  "ignoredMacUnits": 6,
+  "canonicalCargoLocks": 16,
+  "canonicalAppKitOwner": "compiled, not executed here",
+  "sourceAuthorshipPreserved": true,
+  "paidArms": 0,
+  "Mac66Resolved": false
+}
