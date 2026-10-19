@@ -38,7 +38,27 @@
     "siblingWindow": 95680,
     "wrongWindowMutationReproduced": false,
     "coldPublicSDKDocumentLaunchQualified": false,
-    "preparation": "Two exact saved documents opened by owned native NSWorkspace helper, not SDK open_target."
+    "preparation": "Two exact saved documents opened by owned native NSWorkspace helper, not SDK open_target.",
+    "foregroundControl": {
+      "source": "5a9a4483c54761b733940d2fa894cbed66336ce1",
+      "PID": 92416,
+      "requestedWindow": 95731,
+      "siblingWindow": 95732,
+      "backgroundRefusal": "window_not_key",
+      "backgroundDocumentsUnchanged": true,
+      "foregroundExplicitBringToFront": "bring_to_front_exact_window_verified",
+      "foregroundResultEffect": "unverifiable",
+      "foregroundRequestedClosed": true,
+      "foregroundSiblingClosed": false,
+      "foregroundFilesUnchanged": true,
+      "boundedReadbackMs": 2000,
+      "actualReadbackCount": 3,
+      "exactAppCleanupPassed": true,
+      "replayedOriginalRequest": false,
+      "newOwnedProcessForRepeat": true,
+      "noTaskScore": true
+    },
+    "original300msFailureRetained": true
   },
   "UnixTransport": {
     "stable0233Affected": false,
