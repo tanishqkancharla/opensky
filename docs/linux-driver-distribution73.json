@@ -37,7 +37,7 @@
   "browserAccepted": false,
   "paidArms": 0,
   "issue": 73,
-  "status": "Verified candidate for0.2.31; publication pending",
+  "status": "Verified and released in0.2.31; issue73 closed",
   "qualificationRun": 39195336821,
   "originalBuildRun": 39194227474,
   "archiveFileChecksumsVerified": 766,
@@ -57,5 +57,16 @@
     "libxfixes3",
     "libxrandr2",
     "libxcursor1"
-  ]
+  ],
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.31",
+  "releaseSource": "7d3f61213b4b3be0807409efc6259deba3cbb6ef",
+  "immutable": true,
+  "anonymousAssetsRoundTrip": true,
+  "signedSDKAndDriverReleaseAttestationsVerified": true,
+  "SDKCompiledFilesUnchanged": 72,
+  "installedSDKNodeVersions": [
+    "22.23.3",
+    "24.19.0"
+  ],
+  "issueClosedAt": "2026-10-19T03:43:08Z"
 }
