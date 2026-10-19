@@ -58,5 +58,9 @@
     "nativeAccepted": true,
     "sandboxedBookwormBrowserAccepted": false
   },
-  "status": "Signed Mac SDK and source-exact Bookworm native distribution qualified; preparing0.2.32"
+  "status": "Verified and published immutable0.2.32; issue74 qualification/release scope addressed",
+  "releaseSource": "5aedc9da97036fb550ed93718d3f538393877d21",
+  "immutable": true,
+  "anonymousAssetsRoundTrip": true,
+  "signedSDKAndDriverReleaseAttestationsVerified": true
 }

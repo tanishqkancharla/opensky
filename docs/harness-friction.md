@@ -6577,3 +6577,6 @@ SET434 source-exact Linux acceptance:39217544182 freshly builds034 with Rust1.97
 
 
 SET434 release regressions: all 518 SDK owners pass with one Bun-only skip on each Node 22/24, five source/archive owners and E2E typecheck pass. The updated approved-source reuse verifier checks the completed034 archive without execution; workflow expression validation passes. Actual Mac and Bookworm effects stay scoped to their original runs; packaging/import/CLI checks follow before immutable publication.
+
+
+SET434 distribution closure: immutable release0.2.32 at5aedc9d publishes SDK585c6071, source-exact Bookworm archiveb90923f1 and executable7ba6c7fb, provenance/asset metadata/checksums. All five anonymous downloads match original verified bytes; SDK/driver signed release attestations verify and tag target is exact. A reusable private package verifier checks the committed source, all72 unchanged compiled runtime files, exact packed metadata and isolated Node22/24 public exports/CLI with zero desktop calls, removing repeated hand-written release observers. No npm registry publication claim. Source-exact distribution and Mac SDK qualification address issue74; paired performance remains deferred behind unresolved66 and source/ownership gates. No paid agent or score change; stable signer/grants and exact cleanup remain clear.
