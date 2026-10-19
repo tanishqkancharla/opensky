@@ -1,5 +1,8 @@
 """Source-only refusal owners; never builds or executes a driver."""
+import io
 import json
+import tarfile
+from driver_archive import extract_archive
 import os
 from pathlib import Path
 import subprocess
@@ -34,5 +37,25 @@ class SourcePreflight(unittest.TestCase):
     def test_different_driver_commit_refuses_before_build(self):
         (self.root/"driver-source.json").write_text(json.dumps({"verifiedCommit":"0"*40}))
         self.assertNotEqual(self.invoke().returncode,0)
+
+class ArchiveExtraction(unittest.TestCase):
+    def test_regular_binary_bytes_and_mode_survive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp);archive=folder/'binary.tgz'
+            with tarfile.open(archive,'w:gz') as tar:
+                m=tarfile.TarInfo('owned/opensky-driver');m.size=3;m.mode=0o755;tar.addfile(m,io.BytesIO(b'elf'))
+            extract_archive(archive,folder/'out','owned')
+            self.assertEqual((folder/'out/owned/opensky-driver').read_bytes(),b'elf')
+            self.assertEqual((folder/'out/owned/opensky-driver').stat().st_mode & 0o777,0o755)
+    def test_nonordinary_members_refuse_before_writing(self):
+        for name,kind in [('owned/../escape',tarfile.REGTYPE),('outside/file',tarfile.REGTYPE),('/owned/file',tarfile.REGTYPE),('owned/link',tarfile.SYMTYPE),('owned/hardlink',tarfile.LNKTYPE),('owned/device',tarfile.CHRTYPE),('owned/duplicate',tarfile.REGTYPE)]:
+            with self.subTest(name=name,kind=kind),tempfile.TemporaryDirectory() as tmp:
+                folder=Path(tmp);archive=folder/'bad.tgz'
+                with tarfile.open(archive,'w:gz') as tar:
+                    good=tarfile.TarInfo('owned/good');good.size=1;tar.addfile(good,io.BytesIO(b'x'))
+                    bad=tarfile.TarInfo(name);bad.type=kind;tar.addfile(bad)
+                    if 'duplicate' in name:tar.addfile(bad)
+                with self.assertRaises(ValueError):extract_archive(archive,folder/'out','owned')
+                self.assertFalse((folder/'out').exists())
 
 if __name__=="__main__":unittest.main()

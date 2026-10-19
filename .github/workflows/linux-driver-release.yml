@@ -1,10 +1,17 @@
 name: Qualify Linux driver release archive
 on:
   workflow_dispatch:
+    inputs:
+      reuse_archive:
+        description: 'Reuse only the approved source/hash-pinned first-party archive; always run a fresh consumer contract'
+        type: boolean
+        default: false
 permissions:
   contents: read
+  actions: read
 jobs:
   bookworm-amd64:
+    if: ${{ !inputs.reuse_archive }}
     runs-on: ubuntu-24.04
     container: node:22-bookworm
     timeout-minutes: 60
@@ -63,8 +70,35 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
+  reuse-archive:
+    if: ${{ inputs.reuse_archive }}
+    runs-on: ubuntu-24.04
+    container: node:22-bookworm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: linux-driver-release-candidate
+          run-id: '39194227474'
+          github-token: ${{ github.token }}
+          path: artifacts
+      - name: Verify every approved source/build/archive byte before execution
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends python3
+          python3 e2e/halo/test-driver-package.py
+          python3 e2e/halo/verify-linux-driver-archive.py artifacts > artifacts/driver-release/reuse-verification.json
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: linux-driver-release-candidate
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 90
+
   consumer-bookworm:
-    needs: bookworm-amd64
+    if: ${{ always() && (needs.bookworm-amd64.result == 'success' || needs.reuse-archive.result == 'success') }}
+    needs: [bookworm-amd64, reuse-archive]
     runs-on: ubuntu-24.04
     container: node:22-bookworm
     timeout-minutes: 15
@@ -82,7 +116,7 @@ jobs:
       - name: Verify archive and exact bytes before installing or executing
         run: |
           python3 - <<'PY_VERIFY'
-          import hashlib,json,os,pathlib,shutil,tarfile
+          import hashlib,json,os,pathlib,shutil,sys
           root=pathlib.Path.cwd(); folder=root/'prebuilt/driver-release'
           meta=json.loads((folder/'archive.json').read_text())
           source=json.loads((root/'driver-source.json').read_text())['verifiedCommit']
@@ -91,7 +125,9 @@ jobs:
           assert hashlib.sha256(archive.read_bytes()).hexdigest()==meta['sha256']
           target=root/'driver/libs/cua-driver/rust/target/release/cua-driver'
           extracted=root/'prebuilt/extracted'; extracted.mkdir()
-          with tarfile.open(archive) as tar: tar.extractall(extracted,filter='data')
+          sys.path.insert(0,str(root/"e2e/halo"))
+          from driver_archive import extract_archive
+          extract_archive(archive,extracted,meta["directory"])
           binary=extracted/meta['directory']/'opensky-driver'
           assert hashlib.sha256(binary.read_bytes()).hexdigest()==meta['binarySHA256']
           target.parent.mkdir(parents=True); shutil.copy2(binary,target); target.chmod(0o755)

@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import tarfile
+from driver_archive import extract_archive
 
 
 def run(*args, cwd=None):
@@ -114,7 +115,7 @@ shutil.copy2(stage / "provenance.json", out / "provenance.json")
 # Exercise a newly extracted copy, not the original Cargo output, below.
 extracted = out / "extracted"
 extracted.mkdir()
-with tarfile.open(archive) as tar: tar.extractall(extracted, filter="data")
+extract_archive(archive, extracted, name)
 copy = extracted / name / "opensky-driver"
 assert sha(copy) == provenance["binarySHA256"]
 assert json.loads(run(str(copy), "--opensky-driver-identity")) == identity

@@ -1,0 +1,14 @@
+{
+  "file": "opensky-driver-0.36.0-9e9219a0ca84ea195b9cf3be35b42a6379699448-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "92b7f95d4b266981be4e294d36763ac928d2f29ac3fd4d94ff009e8d98261b23",
+  "binarySHA256": "a55b7e50b5f579f4d4c0648e2e484d526e6a3c85447b492113ac8f433bf2611a",
+  "directory": "opensky-driver-0.36.0-9e9219a0ca84ea195b9cf3be35b42a6379699448-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "9e9219a0ca84ea195b9cf3be35b42a6379699448",
+  "version": "0.36.0",
+  "sourceRun": 39194227474,
+  "artifact": "linux-driver-release-candidate",
+  "buildSDKCommit": "f6ccbb0581cac59f0b8440bd40009acfdb428056",
+  "unitLogSHA256": "6c42f15d50f8746c8e357ca467a5999a6aa82537fb0dfd19c0812fde434f7a69",
+  "provenanceSHA256": "e364f66a5cc9913a9c8e7ef8a070f77183027a2d1e7fba95e5bcb5debccebe88",
+  "qualification": "Build/669 units only; original Python extractor failed before consumer. Native acceptance requires a new consumer job."
+}
