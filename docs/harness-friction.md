@@ -6547,3 +6547,6 @@ Candidate330c8f94fd29c05d507745775a065131d4d52320 is building in run39176405633;
 
 
 SET433 qualification failure retained: run39176405633 builds the exact driver and passes its Linux units, then root SDK git rev-parse refuses dubious ownership after the Rust action changes HOME. Consumer/native jobs never start and no archive is published. Scope safe.directory to each exact owned checkout in the packager git invocation, without changing global Git trust or desktop/driver permissions; also assert the SDK checkout commit equals GITHUB_SHA. Rerun original archive and clean consumer owners.
+
+
+SET433 feedback-loop improvement: source preflight now verifies both exact checkout commits before Cargo compilation, after the Rust action can change HOME. Three source-only owners prove matching pins pass without any binary/Cargo, and wrong SDK/driver pins refuse before producing an archive. These CPU fixtures establish early refusal only; they earn no native acceptance. Future releases are configured for GitHub immutability; a subsequent no-cache API read confirms enabled after an initially stale false read. No archive has been published yet.

@@ -1,4 +1,5 @@
 """Build a source-addressed Bookworm archive; never download or publish executables."""
+import argparse
 import hashlib
 import json
 import os
@@ -21,17 +22,24 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--preflight", action="store_true", help="Verify both owned source pins before compiling; no binary execution")
+args = parser.parse_args()
 root = Path.cwd()
 source = root / "driver"
 rust = source / "libs/cua-driver/rust"
 binary = rust / "target/release/cua-driver"
 out = root / "artifacts/driver-release"
-out.mkdir(parents=True, exist_ok=True)
 pin = json.loads((root / "driver-source.json").read_text())["verifiedCommit"]
 assert re.fullmatch(r"[0-9a-f]{40}", pin)
 assert run("git", "rev-parse", "HEAD", cwd=source) == pin
 assert run("git", "rev-parse", "HEAD") == os.environ["GITHUB_SHA"]
 assert not run("git", "status", "--porcelain", "--untracked-files=no", cwd=source)
+if args.preflight:
+    print(json.dumps({"sdkCommit": os.environ["GITHUB_SHA"], "driverCommit": pin,
+        "sourcePreflight": True, "binaryExecuted": False, "archiveProduced": False}))
+    raise SystemExit(0)
+out.mkdir(parents=True, exist_ok=True)
 identity = json.loads(run(str(binary), "--opensky-driver-identity"))
 assert identity["source"] == pin and identity["product"] == "opensky-driver"
 version = identity["version"]
