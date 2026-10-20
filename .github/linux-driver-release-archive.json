@@ -1,14 +1,14 @@
 {
-  "file": "opensky-driver-0.36.0-44e81796a5064893e51b8cf89b14b51308cf83fa-linux-x86_64-gnu-bookworm.tar.gz",
-  "sha256": "f87c34f96b878785a1b4ac8f2ab83df6ae77db34e7338cfdffc7c4cb4c3665c0",
-  "binarySHA256": "b1fd384313cb95acc538b70eb409e6125d19f51f8061ab8532d762879ad7e6cd",
-  "directory": "opensky-driver-0.36.0-44e81796a5064893e51b8cf89b14b51308cf83fa-linux-x86_64-gnu-bookworm",
-  "sourceCommit": "44e81796a5064893e51b8cf89b14b51308cf83fa",
+  "file": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "86b5f7f03412c43aa29bc555dda4a4957d96fe3c7813ed32bd91dfb559984baa",
+  "binarySHA256": "c8ad4ac0b20264d9fb921534483f155767b31a7de97b8cf71be30b3f12edcd02",
+  "directory": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
   "version": "0.36.0",
-  "sourceRun": 39388147788,
+  "sourceRun": 39448763085,
   "artifact": "linux-driver-release-candidate",
-  "buildSDKCommit": "aa961724627ebfd71b5ae600a1db637e036d64a9",
-  "unitLogSHA256": "3e961cbb88f2835cfb0840ae6848839f5e424cb0f5259e72e8bed8b6b789dcb5",
-  "provenanceSHA256": "a3db93547cbd7f6f2b24709ab27cd85b31813abb9587cac56467cb7a1c74d4ac",
-  "qualification": "Fresh exact-source build/669Linux units and clean272-owner/native/strict/Stop/rebind/relative-storage consumer independently verified; every reuse requires a fresh consumer; sandboxed Bookworm browser remains unqualified."
+  "buildSDKCommit": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
+  "unitLogSHA256": "31faad1d8f488417c8ccb2ed98c586f06184c289604c45fc6a76e79985435bdc",
+  "provenanceSHA256": "67ed3ab559a34ed06229631daacd09a1b6d05cec3c98be0bba715e06bcd8de03",
+  "qualification": "Fresh exact-source build and clean native/strict/Stop/rebind/relative-storage consumer independently verified; every reuse requires a fresh consumer. Sandboxed Bookworm Chrome remains unqualified."
 }

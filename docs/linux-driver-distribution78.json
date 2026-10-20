@@ -1,0 +1,87 @@
+{
+  "status": "Fresh exact-source native distribution verified; staged0.2.36 pending immutable publication",
+  "runId": 39448763085,
+  "SDKSource": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
+  "driverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+  "archive": {
+    "file": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm.tar.gz",
+    "sha256": "86b5f7f03412c43aa29bc555dda4a4957d96fe3c7813ed32bd91dfb559984baa",
+    "binarySHA256": "c8ad4ac0b20264d9fb921534483f155767b31a7de97b8cf71be30b3f12edcd02",
+    "directory": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm",
+    "sourceCommit": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+    "version": "0.36.0"
+  },
+  "applicationProof": {
+    "accepted": true,
+    "sdkCommit": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
+    "binaryBuildSDKCommit": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
+    "driverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+    "archive": {
+      "file": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm.tar.gz",
+      "sha256": "86b5f7f03412c43aa29bc555dda4a4957d96fe3c7813ed32bd91dfb559984baa",
+      "binarySHA256": "c8ad4ac0b20264d9fb921534483f155767b31a7de97b8cf71be30b3f12edcd02",
+      "directory": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm",
+      "sourceCommit": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+      "version": "0.36.0"
+    },
+    "LinuxUnitsPassed": 669,
+    "embeddedPassed": 272,
+    "nativeSavedByteCounts": [
+      29,
+      46
+    ],
+    "partialSaved": "par",
+    "partialEffect": "unknown",
+    "partialOneDispatch": true,
+    "typingAtDeadlineCodepoints": 50,
+    "typingFinalCodepoints": 1000,
+    "typingSavedBytes": 2750,
+    "queuedCancelledBeforeDispatch": true,
+    "followingWaitsForCompletion": true,
+    "strictBridgeRetainsApp": true,
+    "originalPID": 13848,
+    "replacementPID": 13910,
+    "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+    "ownedChildrenExitedUnforced": 3,
+    "supervisorsExitedUnforced": [
+      7,
+      3
+    ],
+    "browserAccepted": false,
+    "paidArms": 0
+  },
+  "relativeStorage": {
+    "accepted": true,
+    "SDKSource": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
+    "driverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+    "runId": 39448763085,
+    "relativeCapture": {
+      "name": "relative-storage-capture",
+      "requestedHomeDir": "artifacts/halo/sdk-home",
+      "requestedScreenshotDir": "artifacts/halo/capture-sdk-shots",
+      "output": "/__w/opensky/opensky/artifacts/halo/capture-sdk-shots/python3-8388611-1792510919981-3.png",
+      "pid": 12424,
+      "windowId": 8388611,
+      "pngSHA256": "3ef68674e60d236be1c107e28b53de91aa7b11f25181cef4d5b70eceafefa667",
+      "pngBytes": 8511,
+      "width": 640,
+      "height": 480,
+      "focusBefore": "8388611",
+      "focusAfter": "8388611",
+      "textBefore": "replace me",
+      "textAfter": "replace me",
+      "clipboardUnchanged": true,
+      "inputDispatched": false
+    },
+    "originalPNGMatchesDriverOutput": true,
+    "exactManifestTargetVerified": true,
+    "grantExpansion": false,
+    "freshOnlyDesktop": "Debian12 Node22 TigerVNC/X11 XFWM4 compositor on shared D-Bus/AT-SPI ordinary UID1001",
+    "sandboxedBrowserAccepted": false,
+    "newPaidArms": 0,
+    "verifiedAt": "2026-10-20T15:43:46.151312+00:00"
+  },
+  "BookwormSandboxedChromeAccepted": false,
+  "newPaidArms": 0,
+  "originalPNG": "relative-storage77.png"
+}

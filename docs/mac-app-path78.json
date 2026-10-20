@@ -1,5 +1,5 @@
 {
-  "status": "Mac fix verified on driver main; Linux exact-source distribution qualification pending",
+  "status": "Mac fix and fresh exact-source Bookworm native distribution verified; staged0.2.36",
   "driverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
   "sourceContribution": {
     "commit": "8ae3222b5939e1eb5a30c3178008e67ff1979e60",
@@ -60,5 +60,13 @@
     "No new benchmark pair or score",
     "Original SDK probe assertion mistake retained: error is in details.error rather than code"
   ],
-  "SDKExample": "const driver = new CuaDriverClient({ binaryPath: '/Applications/OpenSkyDriver.app/Contents/MacOS/opensky-driver', autoInstall: false, autoStart: false });\nconst launched = await driver.call('launch_app', { name: '/System/Applications/Calculator.app' });\n// Retain launched.structured.pid and exact windows; observe before input."
+  "SDKExample": "const driver = new CuaDriverClient({ binaryPath: '/Applications/OpenSkyDriver.app/Contents/MacOS/opensky-driver', autoInstall: false, autoStart: false });\nconst launched = await driver.call('launch_app', { name: '/System/Applications/Calculator.app' });\n// Retain launched.structured.pid and exact windows; observe before input.",
+  "LinuxQualification": {
+    "run": 39448763085,
+    "SDKSource": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
+    "driverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+    "nativeAccepted": true,
+    "browserAccepted": false,
+    "proof": "linux-driver-distribution78.json"
+  }
 }
