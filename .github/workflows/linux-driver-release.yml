@@ -6,6 +6,10 @@ on:
         description: 'Reuse only the approved source/hash-pinned first-party archive; always run a fresh consumer contract'
         type: boolean
         default: false
+      gtk4_probe:
+        description: 'Run owned GTK4 CSD foreground button diagnostics after existing native consumers'
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -158,6 +162,17 @@ jobs:
           directory="$GITHUB_WORKSPACE/artifacts/halo/app-rebind"
           mkdir -p "$directory"; chown halo:halo "$directory"
           runuser -u halo -- env HALO_ARTIFACTS="$directory" HALO_REBIND_CONTRACT_ONLY=1 HALO_COMPOSITOR=on dbus-run-session -- bash e2e/halo/session.sh
+      - name: Install optional GTK4 diagnostic runtime
+        if: ${{ inputs.gtk4_probe }}
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends gir1.2-gtk-4.0
+      - name: Owned GTK4 CSD foreground button application effects
+        if: ${{ inputs.gtk4_probe }}
+        run: |
+          directory="$GITHUB_WORKSPACE/artifacts/halo/gtk4-owner"
+          mkdir -p "$directory"; chown halo:halo "$directory"
+          runuser -u halo -- env HALO_ARTIFACTS="$directory" dbus-run-session -- bash e2e/halo/gtk4-session.sh
       - name: Retain fresh consumer application effects and cleanup
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
