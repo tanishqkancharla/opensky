@@ -6636,3 +6636,14 @@ SET438 release regressions: Node22 and Node24 each pass519 SDK owners with one u
 
 
 SET438 immutable publication:0.2.35 atd6eedcc9 publishes SDK5b7c4663 and exact-source Bookworm archivef87c34f9/executableb1fd3843 with provenance, metadata and checksums. All5anonymous downloads match local bytes; frozen tag and signed SDK/driver asset attestations verify. All72 compiled files match testedSDKaa961724, and isolated Node22/24 imports/JSON/CLI pass without desktop calls. Original generic GTK fixture PNG is published unchanged; its visible `replace me` text was manually inspected. Main closure is documentation-only and follows verified assets in one push. No npm registry publication, Mac19/66 closure, new paid pair/score, permission change or source-gate relaxation is claimed.
+
+
+## SET439 — Accept the installed bundle path returned by list_apps
+
+**Symptom and layer.** Signed driver44e81796 refuses the real `/System/Applications/Calculator.app` from `list_apps` when supplied as `launch_app.name`: APP_NOT_INSTALLED, before dispatch. The Mac resolver prepended standard application roots to an already absolute path. The high-level SDK's existing bundle-id route is unchanged; this does not explain or fix Mac19/66.
+
+**Fix.** Adapt upstream8ae3222b with injaneity's authorship preserved. Accept an existing absolute `.app` directory, including a trailing slash, before name lookup. Keep bundle-id precedence, missing-app refusal, protected-host checks and exact target semantics. Update the public tool descriptions and generated CLI spec; omit the unrelated upstream docs layout migration. No Linux/Windows runtime code changes.
+
+**Evidence.** The upstream regression owner fails original code; all686 Mac units pass with six opt-in desktop owners ignored. Existing CLICK-N01/DIFF-N01/WINDOW-N01 pass on signed1d7ca76c. The identical path then cold-launches exactCalculatorPID82750/window95819, returning a real674x408PNG which is independently hashed and visually inspected. One launch, no probe input/replay. All owned apps/helpers exit; the preserved Calendar process/window survive. Signer, grants and actual250/50ms daemon settings stay unchanged. The first parent probe checked error.code instead of details.error and failed its assertion; original refusal and failed review are retained separately from successful cleanup.
+
+**Distribution.** Candidate0.2.36-dev pins driver1d7ca76c but advertises no binary until a fresh Bookworm archive and ordinary-user native consumer are independently verified. Existing immutable0.2.35 remains supported at44e81796. Sandboxed Bookworm Chrome, native Windows desktop and full paid admission remain unqualified. No new benchmark arm or score. See [scoped evidence and SDK example](mac-app-path78.json).

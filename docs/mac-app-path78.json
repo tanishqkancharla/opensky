@@ -1,0 +1,64 @@
+{
+  "status": "Mac fix verified on driver main; Linux exact-source distribution qualification pending",
+  "driverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+  "sourceContribution": {
+    "commit": "8ae3222b5939e1eb5a30c3178008e67ff1979e60",
+    "repository": "trycua/cua",
+    "author": "injaneity <44902825+injaneity@users.noreply.github.com>"
+  },
+  "scope": "macOS launch_app(name=absolute .app path); bundle_id precedence and protected-host checks unchanged",
+  "before": {
+    "driverSource": "44e81796a5064893e51b8cf89b14b51308cf83fa",
+    "requestedName": "/System/Applications/Calculator.app",
+    "error": "APP_NOT_INSTALLED",
+    "dispatchRequested": false
+  },
+  "after": {
+    "driverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+    "pid": 82750,
+    "windowId": 95819,
+    "bounds": {
+      "width": 674,
+      "height": 408
+    },
+    "launch_state": {
+      "process_running": true,
+      "requested": true,
+      "window_ready": true
+    },
+    "self_activation_suppressed": true,
+    "PNGBytesVerified": true,
+    "PNGVisuallyInspected": true,
+    "PNGSHA256": "a206f2d8030f801bd9078a713efe9b38b42e10087051e4eadb91a48873717ef4",
+    "probeInputCalls": 0,
+    "oneLaunchOnly": true
+  },
+  "regression": {
+    "ownerFailsOriginal": true,
+    "MacLibraryPassed": 686,
+    "MacDesktopTestsIgnored": 6,
+    "existingGUIContractsPassed": [
+      "CLICK-N01",
+      "DIFF-N01",
+      "WINDOW-N01"
+    ]
+  },
+  "cleanup": {
+    "allOwnedAppsExited": true,
+    "nativeHelpersExited": true,
+    "originalCalendarIdentityAndWindowPreserved": true
+  },
+  "signingIdentityUnchanged": true,
+  "existingAXAndScreenRecordingGrantsRetained": true,
+  "actualDaemonLaunchObservation": {
+    "timeoutMs": 250,
+    "pollMs": 50
+  },
+  "limitations": [
+    "Mac launch issues19/66 remain unresolved",
+    "No Linux/Windows runtime code changes in this patch",
+    "No new benchmark pair or score",
+    "Original SDK probe assertion mistake retained: error is in details.error rather than code"
+  ],
+  "SDKExample": "const driver = new CuaDriverClient({ binaryPath: '/Applications/OpenSkyDriver.app/Contents/MacOS/opensky-driver', autoInstall: false, autoStart: false });\nconst launched = await driver.call('launch_app', { name: '/System/Applications/Calculator.app' });\n// Retain launched.structured.pid and exact windows; observe before input."
+}
