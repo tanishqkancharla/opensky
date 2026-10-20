@@ -106,7 +106,9 @@
     "sandboxedBrowserAccepted": false,
     "newPaidArms": 0,
     "verifiedAt": "2026-10-20T07:55:18.831620+00:00",
-    "status": "Native contract and original relative PNG independently verified"
+    "status": "Native contract and original relative PNG independently verified",
+    "originalFixturePNG": "relative-storage77.png",
+    "visibleTextManuallyInspected": "replace me"
   },
   "limitations": [
     "Mac19/66 remain open and intermittent; these changes do not fix document launch.",
@@ -117,9 +119,13 @@
   "newPaidArms": 0,
   "newScoreRows": 0,
   "paidDispatchAllowed": false,
-  "published": false,
+  "published": true,
   "SDKBeforeSource": "280d5d11fe058007a6950a5c22ad54bf5adcdbd7",
   "driverRepositoryHeadAtPublication": "c96dc97566ee0c859dcfe9d653895365735a81f6",
   "driverRepositoryHeadDiff": "CI-only Nix matrix scope; runtime source44e81796 unchanged",
-  "status": "Qualified; immutable0.2.35 publication pending"
+  "status": "Verified and published in immutable0.2.35",
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.35",
+  "releaseSource": "d6eedcc9dc992c8005dd621ddc0ac9ca1c6ee31b",
+  "SDKTarballSHA256": "5b7c466362751e1527b04a32fdf316689f3a249369cfe4f094c944315346df24",
+  "signedAssetAttestationsVerified": true
 }

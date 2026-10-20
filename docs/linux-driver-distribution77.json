@@ -1,5 +1,5 @@
 {
-  "status": "Fresh source-exact native/relative-storage consumer accepted; publication pending",
+  "status": "Verified and published in immutable0.2.35",
   "runId": 39388147788,
   "SDKSource": "aa961724627ebfd71b5ae600a1db637e036d64a9",
   "driverSource": "44e81796a5064893e51b8cf89b14b51308cf83fa",
@@ -153,5 +153,9 @@
   "browserAccepted": false,
   "unrestrictedPermissions": false,
   "rustBuildInConsumer": false,
-  "published": false
+  "published": true,
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.35",
+  "releaseSource": "d6eedcc9dc992c8005dd621ddc0ac9ca1c6ee31b",
+  "SDKTarballSHA256": "5b7c466362751e1527b04a32fdf316689f3a249369cfe4f094c944315346df24",
+  "signedAssetAttestationsVerified": true
 }
