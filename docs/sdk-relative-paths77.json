@@ -1,0 +1,125 @@
+{
+  "driverSource": "44e81796a5064893e51b8cf89b14b51308cf83fa",
+  "SDKRuntimeQualificationSource": "aa961724627ebfd71b5ae600a1db637e036d64a9",
+  "upstreamCLIContribution": {
+    "source": "41eee2fb91c20a77a9e55e4f013fc968081ad74c",
+    "author": "f-trycua",
+    "scope": "exact installed-bundle macOS CLI startup only"
+  },
+  "contract": {
+    "homeDir": "Relative override or OPENSKY_HOME resolves against the host working directory when OpenSky is constructed.",
+    "screenshotDir": "Explicit relative screenshot directories also resolve at construction; native output dispatch uses an absolute path.",
+    "driverWorkingDirectory": "Need not match the SDK host working directory.",
+    "permissions": "Existing bounded driver output-file grants still apply; path normalization does not grant access.",
+    "actions": "No retry, foreground action, input or daemon cancellation is implied by path resolution."
+  },
+  "nativeMac": {
+    "originalFailure": "Relative SDK home retains AX but screenshot is null with px_capture_unavailable/ENOENT.",
+    "absoluteControlPassed": true,
+    "relativeAfter": [
+      {
+        "explicitScreenshotDir": false,
+        "width": 1140,
+        "height": 598,
+        "PNGBytes": 209147,
+        "PNGSHA256": "b0a2bf696b47568e491cb73e6c5d5dd1d65932638fddc752d051b37362a01e82",
+        "exactPID": 84295,
+        "exactWindow": 54774
+      },
+      {
+        "explicitScreenshotDir": true,
+        "width": 1140,
+        "height": 598,
+        "PNGBytes": 209147,
+        "PNGSHA256": "b0a2bf696b47568e491cb73e6c5d5dd1d65932638fddc752d051b37362a01e82",
+        "exactPID": 84295,
+        "exactWindow": 54774
+      }
+    ],
+    "keyboardOrPointerInputInStorageControls": 0,
+    "coldCLI": {
+      "oneLaunch": true,
+      "proxyPID": 14576,
+      "daemonPID": 14578,
+      "exactBundle": "/Applications/OpenSkyDriver.app",
+      "responsiblePPID": 1,
+      "AccessibilityAndScreenRecordingRetained": true,
+      "stableSigningIdentityRetained": true,
+      "daemonOutlivesProxyEOF": true,
+      "exactPIDStopVerified": true,
+      "privateSocketAndDirectoryRemoved": true
+    },
+    "currentSDKDaemonPID": 14850,
+    "actualLaunchObservationMS": {
+      "timeout": 250,
+      "poll": 50
+    },
+    "existingContractsPassed": [
+      "CLICK-N01",
+      "DIFF-N01",
+      "WINDOW-N01"
+    ],
+    "allOwnedAppsExited": true,
+    "driverInvariantAcrossStorageControls": true
+  },
+  "unitOwners": {
+    "CLI": 329,
+    "CLIExactPathOwnerFailsOriginal": true,
+    "SDKRelativePathOwnerFailsOriginal": true,
+    "SDKRelativePathFixtureVariants": 4,
+    "focusedNode22Passed": 173,
+    "focusedNode22Skipped": 1,
+    "Node22Passed": 519,
+    "Node24Passed": 519,
+    "skipPerNode": 1,
+    "skipReason": "Bun runtime unavailable",
+    "packageOwnersPassed": 5,
+    "E2ETypecheck": true
+  },
+  "Linux": {
+    "accepted": true,
+    "SDKSource": "aa961724627ebfd71b5ae600a1db637e036d64a9",
+    "driverSource": "44e81796a5064893e51b8cf89b14b51308cf83fa",
+    "runId": 39388147788,
+    "relativeCapture": {
+      "name": "relative-storage-capture",
+      "requestedHomeDir": "artifacts/halo/sdk-home",
+      "requestedScreenshotDir": "artifacts/halo/capture-sdk-shots",
+      "output": "/__w/opensky/opensky/artifacts/halo/capture-sdk-shots/python3-8388611-1792482745876-3.png",
+      "pid": 12421,
+      "windowId": 8388611,
+      "pngSHA256": "3ef68674e60d236be1c107e28b53de91aa7b11f25181cef4d5b70eceafefa667",
+      "pngBytes": 8511,
+      "width": 640,
+      "height": 480,
+      "focusBefore": "8388611",
+      "focusAfter": "8388611",
+      "textBefore": "replace me",
+      "textAfter": "replace me",
+      "clipboardUnchanged": true,
+      "inputDispatched": false
+    },
+    "originalPNGMatchesDriverOutput": true,
+    "exactManifestTargetVerified": true,
+    "grantExpansion": false,
+    "freshOnlyDesktop": "Debian12 Node22 TigerVNC/X11 XFWM4 compositor on shared D-Bus/AT-SPI ordinary UID1001",
+    "sandboxedBrowserAccepted": false,
+    "newPaidArms": 0,
+    "verifiedAt": "2026-10-20T07:55:18.831620+00:00",
+    "status": "Native contract and original relative PNG independently verified"
+  },
+  "limitations": [
+    "Mac19/66 remain open and intermittent; these changes do not fix document launch.",
+    "No local wrong-copy launch was reproduced; the new argv owner verifies removal of name lookup, and actual cold startup verifies the selected canonical bundle.",
+    "This is a selected upstream backport with local contracts retained, not full0.37 integration.",
+    "No paid pair or benchmark score improvement is claimed."
+  ],
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "paidDispatchAllowed": false,
+  "published": false,
+  "SDKBeforeSource": "280d5d11fe058007a6950a5c22ad54bf5adcdbd7",
+  "driverRepositoryHeadAtPublication": "c96dc97566ee0c859dcfe9d653895365735a81f6",
+  "driverRepositoryHeadDiff": "CI-only Nix matrix scope; runtime source44e81796 unchanged",
+  "status": "Qualified; immutable0.2.35 publication pending"
+}

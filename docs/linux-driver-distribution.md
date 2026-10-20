@@ -47,8 +47,8 @@ the pinned SDK. Verify the archive **before** extracting or executing it:
 
 ```dockerfile
 # Debian Bookworm amd64; install the runtime packages above first.
-ARG OPENSKY_DRIVER_URL=https://github.com/tanishqkancharla/opensky/releases/download/v0.2.34/opensky-driver-0.36.0-5a9a4483c54761b733940d2fa894cbed66336ce1-linux-x86_64-gnu-bookworm.tar.gz
-ARG OPENSKY_DRIVER_SHA256=a5bddcc53d7e38010428d8df7bc0f402fc2acf94921b23d761ac857a25a9e1d3
+ARG OPENSKY_DRIVER_URL=https://github.com/tanishqkancharla/opensky/releases/download/v0.2.35/opensky-driver-0.36.0-44e81796a5064893e51b8cf89b14b51308cf83fa-linux-x86_64-gnu-bookworm.tar.gz
+ARG OPENSKY_DRIVER_SHA256=f87c34f96b878785a1b4ac8f2ab83df6ae77db34e7338cfdffc7c4cb4c3665c0
 RUN curl -fSL "$OPENSKY_DRIVER_URL" -o /tmp/opensky-driver.tar.gz \
  && printf '%s  %s\n' "$OPENSKY_DRIVER_SHA256" /tmp/opensky-driver.tar.gz | sha256sum -c - \
  && mkdir -p /opt/opensky \
@@ -57,12 +57,12 @@ RUN curl -fSL "$OPENSKY_DRIVER_URL" -o /tmp/opensky-driver.tar.gz \
 ENV OPENSKY_DRIVER_BINARY=/opt/opensky/opensky-driver
 RUN /opt/opensky/opensky-driver --version \
  && /opt/opensky/opensky-driver --opensky-driver-identity > /opt/opensky/identity.json \
- && node -e 'const i=require("/opt/opensky/identity.json"); if(i.product!=="opensky-driver" || i.protocolVersion!==1 || i.version!=="0.36.0" || i.source!=="5a9a4483c54761b733940d2fa894cbed66336ce1") process.exit(1)'
+ && node -e 'const i=require("/opt/opensky/identity.json"); if(i.product!=="opensky-driver" || i.protocolVersion!==1 || i.version!=="0.36.0" || i.source!=="44e81796a5064893e51b8cf89b14b51308cf83fa") process.exit(1)'
 
 ```
 
 Keep the identity check: product `opensky-driver`, protocolVersion `1`, version
-`0.36.0`, source `5a9a4483c54761b733940d2fa894cbed66336ce1`. The SDK still verifies
+`0.36.0`, source `44e81796a5064893e51b8cf89b14b51308cf83fa`. The SDK still verifies
 fork product/protocol compatibility; Halo must keep its exact-source check above.
 The archive preserves daemon ownership, grants,
 action completion/drain, clipboard or foreground semantics. Install files as
@@ -71,11 +71,13 @@ A binary path override selects this executable; it does not grant permissions.
 
 ## Verification and limitations
 
-[Qualification39342956249](https://github.com/tanishqkancharla/opensky/actions/runs/39342956249) freshly builds the exact selected `5a9a4483` source on Bookworm with Rust 1.97.1/Cargo --locked and passes 669 Linux units. It then installs the archive into a separate Node 22.23.3 Bookworm container with runtime/desktop packages and no Rust build. Source/regular-file/refusal owners pass on Bookworm; source, identity, checksums and original application effects are independently reviewed before release.
+[Qualification39388147788](https://github.com/tanishqkancharla/opensky/actions/runs/39388147788) freshly builds the exact selected `44e81796` source on Bookworm with Rust 1.97.1/Cargo --locked and passes 669 Linux units. It then installs the archive into a separate Node 22.23.3 Bookworm container with runtime/desktop packages and no Rust build. Source/regular-file/refusal owners pass on Bookworm; source, identity, checksums and original application effects are independently reviewed before release.
 
-271 embedded SDK owners pass. Fresh ordinary-user TigerVNC/shared-bus application owners save exact 29-byte ASCII and 46-byte Unicode selected replacements, leave the payload clipboard, refuse missing foreground/clipboard grants, and report partial saved `par` as unknown after one dispatch. At the 500 ms typing deadline 52 codepoints are visible and the action remains active; completion saves 1,000 codepoints / 2,750 bytes before the following Save starts. A queued action is cancelled before dispatch. One SDK binds replacement PID 13603 after 13541 exits; old handles refuse before input, and one replacement paste saves 75 exact UTF-8bytes. The strict bridge retains its app across realm-await. Seven original supervisors, three new supervisors and three replacement-test children exit without force. [Compact evidence](linux-driver-distribution76.json).
+272 embedded SDK owners pass. Fresh ordinary-user TigerVNC/shared-bus application owners save exact 29-byte ASCII and 46-byte Unicode selected replacements, leave the payload clipboard, refuse missing foreground/clipboard grants, and report partial saved `par` as unknown after one dispatch. At the 500 ms typing deadline 49 codepoints are visible and the action remains active; completion saves 1,000 codepoints / 2,750 bytes before the following Save starts. A queued action is cancelled before dispatch. One SDK binds replacement PID 13889 after 13826 exits; old handles refuse before input, and one replacement paste saves 75 exact UTF-8bytes. The strict bridge retains its app across realm-await. Seven original supervisors, three new supervisors and three replacement-test children exit without force. [Compact evidence](linux-driver-distribution77.json).
 
-The archive checksum is `a5bddcc53d7e38010428d8df7bc0f402fc2acf94921b23d761ac857a25a9e1d3`; executable checksum is `81b48aa733a29b72a8eb5297f3cea60ea51adce7b1cc533d093930af1f0f8ada`. All 766 internal file checksums round-trip independently. Source, Rust 1.97.1, Cargo.lock and ABI provenance accompany these exact bytes. The binary's highest observed GLIBC requirement is 2.35; supported qualification remains Bookworm / glibc 2.36.
+The relative-storage owner captures an exact640×480 editor PNG from relative SDK home/screenshot paths under the existing bounded file grant. Original driver-output bytes match, while focus, text and clipboard remain unchanged.
+
+The archive checksum is `f87c34f96b878785a1b4ac8f2ab83df6ae77db34e7338cfdffc7c4cb4c3665c0`; executable checksum is `b1fd384313cb95acc538b70eb409e6125d19f51f8061ab8532d762879ad7e6cd`. All 766 internal file checksums round-trip independently. Source, Rust 1.97.1, Cargo.lock and ABI provenance accompany these exact bytes. The binary's highest observed GLIBC requirement is 2.35; supported qualification remains Bookworm / glibc 2.36.
 
 No model agents are used in distribution qualification and it earns no benchmark
 score. Sandboxed Chrome in the Bookworm container remains unqualified; this

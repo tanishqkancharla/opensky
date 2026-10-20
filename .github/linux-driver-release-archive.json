@@ -1,14 +1,14 @@
 {
-  "file": "opensky-driver-0.36.0-5a9a4483c54761b733940d2fa894cbed66336ce1-linux-x86_64-gnu-bookworm.tar.gz",
-  "sha256": "a5bddcc53d7e38010428d8df7bc0f402fc2acf94921b23d761ac857a25a9e1d3",
-  "binarySHA256": "81b48aa733a29b72a8eb5297f3cea60ea51adce7b1cc533d093930af1f0f8ada",
-  "directory": "opensky-driver-0.36.0-5a9a4483c54761b733940d2fa894cbed66336ce1-linux-x86_64-gnu-bookworm",
-  "sourceCommit": "5a9a4483c54761b733940d2fa894cbed66336ce1",
+  "file": "opensky-driver-0.36.0-44e81796a5064893e51b8cf89b14b51308cf83fa-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "f87c34f96b878785a1b4ac8f2ab83df6ae77db34e7338cfdffc7c4cb4c3665c0",
+  "binarySHA256": "b1fd384313cb95acc538b70eb409e6125d19f51f8061ab8532d762879ad7e6cd",
+  "directory": "opensky-driver-0.36.0-44e81796a5064893e51b8cf89b14b51308cf83fa-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "44e81796a5064893e51b8cf89b14b51308cf83fa",
   "version": "0.36.0",
-  "sourceRun": 39342956249,
+  "sourceRun": 39388147788,
   "artifact": "linux-driver-release-candidate",
-  "buildSDKCommit": "0e7d76d532440665290e3a51b52117cfeb2e6a8a",
-  "unitLogSHA256": "7b14e60d37d7e7986e006df0924e37b20cbec24ecee93059c6e79808b2ecb8b6",
-  "provenanceSHA256": "c7b4d95972854d8d5b481797c52ac94312e60c431897d53f31f1cd53cff93c6e",
-  "qualification": "Fresh exact-source build/669 Linux units and independently verified clean native/strict/Stop/rebind consumer; any reuse still requires a fresh consumer. Bookworm sandboxed browser remains unqualified."
+  "buildSDKCommit": "aa961724627ebfd71b5ae600a1db637e036d64a9",
+  "unitLogSHA256": "3e961cbb88f2835cfb0840ae6848839f5e424cb0f5259e72e8bed8b6b789dcb5",
+  "provenanceSHA256": "a3db93547cbd7f6f2b24709ab27cd85b31813abb9587cac56467cb7a1c74d4ac",
+  "qualification": "Fresh exact-source build/669Linux units and clean272-owner/native/strict/Stop/rebind/relative-storage consumer independently verified; every reuse requires a fresh consumer; sandboxed Bookworm browser remains unqualified."
 }

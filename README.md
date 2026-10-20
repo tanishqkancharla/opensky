@@ -13,12 +13,12 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.34/opensky-cua-0.2.34.tgz
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.35/opensky-cua-0.2.35.tgz
 opensky doctor
 opensky skill install -g
 ```
 
-[OpenSky 0.2.34](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.34)
+[OpenSky 0.2.35](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.35)
 is distributed as the attached npm tarball with a published SHA-256 checksum.
 Registry publication awaits publisher authentication; the command above selects
 the released SDK directly. For a local project, omit `-g`.
@@ -29,7 +29,7 @@ reports it missing:
 ```sh
 git clone https://github.com/tanishqkancharla/cua.git
 cd cua
-git checkout 5a9a4483c54761b733940d2fa894cbed66336ce1
+git checkout 44e81796a5064893e51b8cf89b14b51308cf83fa
 bash libs/cua-driver/scripts/install.sh
 ```
 
@@ -120,6 +120,20 @@ Direct SDK users consume returned observations; embedded hosts can provide an
 On macOS Finder, `app.setValue` edits an observed inline name editor. Listed file-name labels refuse with `file_name_needs_rename` before input or Automation: select the item, press Return, observe the inline editor, edit it, then press Return. The lower-level `OpenSky.set_value` accepts `allow_scripted_rename: false` for the same refusal; its existing default scripted route remains available. Direct scripted renames retain the [tracked Automation timeout limitation](https://github.com/tanishqkancharla/opensky/issues/65).
 Tabs add `goto`, `back`, `forward`, `reload`, and exact `close`.
 See [runtime integration](docs/runtime-reference.md) for emitters and lifecycle.
+
+SDK `homeDir`, `OPENSKY_HOME`, and `screenshotDir` may be relative. They resolve
+against the host working directory when the SDK is constructed, so a persistent
+driver may run from another directory. For example:
+
+```js
+const sdk = createOpenSky({
+  homeDir: "./.opensky",
+  screenshotDir: "./screenshots",
+});
+```
+
+Driver filesystem permissions still apply to the resolved screenshot directory.
+See [path and signed-startup evidence](docs/sdk-relative-paths77.json).
 
 On macOS, `app.click(index, {clickCount: 2})` uses the driver's foreground
 route with the exact observed window and element token; it may change focus.
