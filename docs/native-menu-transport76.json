@@ -1,7 +1,7 @@
 {
   "driverSource": "5a9a4483c54761b733940d2fa894cbed66336ce1",
   "SDKRuntimeSource": "452bc212706c0e33edb5b214c56b4179971995a7",
-  "status": "Mac/source and source-exact Linux native distribution verified; 0.2.34 publication pending",
+  "status": "Verified and published in immutable0.2.34",
   "sourceCommits": [
     {
       "upstream": "c2b20141b5607cab1b39ffaac4416d9978901da3",
@@ -148,5 +148,14 @@
       "libxcursor1"
     ],
     "SDKVersion": "0.2.34"
-  }
+  },
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.34",
+  "releaseSource": "5a72d9fd0e93ee388c1ea0cda6ec5c62e4a23e9a",
+  "immutable": true,
+  "signedAssetAttestationsVerified": true,
+  "publicAssetsVerified": 5,
+  "SDKTarballSHA256": "f0f94d2094e792055f7af6432a577c098b88d2b5c4cff00c4eadf3952bfd4bce",
+  "UnixReplyBudgetMs": 150000,
+  "WindowsNamedPipeTransportChanged": false,
+  "WindowsNativeDesktopAccepted": false
 }

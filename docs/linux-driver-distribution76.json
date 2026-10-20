@@ -36,7 +36,7 @@
   ],
   "browserAccepted": false,
   "paidArms": 0,
-  "status": "Exact-source build and extracted-binary native consumer independently verified; publication pending",
+  "status": "Verified and published in immutable0.2.34",
   "qualificationRun": 39342956249,
   "archiveFileChecksumsVerified": 766,
   "sourceBuildFallback": true,
@@ -56,5 +56,11 @@
     "libxrandr2",
     "libxcursor1"
   ],
-  "SDKVersion": "0.2.34"
+  "SDKVersion": "0.2.34",
+  "release": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.34",
+  "releaseSource": "5a72d9fd0e93ee388c1ea0cda6ec5c62e4a23e9a",
+  "immutable": true,
+  "signedAssetAttestationsVerified": true,
+  "publicAssetsVerified": 5,
+  "SDKTarballSHA256": "f0f94d2094e792055f7af6432a577c098b88d2b5c4cff00c4eadf3952bfd4bce"
 }
