@@ -430,7 +430,9 @@ export interface OpenSkyOptions {
   driverOptions?: Omit<CuaDriverOptions, "session">;
   /** Stop waiting for admitted operations without claiming cleanup; defaults to 30s. */
   drainTimeoutMs?: number;
+  /** Relative paths are resolved against the host working directory at construction. */
   homeDir?: string;
+  /** Relative paths are resolved against the host working directory at construction. */
   screenshotDir?: string;
   session?: string;
   autoLaunch?: boolean;

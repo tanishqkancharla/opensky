@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 export type OpenSkyTarget = "mac" | "win" | "linux";
 
 export function detectTarget(platform = process.platform): OpenSkyTarget {
@@ -11,7 +13,7 @@ export function pasteModifierFor(target: OpenSkyTarget): "cmd" | "ctrl" {
 }
 
 export function homeDir(override?: string): string {
-  return override ?? process.env.OPENSKY_HOME ?? defaultHome();
+  return resolve(override ?? process.env.OPENSKY_HOME ?? defaultHome());
 }
 
 function defaultHome(): string {

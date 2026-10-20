@@ -146,7 +146,7 @@ jobs:
           dpkg-query -W > artifacts/halo/packages.txt
       - name: Required Node22 embedded SDK contracts
         run: |
-          node --import tsx --test --test-timeout=60000 test/app-rebind.test.ts test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
+          node --import tsx --test --test-timeout=60000 test/relative-capture-paths.test.ts test/app-rebind.test.ts test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
       - name: Extracted-binary native effects, strict bridge, timeout and Stop drain
         env:
           HALO_NODE22_WHOLE_OUTCOME: not_run_release_lane

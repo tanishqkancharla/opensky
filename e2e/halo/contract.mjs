@@ -1,7 +1,8 @@
 import {hasChromeSwitch,processStartTicks as processStart} from "./chrome-process.mjs";
 import assert from "node:assert/strict";
 import { readFile, writeFile, readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, relative, isAbsolute } from "node:path";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { execFileSync } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -20,7 +21,14 @@ const freshState = async () => {
 };
 const record = (name, details) => evidence.results.push({ name, ...details });
 const driver = new CuaDriverClient({ binaryPath: process.env.OPENSKY_DRIVER_PATH, socket: process.env.HALO_DRIVER_SOCKET, session: "halo-contract", autoStart: false, timeoutMs: null });
-const sdk = createOpenSky({ driver, target: "linux", homeDir: join(out, "sdk-home"), screenshotDir: join(out, "screenshots"), autoLaunch: false, settleDelayMs: 0 });
+const relativeHomeDir = relative(process.cwd(), join(out, "sdk-home"));
+const relativeScreenshotDir = relative(process.cwd(), join(out, "capture-sdk-shots"));
+const captureRequests=[];const nativeCall=driver.call.bind(driver);
+driver.call=async(tool,args={})=>{
+  if(tool==="get_window_state"&&args.include_screenshot===true)captureRequests.push({...args});
+  return nativeCall(tool,args);
+};
+const sdk = createOpenSky({ driver, target: "linux", homeDir: relativeHomeDir, screenshotDir: relativeScreenshotDir, autoLaunch: false, settleDelayMs: 0 });
 const cua = createCua(sdk, { emit: () => undefined }); const queue = new DesktopActionQueue();
 const browserDriver = new CuaDriverClient({ binaryPath: process.env.OPENSKY_DRIVER_PATH, socket: process.env.HALO_BROWSER_SOCKET, session: "halo-browser-contract", autoStart: false, timeoutMs: null });
 const browserPreparations=[];
@@ -56,6 +64,26 @@ try {
   const beforeAX = await app.getAXState({ disableDiffing: true, emit: false });
   await writeFile(join(out, "editor-before.ax.txt"), beforeAX);
   assert.match(beforeAX, /replace me/, "real AT-SPI snapshot exposes editor contents");
+  const storageBefore=await freshState();
+  const focusBeforeCapture=execFileSync("xdotool",["getactivewindow"],{encoding:"utf8"}).trim();
+  const pixels=Buffer.from(await app.getScreenshot({emit:false}));
+  assert.equal(pixels.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
+  assert.ok(pixels.readUInt32BE(16)>100&&pixels.readUInt32BE(20)>100);
+  assert.equal(captureRequests.length,1);
+  const captureRequest=captureRequests[0];
+  assert.equal(captureRequest.pid,Number(process.env.HALO_EDITOR_PID));
+  assert.equal(captureRequest.window_id,Number(process.env.HALO_EDITOR_WINDOW));
+  assert.ok(isAbsolute(captureRequest.screenshot_out_file));
+  const written=await readFile(captureRequest.screenshot_out_file);assert.deepEqual(written,pixels);
+  const focusAfterCapture=execFileSync("xdotool",["getactivewindow"],{encoding:"utf8"}).trim();
+  assert.equal(focusAfterCapture,focusBeforeCapture);
+  const storageAfter=await freshState();assert.equal(storageAfter.text,storageBefore.text);assert.equal(storageAfter.clipboard,storageBefore.clipboard);
+  await writeFile(join(out,"relative-storage-capture.png"),pixels);
+  record("relative-storage-capture",{requestedHomeDir:relativeHomeDir,requestedScreenshotDir:relativeScreenshotDir,
+    output:captureRequest.screenshot_out_file,pid:captureRequest.pid,windowId:captureRequest.window_id,
+    pngSHA256:createHash("sha256").update(pixels).digest("hex"),pngBytes:pixels.length,
+    width:pixels.readUInt32BE(16),height:pixels.readUInt32BE(20),focusBefore:focusBeforeCapture,focusAfter:focusAfterCapture,
+    textBefore:storageBefore.text,textAfter:storageAfter.text,clipboardUnchanged:true,inputDispatched:false});
   await queue.submit(() => driver.call("hotkey", { scope: "desktop", keys: ["ctrl", "a"] })).wait();
   await poll(async () => (await state()).selected === "replace me" && (await state()).clipboard === "preserved clipboard sentinel Ελληνικά");
   const before = await state(); const capability = await sdk.get_capabilities();

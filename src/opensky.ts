@@ -2,7 +2,7 @@ import { projectNativeCollectionRows } from "./native-collection-viewport.js";
 import { randomUUID } from "node:crypto";
 import { chmod, readFile, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { asArray, asRecord, CuaDriverClient } from "./driver.js";
@@ -195,7 +195,7 @@ export class OpenSky implements OpenSkyApi {
     const home = homeDir(options.homeDir);
     this.store = new SessionStore(sessionFile(home));
     this.browserLeases = new BrowserSessionLeaseStore(home, this.runtimeId, process.pid, undefined, this.rawDriver.sessionOwnership);
-    this.screenshotDir = options.screenshotDir ?? join(home, "screenshots");
+    this.screenshotDir = resolve(options.screenshotDir ?? join(home, "screenshots"));
     this.autoLaunch = options.autoLaunch !== false;
     this.screenshotFormat = options.screenshotFormat;
     this.screenshotScale = options.screenshotScale;
