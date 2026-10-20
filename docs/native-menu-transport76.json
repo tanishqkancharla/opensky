@@ -1,7 +1,7 @@
 {
   "driverSource": "5a9a4483c54761b733940d2fa894cbed66336ce1",
   "SDKRuntimeSource": "452bc212706c0e33edb5b214c56b4179971995a7",
-  "status": "Mac and hermetic source accepted; Linux distribution pending",
+  "status": "Mac/source and source-exact Linux native distribution verified; 0.2.34 publication pending",
   "sourceCommits": [
     {
       "upstream": "c2b20141b5607cab1b39ffaac4416d9978901da3",
@@ -87,5 +87,66 @@
   "newPaidArms": 0,
   "newScoreRows": 0,
   "Mac66Closed": false,
-  "BookwormBrowserAccepted": false
+  "BookwormBrowserAccepted": false,
+  "SDKVersion": "0.2.34",
+  "LinuxDistribution": {
+    "accepted": true,
+    "sdkCommit": "0e7d76d532440665290e3a51b52117cfeb2e6a8a",
+    "binaryBuildSDKCommit": "0e7d76d532440665290e3a51b52117cfeb2e6a8a",
+    "driverSource": "5a9a4483c54761b733940d2fa894cbed66336ce1",
+    "archive": {
+      "file": "opensky-driver-0.36.0-5a9a4483c54761b733940d2fa894cbed66336ce1-linux-x86_64-gnu-bookworm.tar.gz",
+      "sha256": "a5bddcc53d7e38010428d8df7bc0f402fc2acf94921b23d761ac857a25a9e1d3",
+      "binarySHA256": "81b48aa733a29b72a8eb5297f3cea60ea51adce7b1cc533d093930af1f0f8ada",
+      "directory": "opensky-driver-0.36.0-5a9a4483c54761b733940d2fa894cbed66336ce1-linux-x86_64-gnu-bookworm",
+      "sourceCommit": "5a9a4483c54761b733940d2fa894cbed66336ce1",
+      "version": "0.36.0"
+    },
+    "LinuxUnitsPassed": 669,
+    "embeddedPassed": 271,
+    "nativeSavedByteCounts": [
+      29,
+      46
+    ],
+    "partialSaved": "par",
+    "partialEffect": "unknown",
+    "partialOneDispatch": true,
+    "typingAtDeadlineCodepoints": 52,
+    "typingFinalCodepoints": 1000,
+    "typingSavedBytes": 2750,
+    "queuedCancelledBeforeDispatch": true,
+    "followingWaitsForCompletion": true,
+    "strictBridgeRetainsApp": true,
+    "originalPID": 13541,
+    "replacementPID": 13603,
+    "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+    "ownedChildrenExitedUnforced": 3,
+    "supervisorsExitedUnforced": [
+      7,
+      3
+    ],
+    "browserAccepted": false,
+    "paidArms": 0,
+    "status": "Exact-source build and extracted-binary native consumer independently verified; publication pending",
+    "qualificationRun": 39342956249,
+    "archiveFileChecksumsVerified": 766,
+    "sourceBuildFallback": true,
+    "provenanceAsset": "opensky-driver-0.36.0-5a9a4483c54761b733940d2fa894cbed66336ce1-linux-x86_64-gnu-bookworm.provenance.json",
+    "requiredPackages": [
+      "libc6",
+      "libgcc-s1",
+      "libdbus-1-3",
+      "libx11-6",
+      "libxi6",
+      "libxtst6",
+      "libxext6",
+      "libxkbcommon0",
+      "libssl3",
+      "libxrender1",
+      "libxfixes3",
+      "libxrandr2",
+      "libxcursor1"
+    ],
+    "SDKVersion": "0.2.34"
+  }
 }
