@@ -1477,6 +1477,9 @@ export class OpenSky implements OpenSkyApi {
     try {
       await this.driver.call("click", payload);
     } catch (error) {
+      // An explicit Linux delivery choice is final, including uncertain errors.
+      // The host must observe/drain before deciding on another action.
+      if (this.target === "linux" && args.delivery_mode !== undefined) throw error;
       // Never replay a parent-selection setter, including uncertain native errors.
       if (parentSelection) throw error;
       if (this.target === "mac" && button === "left" && (args.click_count ?? 1) === 1

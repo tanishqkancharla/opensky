@@ -33,3 +33,13 @@ test("Linux explicit foreground refusal is final and is never replayed", async()
  const sdk=createOpenSky({driver,target:"linux",homeDir:join(dir,"linux-refusal"),settleDelayMs:0});
  try{const app=await createCua(sdk,{emit:()=>{}}).getApp("Calculator");await app.getAXState({emit:false});await assert.rejects(app.click(13,{deliveryMode:"foreground"}),{code:"bounded_resource_outside_manifest"});assert.equal(dispatched,1);}finally{await sdk.close();}
 });
+
+test("explicit Linux native delivery never retries a focus-looking uncertain error or escalates background", async()=>{
+ for(const mode of ["foreground","background"] as const){
+  const {driver,dir}=await makeHarness();const call=driver.call.bind(driver);let dispatched=0;
+  const error=new OpenSkyError("native window unavailable; delivery unknown","driver_transport_timeout",{effect:"unknown"});
+  driver.call=async(tool,args={})=>{if(tool==="click"){dispatched++;throw error;}return call(tool,args);};
+  const sdk=createOpenSky({driver,target:"linux",homeDir:join(dir,"explicit-"+mode),settleDelayMs:0});
+  try{const app=await createCua(sdk,{emit:()=>{}}).getApp("Calculator");await app.getAXState({emit:false});await assert.rejects(app.click(13,{deliveryMode:mode}),e=>e===error);assert.equal(dispatched,1,"Explicit route error must reach the caller after exactly one attempt");}finally{await sdk.close();}
+ }
+});
