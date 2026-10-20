@@ -1,14 +1,15 @@
 {
-  "file": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm.tar.gz",
-  "sha256": "86b5f7f03412c43aa29bc555dda4a4957d96fe3c7813ed32bd91dfb559984baa",
-  "binarySHA256": "c8ad4ac0b20264d9fb921534483f155767b31a7de97b8cf71be30b3f12edcd02",
-  "directory": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm",
-  "sourceCommit": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+  "file": "opensky-driver-0.36.0-f3d58810afc97483c1c26cb6664aee9a6dfbe7d9-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "1905c0ba35d61c63d08dc6be649b51fc08a6961420d0556f95105b9f8310e58a",
+  "binarySHA256": "75e2dc2c1df5f0cabf8b39e5ab069bc41536d675d3ffd6c3cc6c69b16e76ddce",
+  "directory": "opensky-driver-0.36.0-f3d58810afc97483c1c26cb6664aee9a6dfbe7d9-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "f3d58810afc97483c1c26cb6664aee9a6dfbe7d9",
   "version": "0.36.0",
-  "sourceRun": 39448763085,
+  "sourceRun": 39517115699,
   "artifact": "linux-driver-release-candidate",
-  "buildSDKCommit": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
-  "unitLogSHA256": "31faad1d8f488417c8ccb2ed98c586f06184c289604c45fc6a76e79985435bdc",
-  "provenanceSHA256": "67ed3ab559a34ed06229631daacd09a1b6d05cec3c98be0bba715e06bcd8de03",
-  "qualification": "Fresh exact-source build and clean native/strict/Stop/rebind/relative-storage consumer independently verified; every reuse requires a fresh consumer. Sandboxed Bookworm Chrome remains unqualified."
+  "buildSDKCommit": "eadcfdcdafe26b1bbc9dac272459f272fa7d6223",
+  "unitLogSHA256": "86634761dd0c2b5f36bb01d678fa717809b8aec2d9cc40068640534eb5fda9f8",
+  "TLSLogSHA256": "517aa7e646144dab69122f459f74d33047d49b8bc727870de42f5dc5e392d35a",
+  "provenanceSHA256": "0baf124c8a7b48d47d2c7108edb4802d9c1956a92df2888cd09043a75cfd97f5",
+  "qualification": "Exact source/build/archive and669Linux/3TLS owners verified. Original and new SDK native consumers pending; archive approval is not desktop acceptance. Every reuse requires a fresh consumer."
 }
