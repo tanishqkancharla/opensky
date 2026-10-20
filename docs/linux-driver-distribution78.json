@@ -1,5 +1,5 @@
 {
-  "status": "Fresh exact-source native distribution verified; staged0.2.36 pending immutable publication",
+  "status": "Verified and published in immutable0.2.36",
   "runId": 39448763085,
   "SDKSource": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
   "driverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
@@ -83,5 +83,36 @@
   },
   "BookwormSandboxedChromeAccepted": false,
   "newPaidArms": 0,
-  "originalPNG": "relative-storage77.png"
+  "originalPNG": "relative-storage77.png",
+  "release": {
+    "version": "0.2.36",
+    "source": "58c619dc4297698370c950eff80f2813a108ebbb",
+    "runtimeQualificationSource": "728ef8806ee0fa6ece7e0c88341ecc7a2a9d4fae",
+    "url": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.36",
+    "immutable": true,
+    "publicDownloadsVerified": true,
+    "signedAssetAttestationsVerified": true,
+    "assets": [
+      {
+        "file": "driver-assets.json",
+        "sha256": "bd2193a04c14a6f2ea7b11e84a609c325598616448f72cfd0ab6d05af34bf7e4"
+      },
+      {
+        "file": "opensky-cua-0.2.36.tgz",
+        "sha256": "8e969bf03ad593fde9496068d093b0751f17abbcd1bc8f4d5da88d1e1359e677"
+      },
+      {
+        "file": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm.provenance.json",
+        "sha256": "67ed3ab559a34ed06229631daacd09a1b6d05cec3c98be0bba715e06bcd8de03"
+      },
+      {
+        "file": "opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm.tar.gz",
+        "sha256": "86b5f7f03412c43aa29bc555dda4a4957d96fe3c7813ed32bd91dfb559984baa"
+      },
+      {
+        "file": "SHA256SUMS",
+        "sha256": "f34b40df8ac780480aa1589cbabcc1ff1dac206ddcdd6ccd2f6db61f0d4eaaab"
+      }
+    ]
+  }
 }
