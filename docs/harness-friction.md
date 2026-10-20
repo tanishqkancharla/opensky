@@ -6672,3 +6672,12 @@ Upstream1bc57bd0 corrects a GTK4 CSD inverse transform and accepts a descendant 
 ### SET441 SDK guard finding
 
 Initial owned run39515696275 completed all existing native/strict/Stop/rebind consumers but the GTK4 step refused in the SDK before any driver click: explicit native Linux delivery was incorrectly restricted to Mac gestures. Two facade boundary owners fail on the original guard. Permit Linux native click delivery modes already implemented by the driver; retain exact observed tokens and window identity, unchanged defaults and bounded-resource refusals without replay. Focused OpenSky/facade/browser/foreground owners pass. Real GTK4 effects remain pending on the corrected candidate; this SDK guard fix is not proof of a geometry defect.
+
+
+### SET441 real outcome
+
+Corrected candidate12db868 / released driver1d7ca76c passes run39516754665: real GTK4 counters change One, Dot and Two exactly once, no siblings change; exactly3fresh indexed foreground dispatches retain the owned PID/window; all4supervisors exit unforced. Existing native paste/partial/Stop/drain/strict/rebind consumers also pass. The initial no-input SDK refusal remains retained as failure. This establishes the guard fix on ordinary-user Bookworm TigerVNC/X11/XFWM4/shared D-Bus; it does not reproduce upstream1bc57bd0's geometry bug on this GTK version, so that patch is not imported. No benchmark rows or score changes.
+
+## SET442 — Apply the published Rust TLS distrust update to the shipped driver
+
+The shipped Rust ureq HTTPS graph locked rustls-webpki0.103.15/webpki-roots1.0.7. Adopt upstream149ea51c's narrow0.103.16/1.0.10 lock updates and original public-certificate owners, preserving contributor authorship. The old graph fails actual verifier distrust and root-removal assertions; all3owners and329driver tests pass on the new graph. Sixteen public certificates cover8SPKIs; no private key or live forged-leaf exploit is used. Root0.26/Electron/other SDK changes are outside this driver's graph; unrelated tempfile resolver churn is excluded. No OS trust-store/permissions changes. Fresh Linux archive and stable-signed Mac checks remain required before release; immutable0.2.36 assets retain their historical lock. This claim covers Rustls HTTPS, not Node/browser/native-tls trust.

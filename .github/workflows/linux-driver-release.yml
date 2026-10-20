@@ -54,6 +54,7 @@ jobs:
           python3 e2e/halo/package-linux-driver.py --preflight
           cargo build --release --locked -p cua-driver --manifest-path driver/libs/cua-driver/rust/Cargo.toml
           cargo test --release --locked -p platform-linux --lib --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/platform-linux-unit.log 2>&1
+          cargo test --release --locked -p cua-driver --test emudhra_distrust --manifest-path driver/libs/cua-driver/rust/Cargo.toml > artifacts/halo/tls-distrust.log 2>&1
           python3 e2e/halo/package-linux-driver.py
           driver/libs/cua-driver/rust/target/release/cua-driver --opensky-driver-identity > artifacts/halo/identity.json
           sha256sum driver/libs/cua-driver/rust/target/release/cua-driver > artifacts/halo/driver-sha256.txt
@@ -150,7 +151,7 @@ jobs:
           dpkg-query -W > artifacts/halo/packages.txt
       - name: Required Node22 embedded SDK contracts
         run: |
-          node --import tsx --test --test-timeout=60000 test/relative-capture-paths.test.ts test/app-rebind.test.ts test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
+          node --import tsx --test --test-timeout=60000 test/linux-native-foreground.test.ts test/relative-capture-paths.test.ts test/app-rebind.test.ts test/desktop-host.test.ts test/native-paste-capability.test.ts test/cua.test.ts test/opensky.test.ts test/typed-browser.test.ts test/opensky-lifecycle.test.ts test/async-lifecycle.test.ts test/mcp-driver.test.ts test/driver-parse.test.ts > artifacts/halo/embedded-sdk-tests.log 2>&1
       - name: Extracted-binary native effects, strict bridge, timeout and Stop drain
         env:
           HALO_NODE22_WHOLE_OUTCOME: not_run_release_lane
