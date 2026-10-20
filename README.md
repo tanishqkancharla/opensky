@@ -144,6 +144,12 @@ when needed, and verify the application outcome. The lower-level
 `sdk.click` keeps its previous default and accepts `delivery_mode` for indexed
 left double-clicks. Browser foreground consent remains separate.
 
+On Linux, native `app.click(index, {deliveryMode: "foreground"})` explicitly
+authorizes the driver to activate the exact observed window before input. The
+driver restores the prior focus where supported. The observed element token,
+window identity and driver capability grants still apply; a refusal is an error.
+Omitting this option retains the existing default route.
+
 App observations follow the active window within the bound process, including
 dialogs; actions target the latest observed window. Explicit legacy handles
 stay fixed to their window. Browser sessions created by OpenSky are isolated and

@@ -6667,3 +6667,8 @@ SET439 immutable publication:0.2.36 at58c619dc publishes SDK8e969bf0 and exact-s
 ## SET441 — Exercise GTK4 foreground point ownership before backporting geometry fixes
 
 Upstream1bc57bd0 corrects a GTK4 CSD inverse transform and accepts a descendant label of the observed control. Current1d7ca76c differs, but arithmetic fixtures do not establish the application effect. The optional GTK4 lane reuses only the exact approved archive, first runs existing native/strict/Stop/rebind consumers, then starts an owned GTK4 HeaderBar/button fixture under ordinary-user Bookworm TigerVNC/X11/XFWM4/shared D-Bus. A foreground opt-in targets fresh observed button indices; independent counters/visible labels verify One, Dot and Two exactly once without changing siblings. Record original tree/pixels/CSD properties, input receipts, effects and exact supervisor exits. No absent-consent fallback, replay, model agent, unrestricted grant, VM or Chrome sandbox bypass. This is pending diagnostic evidence, not yet a production fix or score.
+
+
+### SET441 SDK guard finding
+
+Initial owned run39515696275 completed all existing native/strict/Stop/rebind consumers but the GTK4 step refused in the SDK before any driver click: explicit native Linux delivery was incorrectly restricted to Mac gestures. Two facade boundary owners fail on the original guard. Permit Linux native click delivery modes already implemented by the driver; retain exact observed tokens and window identity, unchanged defaults and bounded-resource refusals without replay. Focused OpenSky/facade/browser/foreground owners pass. Real GTK4 effects remain pending on the corrected candidate; this SDK guard fix is not proof of a geometry defect.

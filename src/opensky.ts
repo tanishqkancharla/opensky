@@ -1338,7 +1338,7 @@ export class OpenSky implements OpenSkyApi {
     y?: number;
     mouse_button?: MouseButton;
     click_count?: number;
-    /** Explicit typed-browser input, or Mac native pixel/indexed double-click delivery. */
+    /** Explicit typed-browser/Linux native input, or Mac native pixel/indexed double-click delivery. */
     delivery_mode?: "background" | "foreground";
     /** Auxiliary native window-change poll;50–1000ms, legacy default1000. */
     window_change_timeout_ms?: number;
@@ -1349,10 +1349,10 @@ export class OpenSky implements OpenSkyApi {
     const button = normalizeMouseButton(args.mouse_button);
     const resolved = await this.requireResolved(args.app);
     if (args.delivery_mode !== undefined && (
-      !["background", "foreground"].includes(args.delivery_mode) || (!resolved.browser && (this.target !== "mac" ||
+      !["background", "foreground"].includes(args.delivery_mode) || (!resolved.browser && this.target !== "linux" && (this.target !== "mac" ||
       !((args.element_index !== undefined && button === "left" && args.click_count === 2)
         || (args.element_index === undefined && typeof args.x === "number" && typeof args.y === "number"))))
-    )) throw invalidParams("delivery_mode requires a typed browser, Mac native coordinate click or indexed left double-click");
+    )) throw invalidParams("delivery_mode requires a typed browser, Linux native click, Mac native coordinate click or indexed left double-click");
     if (resolved.browser) {
       const hasX = typeof args.x === "number";
       const hasY = typeof args.y === "number";
