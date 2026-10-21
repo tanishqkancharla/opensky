@@ -1,0 +1,49 @@
+{
+  "status": "Qualified Rust HTTPS distrust patch",
+  "driverSource": "f3d58810afc97483c1c26cb6664aee9a6dfbe7d9",
+  "upstream": "https://github.com/trycua/cua/commit/149ea51c613cc840c3760dec822c57b7e65df05a",
+  "author": "ddupont <3820588+ddupont808@users.noreply.github.com>",
+  "before": {
+    "rustls-webpki": "0.103.15",
+    "webpki-roots": "1.0.7",
+    "distrustAssertion": "CaUsedAsEndEntity instead of CertDistrusted",
+    "rootAssertion": "emSign ECC Root CA - G3 still trusted"
+  },
+  "after": {
+    "rustls-webpki": "0.103.16",
+    "webpki-roots": "1.0.10",
+    "TLSOwnersPassed": 3,
+    "MacDriverOwnersPassed": 329,
+    "LinuxUnitsPassed": 669,
+    "TLSBuildRun": 39517115699,
+    "currentSDKConsumerRun": 39518439431
+  },
+  "scope": "Shipped Rust ureq/rustls HTTPS; Node/browser/native-tls trust engines and OS trust store are separate. Public certificate fixtures cover16certificates/8SPKIs; no private keys or live forged leaf exploit reproduction.",
+  "MacRuntime": {
+    "source": "f3d58810afc97483c1c26cb6664aee9a6dfbe7d9",
+    "version": "0.36.0",
+    "sha256": "f7c01f0e923e604db66e573c0fe0275b7289be696ec9b3ffe16f7829e8b26c25",
+    "stableSignerPreserved": true,
+    "permissionsChanged": false,
+    "actualDaemonEnvironmentVerified": true,
+    "launchObservation": {
+      "timeoutMs": 250,
+      "pollMs": 50
+    },
+    "currentSDKCapture": {
+      "pid": 84295,
+      "windowId": 54774,
+      "width": 1140,
+      "height": 598,
+      "sha256": "0f57b5234a107abeb70eac60755039e84acbdc0988c141e6f0258ef988eaceb0",
+      "bytes": 184045
+    }
+  },
+  "remainingLimitations": [
+    "Bookworm sandboxed Chrome unqualified",
+    "Mac19/66 remain open",
+    "Full upstream driver0.37.0 integration pending",
+    "No full Windows native qualification"
+  ],
+  "newPaidArms": 0
+}

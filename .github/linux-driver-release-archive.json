@@ -11,5 +11,5 @@
   "unitLogSHA256": "86634761dd0c2b5f36bb01d678fa717809b8aec2d9cc40068640534eb5fda9f8",
   "TLSLogSHA256": "517aa7e646144dab69122f459f74d33047d49b8bc727870de42f5dc5e392d35a",
   "provenanceSHA256": "0baf124c8a7b48d47d2c7108edb4802d9c1956a92df2888cd09043a75cfd97f5",
-  "qualification": "Exact source/build/archive and669Linux/3TLS owners verified. Original and new SDK native consumers pending; archive approval is not desktop acceptance. Every reuse requires a fresh consumer."
+  "qualification": "Fresh exact-source TLS/native/strict/Stop/rebind/GTK4/relative-storage consumer independently verified; each reuse requires a fresh consumer. Sandboxed Bookworm Chrome remains unqualified."
 }

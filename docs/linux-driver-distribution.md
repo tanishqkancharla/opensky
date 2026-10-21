@@ -47,8 +47,8 @@ the pinned SDK. Verify the archive **before** extracting or executing it:
 
 ```dockerfile
 # Debian Bookworm amd64; install the runtime packages above first.
-ARG OPENSKY_DRIVER_URL=https://github.com/tanishqkancharla/opensky/releases/download/v0.2.36/opensky-driver-0.36.0-1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc-linux-x86_64-gnu-bookworm.tar.gz
-ARG OPENSKY_DRIVER_SHA256=86b5f7f03412c43aa29bc555dda4a4957d96fe3c7813ed32bd91dfb559984baa
+ARG OPENSKY_DRIVER_URL=https://github.com/tanishqkancharla/opensky/releases/download/v0.2.37/opensky-driver-0.36.0-f3d58810afc97483c1c26cb6664aee9a6dfbe7d9-linux-x86_64-gnu-bookworm.tar.gz
+ARG OPENSKY_DRIVER_SHA256=1905c0ba35d61c63d08dc6be649b51fc08a6961420d0556f95105b9f8310e58a
 RUN curl -fSL "$OPENSKY_DRIVER_URL" -o /tmp/opensky-driver.tar.gz \
  && printf '%s  %s\n' "$OPENSKY_DRIVER_SHA256" /tmp/opensky-driver.tar.gz | sha256sum -c - \
  && mkdir -p /opt/opensky \
@@ -57,12 +57,12 @@ RUN curl -fSL "$OPENSKY_DRIVER_URL" -o /tmp/opensky-driver.tar.gz \
 ENV OPENSKY_DRIVER_BINARY=/opt/opensky/opensky-driver
 RUN /opt/opensky/opensky-driver --version \
  && /opt/opensky/opensky-driver --opensky-driver-identity > /opt/opensky/identity.json \
- && node -e 'const i=require("/opt/opensky/identity.json"); if(i.product!=="opensky-driver" || i.protocolVersion!==1 || i.version!=="0.36.0" || i.source!=="1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc") process.exit(1)'
+ && node -e 'const i=require("/opt/opensky/identity.json"); if(i.product!=="opensky-driver" || i.protocolVersion!==1 || i.version!=="0.36.0" || i.source!=="f3d58810afc97483c1c26cb6664aee9a6dfbe7d9") process.exit(1)'
 
 ```
 
 Keep the identity check: product `opensky-driver`, protocolVersion `1`, version
-`0.36.0`, source `1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc`. The SDK still verifies
+`0.36.0`, source `f3d58810afc97483c1c26cb6664aee9a6dfbe7d9`. The SDK still verifies
 fork product/protocol compatibility; Halo must keep its exact-source check above.
 The archive preserves daemon ownership, grants,
 action completion/drain, clipboard or foreground semantics. Install files as
@@ -71,13 +71,13 @@ A binary path override selects this executable; it does not grant permissions.
 
 ## Verification and limitations
 
-[Qualification39448763085](https://github.com/tanishqkancharla/opensky/actions/runs/39448763085) freshly builds the exact selected `1d7ca76c` source on Bookworm with Rust 1.97.1/Cargo --locked and passes 669 Linux units. It then installs the archive into a separate Node 22.23.3 Bookworm container with runtime/desktop packages and no Rust build. Source/regular-file/refusal owners pass on Bookworm; source, identity, checksums and original application effects are independently reviewed before release.
+[Qualification39518439431](https://github.com/tanishqkancharla/opensky/actions/runs/39518439431) reuses the exact archive from [original binary build39517115699](https://github.com/tanishqkancharla/opensky/actions/runs/39517115699); that build qualified the selected `f3d58810` source on Bookworm with Rust 1.97.1/Cargo --locked and passes 669 Linux units. It then installs the archive into a separate Node 22.23.3 Bookworm container with runtime/desktop packages and no Rust build. Source/regular-file/refusal owners pass on Bookworm; source, identity, checksums and original application effects are independently reviewed before release.
 
-272 embedded SDK owners pass. Fresh ordinary-user TigerVNC/shared-bus application owners save exact 29-byte ASCII and 46-byte Unicode selected replacements, leave the payload clipboard, refuse missing foreground/clipboard grants, and report partial saved `par` as unknown after one dispatch. At the 500 ms typing deadline 50 codepoints are visible and the action remains active; completion saves 1,000 codepoints / 2,750 bytes before the following Save starts. A queued action is cancelled before dispatch. One SDK binds replacement PID 13910 after 13848 exits; old handles refuse before input, and one replacement paste saves 75 exact UTF-8bytes. The strict bridge retains its app across realm-await. Seven original supervisors, three new supervisors and three replacement-test children exit without force. [Compact evidence](linux-driver-distribution78.json).
+275 embedded SDK owners pass. Fresh ordinary-user TigerVNC/shared-bus application owners save exact 29-byte ASCII and 46-byte Unicode selected replacements, leave the payload clipboard, refuse missing foreground/clipboard grants, and report partial saved `par` as unknown after one dispatch. At the 500 ms typing deadline 49 codepoints are visible and the action remains active; completion saves 1,000 codepoints / 2,750 bytes before the following Save starts. A queued action is cancelled before dispatch. One SDK binds replacement PID 19164 after 19102 exits; old handles refuse before input, and one replacement paste saves 75 exact UTF-8bytes. The strict bridge retains its app across realm-await. Seven original supervisors, three new supervisors and three replacement-test children exit without force. [Compact evidence](linux-driver-distribution81.json).
 
 The relative-storage owner captures an exact640×480 editor PNG from relative SDK home/screenshot paths under the existing bounded file grant. Original driver-output bytes match, while focus, text and clipboard remain unchanged.
 
-The archive checksum is `86b5f7f03412c43aa29bc555dda4a4957d96fe3c7813ed32bd91dfb559984baa`; executable checksum is `c8ad4ac0b20264d9fb921534483f155767b31a7de97b8cf71be30b3f12edcd02`. All 766 internal file checksums round-trip independently. Source, Rust 1.97.1, Cargo.lock and ABI provenance accompany these exact bytes. The binary's highest observed GLIBC requirement is 2.35; supported qualification remains Bookworm / glibc 2.36.
+The archive checksum is `1905c0ba35d61c63d08dc6be649b51fc08a6961420d0556f95105b9f8310e58a`; executable checksum is `75e2dc2c1df5f0cabf8b39e5ab069bc41536d675d3ffd6c3cc6c69b16e76ddce`. All internal file checksums round-trip independently. Source, Rust 1.97.1, Cargo.lock and ABI provenance accompany these exact bytes. The binary's highest observed GLIBC requirement is 2.35; supported qualification remains Bookworm / glibc 2.36.
 
 No model agents are used in distribution qualification and it earns no benchmark
 score. Sandboxed Chrome in the Bookworm container remains unqualified; this
@@ -107,3 +107,5 @@ not be replaced. Refer to GitHub's [immutable release contract](https://docs.git
 The selected driver also confirms the exact focused/main window before background menu dispatch and preserves target-safety hotkey refusals. Its 150-second Unix Rust transport reply budget uses nonblocking poll to preserve a buffered reply after a Unix peer closes, including Darwin. Explicit TypeScript client deadlines and unknown-delivery/no-replay semantics remain unchanged. See [native and transport evidence](native-menu-transport76.md).
 
 The selected Mac resolver also accepts an existing absolute `.app` path returned by `list_apps` as `launch_app.name`, including a trailing slash. Cold Calculator launch and exact-window pixels verify; this preserves bundle-id precedence and does not close the intermittent file-launch issues. See [Mac path evidence and SDK example](mac-app-path78.json).
+
+The same candidate passes3 real-certificate TLS verifier owners and the owned GTK4.8.3HeaderBar fixture: explicit `app.click(index, {deliveryMode: "foreground"})` changes One/Dot/Two counters exactly once with no sibling change;4additional supervisors exit unforced. [Foreground evidence](linux-native-foreground81.json), [TLS scope and limitations](tls-distrust81.json). The driver still reports0.36.0 with exact source pin; full upstream0.37.0 integration is pending.

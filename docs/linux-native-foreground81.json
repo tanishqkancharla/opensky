@@ -1,0 +1,49 @@
+{
+  "status": "Qualified real GTK4 effects",
+  "SDKRuntimeSource": "e773c8d63182e6d41c382df7424b51886ec395bc",
+  "driverSource": "f3d58810afc97483c1c26cb6664aee9a6dfbe7d9",
+  "initialSDKFailureRun": 39515696275,
+  "initialDriverSource": "1d7ca76c7f162bd5c2a56fa87452dcc1381ce5bc",
+  "initialResult": "SDK invalid_params before any driver click; all three counters remain zero",
+  "guardFixedRun": 39516754665,
+  "freshDriverRun": 39518439431,
+  "effects": {
+    "accepted": true,
+    "gtkVersion": [
+      4,
+      8,
+      3
+    ],
+    "counts": {
+      "One": 1,
+      "Dot": 1,
+      "Two": 1
+    },
+    "events": [
+      "One",
+      "Dot",
+      "Two"
+    ],
+    "exactForegroundDispatches": 3,
+    "ownedSupervisorsExitedUnforced": 4,
+    "geometryDefectReproduced": false
+  },
+  "requiredPackages": [
+    "gir1.2-gtk-4.0",
+    "python3-gi",
+    "tigervnc-standalone-server",
+    "xfwm4",
+    "dbus-x11",
+    "at-spi2-core"
+  ],
+  "grants": "Only owned PID/window, display, screenshot output directory and start/end/list/state/bring_to_front/click tools. No unrestricted grant or global keyboard.",
+  "example": [
+    "const app = await cua.getApp(\"Your app\");",
+    "await app.getAXStateAndScreenshot({emit: false});",
+    "// Choose an index from that fresh observation.",
+    "await app.click(index, {deliveryMode: \"foreground\"});"
+  ],
+  "semantics": "Exact observed PID/window/element token retained; foreground may activate target and restores prior focus where supported. Default route unchanged. No input replay. The fixture was already foregrounded; other compositors/focus transitions are not established here.",
+  "geometryBugReproduced": false,
+  "newPaidArms": 0
+}
