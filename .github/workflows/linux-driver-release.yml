@@ -41,7 +41,7 @@ jobs:
       - name: Install Bookworm build prerequisites
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends clang binutils pkg-config libdbus-1-dev libx11-dev libxi-dev libxtst-dev libxext-dev libxkbcommon-dev libssl-dev ca-certificates python3
+          apt-get install -y --no-install-recommends clang binutils pkg-config libdbus-1-dev libx11-dev libxi-dev libxtst-dev libxext-dev libxkbcommon-dev libssl-dev ca-certificates python3 xvfb
       - uses: dtolnay/rust-toolchain@1.97.1
       - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
         with:

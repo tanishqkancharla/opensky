@@ -1,6 +1,7 @@
 """Verify the approved first-party archive without executing its binary."""
 import hashlib
 import json
+import re
 from pathlib import Path
 import sys
 
@@ -16,5 +17,8 @@ assert provenance['sdkCommit']==pin['buildSDKCommit'] and provenance['sourceComm
 assert provenance['binarySHA256']==pin['binarySHA256']
 identity=provenance['identity']
 assert identity['source']==selected and identity['product']=='opensky-driver' and identity['protocolVersion']==1
-assert 'test result: ok. 669 passed; 0 failed;' in (folder/'halo/platform-linux-unit.log').read_text()
+expected_count = pin.get('unitTestsPassed', 669)
+assert type(expected_count) is int and expected_count >= 669
+results = re.findall(r'test result: ok\. (\d+) passed; 0 failed;', (folder/'halo/platform-linux-unit.log').read_text())
+assert results == [str(expected_count)], 'Linux unit count must match the approved archive build'
 print(json.dumps({'archiveSHA256':pin['sha256'],'binarySHA256':pin['binarySHA256'],'originalBuildSDK':pin['buildSDKCommit'],'originalRun':pin['sourceRun'],'sourceCommit':selected,'freshBuild':False,'desktopAccepted':False,'binaryExecuted':False}))

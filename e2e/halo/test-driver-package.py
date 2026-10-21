@@ -58,4 +58,29 @@ class ArchiveExtraction(unittest.TestCase):
                 with self.assertRaises(ValueError):extract_archive(archive,folder/'out','owned')
                 self.assertFalse((folder/'out').exists())
 
+class ApprovedArchiveUnits(unittest.TestCase):
+    def test_pinned_unit_count_and_legacy_default(self):
+        # Real verifier boundary; inert bytes only, no driver execution.
+        import hashlib
+        verifier=PACKAGER.with_name("verify-linux-driver-archive.py")
+        for count,pinned,accepted in [(669,None,True),(671,671,True),(671,669,False),(671,670,False),(668,668,False)]:
+            with self.subTest(count=count,pinned=pinned),tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp);(root/'.github').mkdir();folder=root/'artifact'
+                (folder/'driver-release').mkdir(parents=True);(folder/'halo').mkdir()
+                source='a'*40;build='b'*40
+                meta={'file':'inert.tgz','sha256':hashlib.sha256(b'inert archive').hexdigest(),'binarySHA256':'c'*64,'directory':'owned','sourceCommit':source,'version':'0.37.0'}
+                pin={**meta,'buildSDKCommit':build,'sourceRun':123}
+                (folder/'driver-release/inert.tgz').write_bytes(b'inert archive')
+                provenance={'sdkCommit':build,'sourceCommit':source,'binarySHA256':meta['binarySHA256'],'identity':{'source':source,'product':'opensky-driver','protocolVersion':1}}
+                raw=json.dumps(provenance).encode();(folder/'driver-release/provenance.json').write_bytes(raw)
+                pin['provenanceSHA256']=hashlib.sha256(raw).hexdigest()
+                log=f'test result: ok. {count} passed; 0 failed; 10 ignored;\n'.encode();(folder/'halo/platform-linux-unit.log').write_bytes(log)
+                pin['unitLogSHA256']=hashlib.sha256(log).hexdigest()
+                if pinned is not None:pin['unitTestsPassed']=pinned
+                (folder/'driver-release/archive.json').write_text(json.dumps(meta))
+                (root/'.github/linux-driver-release-archive.json').write_text(json.dumps(pin));(root/'driver-source.json').write_text(json.dumps({'verifiedCommit':source}))
+                result=subprocess.run([os.sys.executable,str(verifier),str(folder)],cwd=root,capture_output=True,text=True,timeout=10)
+                self.assertEqual(result.returncode==0,accepted,result.stderr)
+                if accepted:self.assertFalse(json.loads(result.stdout)['binaryExecuted'])
+
 if __name__=="__main__":unittest.main()
