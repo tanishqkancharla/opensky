@@ -1,5 +1,5 @@
 {
-  "status": "Qualified Rust HTTPS distrust patch",
+  "status": "Published in immutable OpenSky0.2.37; scoped qualification and limitations retained",
   "driverSource": "f3d58810afc97483c1c26cb6664aee9a6dfbe7d9",
   "upstream": "https://github.com/trycua/cua/commit/149ea51c613cc840c3760dec822c57b7e65df05a",
   "author": "ddupont <3820588+ddupont808@users.noreply.github.com>",
@@ -45,5 +45,13 @@
     "Full upstream driver0.37.0 integration pending",
     "No full Windows native qualification"
   ],
-  "newPaidArms": 0
+  "newPaidArms": 0,
+  "release": {
+    "tag": "v0.2.37",
+    "source": "41c9cee7beb4950267db81beaef690c7cd1d2089",
+    "url": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.37",
+    "publishedAt": "2026-10-21T00:03:03Z",
+    "immutable": true,
+    "signedReleaseAndAssetsVerified": true
+  }
 }

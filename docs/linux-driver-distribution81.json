@@ -1,5 +1,5 @@
 {
-  "status": "Qualified native distribution; immutable publication pending",
+  "status": "Published in immutable OpenSky0.2.37; scoped qualification and limitations retained",
   "version": "0.2.37",
   "runId": 39518439431,
   "originalBinaryBuildRun": 39517115699,
@@ -89,5 +89,13 @@
   "boundedGrants": true,
   "BookwormSandboxedChromeAccepted": false,
   "driverUpstreamVersion": "0.36.0 fork plus selectively verified fixes; full upstream0.37.0 integration pending",
-  "newPaidArms": 0
+  "newPaidArms": 0,
+  "release": {
+    "tag": "v0.2.37",
+    "source": "41c9cee7beb4950267db81beaef690c7cd1d2089",
+    "url": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.37",
+    "publishedAt": "2026-10-21T00:03:03Z",
+    "immutable": true,
+    "signedReleaseAndAssetsVerified": true
+  }
 }

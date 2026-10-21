@@ -1,5 +1,5 @@
 {
-  "status": "Qualified real GTK4 effects",
+  "status": "Published in immutable OpenSky0.2.37; scoped qualification and limitations retained",
   "SDKRuntimeSource": "e773c8d63182e6d41c382df7424b51886ec395bc",
   "driverSource": "f3d58810afc97483c1c26cb6664aee9a6dfbe7d9",
   "initialSDKFailureRun": 39515696275,
@@ -45,5 +45,13 @@
   ],
   "semantics": "Exact observed PID/window/element token retained; foreground may activate target and restores prior focus where supported. Default route unchanged. No input replay. The fixture was already foregrounded; other compositors/focus transitions are not established here.",
   "geometryBugReproduced": false,
-  "newPaidArms": 0
+  "newPaidArms": 0,
+  "release": {
+    "tag": "v0.2.37",
+    "source": "41c9cee7beb4950267db81beaef690c7cd1d2089",
+    "url": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.37",
+    "publishedAt": "2026-10-21T00:03:03Z",
+    "immutable": true,
+    "signedReleaseAndAssetsVerified": true
+  }
 }
