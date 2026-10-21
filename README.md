@@ -13,12 +13,12 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.37/opensky-cua-0.2.37.tgz
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.38/opensky-cua-0.2.38.tgz
 opensky doctor
 opensky skill install -g
 ```
 
-[OpenSky 0.2.37](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.37)
+[OpenSky 0.2.38](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.38)
 is distributed as the attached npm tarball with a published SHA-256 checksum.
 Registry publication awaits publisher authentication; the command above selects
 the released SDK directly. For a local project, omit `-g`.
@@ -29,7 +29,7 @@ reports it missing:
 ```sh
 git clone https://github.com/tanishqkancharla/cua.git
 cd cua
-git checkout f3d58810afc97483c1c26cb6664aee9a6dfbe7d9
+git checkout fb777b006e0c63d3e060c87ec31be7c580fc6155
 bash libs/cua-driver/scripts/install.sh
 ```
 
@@ -202,3 +202,5 @@ reusable lessons belong in [harness principles](docs/harness-principles.md).
 When supplying a custom `DriverClient`, native observations must include the structured `elements` inventory for any displayed numeric indices. Indexed Markdown alone is refused with `native_observation_bindings_unavailable`; previous bindings are retired. Use the current OpenSky client, which requests `full_output:true` when the helper advertises `compact-v1`. Literal bracketed numbers in labels/document text remain data while control indices are stabilized. See [current Mac validation](docs/mac-driver-0353-evidence.json) for exact driver and environment pins.
 
 Linux native foreground click [application evidence](docs/linux-native-foreground81.json) and [Rust HTTPS distrust validation](docs/tls-distrust81.json) accompany this release.
+
+OpenSky 0.2.38 selects the integrated driver 0.37 fork. [Exact pins, native qualification and limitations](docs/driver037-qualification83.md).

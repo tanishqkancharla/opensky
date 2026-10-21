@@ -1,0 +1,142 @@
+{
+  "status": "Scoped native qualification accepted; publication pending",
+  "version": "0.2.38",
+  "driverVersion": "0.37.0",
+  "runId": 39542863439,
+  "originalBinaryBuildRun": 39542863439,
+  "SDKRuntimeSource": "c185f2600ec8a526ccc6e771a68164191e836076",
+  "driverSource": "fb777b006e0c63d3e060c87ec31be7c580fc6155",
+  "driverDocsClosureSource": "d53e8a8fec53808a547cbcede76be2b7636638b3",
+  "upstreamSource": "2d2f99228d4d2508dc6fcc84c176b296e146714a",
+  "prefetchRecoverySource": "97991403b40d227c795ec4fd4e7b3ad7c873f21b",
+  "archive": {
+    "file": "opensky-driver-0.37.0-fb777b006e0c63d3e060c87ec31be7c580fc6155-linux-x86_64-gnu-bookworm.tar.gz",
+    "sha256": "b8fc2b75497b86fbe289690eedcdcc52245fd10fcc853f33d2a49216a7b2fb27",
+    "binarySHA256": "fdf1f15bdb61a970e26fef2d4b91fd5a1ce59629faa4fb3d6ca92ddf35f80892",
+    "directory": "opensky-driver-0.37.0-fb777b006e0c63d3e060c87ec31be7c580fc6155-linux-x86_64-gnu-bookworm",
+    "sourceCommit": "fb777b006e0c63d3e060c87ec31be7c580fc6155",
+    "version": "0.37.0"
+  },
+  "applicationProof": {
+    "accepted": true,
+    "sdkCommit": "c185f2600ec8a526ccc6e771a68164191e836076",
+    "binaryBuildSDKCommit": "c185f2600ec8a526ccc6e771a68164191e836076",
+    "driverSource": "fb777b006e0c63d3e060c87ec31be7c580fc6155",
+    "driverVersion": "0.37.0",
+    "LinuxUnitsPassed": 671,
+    "embeddedPassed": 275,
+    "nativeSavedByteCounts": [
+      29,
+      46
+    ],
+    "partialSaved": "par",
+    "partialEffect": "unknown",
+    "partialOneDispatch": true,
+    "typingAtDeadlineCodepoints": 52,
+    "typingFinalCodepoints": 1000,
+    "typingSavedBytes": 2750,
+    "queuedCancelledBeforeDispatch": true,
+    "followingWaitsForCompletion": true,
+    "strictBridgeRetainsApp": true,
+    "originalPID": 19077,
+    "replacementPID": 19139,
+    "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+    "ownedChildrenExitedUnforced": 3,
+    "supervisorsExitedUnforced": [
+      7,
+      3
+    ],
+    "browserAccepted": false,
+    "paidArms": 0,
+    "TLSOwnersPassed": 3,
+    "GTK4": {
+      "accepted": true,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "counts": {
+        "One": 1,
+        "Dot": 1,
+        "Two": 1
+      },
+      "events": [
+        "One",
+        "Dot",
+        "Two"
+      ],
+      "exactForegroundDispatches": 3,
+      "ownedSupervisorsExitedUnforced": 4,
+      "geometryDefectReproduced": false
+    },
+    "relativeCapture": {
+      "name": "relative-storage-capture",
+      "requestedHomeDir": "artifacts/halo/sdk-home",
+      "requestedScreenshotDir": "artifacts/halo/capture-sdk-shots",
+      "output": "/__w/opensky/opensky/artifacts/halo/capture-sdk-shots/python3-8388611-1792556472778-3.png",
+      "pid": 17667,
+      "windowId": 8388611,
+      "pngSHA256": "3ef68674e60d236be1c107e28b53de91aa7b11f25181cef4d5b70eceafefa667",
+      "pngBytes": 8511,
+      "width": 640,
+      "height": 480,
+      "focusBefore": "8388611",
+      "focusAfter": "8388611",
+      "textBefore": "replace me",
+      "textAfter": "replace me",
+      "clipboardUnchanged": true,
+      "inputDispatched": false
+    },
+    "verifiedAt": "2026-10-21T04:22:04.352605+00:00"
+  },
+  "LinuxDesktop": "Node22 Bookworm ordinary UID1001 TigerVNC/X11 XFWM4 compositor on shared D-Bus/AT-SPI",
+  "boundedGrants": true,
+  "BookwormSandboxedChromeAccepted": false,
+  "MacRuntime": {
+    "source": "fb777b006e0c63d3e060c87ec31be7c580fc6155",
+    "version": "0.37.0",
+    "sha256": "1c8e53d6ea56cae9fe44c800fc5a44f230a14ba7cea936b8515b60be594558d3",
+    "stableSignerPreserved": true,
+    "actualDaemonEnvironmentVerified": true,
+    "launchObservation": {
+      "timeoutMs": 250,
+      "pollMs": 50
+    },
+    "validatedCaptureIDs": [
+      {
+        "captureId": "capture_4dfe092735f349848aefb7baf3d0c822_0000000000000000",
+        "pid": 84295,
+        "windowId": 54774
+      }
+    ]
+  },
+  "MacNativeControls": [
+    "CLICK-N01",
+    "DIFF-N01",
+    "WINDOW-N01"
+  ],
+  "MacCleanupPassed": true,
+  "CPUCI": {
+    "runId": 39541368627,
+    "platforms": [
+      "Linux",
+      "Windows",
+      "Mac"
+    ],
+    "WindowsDesktopAccepted": false
+  },
+  "initialFailedBuild": {
+    "runId": 39541608770,
+    "reason": "Missing Xvfb prerequisite for isolated focus unit test; consumer acceptance still TigerVNC."
+  },
+  "remaining": [
+    "Mac19/66 and full paid-source admission",
+    "Sandboxed Bookworm Chrome",
+    "Windows desktop",
+    "Wayland/other architectures",
+    "npm registry authentication"
+  ],
+  "newPaidArms": 0,
+  "benchmarkScoreChanged": false
+}
