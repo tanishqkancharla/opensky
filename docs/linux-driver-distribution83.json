@@ -1,5 +1,5 @@
 {
-  "status": "Scoped native qualification accepted; publication pending",
+  "status": "Published immutable0.2.38; scoped native qualification accepted",
   "version": "0.2.38",
   "driverVersion": "0.37.0",
   "runId": 39542863439,
@@ -138,5 +138,15 @@
     "npm registry authentication"
   ],
   "newPaidArms": 0,
-  "benchmarkScoreChanged": false
+  "benchmarkScoreChanged": false,
+  "release": {
+    "tag": "v0.2.38",
+    "source": "5e9465d433613893ae3291369a4f96be502ea4fc",
+    "url": "https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.38",
+    "publishedAt": "2026-10-21T04:23:26Z",
+    "immutable": true,
+    "all5AnonymousAssetsVerified": true,
+    "signedReleaseAndAssetAttestationsVerified": true
+  },
+  "driverFinalMainSource": "eacd5d47473e81849354d24207ccbb9abaf6543c"
 }
