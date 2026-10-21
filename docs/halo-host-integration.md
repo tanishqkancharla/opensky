@@ -1,3 +1,7 @@
+## Current tested distribution: SDK 0.2.40 / Driver 0.38.0
+
+Exact driver `95b620a301c23af9da5f771c7c3f0a448a91590c`; qualified SDK runtime `ce39bd064bc8b3ed9d078823a298300d64342088`. [Current source pins and application evidence](driver038-qualification88.md), [current native contract results](halo-current-native-evidence.json), and [binary installation](linux-driver-distribution.md). Fresh Bookworm run 39664557670 verifies native paste, selected replacement, queued cancellation, completion/drain after timeout, process rebind, relative capture and GTK4 foreground input with explicit bounded grants. Sandboxed Bookworm browser acceptance remains unqualified. Historical version-specific reports below do not override these pins. The public host API and lifecycle examples remain applicable.
+
 ## Linux binary distribution in0.2.31
 
 [The SDK release](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.31)
@@ -12,7 +16,7 @@ This changes distribution/metadata only; the TypeScript operation runtime stays
 
 # Persistent Linux host integration
 
-## Current tested distribution: SDK0.2.30 / Driver0.36.0
+## Historical tested distribution: SDK0.2.30 / Driver0.36.0
 
 Fresh `cua.getApp(name)` discovers the current native process into a separate
 binding after restart. Retained handles keep their original process and refuse

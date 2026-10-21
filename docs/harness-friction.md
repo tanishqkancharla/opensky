@@ -6724,3 +6724,14 @@ Stable-signed driver `4a9dc4da3225f7880c58b45a4be719e837954fe1` preserves both T
 Hosted Mac CPU suites pass. E2E typecheck passes. The unit mutation from SET449 still detects the removed safety branch. Full upstream0.38 remains under assessment; SDK0.2.38 GitHub assets retain their historical driver pin. A fresh source-pinned Bookworm artifact/consumer qualification is required before publishing the next SDK package. No Mac19/66 closure, paid-source waiver, benchmark row or score improvement. Positive partial counts on self-clearing fields remain outside this narrow fix.
 
 SET451 — Stage0.2.39 after independently verified Bookworm39628731420 and real Mac CLICK-W01/TYPE-W02 effects. Driver4a9dc4da3225f7880c58b45a4be719e837954fe1; compiled SDK bytes unchanged. Stable signer/grants/cleanup preserved. Positive partial self-clearing counts and Mac19/66 remain unresolved. No paid arms or score change.
+
+
+## SET452 — Integrate driver 0.38 without losing uncertain-input safety
+
+The upstream Linux token migration could retry an edit against a fresh index after a dispatched edit returned an uncertain result. Driver `95b620a301c23af9da5f771c7c3f0a448a91590c` retains the fork's dispatch marker across token fallback, with a regression owner for both window-proof states. The merge preserves authorship, policy refusal records, native option/failed DOM dispatch refusals, source-only installation and stable Mac signing. Upstream exact-window raising and foreground HID paths replace duplicated local branches while retaining AX child focus checks.
+
+724 Linux units, whole core/Mac/driver owners, the three-platform OpenSky build and Valgrind attempt 2 pass. Original Valgrind startup failure remains retained; its cause is unconfirmed. Fresh Bookworm 39664557670 verifies actual native/Stop/drain/rebind/GTK4/capture effects. Physical Mac CLICK-W01/WINDOW-N01 pass before and after; TYPE-W02 passes once with exact cleanup. [Evidence and limits](driver038-qualification88.md). No full Mac, sandboxed Bookworm browser, Windows GUI or paid-source acceptance is inferred.
+
+## SET453 — Observe retries by run and attempt
+
+A maintenance monitor cached a terminal workflow result by run ID; GitHub reuses that ID for a retry, so the live monitor kept showing attempt 1's failure. The local monitor now reads the attempt generation, stores prior observations, and writes attempt-specific snapshots/logs. It never replays a run. Prior desktop artifact acceptance cannot transfer to a retry without explicit attempt-bound registration. Nineteen regression checks pass; live Valgrind attempt 2 is observed separately while attempt 1's original failure remains intact. This is maintenance bookkeeping, not SDK or GUI acceptance.

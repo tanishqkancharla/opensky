@@ -1,39 +1,83 @@
 {
-  "sdk": "b32be18b6cbfbc2b390996dc1e872d980384eb8e",
-  "driver": "85afe337f2a5585ce35003f3a1f0bf15d37d4e3e",
-  "node": "v22.23.3",
-  "run": 38468017651,
-  "environment": "unprivileged uid1001 Bookworm TigerVNC/X11/XFWM4 shared D-Bus/AT-SPI; explicit bounded manifests",
+  "version": "0.2.40",
+  "sdk": "ce39bd064bc8b3ed9d078823a298300d64342088",
+  "driver": "95b620a301c23af9da5f771c7c3f0a448a91590c",
+  "driverVersion": "0.38.0",
+  "node": "v22.23.4",
+  "run": 39664557670,
+  "environment": "ordinary UID1001, Debian12 Bookworm, TigerVNC X11 :1, XFWM4, shared D-Bus/AT-SPI; explicit bounded grants",
   "cancelAndCompletion": {
-    "partialCodepointsAt500ms": 41,
+    "partialCodepointsAt500ms": 47,
     "deadlineState": "active",
     "stopRequested": true,
     "cancelledQueuedState": "cancelled",
     "completeCodepoints": 1000,
     "savedUTF8Bytes": 2750,
     "savedSHA256": "c872011f389649a8fbaa0152b4ccf9bd5ae7f7f9c6ab7f7a995b54271fb07e6b",
-    "completionSeconds": 14.414,
     "saveStartedAtTypingCompletion": true,
-    "noQueuedMarker": true
+    "inputAutomaticallyReplayed": false
   },
   "paste": {
     "availability": {
-      "availability": "unavailable",
-      "formats": [],
-      "reason": "native_paste is absent from the installed platform registry; permissions cannot add it.",
-      "clipboard": "untouched"
+      "availability": "supported",
+      "formats": [
+        "text"
+      ],
+      "clipboard": "payload-left"
     },
-    "textSelectionClipboardUnchanged": true,
-    "saved": "replace me",
-    "ASCIIAndUnicodeBothRefused": true
+    "selectedASCIIAndUnicodeSavedExactly": true,
+    "savedUTF8ByteCounts": [
+      29,
+      46
+    ],
+    "partialSaved": "par",
+    "partialEffect": "unknown",
+    "partialDispatches": 1,
+    "missingForegroundAndClipboardGrantsRefuseBeforeMutation": true
+  },
+  "rebind": {
+    "retainedHandleRefusesAfterExit": true,
+    "replacementSavedUTF8Bytes": 75,
+    "savedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+    "ownedChildrenExitedUnforced": 3
+  },
+  "GTK4": {
+    "accepted": true,
+    "counts": {
+      "One": 1,
+      "Dot": 1,
+      "Two": 1
+    },
+    "exactObservedClicks": 3,
+    "freshSnapshots": 3,
+    "supervisorsExitedUnforced": 4,
+    "gtkVersion": [
+      4,
+      8,
+      3
+    ],
+    "delivery": "foreground AT-SPI",
+    "driverEffect": "unverifiable; independent application counters confirm effects",
+    "pointerBoundsProven": false
+  },
+  "relativeStorageCapture": {
+    "accepted": true,
+    "width": 640,
+    "height": 480,
+    "sha256": "3ef68674e60d236be1c107e28b53de91aa7b11f25181cef4d5b70eceafefa667",
+    "focusTextClipboardPreserved": true
   },
   "sandboxedChrome": {
     "verified": false,
-    "failure": "Unprivileged sandbox namespace creation denied by hosted container (Operation not permitted); no bypass attempted."
+    "status": "not_run",
+    "reason": "Bookworm sandboxed browser production acceptance remains unqualified; no sandbox bypass or VM used."
   },
-  "originalWorkflowConclusion": "failure; native assertions pass, sandboxed browser acceptance unavailable",
   "cleanup": {
-    "allSevenOwnedSupervisorProcessesExited": true,
-    "sessionsDetached": "owned browser/session detached; daemon belongs to session supervisor"
-  }
+    "nativeSupervisorsExitedUnforced": 7,
+    "rebindSupervisorsExitedUnforced": 3,
+    "GTK4SupervisorsExitedUnforced": 4,
+    "sessionsDetached": true
+  },
+  "scope": "Native X11 application acceptance; no full Mac, Windows GUI, Wayland or other architecture acceptance.",
+  "newPaidArms": 0
 }
