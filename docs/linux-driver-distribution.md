@@ -1,3 +1,7 @@
+## Current 0.2.39 archive
+
+Driver `4a9dc4da3225f7880c58b45a4be719e837954fe1`. Archive SHA-256 `0c22507dfd529318c50a2cd98f23a90efada7099f21341715727d9f56cf221cb`; executable SHA-256 `cbe7e0c1ba0f4ba74e1087cab5d6270886278a8dee2e70f0a0fb903d8e1fffb9`. [Current pins and effects](web-typing-safety87.md), [asset manifest](../driver-assets.json). The0.2.38 material below is historical.
+
 # Linux driver binary distribution
 
 The SDK release includes `driver-assets.json`, also exported as

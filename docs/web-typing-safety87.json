@@ -1,0 +1,122 @@
+{
+  "version": "0.2.39",
+  "SDKRuntimeSource": "bee78bc61161f233387fb51834d5a2a4f1d029de",
+  "driverSource": "4a9dc4da3225f7880c58b45a4be719e837954fe1",
+  "driverVersion": "0.37.0",
+  "upstreamSafetySource": "3133bbbff53a1eb07a919ff9973851eb44a3c129",
+  "upstreamAuthor": "injaneity",
+  "binaryBuildAndConsumerRun": 39628731420,
+  "archive": {
+    "file": "opensky-driver-0.37.0-4a9dc4da3225f7880c58b45a4be719e837954fe1-linux-x86_64-gnu-bookworm.tar.gz",
+    "sha256": "0c22507dfd529318c50a2cd98f23a90efada7099f21341715727d9f56cf221cb",
+    "binarySHA256": "cbe7e0c1ba0f4ba74e1087cab5d6270886278a8dee2e70f0a0fb903d8e1fffb9",
+    "directory": "opensky-driver-0.37.0-4a9dc4da3225f7880c58b45a4be719e837954fe1-linux-x86_64-gnu-bookworm",
+    "sourceCommit": "4a9dc4da3225f7880c58b45a4be719e837954fe1",
+    "version": "0.37.0"
+  },
+  "LinuxApplicationProof": {
+    "accepted": true,
+    "sdkCommit": "bee78bc61161f233387fb51834d5a2a4f1d029de",
+    "binaryBuildSDKCommit": "bee78bc61161f233387fb51834d5a2a4f1d029de",
+    "driverSource": "4a9dc4da3225f7880c58b45a4be719e837954fe1",
+    "driverVersion": "0.37.0",
+    "LinuxUnitsPassed": 671,
+    "embeddedPassed": 275,
+    "nativeSavedByteCounts": [
+      29,
+      46
+    ],
+    "partialSaved": "par",
+    "partialEffect": "unknown",
+    "partialOneDispatch": true,
+    "typingAtDeadlineCodepoints": 49,
+    "typingFinalCodepoints": 1000,
+    "typingSavedBytes": 2750,
+    "queuedCancelledBeforeDispatch": true,
+    "followingWaitsForCompletion": true,
+    "strictBridgeRetainsApp": true,
+    "originalPID": 14341,
+    "replacementPID": 14403,
+    "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+    "ownedChildrenExitedUnforced": 3,
+    "supervisorsExitedUnforced": [
+      7,
+      3
+    ],
+    "browserAccepted": false,
+    "paidArms": 0,
+    "GTK4": {
+      "accepted": true,
+      "counts": {
+        "One": 1,
+        "Dot": 1,
+        "Two": 1
+      },
+      "exactObservedClicks": 3,
+      "supervisorsExitedUnforced": 4,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ]
+    },
+    "relativeStorageCapture": {
+      "accepted": true,
+      "width": 640,
+      "height": 480,
+      "sha256": "3ef68674e60d236be1c107e28b53de91aa7b11f25181cef4d5b70eceafefa667",
+      "focusTextClipboardPreserved": true
+    },
+    "TLSOwnersPassed": 3,
+    "CargoLockMatchesSelectedSource": true
+  },
+  "Mac": {
+    "source": "4a9dc4da3225f7880c58b45a4be719e837954fe1",
+    "sha256": "e7d9e73170a070016f3e6da9c8dc414a33c645e2780d66ee547f113d4e41571d",
+    "signerPreserved": true,
+    "grantsPreserved": true,
+    "launchObservation": {
+      "timeoutMs": 250,
+      "pollMs": 50
+    },
+    "contracts": [
+      "CLICK-W01",
+      "TYPE-W02"
+    ],
+    "oldResponse": {
+      "code": "type_text_incomplete",
+      "delivered_chars": 0,
+      "effect": "partial",
+      "hint": "Only the first 0 characters landed. Read the field to confirm, then type only the missing rest; do not resend it all.",
+      "next_call": {
+        "arguments": {
+          "pid": 21158,
+          "session": "web87-21158",
+          "since": "latest",
+          "window_id": 95887
+        },
+        "tool": "get_window_state"
+      },
+      "path": "key_events_fg",
+      "requested_chars": 7,
+      "retry_from_character": 0,
+      "retryable": true
+    },
+    "receivedBeforeAndAfter": "Alpha87",
+    "trustedEvents": 7,
+    "currentResponse": "effect:unverifiable; no delivered_chars, retry_from_character or retryable",
+    "cleanupPassed": true,
+    "fullMacAcceptance": false
+  },
+  "remaining": [
+    "Mac19/66",
+    "sandboxed Bookworm Chrome",
+    "Windows desktop",
+    "Wayland/other architectures",
+    "positive partial counts on self-clearing fields",
+    "npm registry authentication",
+    "full paid-source admission"
+  ],
+  "newPaidArms": 0,
+  "benchmarkScoreChanged": false
+}

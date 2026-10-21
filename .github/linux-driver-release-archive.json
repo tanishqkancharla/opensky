@@ -1,16 +1,16 @@
 {
-  "file": "opensky-driver-0.37.0-fb777b006e0c63d3e060c87ec31be7c580fc6155-linux-x86_64-gnu-bookworm.tar.gz",
-  "sha256": "b8fc2b75497b86fbe289690eedcdcc52245fd10fcc853f33d2a49216a7b2fb27",
-  "binarySHA256": "fdf1f15bdb61a970e26fef2d4b91fd5a1ce59629faa4fb3d6ca92ddf35f80892",
-  "directory": "opensky-driver-0.37.0-fb777b006e0c63d3e060c87ec31be7c580fc6155-linux-x86_64-gnu-bookworm",
-  "sourceCommit": "fb777b006e0c63d3e060c87ec31be7c580fc6155",
+  "file": "opensky-driver-0.37.0-4a9dc4da3225f7880c58b45a4be719e837954fe1-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "0c22507dfd529318c50a2cd98f23a90efada7099f21341715727d9f56cf221cb",
+  "binarySHA256": "cbe7e0c1ba0f4ba74e1087cab5d6270886278a8dee2e70f0a0fb903d8e1fffb9",
+  "directory": "opensky-driver-0.37.0-4a9dc4da3225f7880c58b45a4be719e837954fe1-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "4a9dc4da3225f7880c58b45a4be719e837954fe1",
   "version": "0.37.0",
-  "sourceRun": 39542863439,
+  "sourceRun": 39628731420,
   "artifact": "linux-driver-release-candidate",
-  "buildSDKCommit": "c185f2600ec8a526ccc6e771a68164191e836076",
+  "buildSDKCommit": "bee78bc61161f233387fb51834d5a2a4f1d029de",
   "unitTestsPassed": 671,
-  "unitLogSHA256": "4c1e380df73919c0777bf4a4afef22978e581e125455b0f727ae2c02d000c4b1",
-  "TLSLogSHA256": "0ddf03ea14114d164f07abf07ab2273ea7029a0ec175f102cb9356c635f99c2b",
-  "provenanceSHA256": "cf0262d45faef82ca30c58fb809cdba0b4fb87806006214fc2ba9cbc00494e68",
-  "qualification": "Fresh exact-source native/strict/Stop/rebind/GTK4/relative-storage consumer independently verified. Each reuse needs fresh consumer; sandboxed Bookworm Chrome unqualified."
+  "unitLogSHA256": "3f6a701554adfdd762debcac1faf7e151089af3dc06d7dbb3640e43015205277",
+  "TLSLogSHA256": "58ce6bd7e15216498e09b00f4d9c6b7c556f7193886db9a03fcdbe1887f84f5d",
+  "provenanceSHA256": "42f0d8dbc8f7c3319850041edd7de9a4d6b2982fae8c928c8243df23b3ba5dd9",
+  "qualification": "Fresh bounded native/strict/Stop/rebind/GTK4/relative-storage consumer independently verified. Each reuse needs a fresh consumer; sandboxed Bookworm Chrome unqualified."
 }
