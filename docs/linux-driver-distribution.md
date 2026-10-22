@@ -1,4 +1,8 @@
-## Current 0.2.41 archive
+## Current 0.2.42 archive
+
+Driver `2947bad8071540f3dc53fa44ec586a6735bb528a` (0.38.0). Archive SHA-256 `6c7845c08dbac14d8acc7362358fa21143a41e4295bc55af83e87e9fbcf60bab`; executable SHA-256 `931220eafa1366fdd758c74cae7f0e7904401f89125114dc528a467c84cd25b4`. Fresh Bookworm run39845132948 verifies bounded native effects. [Current effects and limits](native-ax-replay92.md), [asset manifest](../driver-assets.json). Earlier records remain historical.
+
+## Historical 0.2.41 archive
 
 Driver `1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4` (0.38.0). Archive SHA-256 `cf2cbd158f5a51615564324febe75698cddf72b0a0f48eab2ee4464bce142d69`; executable SHA-256 `88700b8f76b19dfc5c76d4ee8d7395fca3b953223d69155faaba7de982ae3eba`. [Current effects and limits](web-partial-typing89.md), [asset manifest](../driver-assets.json). Earlier release records below remain historical.
 

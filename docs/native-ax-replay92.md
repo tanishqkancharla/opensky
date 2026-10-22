@@ -1,6 +1,6 @@
 # Stop after an acknowledged but unverified AX edit
 
-Driver candidate `2947bad8071540f3dc53fa44ec586a6735bb528a` fixes duplicate background typing on macOS. OpenSky 0.2.41 still selects driver `1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4` until fresh release qualification completes. [Structured before/after evidence](native-ax-replay92.json).
+OpenSky 0.2.42 selects driver `2947bad8071540f3dc53fa44ec586a6735bb528a` (0.38.0), fixing duplicate background typing on macOS. Qualified SDK source is `303da7c6ac83c103d19aff89e49cc3c61d991f63`; the TypeScript runtime remains byte-identical to 0.2.41. [Structured before/after evidence](native-ax-replay92.json).
 
 ## Actual application effects
 
@@ -29,4 +29,4 @@ cd e2e
 OPENSKY_REAL_DRIVER=1 OPENSKY_DRIVER_BINARY=/Applications/OpenSkyDriver.app/Contents/MacOS/opensky-driver npm test -- specs/native-ax-no-replay.test.ts
 ```
 
-Fresh source-pinned archive and cross-platform release qualification remain pending. This is not full Mac acceptance or sandboxed Bookworm Chrome/Windows GUI acceptance. Mac #19/#66 remain open. Native partial-count behavior outside this acknowledged AX no-replay case is unchanged. The SDK runtime is unchanged; no paid benchmark arm or score change is claimed.
+Fresh [Bookworm39845132948](https://github.com/tanishqkancharla/opensky/actions/runs/39845132948) independently verifies extracted-binary native selected ASCII/Unicode paste, partial delivery, queued cancellation, completion/drain after a 500 ms deadline (48 codepoints then 1,000 saved), replacement process binding, GTK4 foreground counters and relative capture under bounded grants. All owned supervisors exit unforced. 724 Linux units, 275 embedded SDK and three TLS owners pass. [Three-platform driver39845125010](https://github.com/tanishqkancharla/cua/actions/runs/39845125010) and [SDK-main39845122410](https://github.com/tanishqkancharla/opensky/actions/runs/39845122410) pass. [Exact native receipts](halo-current-native-evidence.json) and [archive hashes/install](linux-driver-distribution.md) accompany this release. This is not full Mac acceptance or sandboxed Bookworm Chrome/Windows GUI acceptance. Mac #19/#66 remain open. Native partial-count behavior outside this acknowledged AX no-replay case is unchanged. The SDK runtime is unchanged; no paid benchmark arm or score change is claimed.

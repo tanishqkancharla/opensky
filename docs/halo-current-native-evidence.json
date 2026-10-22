@@ -1,13 +1,13 @@
 {
-  "version": "0.2.41",
-  "sdk": "b098847cbfc36914c54bc61b063aa03003e59d43",
-  "driver": "1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4",
+  "version": "0.2.42",
+  "sdk": "303da7c6ac83c103d19aff89e49cc3c61d991f63",
+  "driver": "2947bad8071540f3dc53fa44ec586a6735bb528a",
   "driverVersion": "0.38.0",
   "node": "v22.23.4",
-  "run": 39719016542,
+  "run": 39845132948,
   "environment": "ordinary UID1001, Debian12 Bookworm, TigerVNC X11 :1, XFWM4, shared D-Bus/AT-SPI; explicit bounded grants",
   "cancelAndCompletion": {
-    "partialCodepointsAt500ms": 52,
+    "partialCodepointsAt500ms": 48,
     "deadlineState": "active",
     "stopRequested": true,
     "cancelledQueuedState": "cancelled",
