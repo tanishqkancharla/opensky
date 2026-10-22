@@ -1,16 +1,16 @@
 {
-  "file": "opensky-driver-0.38.0-95b620a301c23af9da5f771c7c3f0a448a91590c-linux-x86_64-gnu-bookworm.tar.gz",
-  "sha256": "4125ec84f6ae094086efd1a9f3ef18e37ad13779c85e5ef62484364fbc788d17",
-  "binarySHA256": "8062bf7b60de0cefb8d63acc5f7574621918dda88e9cdcf86f55c46a08625ab8",
-  "directory": "opensky-driver-0.38.0-95b620a301c23af9da5f771c7c3f0a448a91590c-linux-x86_64-gnu-bookworm",
-  "sourceCommit": "95b620a301c23af9da5f771c7c3f0a448a91590c",
+  "file": "opensky-driver-0.38.0-1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "cf2cbd158f5a51615564324febe75698cddf72b0a0f48eab2ee4464bce142d69",
+  "binarySHA256": "88700b8f76b19dfc5c76d4ee8d7395fca3b953223d69155faaba7de982ae3eba",
+  "directory": "opensky-driver-0.38.0-1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4",
   "version": "0.38.0",
-  "sourceRun": 39664557670,
+  "sourceRun": 39719016542,
   "artifact": "linux-driver-release-candidate",
-  "buildSDKCommit": "ce39bd064bc8b3ed9d078823a298300d64342088",
+  "buildSDKCommit": "b098847cbfc36914c54bc61b063aa03003e59d43",
   "unitTestsPassed": 724,
-  "unitLogSHA256": "75df885825757bffc978c4cc061ec0e4eb7d5a3d69016deeec6de5ff259ffdda",
-  "TLSLogSHA256": "3d90ac563934b66f73df7f77cc9224a36cfe2aa3be44d34498a57a5e84e1abcd",
-  "provenanceSHA256": "30f1266ff0b5bb14a93f9fbe4c83ba5237c69bd8080fa02acf4d465b4ebcc1bc",
-  "qualification": "Fresh bounded native/strict/Stop/drain/rebind/GTK4/relative-storage consumer independently verified. Every reuse requires a fresh consumer. Sandboxed Bookworm Chrome unqualified."
+  "unitLogSHA256": "20d7cfed6b829a215b4588f7ed9a0b41fef9f508f8cd3c4f79f938fd3b992d49",
+  "TLSLogSHA256": "de03828472b1a2d34e61658be4c43a9fa018e8fc44295a9867b0ef5d9c731b7c",
+  "provenanceSHA256": "7f89fddd0887c7380e08922055d9340420888eb5b3f9a9426102f81b3d5dbeb2",
+  "qualification": "Fresh ordinary-UID bounded TigerVNC native/strict/Stop/drain/rebind/GTK4/capture effects independently verified. Every reuse requires a fresh consumer. Sandboxed Bookworm Chrome unqualified."
 }

@@ -1,4 +1,8 @@
-## Current 0.2.40 archive
+## Current 0.2.41 archive
+
+Driver `1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4` (0.38.0). Archive SHA-256 `cf2cbd158f5a51615564324febe75698cddf72b0a0f48eab2ee4464bce142d69`; executable SHA-256 `88700b8f76b19dfc5c76d4ee8d7395fca3b953223d69155faaba7de982ae3eba`. [Current effects and limits](web-partial-typing89.md), [asset manifest](../driver-assets.json). Earlier release records below remain historical.
+
+## Historical 0.2.40 archive
 
 Driver `95b620a301c23af9da5f771c7c3f0a448a91590c` (0.38.0). Archive SHA-256 `4125ec84f6ae094086efd1a9f3ef18e37ad13779c85e5ef62484364fbc788d17`; executable SHA-256 `8062bf7b60de0cefb8d63acc5f7574621918dda88e9cdcf86f55c46a08625ab8`. [Current pins and application effects](driver038-qualification88.md), [asset manifest](../driver-assets.json). Earlier release records below remain historical.
 

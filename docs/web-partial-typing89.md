@@ -1,6 +1,6 @@
 # Web typing: retained values cannot prove partial delivery
 
-Mac driver source `1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4` fixes a demonstrated unsafe suffix-retry recommendation. Release 0.2.40 still pins the preceding driver until fresh release qualification completes.
+Mac driver source `1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4` fixes a demonstrated unsafe suffix-retry recommendation. OpenSky 0.2.41 selects this exact source. [Release assets](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.41).
 
 An owned WKWebView input independently records trusted input events and retains only the first two characters in its value. One foreground `type_text` dispatch sends `Alpha87`. The application receives all seven trusted characters, while the field ends at `Al`.
 
@@ -15,4 +15,4 @@ cd e2e
 OPENSKY_REAL_DRIVER=1 OPENSKY_DRIVER_BINARY=/Applications/OpenSkyDriver.app/Contents/MacOS/opensky-driver npm test -- specs/native-web-self-clearing.test.ts
 ```
 
-This is Mac native AX-backed web typing coverage. CDP and other platform input are unchanged; their behavior is not certified by this fixture. Mac cold launch/document issues #19/#66, sandboxed Bookworm Chrome, Windows GUI and full paid-source admission remain unresolved. No benchmark score or spending change is claimed. The SDK runtime is unchanged; a new package release requires fresh source-pinned archive qualification.
+This is Mac native AX-backed web typing coverage. CDP and other platform input are unchanged; their behavior is not certified by this fixture. Mac cold launch/document issues #19/#66, sandboxed Bookworm Chrome, Windows GUI and full paid-source admission remain unresolved. No benchmark score or spending change is claimed. The SDK runtime is unchanged. Fresh Bookworm build and separate consumer [39719016542](https://github.com/tanishqkancharla/opensky/actions/runs/39719016542) use SDK b098847cbfc36914c54bc61b063aa03003e59d43 and this driver: ordinary UID1001, TigerVNC/X11/XFWM4, shared D-Bus/AT-SPI, bounded grants. Selected ASCII/Unicode paste saves exactly; uncertain partial paste dispatches once; 52/1000 Unicode characters are visible at the500ms deadline, then all1000/2750bytes save before the following Save. Queued cancellation, process replacement, GTK4 counters and relative capture pass. All7 native,3rebind and4GTK4 supervisors exit unforced;724Linux units,275embedded SDK and3TLS checks pass. Three-platform CPU run39719012411 passes separately. Sandboxed Bookworm browser remains unqualified. Install the attached GitHub tarball; npm registry authentication remains pending.

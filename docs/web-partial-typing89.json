@@ -1,5 +1,5 @@
 {
-  "status": "Mac application effects verified; release qualification pending",
+  "status": "Shipped in OpenSky0.2.41; scoped Mac and fresh Bookworm native application effects verified",
   "supportedSDKRelease": "0.2.40",
   "SDKRuntimeSource": "ce39bd064bc8b3ed9d078823a298300d64342088",
   "driverBefore": {
@@ -240,5 +240,81 @@
   "newScoreRows": 0,
   "fullMacAcceptance": false,
   "paidDispatchAllowed": false,
-  "scope": "Mac native type_text AX readback; web timeout and atomic partial outcomes withhold exact counts. Native positive counts remain covered. Other platforms and CDP input unchanged."
+  "scope": "Mac native type_text AX readback; web timeout and atomic partial outcomes withhold exact counts. Native positive counts remain covered. Other platforms and CDP input unchanged.",
+  "SDKRelease": "0.2.41",
+  "SDKQualifiedRuntimeSource": "b098847cbfc36914c54bc61b063aa03003e59d43",
+  "BookwormConsumerRun": 39719016542,
+  "BookwormNative": {
+    "accepted": true,
+    "sdkCommit": "b098847cbfc36914c54bc61b063aa03003e59d43",
+    "binaryBuildSDKCommit": "b098847cbfc36914c54bc61b063aa03003e59d43",
+    "driverSource": "1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4",
+    "driverVersion": "0.38.0",
+    "LinuxUnitsPassed": 724,
+    "embeddedPassed": 275,
+    "nativeSavedByteCounts": [
+      29,
+      46
+    ],
+    "partialSaved": "par",
+    "partialEffect": "unknown",
+    "partialOneDispatch": true,
+    "typingAtDeadlineCodepoints": 52,
+    "typingFinalCodepoints": 1000,
+    "typingSavedBytes": 2750,
+    "queuedCancelledBeforeDispatch": true,
+    "followingWaitsForCompletion": true,
+    "strictBridgeRetainsApp": true,
+    "originalPID": 14306,
+    "replacementPID": 14368,
+    "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+    "ownedChildrenExitedUnforced": 3,
+    "supervisorsExitedUnforced": [
+      7,
+      3
+    ],
+    "browserAccepted": false,
+    "paidArms": 0,
+    "GTK4": {
+      "accepted": true,
+      "counts": {
+        "One": 1,
+        "Dot": 1,
+        "Two": 1
+      },
+      "exactObservedClicks": 3,
+      "freshSnapshots": 3,
+      "supervisorsExitedUnforced": 4,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "delivery": "foreground AT-SPI",
+      "driverEffect": "unverifiable; independent application counters confirm effects",
+      "pointerBoundsProven": false
+    },
+    "relativeStorageCapture": {
+      "accepted": true,
+      "width": 640,
+      "height": 480,
+      "sha256": "3ef68674e60d236be1c107e28b53de91aa7b11f25181cef4d5b70eceafefa667",
+      "focusTextClipboardPreserved": true
+    },
+    "TLSOwnersPassed": 3,
+    "CargoLockMatchesSelectedSource": true
+  },
+  "archive": {
+    "file": "opensky-driver-0.38.0-1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4-linux-x86_64-gnu-bookworm.tar.gz",
+    "sha256": "cf2cbd158f5a51615564324febe75698cddf72b0a0f48eab2ee4464bce142d69",
+    "binarySHA256": "88700b8f76b19dfc5c76d4ee8d7395fca3b953223d69155faaba7de982ae3eba",
+    "directory": "opensky-driver-0.38.0-1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4-linux-x86_64-gnu-bookworm",
+    "sourceCommit": "1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4",
+    "version": "0.38.0"
+  },
+  "threePlatformCPU": {
+    "runId": 39719012411,
+    "conclusion": "success",
+    "desktopAcceptance": false
+  }
 }
