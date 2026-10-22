@@ -1,0 +1,178 @@
+{
+  "status": "Verified Mac fix; release qualification pending",
+  "SDKReleaseUnchanged": "0.2.41",
+  "SDKRuntimeSource": "b492c57e45c6e284d0af3375467251a2005653de",
+  "driverBefore": "1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4",
+  "driverBehaviorFixSource": "ea34bdd3e71c12ef02276d28b3375bb5d9cc9ada",
+  "driverCandidateSource": "2947bad8071540f3dc53fa44ec586a6735bb528a",
+  "driverCandidateSHA256": "3f7aa1938d68449ecb702da63055340f8cdde44d7b7148524b0868b38be4bb89",
+  "MacTypingImplementationIdenticalBetweenBehaviorAndFinalSource": true,
+  "before": {
+    "inputDispatches": 1,
+    "error": {
+      "message": "Error: type_text incomplete: delivered 0 of 7 character(s) via CGEvent (50ms delay); retry only the remaining suffix",
+      "code": "type_text_incomplete",
+      "details": {
+        "code": "type_text_incomplete",
+        "delivered_chars": 0,
+        "effect": "partial",
+        "hint": "Only the first 0 characters landed. Read the field to confirm, then type only the missing rest; do not resend it all.",
+        "next_call": {
+          "arguments": {
+            "pid": 57226,
+            "session": "opensky-57212-372d09de",
+            "since": "latest",
+            "window_id": 96091
+          },
+          "tool": "get_window_state"
+        },
+        "path": "key_events",
+        "requested_chars": 7,
+        "retry_from_character": 0,
+        "retryable": true
+      }
+    },
+    "application": {
+      "backend": "native-AppKit",
+      "events": [
+        {
+          "data": "Alpha87",
+          "source": "AXSelectedText"
+        },
+        {
+          "data": "A",
+          "source": "keyDown"
+        },
+        {
+          "data": "l",
+          "source": "keyDown"
+        },
+        {
+          "data": "p",
+          "source": "keyDown"
+        },
+        {
+          "data": "h",
+          "source": "keyDown"
+        },
+        {
+          "data": "a",
+          "source": "keyDown"
+        },
+        {
+          "data": "8",
+          "source": "keyDown"
+        },
+        {
+          "data": "7",
+          "source": "keyDown"
+        }
+      ],
+      "focused": true,
+      "kind": "keyDown",
+      "received": "Alpha87Alpha87",
+      "value": ""
+    }
+  },
+  "after": {
+    "inputDispatches": 1,
+    "response": {
+      "delivery": {
+        "mode": "background"
+      },
+      "effect": "unverifiable",
+      "escalation": {
+        "reason": "delivery_failed",
+        "target": "foreground"
+      },
+      "hint": "The input was sent, but its application effect is unverified. Observe current state before further input; do not retry automatically.",
+      "next_call": {
+        "arguments": {
+          "pid": 61820,
+          "session": "opensky-61808-1c845ca7",
+          "since": "latest",
+          "window_id": 96177
+        },
+        "tool": "get_window_state"
+      },
+      "route": "accessibility",
+      "summary": "\ud83d\udce8 Sent (unverified) 7 char(s) via acknowledged AX write into AXTextArea \"\". \u2014 driver could not confirm the text landed; verify via screenshot, and re-call with delivery_mode:\"foreground\" if it didn't."
+    },
+    "application": {
+      "backend": "native-AppKit",
+      "events": [
+        {
+          "data": "Alpha87",
+          "source": "AXSelectedText"
+        }
+      ],
+      "focused": true,
+      "kind": "AXSelectedText",
+      "received": "Alpha87",
+      "value": ""
+    }
+  },
+  "existingRegressions": {
+    "nativeFocusAndSheet": {
+      "contracts": [
+        "FOCUS-N01",
+        "SHEET-N01"
+      ],
+      "passed": true,
+      "source": "ea34bdd3e71c12ef02276d28b3375bb5d9cc9ada"
+    },
+    "foregroundWeb": {
+      "retainedPrefixes": [
+        0,
+        2
+      ],
+      "passed": true,
+      "source": "ea34bdd3e71c12ef02276d28b3375bb5d9cc9ada"
+    }
+  },
+  "backgroundWebControl": {
+    "before": {
+      "driverSource": "1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4",
+      "received": "Alpha87",
+      "keyEvents": 7,
+      "route": "synthetic_events"
+    },
+    "after": {
+      "driverSource": "ea34bdd3e71c12ef02276d28b3375bb5d9cc9ada",
+      "received": "",
+      "inputEvents": 0,
+      "route": "accessibility",
+      "effect": "unverifiable"
+    },
+    "originalUnconditionalDeliveryAssertion": "failed and retained; this control is not relabeled as a passed test",
+    "tradeoff": "An acknowledged AX write with no observed application effect stops without automatic synthesis. Foreground may be chosen up front; observe actual effects before deciding on more input."
+  },
+  "CPU": {
+    "MacPlatformUnits": 711,
+    "MacBehaviorSource": "ea34bdd3e71c12ef02276d28b3375bb5d9cc9ada",
+    "coreUnits": 1159,
+    "CoreFinalSource": "2947bad8071540f3dc53fa44ec586a6735bb528a",
+    "E2ETypecheckPassed": true
+  },
+  "finalNativeOwner": {
+    "contract": "TYPE-N07",
+    "passed": true,
+    "source": "2947bad8071540f3dc53fa44ec586a6735bb528a",
+    "AXSetterCalls": 1,
+    "keyDowns": 0,
+    "ownedProcessExited": true,
+    "ownedBundleRemoved": true
+  },
+  "stableSignerPreserved": true,
+  "permissionsChanged": false,
+  "paidDispatchAllowed": false,
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "limitations": [
+    "Mac19/66 remain open",
+    "Full Mac acceptance not established",
+    "Sandboxed Bookworm Chrome unqualified",
+    "Windows GUI unqualified",
+    "Other native partial-count semantics unchanged"
+  ]
+}
