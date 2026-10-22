@@ -1,0 +1,244 @@
+{
+  "status": "Mac application effects verified; release qualification pending",
+  "supportedSDKRelease": "0.2.40",
+  "SDKRuntimeSource": "ce39bd064bc8b3ed9d078823a298300d64342088",
+  "driverBefore": {
+    "source": "95b620a301c23af9da5f771c7c3f0a448a91590c",
+    "sha256": "62a3dddd9e466e7605c201bbb4587d6cf94385735d289bbea9b9bd8d76dca190"
+  },
+  "driverAfter": {
+    "source": "1e63ff2d7b0f0e5267cea2e216d5fa2cf0c537c4",
+    "version": "0.38.0",
+    "sha256": "28a9ca3011ec2e5dab08e1cd05d6fdc55d7c1deae0d4ca90178ae037215f9ebe"
+  },
+  "before": {
+    "retainedPrefix": 2,
+    "inputDispatches": 1,
+    "payload": "Alpha87",
+    "after": {
+      "events": [
+        {
+          "data": "A",
+          "trusted": true,
+          "value": "A"
+        },
+        {
+          "data": "l",
+          "trusted": true,
+          "value": "Al"
+        },
+        {
+          "data": "p",
+          "trusted": true,
+          "value": "Alp"
+        },
+        {
+          "data": "h",
+          "trusted": true,
+          "value": "Alh"
+        },
+        {
+          "data": "a",
+          "trusted": true,
+          "value": "Ala"
+        },
+        {
+          "data": "8",
+          "trusted": true,
+          "value": "Al8"
+        },
+        {
+          "data": "7",
+          "trusted": true,
+          "value": "Al7"
+        }
+      ],
+      "focused": true,
+      "kind": "input",
+      "received": "Alpha87",
+      "value": "Al"
+    },
+    "error": {
+      "message": "Error: type_text incomplete: delivered 2 of 7 character(s) via foreground keystrokes (50ms delay); retry only the remaining suffix",
+      "code": "type_text_incomplete",
+      "details": {
+        "code": "type_text_incomplete",
+        "delivered_chars": 2,
+        "effect": "partial",
+        "hint": "Only the first 2 characters landed. Read the field to confirm, then type only the missing rest; do not resend it all.",
+        "next_call": {
+          "arguments": {
+            "pid": 11110,
+            "session": "opensky-11096-e30aa8db",
+            "since": "latest",
+            "window_id": 96002
+          },
+          "tool": "get_window_state"
+        },
+        "path": "key_events_fg",
+        "requested_chars": 7,
+        "retry_from_character": 2,
+        "retryable": true
+      }
+    },
+    "ownedProcessExited": true,
+    "ownedBundleRemoved": true
+  },
+  "after": [
+    {
+      "retainedPrefix": 2,
+      "inputDispatches": 1,
+      "payload": "Alpha87",
+      "after": {
+        "events": [
+          {
+            "data": "A",
+            "trusted": true,
+            "value": "A"
+          },
+          {
+            "data": "l",
+            "trusted": true,
+            "value": "Al"
+          },
+          {
+            "data": "p",
+            "trusted": true,
+            "value": "Alp"
+          },
+          {
+            "data": "h",
+            "trusted": true,
+            "value": "Alh"
+          },
+          {
+            "data": "a",
+            "trusted": true,
+            "value": "Ala"
+          },
+          {
+            "data": "8",
+            "trusted": true,
+            "value": "Al8"
+          },
+          {
+            "data": "7",
+            "trusted": true,
+            "value": "Al7"
+          }
+        ],
+        "focused": true,
+        "kind": "input",
+        "received": "Alpha87",
+        "value": "Al"
+      },
+      "response": {
+        "delivery": {
+          "mode": "foreground"
+        },
+        "effect": "unverifiable",
+        "hint": "The text was delivered but not read back. Read the field before typing again, or it may be duplicated.",
+        "next_call": {
+          "arguments": {
+            "pid": 15246,
+            "session": "opensky-15129-3d14e36b",
+            "since": "latest",
+            "window_id": 96027
+          },
+          "tool": "get_window_state"
+        },
+        "route": "global_input",
+        "summary": "\ud83d\udce8 Sent (unverified) 7 char(s) via foreground keystrokes (50ms delay). \u2014 driver could not confirm; verify via screenshot."
+      },
+      "passed": true,
+      "ownedProcessExited": true,
+      "ownedBundleRemoved": true
+    },
+    {
+      "retainedPrefix": 0,
+      "inputDispatches": 1,
+      "payload": "Alpha87",
+      "after": {
+        "events": [
+          {
+            "data": "A",
+            "trusted": true,
+            "value": "A"
+          },
+          {
+            "data": "l",
+            "trusted": true,
+            "value": "l"
+          },
+          {
+            "data": "p",
+            "trusted": true,
+            "value": "p"
+          },
+          {
+            "data": "h",
+            "trusted": true,
+            "value": "h"
+          },
+          {
+            "data": "a",
+            "trusted": true,
+            "value": "a"
+          },
+          {
+            "data": "8",
+            "trusted": true,
+            "value": "8"
+          },
+          {
+            "data": "7",
+            "trusted": true,
+            "value": "7"
+          }
+        ],
+        "focused": true,
+        "kind": "input",
+        "received": "Alpha87",
+        "value": ""
+      },
+      "response": {
+        "delivery": {
+          "mode": "foreground"
+        },
+        "effect": "unverifiable",
+        "hint": "The text was delivered but not read back. Read the field before typing again, or it may be duplicated.",
+        "next_call": {
+          "arguments": {
+            "pid": 15147,
+            "session": "opensky-15129-81107daf",
+            "since": "latest",
+            "window_id": 96016
+          },
+          "tool": "get_window_state"
+        },
+        "route": "global_input",
+        "summary": "\ud83d\udce8 Sent (unverified) 7 char(s) via foreground keystrokes (50ms delay). \u2014 driver could not confirm; verify via screenshot."
+      },
+      "passed": true,
+      "ownedProcessExited": true,
+      "ownedBundleRemoved": true
+    }
+  ],
+  "MacUnits": {
+    "passed": 711,
+    "ignoredHostOptIns": 7
+  },
+  "mutationRemovedFixDetected": true,
+  "E2ETypecheckPassed": true,
+  "stableSignerPreserved": true,
+  "permissionChanges": false,
+  "launchObservation": {
+    "timeoutMs": 250,
+    "pollMs": 50
+  },
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "fullMacAcceptance": false,
+  "paidDispatchAllowed": false,
+  "scope": "Mac native type_text AX readback; web timeout and atomic partial outcomes withhold exact counts. Native positive counts remain covered. Other platforms and CDP input unchanged."
+}

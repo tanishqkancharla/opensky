@@ -12,14 +12,14 @@ import { setTimeout as delay } from "node:timers/promises";
 const exec = promisify(execFile);
 type Receipt = { kind: string; received: string; value: string; focused: boolean; events: Array<{data: string; trusted: boolean}> };
 
-test("TYPE-W02: consumed self-clearing WebKit input never recommends retrying from zero", async ({ sdk }) => {
+for (const retainedPrefix of [0, 2]) test(`TYPE-W02: consumed WebKit input retaining prefix${retainedPrefix} never recommends retrying`, async ({ sdk }) => {
   if (process.platform !== "darwin") throw new Error("TYPE-W02 requires an explicitly provisioned Mac desktop");
   const artifacts = await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR ?? tmpdir(), "self-clearing-web-"));
   const temporary = await mkdtemp(join(tmpdir(), "opensky-self-clearing-web-"));
   const bundle = join(temporary, "OwnedWeb.app");
   const binary = join(bundle, "Contents/MacOS/OwnedWeb");
   const output = join(artifacts, "application-state.json");
-  const result: Record<string, unknown> = { inputDispatches: 0, applicationEffectsVerified: false };
+  const result: Record<string, unknown> = { retainedPrefix, inputDispatches: 0, applicationEffectsVerified: false };
   let child: ChildProcess | undefined;
   let cleanupError: unknown;
   const application = async () => JSON.parse(await readFile(output, "utf8")) as Receipt;
@@ -29,7 +29,7 @@ test("TYPE-W02: consumed self-clearing WebKit input never recommends retrying fr
     const compilation = await compileMacSwiftHelper(fileURLToPath(new URL("../fixtures/mac-self-clearing-web.swift", import.meta.url)), binary);
     await writeFile(join(artifacts,"compiler-setup.json"),JSON.stringify(compilation,null,2));
     await exec("/usr/bin/codesign",["--force","--sign","-",bundle]);
-    child=spawn(binary,[],{env:{...process.env,OPENSKY_SELF_CLEARING_WEB_OUTPUT:output},stdio:["ignore","ignore","pipe"]});
+    child=spawn(binary,[],{env:{...process.env,OPENSKY_SELF_CLEARING_WEB_OUTPUT:output,OPENSKY_SELF_CLEARING_WEB_PREFIX:String(retainedPrefix)},stdio:["ignore","ignore","pipe"]});
     const launched=child; let startupError: unknown;
     launched.on("error",error=>{startupError=error;});
     let stderr=""; launched.stderr?.on("data",data=>{stderr=(stderr+String(data)).slice(-8000);});
@@ -46,7 +46,7 @@ test("TYPE-W02: consumed self-clearing WebKit input never recommends retrying fr
     try {response=(await sdk.driver.call("type_text",{pid,window_id:windowId,text,delivery_mode:"foreground",delay_ms:50})).structured as Record<string,unknown>;}
     catch(error) {failure=error;const details=error as {code?:string;details?:unknown};result.error={message:String(error),code:details.code,details:details.details};}
     await expect.poll(async()=>(await application()).received).toBe(text);
-    const after=await application();result.after=after;expect(after.value).toBe("");expect(after.events).toHaveLength(text.length);expect(after.events.every(event=>event.trusted)).toBe(true);result.applicationEffectsVerified=true;
+    const after=await application();result.after=after;expect(after.value).toBe(text.slice(0,retainedPrefix));expect(after.events).toHaveLength(text.length);expect(after.events.every(event=>event.trusted)).toBe(true);result.applicationEffectsVerified=true;
     const observed=(await sdk.driver.call("get_window_state",{pid,window_id:windowId,include_screenshot:true,native_row_scope:"visible"})).structured as {tree_markdown:string};
     await writeFile(join(artifacts,"after-window-state.json"),JSON.stringify(observed,null,2));expect(observed.tree_markdown).toContain(text);
     result.response=response;expect(failure).toBeUndefined();expect(response?.effect).toBe("unverifiable");

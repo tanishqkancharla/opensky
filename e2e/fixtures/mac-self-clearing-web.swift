@@ -4,6 +4,7 @@ import WebKit
 final class Fixture: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavigationDelegate {
     var window: NSWindow!
     var web: WKWebView!
+    let retainedPrefix = Int(ProcessInfo.processInfo.environment["OPENSKY_SELF_CLEARING_WEB_PREFIX"] ?? "0")!
     let output = URL(fileURLWithPath: ProcessInfo.processInfo.environment["OPENSKY_SELF_CLEARING_WEB_OUTPUT"]!)
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let data = try? JSONSerialization.data(withJSONObject: message.body, options: [.sortedKeys]) else { return }
@@ -26,7 +27,7 @@ final class Fixture: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WK
         let received='', events=[];
         const entry=document.getElementById('entry');
         function report(kind) { window.webkit.messageHandlers.receipt.postMessage({kind,received,events,value:entry.value,focused:document.activeElement===entry}); }
-        entry.addEventListener('input', event=>{received+=entry.value;events.push({data:event.data,value:entry.value,trusted:event.isTrusted});entry.value='';document.getElementById('received').textContent='Received: '+received;report('input');});
+        entry.addEventListener('input', event=>{received+=event.data??'';events.push({data:event.data,value:entry.value,trusted:event.isTrusted});entry.value=received.slice(0,\(retainedPrefix));document.getElementById('received').textContent='Received: '+received;report('input');});
         window.addEventListener('load',()=>{entry.focus();report('ready');});
         </script>
         """, baseURL: nil)
