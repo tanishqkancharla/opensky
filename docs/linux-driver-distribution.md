@@ -1,4 +1,8 @@
-## Current 0.2.42 archive
+## Current 0.2.43 archive
+
+Driver `9efa30f02189b33f2b09370e9cc0daaab25972ea` (0.38.0). Archive SHA-256 `28b51eacee3df1b521e853ab68953f55d986db019076e3b25f1c1c9d8c5f66dd`; executable SHA-256 `c82f43b321f28df61b206e1802204e48ecbdd60bdfbcdfab0a83883c33899acd`. Fresh Bookworm run39897260360 verifies bounded native effects. [Current effects and limits](native-partial-typing93.md), [asset manifest](../driver-assets.json). Earlier records remain historical.
+
+## Historical 0.2.42 archive
 
 Driver `2947bad8071540f3dc53fa44ec586a6735bb528a` (0.38.0). Archive SHA-256 `6c7845c08dbac14d8acc7362358fa21143a41e4295bc55af83e87e9fbcf60bab`; executable SHA-256 `931220eafa1366fdd758c74cae7f0e7904401f89125114dc528a467c84cd25b4`. Fresh Bookworm run39845132948 verifies bounded native effects. [Current effects and limits](native-ax-replay92.md), [asset manifest](../driver-assets.json). Earlier records remain historical.
 

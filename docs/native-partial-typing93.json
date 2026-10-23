@@ -1,6 +1,5 @@
 {
-  "status": "Verified physical Mac candidate; fresh archive/cross-platform qualification pending",
-  "SDKReleaseUnchanged": "0.2.42",
+  "status": "Qualified for OpenSky0.2.43 release; scoped acceptance only",
   "SDKRuntimeSource": "9a288fe059a0f55374be8f6c4bd57d6b535f0c0c",
   "driverCandidateSource": "9efa30f02189b33f2b09370e9cc0daaab25972ea",
   "driverCandidateSHA256": "10e1385ce41684256faba28bf92f380ff8354252273d791a10aa10f73d3e45b3",
@@ -301,5 +300,54 @@
     "Bookworm sandboxed Chrome unqualified",
     "Windows GUI/Wayland/other architectures unqualified",
     "No universal input receipt or rollback guarantee"
-  ]
+  ],
+  "SDKVersion": "0.2.43",
+  "qualifiedSDKSource": "6fbe949cce9c6c007d18da4297dcb8373bc27778",
+  "driverSource": "9efa30f02189b33f2b09370e9cc0daaab25972ea",
+  "releaseQualification": {
+    "BookwormRun": 39897260360,
+    "driverBuildRun": 39897258015,
+    "SDKMainRun": 39897255783,
+    "LinuxUnitsPassed": 724,
+    "embeddedSDKPassed": 275,
+    "TLSOwnersPassed": 3,
+    "nativeAccepted": true,
+    "sandboxedBookwormBrowserAccepted": false,
+    "typingAtDeadlineCodepoints": 52,
+    "typingFinalCodepoints": 1000,
+    "archive": {
+      "file": "opensky-driver-0.38.0-9efa30f02189b33f2b09370e9cc0daaab25972ea-linux-x86_64-gnu-bookworm.tar.gz",
+      "sha256": "28b51eacee3df1b521e853ab68953f55d986db019076e3b25f1c1c9d8c5f66dd",
+      "binarySHA256": "c82f43b321f28df61b206e1802204e48ecbdd60bdfbcdfab0a83883c33899acd",
+      "directory": "opensky-driver-0.38.0-9efa30f02189b33f2b09370e9cc0daaab25972ea-linux-x86_64-gnu-bookworm",
+      "sourceCommit": "9efa30f02189b33f2b09370e9cc0daaab25972ea",
+      "version": "0.38.0"
+    },
+    "GTK4": {
+      "accepted": true,
+      "counts": {
+        "One": 1,
+        "Dot": 1,
+        "Two": 1
+      },
+      "exactObservedClicks": 3,
+      "freshSnapshots": 3,
+      "supervisorsExitedUnforced": 4,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "delivery": "foreground AT-SPI",
+      "driverEffect": "unverifiable; independent application counters confirm effects",
+      "pointerBoundsProven": false
+    },
+    "relativeStorageCapture": {
+      "accepted": true,
+      "width": 640,
+      "height": 480,
+      "sha256": "3ef68674e60d236be1c107e28b53de91aa7b11f25181cef4d5b70eceafefa667",
+      "focusTextClipboardPreserved": true
+    }
+  }
 }

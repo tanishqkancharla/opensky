@@ -1,6 +1,6 @@
 # Withhold uncertain native typing retry counts
 
-Driver candidate `9efa30f02189b33f2b09370e9cc0daaab25972ea` extends the Mac typing safety fix. OpenSky 0.2.42 still selects driver `2947bad8071540f3dc53fa44ec586a6735bb528a` until fresh archive qualification completes. The TypeScript runtime is unchanged. [Structured application receipts](native-partial-typing93.json).
+OpenSky 0.2.43 selects driver `9efa30f02189b33f2b09370e9cc0daaab25972ea` (0.38.0), extending the Mac typing safety fix. Qualified SDK source is `6fbe949cce9c6c007d18da4297dcb8373bc27778`. The TypeScript runtime is unchanged. [Structured application receipts](native-partial-typing93.json).
 
 ## Reproduction and actual effects
 
@@ -32,4 +32,4 @@ cd e2e
 OPENSKY_REAL_DRIVER=1 OPENSKY_DRIVER_BINARY=/Applications/OpenSkyDriver.app/Contents/MacOS/opensky-driver npm test -- specs/native-ax-no-replay.test.ts
 ```
 
-Fresh exact-source Bookworm archive and three-platform qualification remain pending. These scoped owners do not close Mac19/66 or establish full Mac, sandboxed Bookworm Chrome, Windows GUI, Wayland or other architecture acceptance. The earlier background WebKit no-op-AX control remains a retained failed unconditional-delivery assertion; it is not reclassified as passing. No paid benchmark arms or score change.
+Fresh [Bookworm39897260360](https://github.com/tanishqkancharla/opensky/actions/runs/39897260360) independently verifies the extracted binary under bounded grants: exact native ASCII/Unicode paste and selected replacement, uncertain partial delivery, queued cancellation, completion/drain after a 500 ms deadline (52 codepoints then 1,000 saved), replacement binding, GTK4 foreground counters and relative capture. All owned supervisors exit unforced. 724 Linux units, 275 embedded SDK and 3 TLS owners pass. [Three-platform driver39897258015](https://github.com/tanishqkancharla/cua/actions/runs/39897258015) and [SDK-main39897255783](https://github.com/tanishqkancharla/opensky/actions/runs/39897255783) pass. [Current native receipts](halo-current-native-evidence.json) and [archive hashes/install](linux-driver-distribution.md) accompany the release. These scoped owners do not close Mac19/66 or establish full Mac, sandboxed Bookworm Chrome, Windows GUI, Wayland or other architecture acceptance. The earlier background WebKit no-op-AX control remains a retained failed unconditional-delivery assertion; it is not reclassified as passing. No paid benchmark arms or score change.

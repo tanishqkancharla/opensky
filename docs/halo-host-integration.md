@@ -1,4 +1,8 @@
-## Current tested distribution: SDK 0.2.42 / Driver 0.38.0
+## Current tested distribution: SDK 0.2.43 / Driver 0.38.0
+
+Driver `9efa30f02189b33f2b09370e9cc0daaab25972ea`; qualified SDK `6fbe949cce9c6c007d18da4297dcb8373bc27778`. [Current application evidence and limits](native-partial-typing93.md), [current native receipts](halo-current-native-evidence.json), [installation](linux-driver-distribution.md). Bookworm run39897260360 verifies native paste, timeout/Stop/drain, queued cancellation, replacement binding, GTK4 foreground input and relative capture with explicit bounded grants. Sandboxed Bookworm Chrome remains unqualified. Historical reports retain their original pins.
+
+## Historical tested distribution: SDK 0.2.42 / Driver 0.38.0
 
 Driver `2947bad8071540f3dc53fa44ec586a6735bb528a`; qualified SDK `303da7c6ac83c103d19aff89e49cc3c61d991f63`. [Current application evidence and limits](native-ax-replay92.md), [current native receipts](halo-current-native-evidence.json), [installation](linux-driver-distribution.md). Bookworm run39845132948 verifies native paste, timeout/Stop/drain, queued cancellation, replacement binding, GTK4 foreground input and relative capture with explicit bounded grants. Sandboxed Bookworm Chrome remains unqualified. Historical reports retain their original pins.
 
