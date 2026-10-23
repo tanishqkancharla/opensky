@@ -21,8 +21,26 @@ class Fixture(Gtk.Application):
             grid.attach(button, i, 0, 1, 1)
         box.append(grid)
         self.result = Gtk.Label(label=self.label())
-        box.append(self.result); self.win.set_child(box)
+        box.append(self.result)
+        self.popup = None
+        self.entry = None
+        self.popup_activations = 0
+        if os.environ.get("HALO_POPUP_PROBE") == "1":
+            opener = Gtk.MenuButton(label="Open owned popup")
+            self.popup = Gtk.Popover()
+            item = Gtk.Button(label="Unchosen item")
+            item.connect("clicked", self.popup_item_clicked)
+            self.popup.set_child(item)
+            opener.set_popover(self.popup)
+            box.append(opener)
+            self.entry = Gtk.Entry()
+            self.entry.update_property([Gtk.AccessibleProperty.LABEL], ["Receipt input"])
+            box.append(self.entry)
+        self.win.set_child(box)
         self.win.present(); GLib.timeout_add(50, self.snapshot)
+    def popup_item_clicked(self, button):
+        self.popup_activations += 1
+        self.snapshot()
     def label(self):
         return " ".join(f"{name}:{count}" for name, count in counts.items())
     def clicked(self, button, name):
@@ -34,6 +52,14 @@ class Fixture(Gtk.Application):
         value = {"pid": os.getpid(), "counts": counts, "events": events,
                  "sampleSequence": sequence, "gtkVersion": [Gtk.get_major_version(), Gtk.get_minor_version(), Gtk.get_micro_version()],
                  "active": self.win.is_active(), "label": self.label()}
+        if self.popup is not None:
+            focus = self.win.get_focus()
+            value["popup"] = {"visible": self.popup.get_visible(), "mapped": self.popup.get_mapped(),
+                              "activations": self.popup_activations}
+            value["inputText"] = self.entry.get_text()
+            value["entryFocused"] = bool(focus and (focus == self.entry or focus.is_ancestor(self.entry)))
+            (out / "typed.tmp").write_text(value["inputText"], encoding="utf-8")
+            (out / "typed.tmp").replace(out / "typed.txt")
         tmp = out / "state.tmp"; tmp.write_text(json.dumps(value)); tmp.replace(out / "state.json")
         return True
 Fixture(application_id="io.opensky.Gtk4Ownership").run(None)

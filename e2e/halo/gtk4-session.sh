@@ -39,6 +39,8 @@ wmctrl -ia "$window"
 xprop -id "$window" _GTK_FRAME_EXTENTS _NET_FRAME_EXTENTS _NET_WM_PID > "$HALO_ARTIFACTS/window-properties.txt"
 export HALO_GTK4_PID="$app_pid" HALO_GTK4_WINDOW="$window"
 mkdir -p "$HALO_ARTIFACTS/shots"
+extra_tools=""
+if [[ "${HALO_POPUP_PROBE:-0}" == "1" ]]; then extra_tools=", press_key, type_text"; fi
 cat > "$HALO_ARTIFACTS/grants.yaml" <<EOF
 version: 3
 expires_after: 10m
@@ -55,7 +57,7 @@ resources:
       - pid: $app_pid
         window_id: $window
 allow:
-  tools: [start_session, end_session, list_apps, list_windows, get_window_state, bring_to_front, click]
+  tools: [start_session, end_session, list_apps, list_windows, get_window_state, bring_to_front, click${extra_tools}]
 EOF
 export OPENSKY_DRIVER_PATH="$PWD/driver/libs/cua-driver/rust/target/release/cua-driver"
 export HALO_DRIVER_SOCKET="$XDG_RUNTIME_DIR/d.sock"

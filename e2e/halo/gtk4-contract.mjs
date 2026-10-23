@@ -29,6 +29,30 @@ try{
  const final=await app.getAXStateAndScreenshot({emit:false,disableDiffing:true});await writeFile(join(out,'after.txt'),final.state);await writeFile(join(out,'after.png'),final.screenshot);
  assert.match(final.state,/One:1/);assert.match(final.state,/Dot:1/);assert.match(final.state,/Two:1/);
  const clicks=evidence.calls.filter(c=>c.tool==='click');assert.equal(clicks.length,3);assert.ok(clicks.every(c=>c.args.pid===pid&&c.args.window_id===windowId&&c.args.delivery_mode==='foreground'));
+ if(process.env.HALO_POPUP_PROBE==='1'){
+  evidence.popup={accepted:false,environment:'TigerVNC/X11, bounded grants, no uinput/MPX request'};
+  const observe=async name=>{const value=await app.getAXStateAndScreenshot({emit:false,disableDiffing:true});await writeFile(join(out,name+'.txt'),value.state);await writeFile(join(out,name+'.png'),value.screenshot);return value.state;};
+  const indexOf=(text,name,role)=>{const lines=text.split('\n').filter(line=>line.includes(name)&&role.test(line)&&/\[\d+\]/.test(line));assert.equal(lines.length,1,'Unique observed '+name);return Number(lines[0].match(/\[(\d+)\]/)[1]);};
+  const waitFor=async predicate=>{for(let i=0;i<100;i++){const value=await fresh();if(predicate(value))return value;await sleep(20);}throw Error('Owned popup application effect deadline');};
+  const initial=await fresh();assert.equal(initial.inputText,'');assert.equal(initial.popup.mapped,false);assert.equal(initial.popup.activations,0);
+  const before=await observe('popup-before');await app.click(indexOf(before,'Open owned popup',/button/i),{deliveryMode:'foreground'});
+  evidence.popup.opened=await waitFor(s=>s.popup.visible&&s.popup.mapped);await observe('popup-open');
+  const callCount=evidence.calls.length;
+  await assert.rejects(client.call('press_key',{pid,window_id:windowId,key:'Escape',delivery_mode:'background'}),{code:'background_unavailable'});
+  const refused=await fresh();assert.equal(refused.popup.mapped,true);assert.equal(refused.popup.activations,0);assert.equal(refused.inputText,'');
+  evidence.popup.backgroundRefused={before:evidence.popup.opened,after:refused,call:evidence.calls[callCount]};
+  await app.pressKey('Escape');evidence.popup.closed=await waitFor(s=>!s.popup.visible&&!s.popup.mapped);assert.equal(evidence.popup.closed.popup.activations,0);
+  const closed=await observe('popup-closed');await app.click(indexOf(closed,'Receipt input',/entry|text/i),{deliveryMode:'foreground'});
+  const focused=await waitFor(s=>s.entryFocused&&s.active);assert.equal(focused.inputText,'');
+  const payload='Popup ASCII café Ελληνικά 日本語 🙂';
+  await client.call('type_text',{pid,window_id:windowId,text:payload,delivery_mode:'foreground'});
+  evidence.popup.typed=await waitFor(s=>s.inputText===payload);const saved=await readFile(join(out,'typed.txt'));assert.deepEqual(saved,Buffer.from(payload,'utf8'));
+  assert.equal(evidence.popup.typed.popup.activations,0);assert.equal(evidence.popup.typed.popup.mapped,false);
+  evidence.popup.payload=payload;evidence.popup.savedUTF8Bytes=saved.length;evidence.popup.savedHex=saved.toString('hex');await observe('popup-final');
+  const keys=evidence.calls.filter(c=>c.tool==='press_key');assert.equal(keys.length,2);assert.equal(keys[1].args.delivery_mode,'foreground');assert.equal(keys[1].args.pid,pid);assert.equal(keys[1].args.window_id,windowId);
+  const typing=evidence.calls.filter(c=>c.tool==='type_text');assert.equal(typing.length,1);assert.equal(typing[0].args.delivery_mode,'foreground');assert.equal(typing[0].args.pid,pid);assert.equal(typing[0].args.window_id,windowId);
+  evidence.popup.accepted=true;
+ }
  evidence.final=await fresh();assert.deepEqual(evidence.final.events,['One','Dot','Two']);evidence.accepted=true;
 }catch(e){evidence.error={code:e.code,message:e.message,details:e.details,stack:e.stack};try{evidence.atFailure=await fresh();}catch{};process.exitCode=1;}
 finally{try{await sdk.close();evidence.sessionDetached=true;}catch(e){evidence.detachError=e.message;process.exitCode=1;}await writeFile(join(out,'gtk4-evidence.json'),JSON.stringify(evidence,null,2));console.log(JSON.stringify({accepted:evidence.accepted,error:evidence.error,pid,windowId,results:evidence.results.length}));}
