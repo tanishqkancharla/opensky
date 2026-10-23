@@ -1,0 +1,58 @@
+{
+  "SDKConsumerSource": "e4ec8490582758c6eea600eba03f7379dda035a7",
+  "driverSource": "13505413d11c40cc91092df5c0bcb7e2cfc3e289",
+  "driverVersion": "0.38.0",
+  "SDKRelease": "0.2.44",
+  "binaryBuildSDKSource": "6443595604624c73cb5b395a8e89fda0f9db5aca",
+  "binarySHA256": "9ca4de5bce6f381aba2800e8a7b469d4d3ba3b8808cb59c6b5582faf07caac8b",
+  "passingRun": 40014806980,
+  "originalFailureRun": 40014360466,
+  "entryRefClickIssue": "https://github.com/tanishqkancharla/opensky/issues/76",
+  "popup": {
+    "accepted": true,
+    "openingRefClicks": 1,
+    "backgroundRefusals": 1,
+    "foregroundEscape": 1,
+    "foregroundTab": 1,
+    "foregroundTypingDispatches": 1,
+    "payload": "Popup ASCII café Ελληνικά 日本語 🙂",
+    "savedUTF8Bytes": 49,
+    "savedSHA256": "0ab6d45bbb5de12f6e4fc316b6395204e5496a907fd955f8b8d21b481de46f24",
+    "visibleAndFocused": true,
+    "popupActivations": 0,
+    "supervisorsExitedUnforced": 4,
+    "screenshots": {
+      "popup-before": {
+        "sha256": "5296c1fe98e020213a190254e351bf5467691e20c396eed0675a3ddf895d84d8",
+        "width": 428,
+        "height": 329
+      },
+      "popup-open": {
+        "sha256": "75d4d5b78350a2fca4d7a5b4870973318cd0040204ec355202dca91bfe9dd669",
+        "width": 428,
+        "height": 329
+      },
+      "popup-closed": {
+        "sha256": "4d815c5ef6088cc5e0be861ebbf395b688cf8b1339c4af4308cdafe43d65cf07",
+        "width": 428,
+        "height": 329
+      },
+      "popup-final": {
+        "sha256": "0edb377451ccf35344c3d5cb7f64c7714816362fcfe1b3f771a5ae65f4a1668a",
+        "width": 428,
+        "height": 329
+      }
+    },
+    "entryRefClickAccepted": false,
+    "MPXQualified": false
+  },
+  "LinuxUnitsPassed": 724,
+  "embeddedSDKPassed": 275,
+  "typingAtDeadlineCodepoints": 52,
+  "typingSavedCodepoints": 1000,
+  "browserAccepted": false,
+  "MPXQualified": false,
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "runtimeChanged": false
+}
