@@ -1,6 +1,6 @@
-# Post-0.38 Mac maintenance candidate
+# OpenSky 0.2.44 Mac maintenance
 
-Driver candidate `13505413d11c40cc91092df5c0bcb7e2cfc3e289` ports two upstream Mac changes while preserving OpenSky's local ownership and typing safeguards. OpenSky 0.2.43 remains the published SDK and selects driver `9efa30f02189b33f2b09370e9cc0daaab25972ea`. The canonical component release remains 0.38.0; these are selected post-release commits. [Structured evidence](upstream-mac-maintenance94.json).
+OpenSky 0.2.44 selects driver `13505413d11c40cc91092df5c0bcb7e2cfc3e289`, porting two upstream Mac changes while preserving local ownership and typing safeguards. Qualified SDK source is `6443595604624c73cb5b395a8e89fda0f9db5aca`. The canonical component release remains 0.38.0; these are selected post-release commits. [Structured evidence](upstream-mac-maintenance94.json).
 
 ## Changes and attribution
 
@@ -19,6 +19,6 @@ Ten real Mac cases pass: physical Safari window transitions and app cues, exact-
 
 The change removes unnecessary Space queries from the selected hot paths. No speed, cost, context or parity-score improvement is inferred from these regression cases. Other Space layouts remain outside the observed desktop scope.
 
-## Remaining qualification
+## Release qualification and remaining limits
 
-Fresh exact-source Bookworm archive/application effects and three-platform checks are pending before release. Mac #19/#66 stay open; a passing cold open does not establish an intermittent launch fix. Sandboxed Bookworm Chrome, Windows GUI, Wayland and other architectures remain unqualified. The upstream Linux MPX popup fix and broader flaky-test changes were reviewed but are outside this candidate. No VM, sandbox bypass, new permission, paid arm or score row is used.
+Fresh [Bookworm39949487173](https://github.com/tanishqkancharla/opensky/actions/runs/39949487173) independently verifies the extracted binary with bounded grants: exact ASCII/Unicode paste and selected replacement, partial-effect truthfulness, queued cancellation, completion/drain after a 500 ms deadline (51 codepoints then 1,000 saved), replacement process binding, GTK4 foreground counters and relative capture. All owned supervisors exit unforced. 724 Linux units, 275 embedded SDK and 3 TLS owners pass. [Three-platform driver39949483593](https://github.com/tanishqkancharla/cua/actions/runs/39949483593) and [SDK main39949478938](https://github.com/tanishqkancharla/opensky/actions/runs/39949478938) pass. [Current native receipts](halo-current-native-evidence.json), [installation and hashes](linux-driver-distribution.md). Mac #19/#66 stay open; a passing cold open does not establish an intermittent launch fix. Sandboxed Bookworm Chrome, Windows GUI, Wayland and other architectures remain unqualified. The upstream Linux MPX popup fix and broader flaky-test changes were reviewed but are outside this candidate. No VM, sandbox bypass, new permission, paid arm or score row is used.

@@ -1,9 +1,8 @@
 {
-  "status": "Physical Mac candidate verified; fresh cross-platform/archive qualification pending",
+  "status": "Qualified for OpenSky 0.2.44 release; scoped acceptance only",
   "driverCandidateSource": "13505413d11c40cc91092df5c0bcb7e2cfc3e289",
   "driverVersion": "0.38.0",
   "canonicalDriverRelease": "cua-driver-rs-v0.38.0",
-  "SDKReleaseUnchanged": "0.2.43",
   "SDKPackageSource": "b641b51cc1b9eeaf92be92a3d1bc9272f4b67456",
   "SDKQualifiedRuntimeSource": "6fbe949cce9c6c007d18da4297dcb8373bc27778",
   "MacBinarySHA256": "43f2f7f45305549888f787e49d3d7d9c7b66bbf1a4a71843f2d2999ad19116d2",
@@ -73,5 +72,54 @@
     "Bookworm sandboxed Chrome remains unqualified",
     "No Windows GUI, Wayland or other architecture acceptance",
     "Upstream Linux MPX popup and broad flaky-test changes were reviewed but not included"
-  ]
+  ],
+  "SDKVersion": "0.2.44",
+  "qualifiedSDKSource": "6443595604624c73cb5b395a8e89fda0f9db5aca",
+  "driverSource": "13505413d11c40cc91092df5c0bcb7e2cfc3e289",
+  "releaseQualification": {
+    "BookwormRun": 39949487173,
+    "driverBuildRun": 39949483593,
+    "SDKMainRun": 39949478938,
+    "LinuxUnitsPassed": 724,
+    "embeddedSDKPassed": 275,
+    "TLSOwnersPassed": 3,
+    "nativeAccepted": true,
+    "sandboxedBookwormBrowserAccepted": false,
+    "typingAtDeadlineCodepoints": 51,
+    "typingFinalCodepoints": 1000,
+    "archive": {
+      "file": "opensky-driver-0.38.0-13505413d11c40cc91092df5c0bcb7e2cfc3e289-linux-x86_64-gnu-bookworm.tar.gz",
+      "sha256": "25029bd5d8678573a968433f54d7902daba375fe2eb49ebf32ce802525be44c7",
+      "binarySHA256": "9ca4de5bce6f381aba2800e8a7b469d4d3ba3b8808cb59c6b5582faf07caac8b",
+      "directory": "opensky-driver-0.38.0-13505413d11c40cc91092df5c0bcb7e2cfc3e289-linux-x86_64-gnu-bookworm",
+      "sourceCommit": "13505413d11c40cc91092df5c0bcb7e2cfc3e289",
+      "version": "0.38.0"
+    },
+    "GTK4": {
+      "accepted": true,
+      "counts": {
+        "One": 1,
+        "Dot": 1,
+        "Two": 1
+      },
+      "exactObservedClicks": 3,
+      "freshSnapshots": 3,
+      "supervisorsExitedUnforced": 4,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "delivery": "foreground AT-SPI",
+      "driverEffect": "unverifiable; independent application counters confirm effects",
+      "pointerBoundsProven": false
+    },
+    "relativeStorageCapture": {
+      "accepted": true,
+      "width": 640,
+      "height": 480,
+      "sha256": "3ef68674e60d236be1c107e28b53de91aa7b11f25181cef4d5b70eceafefa667",
+      "focusTextClipboardPreserved": true
+    }
+  }
 }

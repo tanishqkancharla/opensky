@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "sdkVersion": "0.2.43",
+  "sdkVersion": "0.2.44",
   "sourceRepository": "https://github.com/tanishqkancharla/cua",
-  "sourceCommit": "9efa30f02189b33f2b09370e9cc0daaab25972ea",
+  "sourceCommit": "13505413d11c40cc91092df5c0bcb7e2cfc3e289",
   "automaticInstallation": false,
   "assets": [
     {
@@ -10,12 +10,12 @@
       "arch": "x64",
       "target": "x86_64-unknown-linux-gnu",
       "version": "0.38.0",
-      "releaseTag": "v0.2.43",
-      "file": "opensky-driver-0.38.0-9efa30f02189b33f2b09370e9cc0daaab25972ea-linux-x86_64-gnu-bookworm.tar.gz",
-      "url": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.43/opensky-driver-0.38.0-9efa30f02189b33f2b09370e9cc0daaab25972ea-linux-x86_64-gnu-bookworm.tar.gz",
-      "sha256": "28b51eacee3df1b521e853ab68953f55d986db019076e3b25f1c1c9d8c5f66dd",
-      "binarySHA256": "c82f43b321f28df61b206e1802204e48ecbdd60bdfbcdfab0a83883c33899acd",
-      "archiveRoot": "opensky-driver-0.38.0-9efa30f02189b33f2b09370e9cc0daaab25972ea-linux-x86_64-gnu-bookworm",
+      "releaseTag": "v0.2.44",
+      "file": "opensky-driver-0.38.0-13505413d11c40cc91092df5c0bcb7e2cfc3e289-linux-x86_64-gnu-bookworm.tar.gz",
+      "url": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.44/opensky-driver-0.38.0-13505413d11c40cc91092df5c0bcb7e2cfc3e289-linux-x86_64-gnu-bookworm.tar.gz",
+      "sha256": "25029bd5d8678573a968433f54d7902daba375fe2eb49ebf32ce802525be44c7",
+      "binarySHA256": "9ca4de5bce6f381aba2800e8a7b469d4d3ba3b8808cb59c6b5582faf07caac8b",
+      "archiveRoot": "opensky-driver-0.38.0-13505413d11c40cc91092df5c0bcb7e2cfc3e289-linux-x86_64-gnu-bookworm",
       "executable": "opensky-driver",
       "abi": {
         "distribution": "Debian",
@@ -39,12 +39,12 @@
         "libxrandr2",
         "libxcursor1"
       ],
-      "provenanceUrl": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.43/opensky-driver-0.38.0-9efa30f02189b33f2b09370e9cc0daaab25972ea-linux-x86_64-gnu-bookworm.provenance.json",
+      "provenanceUrl": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.44/opensky-driver-0.38.0-13505413d11c40cc91092df5c0bcb7e2cfc3e289-linux-x86_64-gnu-bookworm.provenance.json",
       "qualification": {
-        "run": 39897260360,
-        "sdkCommit": "6fbe949cce9c6c007d18da4297dcb8373bc27778",
-        "binaryBuildSDKCommit": "6fbe949cce9c6c007d18da4297dcb8373bc27778",
-        "originalBuildRun": "https://github.com/tanishqkancharla/opensky/actions/runs/39897260360",
+        "run": 39949487173,
+        "sdkCommit": "6443595604624c73cb5b395a8e89fda0f9db5aca",
+        "binaryBuildSDKCommit": "6443595604624c73cb5b395a8e89fda0f9db5aca",
+        "originalBuildRun": "https://github.com/tanishqkancharla/opensky/actions/runs/39949487173",
         "node": "22.23.4",
         "display": "TigerVNC X11 :1, XFWM4 compositor on, shared D-Bus/AT-SPI",
         "nativeAccepted": true,

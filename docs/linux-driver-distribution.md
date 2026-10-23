@@ -1,4 +1,8 @@
-## Current 0.2.43 archive
+## Current 0.2.44 archive
+
+Driver `13505413d11c40cc91092df5c0bcb7e2cfc3e289` (0.38.0). Archive SHA-256 `25029bd5d8678573a968433f54d7902daba375fe2eb49ebf32ce802525be44c7`; executable SHA-256 `9ca4de5bce6f381aba2800e8a7b469d4d3ba3b8808cb59c6b5582faf07caac8b`. Fresh Bookworm run39949487173 verifies bounded native effects. [Current effects and limits](upstream-mac-maintenance94.md), [asset manifest](../driver-assets.json). Earlier records remain historical.
+
+## Historical 0.2.43 archive
 
 Driver `9efa30f02189b33f2b09370e9cc0daaab25972ea` (0.38.0). Archive SHA-256 `28b51eacee3df1b521e853ab68953f55d986db019076e3b25f1c1c9d8c5f66dd`; executable SHA-256 `c82f43b321f28df61b206e1802204e48ecbdd60bdfbcdfab0a83883c33899acd`. Fresh Bookworm run39897260360 verifies bounded native effects. [Current effects and limits](native-partial-typing93.md), [asset manifest](../driver-assets.json). Earlier records remain historical.
 

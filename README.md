@@ -13,12 +13,12 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.43/opensky-cua-0.2.43.tgz
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.44/opensky-cua-0.2.44.tgz
 opensky doctor
 opensky skill install -g
 ```
 
-[OpenSky 0.2.43](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.43)
+[OpenSky 0.2.44](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.44)
 is distributed as the attached npm tarball with a published SHA-256 checksum.
 Registry publication awaits publisher authentication; the command above selects
 the released SDK directly. For a local project, omit `-g`.
@@ -203,8 +203,6 @@ When supplying a custom `DriverClient`, native observations must include the str
 
 Linux native foreground click [application evidence](docs/linux-native-foreground81.json) and [Rust HTTPS distrust validation](docs/tls-distrust81.json) accompany this release.
 
-OpenSky 0.2.43 selects the integrated driver 0.38 fork. [Exact pins, application qualification and limitations](docs/native-partial-typing93.md).
-
-Selected [upstream Mac maintenance changes](docs/upstream-mac-maintenance94.md) are undergoing fresh release qualification; the published 0.2.43 pin remains unchanged.
+OpenSky 0.2.44 selects the integrated driver 0.38 fork. [Exact pins, application qualification and limitations](docs/upstream-mac-maintenance94.md).
 
 Mac web typing safety: [actual application evidence and limitations](docs/web-typing-safety87.md).
