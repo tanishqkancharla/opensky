@@ -171,7 +171,7 @@ jobs:
         if: ${{ inputs.gtk4_probe || inputs.popup_probe }}
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends gir1.2-gtk-4.0
+          apt-get install -y --no-install-recommends gir1.2-gtk-4.0 gir1.2-atspi-2.0
       - name: Owned GTK4 CSD foreground button application effects
         if: ${{ inputs.gtk4_probe }}
         run: |

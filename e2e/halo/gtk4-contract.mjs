@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+const runFile=promisify(execFile);
 import {setTimeout as sleep} from 'node:timers/promises';
 import {CuaDriverClient,createOpenSky,createCua} from '../../dist/index.js';
 const out=process.env.HALO_ARTIFACTS,pid=Number(process.env.HALO_GTK4_PID),windowId=Number(process.env.HALO_GTK4_WINDOW);
@@ -42,14 +45,21 @@ try{
   const refused=await fresh();assert.equal(refused.popup.mapped,true);assert.equal(refused.popup.activations,0);assert.equal(refused.inputText,'');
   evidence.popup.backgroundRefused={before:evidence.popup.opened,after:refused,call:evidence.calls[callCount]};
   await app.pressKey('Escape');evidence.popup.closed=await waitFor(s=>!s.popup.visible&&!s.popup.mapped);assert.equal(evidence.popup.closed.popup.activations,0);
-  await observe('popup-closed');await app.pressKey('Tab');
+  const closed=await observe('popup-closed');
+  const raw=await runFile('/usr/bin/python3',['e2e/halo/gtk4-atspi.py'],{timeout:10000,maxBuffer:1024*1024});await writeFile(join(out,'atspi-before-entry.json'),raw.stdout);
+  const geometry=await runFile('xwininfo',['-id',String(windowId)],{timeout:5000});await writeFile(join(out,'xwininfo-before-entry.txt'),geometry.stdout);
+  const beforeEntry=await fresh();await app.click(indexOf(closed,'Receipt input',/entry|text/i),{deliveryMode:'foreground'});
+  evidence.entryClick={before:beforeEntry,after:await fresh()};await observe('entry-after-click');
+  const post=await runFile('/usr/bin/python3',['e2e/halo/gtk4-atspi.py'],{timeout:10000,maxBuffer:1024*1024});await writeFile(join(out,'atspi-after-entry.json'),post.stdout);
+  const entryState=await fresh();evidence.entryClick.after=entryState;
+  if(!entryState.entryFocused)throw Error('Observed entry ref click did not focus; no typing or keyboard fallback dispatched');
   const focused=await waitFor(s=>s.entryFocused&&s.active);assert.equal(focused.inputText,'');
   const payload='Popup ASCII café Ελληνικά 日本語 🙂';
   await client.call('type_text',{pid,window_id:windowId,text:payload,delivery_mode:'foreground'});
   evidence.popup.typed=await waitFor(s=>s.inputText===payload);const saved=await readFile(join(out,'typed.txt'));assert.deepEqual(saved,Buffer.from(payload,'utf8'));
   assert.equal(evidence.popup.typed.popup.activations,0);assert.equal(evidence.popup.typed.popup.mapped,false);
   evidence.popup.payload=payload;evidence.popup.savedUTF8Bytes=saved.length;evidence.popup.savedHex=saved.toString('hex');await observe('popup-final');
-  const keys=evidence.calls.filter(c=>c.tool==='press_key');assert.equal(keys.length,3);assert.equal(keys[2].args.key,'tab');assert.equal(keys[2].args.delivery_mode,'foreground');assert.equal(keys[2].args.pid,pid);assert.equal(keys[2].args.window_id,windowId);assert.equal(keys[1].args.delivery_mode,'foreground');assert.equal(keys[1].args.pid,pid);assert.equal(keys[1].args.window_id,windowId);
+  const keys=evidence.calls.filter(c=>c.tool==='press_key');assert.equal(keys.length,2);assert.equal(keys[1].args.delivery_mode,'foreground');assert.equal(keys[1].args.pid,pid);assert.equal(keys[1].args.window_id,windowId);
   const typing=evidence.calls.filter(c=>c.tool==='type_text');assert.equal(typing.length,1);assert.equal(typing[0].args.delivery_mode,'foreground');assert.equal(typing[0].args.pid,pid);assert.equal(typing[0].args.window_id,windowId);
   evidence.popup.accepted=true;
  }
