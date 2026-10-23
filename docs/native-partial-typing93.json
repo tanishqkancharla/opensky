@@ -1,0 +1,305 @@
+{
+  "status": "Verified physical Mac candidate; fresh archive/cross-platform qualification pending",
+  "SDKReleaseUnchanged": "0.2.42",
+  "SDKRuntimeSource": "9a288fe059a0f55374be8f6c4bd57d6b535f0c0c",
+  "driverCandidateSource": "9efa30f02189b33f2b09370e9cc0daaab25972ea",
+  "driverCandidateSHA256": "10e1385ce41684256faba28bf92f380ff8354252273d791a10aa10f73d3e45b3",
+  "before": {
+    "atomicAX": {
+      "driverSource": "2947bad8071540f3dc53fa44ec586a6735bb528a",
+      "inputDispatches": 1,
+      "application": {
+        "backend": "native-AppKit",
+        "events": [
+          {
+            "data": "Alpha87",
+            "source": "AXSelectedText"
+          }
+        ],
+        "focused": true,
+        "kind": "AXSelectedText",
+        "received": "Alpha87",
+        "value": "Al"
+      },
+      "error": {
+        "code": "type_text_incomplete",
+        "details": {
+          "code": "type_text_incomplete",
+          "delivered_chars": 2,
+          "effect": "partial",
+          "hint": "Only the first 2 characters landed. Read the field to confirm, then type only the missing rest; do not resend it all.",
+          "path": "ax",
+          "requested_chars": 7,
+          "retry_from_character": 2,
+          "retryable": true
+        }
+      }
+    },
+    "foregroundKeystrokes": {
+      "driverSource": "355fef757d5dee94d2d0b372661b984cef3f43a9",
+      "inputDispatches": 1,
+      "application": {
+        "backend": "native-AppKit",
+        "events": [
+          {
+            "data": "A",
+            "source": "keyDown"
+          },
+          {
+            "data": "l",
+            "source": "keyDown"
+          },
+          {
+            "data": "p",
+            "source": "keyDown"
+          },
+          {
+            "data": "h",
+            "source": "keyDown"
+          },
+          {
+            "data": "a",
+            "source": "keyDown"
+          },
+          {
+            "data": "8",
+            "source": "keyDown"
+          },
+          {
+            "data": "7",
+            "source": "keyDown"
+          }
+        ],
+        "focused": true,
+        "kind": "keyDown",
+        "received": "Alpha87",
+        "value": "Al"
+      },
+      "error": {
+        "code": "type_text_incomplete",
+        "details": {
+          "code": "type_text_incomplete",
+          "delivered_chars": 2,
+          "effect": "partial",
+          "hint": "Only the first 2 characters landed. Read the field to confirm, then type only the missing rest; do not resend it all.",
+          "path": "key_events_fg",
+          "requested_chars": 7,
+          "retry_from_character": 2,
+          "retryable": true
+        }
+      }
+    }
+  },
+  "after": [
+    {
+      "deliveryMode": "background",
+      "retainedPrefix": 0,
+      "inputDispatches": 1,
+      "application": {
+        "backend": "native-AppKit",
+        "events": [
+          {
+            "data": "Alpha87",
+            "source": "AXSelectedText"
+          }
+        ],
+        "focused": true,
+        "kind": "AXSelectedText",
+        "received": "Alpha87",
+        "value": ""
+      },
+      "response": {
+        "delivery": {
+          "mode": "background"
+        },
+        "effect": "unverifiable",
+        "escalation": {
+          "reason": "delivery_failed",
+          "target": "foreground"
+        },
+        "hint": "The input was sent, but its application effect is unverified. Observe current state before further input; do not retry automatically.",
+        "route": "accessibility",
+        "summary": "\ud83d\udce8 Sent (unverified) 7 char(s) via acknowledged AX write into AXTextArea \"\". \u2014 driver could not confirm the text landed; verify via screenshot, and re-call with delivery_mode:\"foreground\" if it didn't."
+      },
+      "ownedProcessExited": true,
+      "ownedBundleRemoved": true
+    },
+    {
+      "deliveryMode": "background",
+      "retainedPrefix": 2,
+      "inputDispatches": 1,
+      "application": {
+        "backend": "native-AppKit",
+        "events": [
+          {
+            "data": "Alpha87",
+            "source": "AXSelectedText"
+          }
+        ],
+        "focused": true,
+        "kind": "AXSelectedText",
+        "received": "Alpha87",
+        "value": "Al"
+      },
+      "response": {
+        "delivery": {
+          "mode": "background"
+        },
+        "effect": "unverifiable",
+        "escalation": {
+          "reason": "delivery_failed",
+          "target": "foreground"
+        },
+        "hint": "The input was sent, but its application effect is unverified. Observe current state before further input; do not retry automatically.",
+        "route": "accessibility",
+        "summary": "\ud83d\udce8 Sent (unverified) 7 char(s) via acknowledged AX write into AXTextArea \"\". \u2014 driver could not confirm the text landed; verify via screenshot, and re-call with delivery_mode:\"foreground\" if it didn't."
+      },
+      "ownedProcessExited": true,
+      "ownedBundleRemoved": true
+    },
+    {
+      "deliveryMode": "foreground",
+      "retainedPrefix": 0,
+      "inputDispatches": 1,
+      "application": {
+        "backend": "native-AppKit",
+        "events": [
+          {
+            "data": "A",
+            "source": "keyDown"
+          },
+          {
+            "data": "l",
+            "source": "keyDown"
+          },
+          {
+            "data": "p",
+            "source": "keyDown"
+          },
+          {
+            "data": "h",
+            "source": "keyDown"
+          },
+          {
+            "data": "a",
+            "source": "keyDown"
+          },
+          {
+            "data": "8",
+            "source": "keyDown"
+          },
+          {
+            "data": "7",
+            "source": "keyDown"
+          }
+        ],
+        "focused": true,
+        "kind": "keyDown",
+        "received": "Alpha87",
+        "value": ""
+      },
+      "response": {
+        "delivery": {
+          "mode": "foreground"
+        },
+        "effect": "unverifiable",
+        "hint": "The input was sent, but its application effect is unverified. Observe current state before further input; do not retry automatically.",
+        "route": "global_input",
+        "summary": "\ud83d\udce8 Sent (unverified) 7 char(s) via foreground keystrokes (50ms delay). \u2014 driver could not confirm; verify via screenshot."
+      },
+      "ownedProcessExited": true,
+      "ownedBundleRemoved": true
+    },
+    {
+      "deliveryMode": "foreground",
+      "retainedPrefix": 2,
+      "inputDispatches": 1,
+      "application": {
+        "backend": "native-AppKit",
+        "events": [
+          {
+            "data": "A",
+            "source": "keyDown"
+          },
+          {
+            "data": "l",
+            "source": "keyDown"
+          },
+          {
+            "data": "p",
+            "source": "keyDown"
+          },
+          {
+            "data": "h",
+            "source": "keyDown"
+          },
+          {
+            "data": "a",
+            "source": "keyDown"
+          },
+          {
+            "data": "8",
+            "source": "keyDown"
+          },
+          {
+            "data": "7",
+            "source": "keyDown"
+          }
+        ],
+        "focused": true,
+        "kind": "keyDown",
+        "received": "Alpha87",
+        "value": "Al"
+      },
+      "response": {
+        "delivery": {
+          "mode": "foreground"
+        },
+        "effect": "unverifiable",
+        "hint": "The input was sent, but its application effect is unverified. Observe current state before further input; do not retry automatically.",
+        "route": "global_input",
+        "summary": "\ud83d\udce8 Sent (unverified) 7 char(s) via foreground keystrokes (50ms delay). \u2014 driver could not confirm; verify via screenshot."
+      },
+      "ownedProcessExited": true,
+      "ownedBundleRemoved": true
+    }
+  ],
+  "regressions": {
+    "TYPE-N07": {
+      "cases": 4,
+      "passed": true
+    },
+    "TYPE-W02": {
+      "retainedPrefixes": [
+        0,
+        2
+      ],
+      "passed": true
+    },
+    "FOCUS-N01": {
+      "passed": true
+    },
+    "SHEET-N01": {
+      "passed": true
+    }
+  },
+  "MacPlatformUnits": 711,
+  "E2ETypecheckPassed": true,
+  "stableSignerPreserved": true,
+  "permissionsChanged": false,
+  "launchObservation": {
+    "timeoutMs": 250,
+    "pollMs": 50
+  },
+  "platformScope": "Mac type_text atomic AX and synthesized-keyboard incomplete readback. Linux and Windows input implementations unchanged; full Mac/browser production acceptance not established.",
+  "tradeoff": "Even an actually partially consumed request has no safe suffix offset from AXValue alone. Observe application effects before further input. Complete positive readback and exact targeting retain existing behavior.",
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "paidDispatchAllowed": false,
+  "limitations": [
+    "Mac19/66 remain open",
+    "Bookworm sandboxed Chrome unqualified",
+    "Windows GUI/Wayland/other architectures unqualified",
+    "No universal input receipt or rollback guarantee"
+  ]
+}

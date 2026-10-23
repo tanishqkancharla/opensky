@@ -205,4 +205,6 @@ Linux native foreground click [application evidence](docs/linux-native-foregroun
 
 OpenSky 0.2.42 selects the integrated driver 0.38 fork. [Exact pins, application qualification and limitations](docs/native-ax-replay92.md).
 
+A [verified native retained-prefix safety candidate](docs/native-partial-typing93.md) is undergoing fresh release qualification; it is separate from the 0.2.42 driver pin.
+
 Mac web typing safety: [actual application evidence and limitations](docs/web-typing-safety87.md).

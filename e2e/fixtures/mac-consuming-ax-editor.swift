@@ -2,6 +2,7 @@ import AppKit
 
 final class ConsumingEditor: NSTextView {
     let output = URL(fileURLWithPath: ProcessInfo.processInfo.environment["OPENSKY_CONSUMING_AX_OUTPUT"]!)
+    let retainedPrefix = Int(ProcessInfo.processInfo.environment["OPENSKY_CONSUMING_AX_PREFIX"] ?? "0") ?? 0
     var received = ""
     var events: [[String: Any]] = []
     func report(_ kind: String) {
@@ -13,7 +14,7 @@ final class ConsumingEditor: NSTextView {
         guard let text = text, !text.isEmpty else { return }
         received += text
         events.append(["data": text, "source": "AXSelectedText"])
-        string = ""
+        string = String(received.prefix(retainedPrefix))
         report("AXSelectedText")
     }
     override func keyDown(with event: NSEvent) {
@@ -21,7 +22,7 @@ final class ConsumingEditor: NSTextView {
         received += text
         events.append(["data": text, "source": "keyDown"])
         super.keyDown(with: event)
-        string = ""
+        string = String(received.prefix(retainedPrefix))
         report("keyDown")
     }
 }

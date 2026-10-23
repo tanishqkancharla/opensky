@@ -12,14 +12,14 @@ import { setTimeout as delay } from "node:timers/promises";
 const exec = promisify(execFile);
 type Receipt = { backend: string; kind: string; received: string; value: string; focused: boolean; events: Array<{ data: string; source: string }> };
 
-test("TYPE-N07: an acknowledged consuming AX edit never replays as keystrokes", async ({ sdk }) => {
+for (const deliveryMode of ["background", "foreground"] as const) for (const retainedPrefix of [0, 2]) test(`TYPE-N07: ${deliveryMode} consumed native input retaining prefix${retainedPrefix} never replays or recommends a suffix`, async ({ sdk }) => {
   if (process.platform !== "darwin") throw new Error("TYPE-N07 requires an explicitly provisioned Mac desktop");
   const artifacts = await mkdtemp(join(process.env.OPENSKY_E2E_ARTIFACT_DIR ?? tmpdir(), "native-ax-consume-"));
   const temporary = await mkdtemp(join(tmpdir(), "opensky-native-ax-consume-"));
   const bundle = join(temporary, "OwnedEditor.app");
   const binary = join(bundle, "Contents/MacOS/OwnedEditor");
   const output = join(artifacts, "application-state.json");
-  const result: Record<string, unknown> = { inputDispatches: 0, applicationEffectsVerified: false };
+  const result: Record<string, unknown> = { deliveryMode, retainedPrefix, inputDispatches: 0, applicationEffectsVerified: false };
   let child: ChildProcess | undefined;
   let cleanupError: unknown;
   const application = async () => JSON.parse(await readFile(output, "utf8")) as Receipt;
@@ -29,7 +29,7 @@ test("TYPE-N07: an acknowledged consuming AX edit never replays as keystrokes", 
     const compilation = await compileMacSwiftHelper(fileURLToPath(new URL("../fixtures/mac-consuming-ax-editor.swift", import.meta.url)), binary);
     await writeFile(join(artifacts, "compiler-setup.json"), JSON.stringify(compilation, null, 2));
     await exec("/usr/bin/codesign", ["--force", "--sign", "-", bundle]);
-    child = spawn(binary, [], { env: { ...process.env, OPENSKY_CONSUMING_AX_OUTPUT: output }, stdio: ["ignore", "ignore", "pipe"] });
+    child = spawn(binary, [], { env: { ...process.env, OPENSKY_CONSUMING_AX_OUTPUT: output, OPENSKY_CONSUMING_AX_PREFIX: String(retainedPrefix) }, stdio: ["ignore", "ignore", "pipe"] });
     const launched = child;
     let startupError: unknown;
     launched.on("error", error => { startupError = error; });
@@ -55,7 +55,7 @@ test("TYPE-N07: an acknowledged consuming AX edit never replays as keystrokes", 
     result.payload = text; result.inputDispatches = 1;
     let response: Record<string, unknown> | undefined;
     try {
-      response = (await sdk.driver.call("type_text", { pid, window_id: windowId, text, delivery_mode: "background", delay_ms: 50 })).structured as Record<string, unknown>;
+      response = (await sdk.driver.call("type_text", { pid, window_id: windowId, text, delivery_mode: deliveryMode, delay_ms: 50 })).structured as Record<string, unknown>;
     } catch (error) {
       const details = error as { code?: string; details?: unknown };
       result.error = { message: String(error), code: details.code, details: details.details };
@@ -64,8 +64,8 @@ test("TYPE-N07: an acknowledged consuming AX edit never replays as keystrokes", 
     result.response = response;
     await expect.poll(async () => (await application()).received).toBe(text);
     const after = await application(); result.after = after;
-    expect(after.value).toBe("");
-    expect(after.events).toEqual([{ data: text, source: "AXSelectedText" }]);
+    expect(after.value).toBe(text.slice(0, retainedPrefix));
+    expect(after.events).toEqual(deliveryMode === "background" ? [{ data: text, source: "AXSelectedText" }] : Array.from(text, data => ({ data, source: "keyDown" })));
     expect(response?.effect).toBe("unverifiable");
     for (const field of ["delivered_chars", "retry_from_character", "retryable"]) expect(Object.hasOwn(response!, field)).toBe(false);
     const observed = (await sdk.driver.call("get_window_state", { pid, window_id: windowId, include_screenshot: true, native_row_scope: "visible" })).structured as { tree_markdown: string };
