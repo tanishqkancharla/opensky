@@ -6779,3 +6779,10 @@ OpenSky 0.2.44 selects driver 13505413d after independent fresh Bookworm39949487
 ## SET462 — Separate MPX/Xorg maintenance from TigerVNC foreground acceptance
 
 Upstream d51eb65f popup routing requires real Xorg hotplug and writable /dev/uinput; it cannot establish Halo TigerVNC behavior. No driver port, device access or sandbox bypass is introduced. Extend the existing optional GTK4 application owner after its original three button effects: observe an owned popover, require background keyboard refusal with unchanged popup/text, close via the native facade foreground key path, and type/save exact Unicode through one explicitly foreground driver call. Exact PID/window grants and unforced supervisor cleanup are retained. Fixture/workflow syntax passes; real TigerVNC application qualification is pending. This is not a verified defect, an MPX test or new production acceptance. No paid arm or score row.
+
+
+### SET462 application evidence — first popup attempt
+
+Run [40014360466](https://github.com/tanishqkancharla/opensky/actions/runs/40014360466) on SDK `a5cc4945bee09737d70456eb564b9afe73fecf4a`, driver `13505413d11c40cc91092df5c0bcb7e2cfc3e289`: all three original counters passed; the popup visibly mapped, background Escape refused with `background_unavailable` without changing it, and explicitly foreground Escape closed it with zero item activations. The later text-entry ref click returned `effect: unverifiable` and did **not** focus the field. GTK4 4.8.3 supplied window-relative child bounds as desktop coordinates, producing off-screen entries; its AT-SPI `activate` action did not focus the entry. This remains an unsupported ref-click/focus outcome, with the failed assertion and four unforced cleanup receipts retained. No typing was dispatched in that attempt.
+
+The next independent owner uses one explicit foreground Tab after Escape, requiring independently sampled entry focus before any typing. This qualifies keyboard navigation if it passes; it does not repair or establish GTK4 text-entry ref clicks, coordinate bounds, pointer input or MPX. No uncertain input is replayed.

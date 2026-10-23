@@ -42,14 +42,14 @@ try{
   const refused=await fresh();assert.equal(refused.popup.mapped,true);assert.equal(refused.popup.activations,0);assert.equal(refused.inputText,'');
   evidence.popup.backgroundRefused={before:evidence.popup.opened,after:refused,call:evidence.calls[callCount]};
   await app.pressKey('Escape');evidence.popup.closed=await waitFor(s=>!s.popup.visible&&!s.popup.mapped);assert.equal(evidence.popup.closed.popup.activations,0);
-  const closed=await observe('popup-closed');await app.click(indexOf(closed,'Receipt input',/entry|text/i),{deliveryMode:'foreground'});
+  await observe('popup-closed');await app.pressKey('Tab');
   const focused=await waitFor(s=>s.entryFocused&&s.active);assert.equal(focused.inputText,'');
   const payload='Popup ASCII café Ελληνικά 日本語 🙂';
   await client.call('type_text',{pid,window_id:windowId,text:payload,delivery_mode:'foreground'});
   evidence.popup.typed=await waitFor(s=>s.inputText===payload);const saved=await readFile(join(out,'typed.txt'));assert.deepEqual(saved,Buffer.from(payload,'utf8'));
   assert.equal(evidence.popup.typed.popup.activations,0);assert.equal(evidence.popup.typed.popup.mapped,false);
   evidence.popup.payload=payload;evidence.popup.savedUTF8Bytes=saved.length;evidence.popup.savedHex=saved.toString('hex');await observe('popup-final');
-  const keys=evidence.calls.filter(c=>c.tool==='press_key');assert.equal(keys.length,2);assert.equal(keys[1].args.delivery_mode,'foreground');assert.equal(keys[1].args.pid,pid);assert.equal(keys[1].args.window_id,windowId);
+  const keys=evidence.calls.filter(c=>c.tool==='press_key');assert.equal(keys.length,3);assert.equal(keys[2].args.key,'tab');assert.equal(keys[2].args.delivery_mode,'foreground');assert.equal(keys[2].args.pid,pid);assert.equal(keys[2].args.window_id,windowId);assert.equal(keys[1].args.delivery_mode,'foreground');assert.equal(keys[1].args.pid,pid);assert.equal(keys[1].args.window_id,windowId);
   const typing=evidence.calls.filter(c=>c.tool==='type_text');assert.equal(typing.length,1);assert.equal(typing[0].args.delivery_mode,'foreground');assert.equal(typing[0].args.pid,pid);assert.equal(typing[0].args.window_id,windowId);
   evidence.popup.accepted=true;
  }
