@@ -1,0 +1,77 @@
+{
+  "status": "Physical Mac candidate verified; fresh cross-platform/archive qualification pending",
+  "driverCandidateSource": "13505413d11c40cc91092df5c0bcb7e2cfc3e289",
+  "driverVersion": "0.38.0",
+  "canonicalDriverRelease": "cua-driver-rs-v0.38.0",
+  "SDKReleaseUnchanged": "0.2.43",
+  "SDKPackageSource": "b641b51cc1b9eeaf92be92a3d1bc9272f4b67456",
+  "SDKQualifiedRuntimeSource": "6fbe949cce9c6c007d18da4297dcb8373bc27778",
+  "MacBinarySHA256": "43f2f7f45305549888f787e49d3d7d9c7b66bbf1a4a71843f2d2999ad19116d2",
+  "upstreamSources": [
+    "88b4b63fdf36b611bbc00c287840e821b649c193",
+    "2d5d5d64637d2d2f8f2561c8301403515df826c2"
+  ],
+  "contributors": [
+    {
+      "name": "ddupont",
+      "github": "ddupont808",
+      "source": "88b4b63fdf36b611bbc00c287840e821b649c193"
+    },
+    {
+      "name": "injaneity",
+      "github": "injaneity",
+      "source": "2d5d5d64637d2d2f8f2561c8301403515df826c2"
+    }
+  ],
+  "contributorAuthorshipPreserved": true,
+  "conflictsResolved": [
+    "Preserved OpenSky bundle regression case while adopting generic bundled-host classification",
+    "Preserved fork window_info_by_id import and inline-editor/attached-sheet ancestry helpers"
+  ],
+  "typingImplementationByteIdenticalToReleasedDriver": true,
+  "CPU": {
+    "MacUnitsPassed": 711,
+    "wholeCoreTestsPassed": 1203,
+    "coreBinaries": 18,
+    "coreIgnored": 2
+  },
+  "health": {
+    "installedDriverWindowserverConnection": "pass",
+    "arbitraryHostClassification": "existing unit owner; old policy mutation fails",
+    "customEmbeddedHostLiveVerified": false,
+    "permissionOrCapturePromptRequested": false
+  },
+  "GUI": {
+    "passedCases": 10,
+    "contracts": [
+      "WINDOW-N01",
+      "WINDOW-N02",
+      "FOCUS-N01",
+      "SHEET-N01",
+      "TYPE-W02-prefix0",
+      "TYPE-W02-prefix2",
+      "TYPE-N07-background-prefix0",
+      "TYPE-N07-background-prefix2",
+      "TYPE-N07-foreground-prefix0",
+      "TYPE-N07-foreground-prefix2"
+    ],
+    "exactOwnedCleanup": true
+  },
+  "launchObservation": {
+    "timeoutMs": 250,
+    "pollMs": 50
+  },
+  "stableSignerPreserved": true,
+  "permissionsChanged": false,
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "paidDispatchAllowed": false,
+  "limitations": [
+    "Mac19/66 remain open; passing cold opens do not establish a fix",
+    "No measured native-vs-OpenSky performance improvement",
+    "No generic embedded-host permission or WindowServer acceptance",
+    "Bookworm sandboxed Chrome remains unqualified",
+    "No Windows GUI, Wayland or other architecture acceptance",
+    "Upstream Linux MPX popup and broad flaky-test changes were reviewed but not included"
+  ]
+}
