@@ -1,16 +1,16 @@
 {
-  "file": "opensky-driver-0.38.0-13505413d11c40cc91092df5c0bcb7e2cfc3e289-linux-x86_64-gnu-bookworm.tar.gz",
-  "sha256": "25029bd5d8678573a968433f54d7902daba375fe2eb49ebf32ce802525be44c7",
-  "binarySHA256": "9ca4de5bce6f381aba2800e8a7b469d4d3ba3b8808cb59c6b5582faf07caac8b",
-  "directory": "opensky-driver-0.38.0-13505413d11c40cc91092df5c0bcb7e2cfc3e289-linux-x86_64-gnu-bookworm",
-  "sourceCommit": "13505413d11c40cc91092df5c0bcb7e2cfc3e289",
+  "file": "opensky-driver-0.38.0-4c30d7dea44ae959c797e98236a627a29e321912-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "81720a73c42ca5b6c91b600b9ef73ecaffaf5da422b0cc27a48c19a88415d0fb",
+  "binarySHA256": "a05823148f806ded1585d289772143c25d7a9c32055bcc9eac8bc0a7159c0b88",
+  "directory": "opensky-driver-0.38.0-4c30d7dea44ae959c797e98236a627a29e321912-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "4c30d7dea44ae959c797e98236a627a29e321912",
   "version": "0.38.0",
-  "sourceRun": 39949487173,
+  "sourceRun": 40042196272,
   "artifact": "linux-driver-release-candidate",
-  "buildSDKCommit": "6443595604624c73cb5b395a8e89fda0f9db5aca",
-  "unitTestsPassed": 724,
-  "unitLogSHA256": "158f884f231d80e9fa89c727542a376e760b04b569a7e6d7f08936d076f08535",
-  "TLSLogSHA256": "8bc7fad476e700fda259911bf5c922bfded7d4dd5f6bef40be9a5c88bb035f9a",
-  "provenanceSHA256": "3614453ec7eacd6418315e26bad2c318041c37307020eb9ea828a99a4788ff12",
-  "qualification": "Fresh ordinary-UID bounded TigerVNC native/strict/Stop/drain/rebind/GTK4/capture effects independently verified. Every reuse requires a fresh consumer. Sandboxed Bookworm Chrome unqualified."
+  "buildSDKCommit": "74ad843b4a86382fcbd3c3bc10f5150ed52c98b0",
+  "unitTestsPassed": 725,
+  "unitLogSHA256": "41a756730f30ef49747995e6b99a42e1178d71edbc79668c5d250fda0038b870",
+  "TLSLogSHA256": "2fc67c6cf95ef6694ede527461fd5f292db2200735d392cd963e38d851c6d9f7",
+  "provenanceSHA256": "acd264dee4e57490f8e4b3974c0b0d9b416d00c19b7a1ef9c433c82d8c33bea7",
+  "qualification": "Candidate archive bytes/source/ABI and 725 Linux/3 TLS owners independently verified; fresh GUI acceptance pending. Reuse only for source-pinned candidate consumers; no production/browser or paid-source acceptance."
 }

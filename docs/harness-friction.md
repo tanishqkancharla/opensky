@@ -6809,3 +6809,6 @@ SET463 candidate review tightens the missing-Showing exception to require a fres
 
 
 SET463 regression ownership: retain the original three-button owner and main popup keyboard control. Add a separate optional `entry_probe` that records raw geometry, requires actual field focus after one fresh ref click (bounded observation wait, never repeated input), then verifies that an obsolete closed-popup token refuses with `stale_element_token` without changing focus/text/counters/activation count. Only after those assertions may one Unicode typing request run. The shared helper remains private fixture code; existing default/release lanes are unchanged. New probe syntax passes; fixed-driver application acceptance is pending.
+
+
+SET463 build receipt: exact driver4c30d7de compiles and passes 725 Linux tests/three TLS owners. Candidate archive81720a73 and ELFa0582314 match source4c30d7de/build SDK74ad843b and Bookworm ABI. Authorize only these exact candidate bytes for the next fresh consumer; desktop acceptance remains pending. The separate entry/stale owner reuses these bytes instead of recompiling unchanged Rust. It preserves the original popup keyboard control and cannot grant production/paid/browser acceptance.
