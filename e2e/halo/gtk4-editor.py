@@ -25,6 +25,7 @@ class Fixture(Gtk.Application):
         self.popup = None
         self.entry = None
         self.popup_activations = 0
+        self.entry_activations = 0
         if os.environ.get("HALO_POPUP_PROBE") == "1":
             opener = Gtk.MenuButton(label="Open owned popup")
             self.popup = Gtk.Popover()
@@ -34,10 +35,14 @@ class Fixture(Gtk.Application):
             opener.set_popover(self.popup)
             box.append(opener)
             self.entry = Gtk.Entry()
+            self.entry.connect("activate", self.entry_activated)
             self.entry.update_property([Gtk.AccessibleProperty.LABEL], ["Receipt input"])
             box.append(self.entry)
         self.win.set_child(box)
         self.win.present(); GLib.timeout_add(50, self.snapshot)
+    def entry_activated(self, entry):
+        self.entry_activations += 1
+        self.snapshot()
     def popup_item_clicked(self, button):
         self.popup_activations += 1
         self.snapshot()
@@ -57,6 +62,7 @@ class Fixture(Gtk.Application):
             value["popup"] = {"visible": self.popup.get_visible(), "mapped": self.popup.get_mapped(),
                               "activations": self.popup_activations}
             value["inputText"] = self.entry.get_text()
+            value["entryActivations"] = self.entry_activations
             value["entryFocused"] = bool(focus and (focus == self.entry or focus.is_ancestor(self.entry)))
             (out / "typed.tmp").write_text(value["inputText"], encoding="utf-8")
             (out / "typed.tmp").replace(out / "typed.txt")

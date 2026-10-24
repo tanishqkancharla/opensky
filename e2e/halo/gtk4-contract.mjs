@@ -53,7 +53,7 @@ try{
   const beforeEntry=await fresh();await app.click(indexOf(closed,'Receipt input',/entry|text/i),{deliveryMode:'foreground'});
   evidence.entryClick={before:beforeEntry,after:await fresh()};await observe('entry-after-click');
   const post=await runFile('/usr/bin/python3',['e2e/halo/gtk4-atspi.py'],{timeout:10000,maxBuffer:1024*1024});await writeFile(join(out,'atspi-after-entry.json'),post.stdout);
-  const entryState=await waitFor(s=>s.entryFocused&&s.active);evidence.entryClick.after=entryState;
+  const entryState=await waitFor(s=>s.entryFocused&&s.active);evidence.entryClick.after=entryState;assert.equal(entryState.entryActivations,0,'A field click must not submit/activate it');
 
   }else{await app.pressKey('Tab');}
   const focused=await waitFor(s=>s.entryFocused&&s.active);assert.equal(focused.inputText,'');
@@ -67,7 +67,7 @@ try{
   const payload='Popup ASCII café Ελληνικά 日本語 🙂';
   await client.call('type_text',{pid,window_id:windowId,text:payload,delivery_mode:'foreground'});
   evidence.popup.typed=await waitFor(s=>s.inputText===payload);const saved=await readFile(join(out,'typed.txt'));assert.deepEqual(saved,Buffer.from(payload,'utf8'));
-  assert.equal(evidence.popup.typed.popup.activations,0);assert.equal(evidence.popup.typed.popup.mapped,false);
+  assert.equal(evidence.popup.typed.popup.activations,0);assert.equal(evidence.popup.typed.entryActivations,0);assert.equal(evidence.popup.typed.popup.mapped,false);
   evidence.popup.payload=payload;evidence.popup.savedUTF8Bytes=saved.length;evidence.popup.savedHex=saved.toString('hex');await observe('popup-final');
   const keys=evidence.calls.filter(c=>c.tool==='press_key');assert.equal(keys.length,process.env.HALO_ENTRY_PROBE==='1'?2:3);if(process.env.HALO_ENTRY_PROBE!=='1')assert.equal(keys[2].args.key,'tab');assert.equal(keys[1].args.delivery_mode,'foreground');assert.equal(keys[1].args.pid,pid);assert.equal(keys[1].args.window_id,windowId);
   const typing=evidence.calls.filter(c=>c.tool==='type_text');assert.equal(typing.length,1);assert.equal(typing[0].args.delivery_mode,'foreground');assert.equal(typing[0].args.pid,pid);assert.equal(typing[0].args.window_id,windowId);

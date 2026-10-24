@@ -6812,3 +6812,8 @@ SET463 regression ownership: retain the original three-button owner and main pop
 
 
 SET463 build receipt: exact driver4c30d7de compiles and passes 725 Linux tests/three TLS owners. Candidate archive81720a73 and ELFa0582314 match source4c30d7de/build SDK74ad843b and Bookworm ABI. Authorize only these exact candidate bytes for the next fresh consumer; desktop acceptance remains pending. The separate entry/stale owner reuses these bytes instead of recompiling unchanged Rust. It preserves the original popup keyboard control and cannot grant production/paid/browser acceptance.
+
+
+SET463 first fixed-driver run40042196272 corrects the entry's screen frame to `(469,492,342,32)` but still fails actual entry focus: the bounded point proof does not establish a pointer route, so the original `activate` action is used. This remains a failed application result despite 725 passing Linux units. Preserve all four unforced cleanup receipts and zero typing.
+
+Remove the speculative missing-Showing pointer exception entirely. Preserve the strict pointer gate. An explicitly foreground, single left ref click without usable pointer placement focuses an exact native Editable/Focusable/Visible object through Component.GrabFocus instead of its activate/submit action. Web/background actions and other click shapes are unchanged. Once focus is dispatched, missing acknowledgement/readback reports uncertainty and never falls through to activation or a second input route. A private fixture activation counter verifies that focusing/typing does not submit the field. Replace the false off-screen diagnosis with an unconfirmed-visibility note; actual screenshots remain authoritative. New candidate actual focus/Unicode/stale-ref/activation effects pending.
