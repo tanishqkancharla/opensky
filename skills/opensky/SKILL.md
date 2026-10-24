@@ -77,6 +77,7 @@ outcome. App observations follow the active visible window within the bound
 process, including dialogs; actions address the latest observed window.
 Prefer semantic indices. For canvas/custom UI, inspect a fresh screenshot and
 use its coordinates. A later AX-only observation clears screenshot geometry.
+For Linux GTK4 fields with unconfirmed screen visibility, prefer fresh screenshot coordinates with explicit foreground delivery; semantic focus may also be unconfirmed. Inspect any uncertain result before further input.
 
 Typing sends keyboard input: newlines may submit. `setValue` replaces the value
 without sending Return or establishing focus. Establish the intended text range
@@ -87,7 +88,7 @@ supporting driver, plaintext ≤16 KiB, and verified focus; macOS also requires
 readable AX text and selection. Browser paste leaves clipboard content. Mac native paste requests restoration
 of supported prior items/formats after verified insertion, preserves observed
 newer copies, and requires a driver supporting the restore policy. Unknown
-input skips restoration and is never replayed. Linux conditionally restores it. See [text input](references/text-input.md) for
+input skips restoration and is never replayed. Linux plaintext paste leaves the payload on the clipboard and does not restore prior content. See [text input](references/text-input.md) for
 platform restrictions or uncertain results.
 
 For tabs, use `goto(url)`, `back()`, `forward()`, `reload()`, and exact `close()`.

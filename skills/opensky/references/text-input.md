@@ -44,13 +44,15 @@ selection. Verify the intended region through available state or a screenshot.
   atomic compare-and-restore, so its final ownership check/write can still race.
   A completed receipt proves text insertion and a separate preservation outcome,
   not every visual style or saving. Observe rich formatting and verify saving.
-- **Linux X11 native:** the current driver does not register `native_paste`.
-  Query `sdk.get_capabilities()`: unavailable means no supported formats and
-  `app.paste()` refuses with `unsupported_native_paste` before dispatching input.
-  It does not change the clipboard or replace selected text. Permissions cannot
-  enable an absent tool. Separately authorized typing has different semantics;
-  the SDK never silently substitutes it. Historical Linux paste acceptance on
-  older source pins does not establish support on the current driver.
+- **Linux X11 native:** direct SDK callers query `sdk.get_capabilities()`;
+  `app.paste()` checks availability internally. The qualified OpenSky
+  driver supports plaintext `native_paste` with explicit foreground delivery,
+  clipboard-text-write authority, and an exact focused AT-SPI editable with
+  readable text/selection. The payload is placed on the clipboard; prior
+  clipboard content is not restored. Tool presence does not establish support
+  in every application. If the selected registry lacks `native_paste`,
+  `app.paste()` refuses with `unsupported_native_paste` before input or clipboard
+  mutation. The SDK never silently substitutes typing.
 - **Other native routes:** do not assume paste support.
 
 A paste failure or incomplete receipt can follow actual input. Inspect the text
@@ -58,3 +60,14 @@ before retrying; a newer external clipboard copy may be what the app consumed.
 Never automatically replay uncertain paste or substitute typing without accounting
 for its different events and newline behavior. Verify saving separately when the
 task requires a saved document.
+
+## Linux GTK4 focus
+
+GTK4 4.8.3 can omit `Showing` on visible fields and fail accessibility focus.
+An `activate` action is not a reliable way to establish text focus. Prefer a
+fresh screenshot-coordinate click with `{deliveryMode: "foreground"}` for
+these fields, chosen before input; inspect focus before typing. Do not
+assume an unconfirmed indexed click worked or automatically replay it through
+another route. Hosts needing one-shot capture/session/target guards can use
+public `CuaDriverClient.call("click", {pid, window_id, capture_id, x, y,
+delivery_mode: "foreground"})` with a fresh capture from the same client/session.

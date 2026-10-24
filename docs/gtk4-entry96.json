@@ -1,0 +1,100 @@
+{
+  "accepted": true,
+  "sdkCommit": "e79e1ebbcc16b4ca3871e4a0a10ec02ed3148dca",
+  "binaryBuildSDKCommit": "59876bf34d6a7e28983920452d50481d3c88bda9",
+  "driverSource": "096490a1721a4fe693623531f9ba0cf5e20806d0",
+  "driverVersion": "0.38.0",
+  "archive": {
+    "file": "opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm.tar.gz",
+    "sha256": "0fb7f9b6c1cb79b4e2e16293f8203806e14415fe7affeb97d2f26ceb7ee55eb4",
+    "binarySHA256": "207f8347b0ba20c51a3a95809cf016b48b0a30ff2d3294f85b38f9c0574ade0f",
+    "directory": "opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm",
+    "sourceCommit": "096490a1721a4fe693623531f9ba0cf5e20806d0",
+    "version": "0.38.0"
+  },
+  "LinuxUnitsPassed": 725,
+  "embeddedPassed": 275,
+  "nativeSavedByteCounts": [
+    29,
+    46
+  ],
+  "partialSaved": "par",
+  "partialEffect": "unknown",
+  "partialOneDispatch": true,
+  "typingAtDeadlineCodepoints": 49,
+  "typingFinalCodepoints": 1000,
+  "typingSavedBytes": 2750,
+  "queuedCancelledBeforeDispatch": true,
+  "followingWaitsForCompletion": true,
+  "strictBridgeRetainsApp": true,
+  "originalPID": 14315,
+  "replacementPID": 14377,
+  "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+  "ownedChildrenExitedUnforced": 3,
+  "supervisorsExitedUnforced": [
+    7,
+    3
+  ],
+  "browserAccepted": false,
+  "paidArms": 0,
+  "GTK4Owners": {
+    "gtk4-owner": {
+      "accepted": true,
+      "originalCountersEachOnce": true,
+      "successfulClicks": 3,
+      "supervisorsExitedUnforced": 4
+    },
+    "gtk4-popup": {
+      "accepted": true,
+      "originalCountersEachOnce": true,
+      "successfulClicks": 4,
+      "supervisorsExitedUnforced": 4
+    },
+    "gtk4-pixel-entry": {
+      "accepted": true,
+      "originalCountersEachOnce": true,
+      "successfulClicks": 5,
+      "supervisorsExitedUnforced": 4
+    }
+  },
+  "foregroundPixelEntry": {
+    "accepted": true,
+    "exactCaptureTarget": true,
+    "oneForegroundXTestDispatch": true,
+    "coordinates": [
+      214,
+      220
+    ],
+    "actualFocusBefore": false,
+    "actualFocusAfter": true,
+    "entryActivations": 0,
+    "popupActivations": 0,
+    "savedUTF8Bytes": 49,
+    "savedSHA256": "0ab6d45bbb5de12f6e4fc316b6395204e5496a907fd955f8b8d21b481de46f24",
+    "consumedCaptureRefusal": "capture_not_found",
+    "sameSessionStalePopupRefusal": "stale_element_token",
+    "screenshots": {
+      "entry-after-click.png": {
+        "SHA256": "1f15e2d031fd5795dd71a4dba97054336a9a38eb83c11a8f7baafbaf82260090",
+        "width": 428,
+        "height": 329
+      },
+      "popup-final.png": {
+        "SHA256": "a997544304a67d23b610cd572581dc52f4ed60d0fd1beb08062f5717255638d8",
+        "width": 428,
+        "height": 329
+      }
+    }
+  },
+  "semanticEntryRefFocusAccepted": false,
+  "semanticFailureRun": 40043907707,
+  "fullMacAccepted": false,
+  "BookwormSandboxedBrowserAccepted": false,
+  "paidDispatchAllowed": false,
+  "SDKVersion": "0.2.45",
+  "consumerRun": 40045288833,
+  "originalBinaryBuildRun": 40043907707,
+  "SDKRuntimeChanged": false,
+  "semanticEntryIssue": "https://github.com/tanishqkancharla/opensky/issues/76",
+  "MacScope": "Read-only original Calendar capture and WindowServer health on stable signer; Mac implementation unchanged from13505413. No new Mac input/full acceptance."
+}

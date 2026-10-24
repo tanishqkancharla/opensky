@@ -1,4 +1,8 @@
-## Current tested distribution: SDK 0.2.44 / Driver 0.38.0
+## Current tested distribution: SDK 0.2.45 / Driver 0.38.0
+
+Driver `096490a1721a4fe693623531f9ba0cf5e20806d0`; qualified SDK `e79e1ebbcc16b4ca3871e4a0a10ec02ed3148dca`. [Exact native calls, evidence and limits](gtk4-entry96.md). Bookworm run40045288833 verifies native paste, timeout/Stop/drain, queued cancellation, rebind, GTK4 keyboard and capture-bound foreground pixel entry, consumed-capture/stale-reference refusals and cleanup with bounded grants. GTK4 semantic entry focus remains unconfirmed/open #76; sandboxed Bookworm Chrome remains unqualified. The persistent-host lifecycle API below is unchanged.
+
+## Historical tested distribution: SDK 0.2.44 / Driver 0.38.0
 
 Driver `13505413d11c40cc91092df5c0bcb7e2cfc3e289`; qualified SDK `6443595604624c73cb5b395a8e89fda0f9db5aca`. [Current application evidence and limits](upstream-mac-maintenance94.md), [current native receipts](halo-current-native-evidence.json), [installation](linux-driver-distribution.md). Bookworm run39949487173 verifies native paste, timeout/Stop/drain, queued cancellation, replacement binding, GTK4 foreground input and relative capture with explicit bounded grants. Sandboxed Bookworm Chrome remains unqualified. Historical reports retain their original pins.
 

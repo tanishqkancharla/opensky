@@ -1,4 +1,8 @@
-## Current 0.2.44 archive
+## Current 0.2.45 archive
+
+Driver `096490a1721a4fe693623531f9ba0cf5e20806d0` (0.38.0). Archive SHA-256 `0fb7f9b6c1cb79b4e2e16293f8203806e14415fe7affeb97d2f26ceb7ee55eb4`; executable SHA-256 `207f8347b0ba20c51a3a95809cf016b48b0a30ff2d3294f85b38f9c0574ade0f`. Fresh Bookworm consumer40045288833 verifies bounded native effects and capture-bound foreground pixel input; original build40043907707 retains SDK59876bf3. [Current scope and remaining GTK4 ref-focus limitation](gtk4-entry96.md), [asset manifest](../driver-assets.json). Earlier records remain historical.
+
+## Historical 0.2.44 archive
 
 Driver `13505413d11c40cc91092df5c0bcb7e2cfc3e289` (0.38.0). Archive SHA-256 `25029bd5d8678573a968433f54d7902daba375fe2eb49ebf32ce802525be44c7`; executable SHA-256 `9ca4de5bce6f381aba2800e8a7b469d4d3ba3b8808cb59c6b5582faf07caac8b`. Fresh Bookworm run39949487173 verifies bounded native effects. [Current effects and limits](upstream-mac-maintenance94.md), [asset manifest](../driver-assets.json). Earlier records remain historical.
 

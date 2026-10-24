@@ -12,5 +12,5 @@
   "unitLogSHA256": "122eac860c2c9e4ba991e9c9da7b81fbf29c9988f339a180674a8e6d3fc63284",
   "TLSLogSHA256": "def6167481b29d6ab3990bd2abfa70fd293888d49bbf198e14fac7b31edd9af9",
   "provenanceSHA256": "46a62a26eb92f4c8b27d99feee062daae136b0b44c092a80661dff4cfef6e0e9",
-  "qualification": "Exact candidate bytes, Bookworm ABI, native paste/partial/Stop/drain/rebind controls and original GTK4 keyboard controls verified. Semantic GTK4 ref focus remains unsupported/failed. Fresh capture-bound pixel entry qualification pending; no browser/production/paid-source acceptance."
+  "qualification": "Fresh ordinary-user bounded TigerVNC native/strict/Stop/drain/rebind/GTK4 keyboard/capture-bound pixel entry and refusals independently verified. Semantic GTK4 entry ref focus remains failed/open #76; sandboxed Bookworm Chrome and paid-source acceptance unqualified. Every reuse requires a fresh consumer."
 }

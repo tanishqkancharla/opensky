@@ -1,13 +1,13 @@
 {
-  "version": "0.2.44",
-  "sdk": "6443595604624c73cb5b395a8e89fda0f9db5aca",
-  "driver": "13505413d11c40cc91092df5c0bcb7e2cfc3e289",
+  "version": "0.2.45",
+  "sdk": "e79e1ebbcc16b4ca3871e4a0a10ec02ed3148dca",
+  "driver": "096490a1721a4fe693623531f9ba0cf5e20806d0",
   "driverVersion": "0.38.0",
   "node": "v22.23.4",
-  "run": 39949487173,
+  "run": 40045288833,
   "environment": "ordinary UID1001, Debian12 Bookworm, TigerVNC X11 :1, XFWM4, shared D-Bus/AT-SPI; explicit bounded grants",
   "cancelAndCompletion": {
-    "partialCodepointsAt500ms": 51,
+    "partialCodepointsAt500ms": 49,
     "deadlineState": "active",
     "stopRequested": true,
     "cancelledQueuedState": "cancelled",
@@ -43,22 +43,9 @@
   },
   "GTK4": {
     "accepted": true,
-    "counts": {
-      "One": 1,
-      "Dot": 1,
-      "Two": 1
-    },
-    "exactObservedClicks": 3,
-    "freshSnapshots": 3,
-    "supervisorsExitedUnforced": 4,
-    "gtkVersion": [
-      4,
-      8,
-      3
-    ],
-    "delivery": "foreground AT-SPI",
-    "driverEffect": "unverifiable; independent application counters confirm effects",
-    "pointerBoundsProven": false
+    "originalCountersEachOnce": true,
+    "successfulClicks": 3,
+    "supervisorsExitedUnforced": 4
   },
   "relativeStorageCapture": {
     "accepted": true,
@@ -76,8 +63,43 @@
     "nativeSupervisorsExitedUnforced": 7,
     "rebindSupervisorsExitedUnforced": 3,
     "GTK4SupervisorsExitedUnforced": 4,
-    "sessionsDetached": true
+    "sessionsDetached": true,
+    "GTK4SupervisorsExitedUnforcedEach": 4,
+    "GTK4OwnerCount": 3
   },
   "scope": "Native X11 application acceptance; no full Mac, Windows GUI, Wayland or other architecture acceptance.",
-  "newPaidArms": 0
+  "newPaidArms": 0,
+  "binaryBuildSDK": "59876bf34d6a7e28983920452d50481d3c88bda9",
+  "binaryBuildRun": 40043907707,
+  "foregroundPixelEntry": {
+    "accepted": true,
+    "exactCaptureTarget": true,
+    "oneForegroundXTestDispatch": true,
+    "coordinates": [
+      214,
+      220
+    ],
+    "actualFocusBefore": false,
+    "actualFocusAfter": true,
+    "entryActivations": 0,
+    "popupActivations": 0,
+    "savedUTF8Bytes": 49,
+    "savedSHA256": "0ab6d45bbb5de12f6e4fc316b6395204e5496a907fd955f8b8d21b481de46f24",
+    "consumedCaptureRefusal": "capture_not_found",
+    "sameSessionStalePopupRefusal": "stale_element_token",
+    "screenshots": {
+      "entry-after-click.png": {
+        "SHA256": "1f15e2d031fd5795dd71a4dba97054336a9a38eb83c11a8f7baafbaf82260090",
+        "width": 428,
+        "height": 329
+      },
+      "popup-final.png": {
+        "SHA256": "a997544304a67d23b610cd572581dc52f4ed60d0fd1beb08062f5717255638d8",
+        "width": 428,
+        "height": 329
+      }
+    }
+  },
+  "GTK4SemanticEntryRefFocusAccepted": false,
+  "GTK4SemanticEntryIssue": 76
 }
