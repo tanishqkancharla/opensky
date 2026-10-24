@@ -40,14 +40,26 @@ try{
   const initial=await fresh();assert.equal(initial.inputText,'');assert.equal(initial.popup.mapped,false);assert.equal(initial.popup.activations,0);
   const before=await observe('popup-before');await app.click(indexOf(before,'Open owned popup',/button/i),{deliveryMode:'foreground'});
   evidence.popup.opened=await waitFor(s=>s.popup.visible&&s.popup.mapped);await observe('popup-open');
-  const popupObservation=evidence.calls.filter(c=>c.tool==='get_window_state').at(-1).result;
+  const popupCall=evidence.calls.filter(c=>c.tool==='get_window_state').at(-1);const popupObservation=popupCall.result;
   const callCount=evidence.calls.length;
   await assert.rejects(client.call('press_key',{pid,window_id:windowId,key:'Escape',delivery_mode:'background'}),{code:'background_unavailable'});
   const refused=await fresh();assert.equal(refused.popup.mapped,true);assert.equal(refused.popup.activations,0);assert.equal(refused.inputText,'');
   evidence.popup.backgroundRefused={before:evidence.popup.opened,after:refused,call:evidence.calls[callCount]};
   await app.pressKey('Escape');evidence.popup.closed=await waitFor(s=>!s.popup.visible&&!s.popup.mapped);assert.equal(evidence.popup.closed.popup.activations,0);
   const closed=await observe('popup-closed');
-  if(process.env.HALO_ENTRY_PROBE==='1'){
+  if(process.env.HALO_PIXEL_ENTRY_PROBE==='1'){
+   const observation=await client.call('get_window_state',{pid,window_id:windowId,include_screenshot:true,screenshot_out_file:join(out,'shots','pixel-entry-before.png')});
+   const frame=observation.structured;assert.ok(frame.capture_id);const nodes=frame.elements.filter(e=>e.label==='Receipt input'&&/text/i.test(e.role));assert.equal(nodes.length,1);
+   const box=nodes[0].screenshot_frame;assert.ok(box&&box.w>0&&box.h>0);const x=box.x+box.w/2,y=box.y+box.h/2;
+   assert.ok(x>=0&&y>=0&&x<frame.screenshot_width&&y<frame.screenshot_height);
+   const before=await fresh();assert.equal(before.entryFocused,false);assert.equal(before.inputText,'');assert.equal(before.entryActivations,0);
+   const request={pid,window_id:windowId,capture_id:frame.capture_id,x,y,delivery_mode:'foreground'};
+   await client.call('click',request);const after=await waitFor(s=>s.entryFocused&&s.active);assert.equal(after.entryActivations,0);
+   await assert.rejects(client.call('click',request),{code:'capture_not_found'});
+   const refused=await fresh();assert.equal(refused.entryFocused,true);assert.equal(refused.entryActivations,0);assert.equal(refused.inputText,'');assert.deepEqual(refused.counts,before.counts);
+   evidence.pixelEntry={before,after,consumedCaptureRefused:refused,captureId:frame.capture_id,x,y,oneForegroundDispatch:true,secondAdmissionRefused:'capture_not_found'};
+   await observe('entry-after-click');
+  }else if(process.env.HALO_ENTRY_PROBE==='1'){
   const raw=await runFile('/usr/bin/python3',['e2e/halo/gtk4-atspi.py'],{timeout:10000,maxBuffer:1024*1024});await writeFile(join(out,'atspi-before-entry.json'),raw.stdout);
   const geometry=await runFile('xwininfo',['-id',String(windowId)],{timeout:5000});await writeFile(join(out,'xwininfo-before-entry.txt'),geometry.stdout);
   const beforeEntry=await fresh();await app.click(indexOf(closed,'Receipt input',/entry|text/i),{deliveryMode:'foreground'});
@@ -57,10 +69,10 @@ try{
 
   }else{await app.pressKey('Tab');}
   const focused=await waitFor(s=>s.entryFocused&&s.active);assert.equal(focused.inputText,'');
-  if(process.env.HALO_ENTRY_PROBE==='1'){
+  if(process.env.HALO_ENTRY_PROBE==='1'||process.env.HALO_PIXEL_ENTRY_PROBE==='1'){
    const items=popupObservation.elements.filter(e=>e.label==='Unchosen item'&&/button/i.test(e.role));assert.equal(items.length,1);
    const staleBefore=await fresh();const item=items[0];
-   await assert.rejects(client.call('click',{pid,window_id:windowId,element_index:item.element_index,element_token:item.element_token,snapshot_id:popupObservation.snapshot_id,delivery_mode:'foreground'}),{code:'stale_element_token'});
+   await assert.rejects(client.call('click',{pid,window_id:windowId,element_index:item.element_index,element_token:item.element_token,snapshot_id:popupObservation.snapshot_id,session:popupCall.args.session,delivery_mode:'foreground'}),{code:'stale_element_token'});
    const staleAfter=await fresh();assert.equal(staleAfter.popup.activations,0);assert.equal(staleAfter.inputText,'');assert.equal(staleAfter.entryFocused,true);assert.deepEqual(staleAfter.counts,staleBefore.counts);
    evidence.stalePopupRef={before:staleBefore,after:staleAfter,refused:true,code:'stale_element_token'};
   }
@@ -69,7 +81,7 @@ try{
   evidence.popup.typed=await waitFor(s=>s.inputText===payload);const saved=await readFile(join(out,'typed.txt'));assert.deepEqual(saved,Buffer.from(payload,'utf8'));
   assert.equal(evidence.popup.typed.popup.activations,0);assert.equal(evidence.popup.typed.entryActivations,0);assert.equal(evidence.popup.typed.popup.mapped,false);
   evidence.popup.payload=payload;evidence.popup.savedUTF8Bytes=saved.length;evidence.popup.savedHex=saved.toString('hex');await observe('popup-final');
-  const keys=evidence.calls.filter(c=>c.tool==='press_key');assert.equal(keys.length,process.env.HALO_ENTRY_PROBE==='1'?2:3);if(process.env.HALO_ENTRY_PROBE!=='1')assert.equal(keys[2].args.key,'tab');assert.equal(keys[1].args.delivery_mode,'foreground');assert.equal(keys[1].args.pid,pid);assert.equal(keys[1].args.window_id,windowId);
+  const keys=evidence.calls.filter(c=>c.tool==='press_key');assert.equal(keys.length,(process.env.HALO_ENTRY_PROBE==='1'||process.env.HALO_PIXEL_ENTRY_PROBE==='1')?2:3);if(process.env.HALO_ENTRY_PROBE!=='1'&&process.env.HALO_PIXEL_ENTRY_PROBE!=='1')assert.equal(keys[2].args.key,'tab');assert.equal(keys[1].args.delivery_mode,'foreground');assert.equal(keys[1].args.pid,pid);assert.equal(keys[1].args.window_id,windowId);
   const typing=evidence.calls.filter(c=>c.tool==='type_text');assert.equal(typing.length,1);assert.equal(typing[0].args.delivery_mode,'foreground');assert.equal(typing[0].args.pid,pid);assert.equal(typing[0].args.window_id,windowId);
   evidence.popup.accepted=true;
  }

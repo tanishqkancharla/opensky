@@ -6820,3 +6820,8 @@ Remove the speculative missing-Showing pointer exception entirely. Preserve the 
 
 
 SET463 focus timeout guard: track the real focus dispatch phase outside the bounded future. If the outer action budget expires after GrabFocus started, return an unverified focus receipt and observe before further input; never label it no-input or fall through to activate. The guard changes no successful input sequence. Candidate remains unqualified until source-pinned native effects pass.
+
+
+SET463 semantic limitation retained: run40043776187 on driver8c0f148c and run40043907707 on final driver096490a1 still fail the semantic entry-focus assertion. Component.GrabFocus is dispatched but the actual entry remains unfocused; text and new activation counter stay empty/zero, no typing follows. Do not relabel these tests green, weaken Showing, grant an unknown pointer, or close #76 as fully resolved. The original keyboard control remains passing.
+
+Add a separate source-qualified pixel entry owner using the public SDK CuaDriverClient: fresh get_window_state returns a real PNG/capture_id and corrected field screenshot frame; one explicitly foreground coordinate click binds to that exact capture/session/PID/window. Require actual focus with zero activation, consumed-capture refusal (`capture_not_found`), same-session stale closed-popup refusal (`stale_element_token`), one exact 49-byte Unicode typing request, and unforced cleanup. This runs in a fresh fixture without any preceding uncertain semantic click. It verifies an explicit supported route, not a fallback/replay or semantic-ref acceptance. Actual pixel effects pending.

@@ -18,6 +18,10 @@ on:
         description: 'Owned GTK4 entry ref-click focus, raw geometry and stale-popup refusal'
         type: boolean
         default: false
+      pixel_entry_probe:
+        description: 'Owned GTK4 capture-bound foreground pixel entry and consumed/stale refusals'
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -172,7 +176,7 @@ jobs:
           mkdir -p "$directory"; chown halo:halo "$directory"
           runuser -u halo -- env HALO_ARTIFACTS="$directory" HALO_REBIND_CONTRACT_ONLY=1 HALO_COMPOSITOR=on dbus-run-session -- bash e2e/halo/session.sh
       - name: Install optional GTK4 diagnostic runtime
-        if: ${{ inputs.gtk4_probe || inputs.popup_probe || inputs.entry_probe }}
+        if: ${{ inputs.gtk4_probe || inputs.popup_probe || inputs.entry_probe || inputs.pixel_entry_probe }}
         run: |
           apt-get update
           apt-get install -y --no-install-recommends gir1.2-gtk-4.0 gir1.2-atspi-2.0
@@ -194,6 +198,12 @@ jobs:
           directory="$GITHUB_WORKSPACE/artifacts/halo/gtk4-entry"
           mkdir -p "$directory"; chown halo:halo "$directory"
           runuser -u halo -- env HALO_ARTIFACTS="$directory" HALO_POPUP_PROBE=1 HALO_ENTRY_PROBE=1 dbus-run-session -- bash e2e/halo/gtk4-session.sh
+      - name: Owned GTK4 capture-bound foreground pixel entry and refusals
+        if: ${{ inputs.pixel_entry_probe }}
+        run: |
+          directory="$GITHUB_WORKSPACE/artifacts/halo/gtk4-pixel-entry"
+          mkdir -p "$directory"; chown halo:halo "$directory"
+          runuser -u halo -- env HALO_ARTIFACTS="$directory" HALO_POPUP_PROBE=1 HALO_PIXEL_ENTRY_PROBE=1 dbus-run-session -- bash e2e/halo/gtk4-session.sh
       - name: Retain fresh consumer application effects and cleanup
         if: always()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
