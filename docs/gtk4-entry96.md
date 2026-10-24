@@ -10,6 +10,14 @@ Visible GTK4 children also omit Showing. Do not infer they are invisible or gran
 
 A **separate fresh fixture** verifies the explicitly foreground pixel path: a capture-bound click at `(214,220)` maps to screen `(640,508)`, reports `route: global_input`, `path: x11_xtest_fg`, and actually focuses the entry. Reusing that consumed capture returns `capture_not_found`/`effect: refused`; an old closed-popup token from the same SDK session returns `stale_element_token`, with focus/text/counters unchanged. One typing request produces `Popup ASCII café Ελληνικά 日本語 🙂`: exactly 49 UTF8 bytes, SHA256 `0ab6d45bbb5de12f6e4fc316b6395204e5496a907fd955f8b8d21b481de46f24`. Independent application focus/counters/text receipts and real screenshots agree; field activation and popup activation both remain zero. The driver itself conservatively reports input effect unverified; this application evidence confirms the outcome. This is not an automatic fallback or semantic-ref acceptance.
 
+## Why the GTK4 semantic focus route remains unsupported
+
+Source review identifies a concrete toolkit limitation: the GTK 4.8.3 implementation of `Component.GrabFocus` unconditionally returns the D-Bus `NotSupported` error; that method does not request widget focus. See the [pinned GTK implementation](https://github.com/GNOME/gtk/blob/793831af8a224545495f0c56a184f4ee28e5cc55/gtk/a11y/gtkatspicomponent.c#L197-L200).
+
+This is consistent with the retained application-level failure (field focus false, text empty, zero activation). It is an inference from upstream source, **not a captured method reply from the tested Debian binary**. GTK version alone does not establish the distribution's exact patched source. OpenSky 0.2.45 currently treats a missing or negative focus acknowledgement conservatively as unverified; the result does not establish toolkit focus support. A successful outer request or active window is insufficient evidence of field focus.
+
+No runtime fix, new GUI acceptance, or toolkit upgrade is claimed here. If another diagnostic is needed, capture that exact method error once in a fresh owned fixture. Do not retry an uncertain click, activate/submit the entry, or silently choose a pointer route. Choose the independently verified foreground coordinate path before input when this toolkit's semantic route cannot establish focus. Issue #76 remains open.
+
 ## Public SDK path for an embedded host
 
 Keep the client and desktop queue in the Node host across workers. The example functions below use the public SDK; the host supplies its owned target and a screenshot directory covered by its grants. Call `observe`, inspect its PNG, then choose coordinates from that image and call `foregroundClick` with its exact capture ID. Serialize conflicting work through the [persistent host lifecycle contract](halo-host-integration.md).

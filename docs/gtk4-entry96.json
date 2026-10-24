@@ -96,5 +96,22 @@
   "originalBinaryBuildRun": 40043907707,
   "SDKRuntimeChanged": false,
   "semanticEntryIssue": "https://github.com/tanishqkancharla/opensky/issues/76",
-  "MacScope": "Read-only original Calendar capture and WindowServer health on stable signer; Mac implementation unchanged from13505413. No new Mac input/full acceptance."
+  "MacScope": "Read-only original Calendar capture and WindowServer health on stable signer; Mac implementation unchanged from13505413. No new Mac input/full acceptance.",
+  "upstreamFocusSourceDiagnosis": {
+    "observedAt": "2026-10-24T11:52:53.777369+00:00",
+    "GTKVersion": "4.8.3",
+    "GTKSourceCommit": "793831af8a224545495f0c56a184f4ee28e5cc55",
+    "sourceURL": "https://raw.githubusercontent.com/GNOME/gtk/793831af8a224545495f0c56a184f4ee28e5cc55/gtk/a11y/gtkatspicomponent.c",
+    "sourceSHA256": "a63343837e7f0391e5e056ee2d62f2fdba91caef4ae09350c6999ce0b4b686a5",
+    "method": "org.a11y.atspi.Component.GrabFocus",
+    "upstreamImplementation": "Unconditionally returns G_DBUS_ERROR_NOT_SUPPORTED; this method body does not request widget focus.",
+    "sourceInspectionOnly": true,
+    "debianBinaryWireReplyCaptured": false,
+    "sourceExplainsRetainedResult": "Inference consistent with independently observed focus false and empty text in run40043907707. Debian binary linkage/patch identity and exact D-Bus reply were not captured.",
+    "runtimeChanged": false,
+    "semanticFocusAccepted": false,
+    "issue": 76,
+    "nextDiagnostic": "If needed, capture the exact method error once in a fresh owned GTK4 fixture. Do not repeat the same semantic click or fall through to a second input route after uncertainty.",
+    "supportedRoute": "Fresh explicitly foreground capture-bound coordinates in a separate fixture, verified in40045288833."
+  }
 }
