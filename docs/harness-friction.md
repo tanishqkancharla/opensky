@@ -6806,3 +6806,6 @@ The driver candidate rejects a purported Screen answer that equals Window under 
 
 
 SET463 candidate review tightens the missing-Showing exception to require a fresh Visible state as well as exact point ownership inside the same PID/window. Hidden or unresponsive objects, unknown hits, siblings and redirects cannot grant it. Superseded first candidate CI is retained/cancelled before qualification; no result is relabeled as acceptance.
+
+
+SET463 regression ownership: retain the original three-button owner and main popup keyboard control. Add a separate optional `entry_probe` that records raw geometry, requires actual field focus after one fresh ref click (bounded observation wait, never repeated input), then verifies that an obsolete closed-popup token refuses with `stale_element_token` without changing focus/text/counters/activation count. Only after those assertions may one Unicode typing request run. The shared helper remains private fixture code; existing default/release lanes are unchanged. New probe syntax passes; fixed-driver application acceptance is pending.
