@@ -1,16 +1,16 @@
 {
-  "file": "opensky-driver-0.38.0-4c30d7dea44ae959c797e98236a627a29e321912-linux-x86_64-gnu-bookworm.tar.gz",
-  "sha256": "81720a73c42ca5b6c91b600b9ef73ecaffaf5da422b0cc27a48c19a88415d0fb",
-  "binarySHA256": "a05823148f806ded1585d289772143c25d7a9c32055bcc9eac8bc0a7159c0b88",
-  "directory": "opensky-driver-0.38.0-4c30d7dea44ae959c797e98236a627a29e321912-linux-x86_64-gnu-bookworm",
-  "sourceCommit": "4c30d7dea44ae959c797e98236a627a29e321912",
+  "file": "opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "0fb7f9b6c1cb79b4e2e16293f8203806e14415fe7affeb97d2f26ceb7ee55eb4",
+  "binarySHA256": "207f8347b0ba20c51a3a95809cf016b48b0a30ff2d3294f85b38f9c0574ade0f",
+  "directory": "opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "096490a1721a4fe693623531f9ba0cf5e20806d0",
   "version": "0.38.0",
-  "sourceRun": 40042196272,
+  "sourceRun": 40043907707,
   "artifact": "linux-driver-release-candidate",
-  "buildSDKCommit": "74ad843b4a86382fcbd3c3bc10f5150ed52c98b0",
+  "buildSDKCommit": "59876bf34d6a7e28983920452d50481d3c88bda9",
   "unitTestsPassed": 725,
-  "unitLogSHA256": "41a756730f30ef49747995e6b99a42e1178d71edbc79668c5d250fda0038b870",
-  "TLSLogSHA256": "2fc67c6cf95ef6694ede527461fd5f292db2200735d392cd963e38d851c6d9f7",
-  "provenanceSHA256": "acd264dee4e57490f8e4b3974c0b0d9b416d00c19b7a1ef9c433c82d8c33bea7",
-  "qualification": "Candidate archive bytes/source/ABI and 725 Linux/3 TLS owners independently verified; fresh GUI acceptance pending. Reuse only for source-pinned candidate consumers; no production/browser or paid-source acceptance."
+  "unitLogSHA256": "122eac860c2c9e4ba991e9c9da7b81fbf29c9988f339a180674a8e6d3fc63284",
+  "TLSLogSHA256": "def6167481b29d6ab3990bd2abfa70fd293888d49bbf198e14fac7b31edd9af9",
+  "provenanceSHA256": "46a62a26eb92f4c8b27d99feee062daae136b0b44c092a80661dff4cfef6e0e9",
+  "qualification": "Exact candidate bytes, Bookworm ABI, native paste/partial/Stop/drain/rebind controls and original GTK4 keyboard controls verified. Semantic GTK4 ref focus remains unsupported/failed. Fresh capture-bound pixel entry qualification pending; no browser/production/paid-source acceptance."
 }
