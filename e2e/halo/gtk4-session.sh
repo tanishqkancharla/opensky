@@ -40,7 +40,7 @@ xprop -id "$window" _GTK_FRAME_EXTENTS _NET_FRAME_EXTENTS _NET_WM_PID > "$HALO_A
 export HALO_GTK4_PID="$app_pid" HALO_GTK4_WINDOW="$window"
 mkdir -p "$HALO_ARTIFACTS/shots"
 extra_tools=""
-if [[ "${HALO_POPUP_PROBE:-0}" == "1" ]]; then extra_tools=", press_key, type_text"; fi
+if [[ "${HALO_POPUP_PROBE:-0}" == "1" && "${HALO_ENTRY_REFUSAL_PROBE:-0}" != "1" ]]; then extra_tools=", press_key, type_text"; fi
 cat > "$HALO_ARTIFACTS/grants.yaml" <<EOF
 version: 3
 expires_after: 10m
@@ -67,6 +67,8 @@ ready=0; for attempt in {1..100}; do if [[ -S "$HALO_DRIVER_SOCKET" ]]; then rea
 (( ready == 1 ))
 if [[ "${HALO_FOCUS_CAPABILITY_PROBE:-0}" == "1" || "${HALO_POINT_OWNERSHIP_PROBE:-0}" == "1" ]]; then
   timeout --signal=TERM --kill-after=5s 20s /usr/bin/python3 e2e/halo/gtk4-focus-protocol.py
+elif [[ "${HALO_ENTRY_REFUSAL_PROBE:-0}" == "1" ]]; then
+  timeout --signal=TERM --kill-after=5s 90s node e2e/halo/gtk4-refusal-contract.mjs
 else
   timeout --signal=TERM --kill-after=5s 90s node e2e/halo/gtk4-contract.mjs
 fi
