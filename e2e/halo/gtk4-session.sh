@@ -65,4 +65,8 @@ export HALO_DRIVER_SOCKET="$XDG_RUNTIME_DIR/d.sock"
 "$OPENSKY_DRIVER_PATH" --socket "$HALO_DRIVER_SOCKET" serve --pid-file "$XDG_RUNTIME_DIR/driver.pid" --no-overlay --permission-mode bounded --capability-manifest "$HALO_ARTIFACTS/grants.yaml" --approve-capability-manifest > "$HALO_ARTIFACTS/driver.log" 2>&1 & daemon_pid=$!
 ready=0; for attempt in {1..100}; do if [[ -S "$HALO_DRIVER_SOCKET" ]]; then ready=1; break; fi; sleep .1; done
 (( ready == 1 ))
-timeout --signal=TERM --kill-after=5s 90s node e2e/halo/gtk4-contract.mjs
+if [[ "${HALO_FOCUS_CAPABILITY_PROBE:-0}" == "1" ]]; then
+  timeout --signal=TERM --kill-after=5s 20s /usr/bin/python3 e2e/halo/gtk4-focus-protocol.py
+else
+  timeout --signal=TERM --kill-after=5s 90s node e2e/halo/gtk4-contract.mjs
+fi
