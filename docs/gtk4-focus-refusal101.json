@@ -1,0 +1,356 @@
+{
+  "accepted": true,
+  "sdkCommit": "0b1d73ae66df06c886b00449ab53929002adff34",
+  "binaryBuildSDKCommit": "0b1d73ae66df06c886b00449ab53929002adff34",
+  "driverSource": "5f5c17bbc2a9f8c6260d151ec734b86fab164ae8",
+  "driverVersion": "0.38.0",
+  "archive": {
+    "file": "opensky-driver-0.38.0-5f5c17bbc2a9f8c6260d151ec734b86fab164ae8-linux-x86_64-gnu-bookworm.tar.gz",
+    "sha256": "6f391ff38f4b4ecd2d74eb334181b34583b77aab078e452ee68ceafb11405611",
+    "binarySHA256": "6030faa73e1979dd0a63789bf590415bde1b9dbcb54e5b39726057c1058f92af",
+    "directory": "opensky-driver-0.38.0-5f5c17bbc2a9f8c6260d151ec734b86fab164ae8-linux-x86_64-gnu-bookworm",
+    "sourceCommit": "5f5c17bbc2a9f8c6260d151ec734b86fab164ae8",
+    "version": "0.38.0"
+  },
+  "LinuxUnitsPassed": 728,
+  "embeddedPassed": 275,
+  "nativeSavedByteCounts": [
+    29,
+    46
+  ],
+  "partialSaved": "par",
+  "partialEffect": "unknown",
+  "partialOneDispatch": true,
+  "typingAtDeadlineCodepoints": 52,
+  "typingFinalCodepoints": 1000,
+  "typingSavedBytes": 2750,
+  "queuedCancelledBeforeDispatch": true,
+  "followingWaitsForCompletion": true,
+  "strictBridgeRetainsApp": true,
+  "originalPID": 14313,
+  "replacementPID": 14375,
+  "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+  "ownedChildrenExitedUnforced": 3,
+  "supervisorsExitedUnforced": [
+    7,
+    3
+  ],
+  "browserAccepted": false,
+  "paidArms": 0,
+  "TLSOwnersPassed": 3,
+  "GTK4Owners": {
+    "gtk4-owner": {
+      "accepted": true,
+      "originalCountersEachOnce": true,
+      "successfulClicks": 3,
+      "supervisorsExitedUnforced": 4
+    },
+    "gtk4-popup": {
+      "accepted": true,
+      "originalCountersEachOnce": true,
+      "successfulClicks": 4,
+      "supervisorsExitedUnforced": 4,
+      "savedUTF8Bytes": 49,
+      "savedSHA256": "0ab6d45bbb5de12f6e4fc316b6395204e5496a907fd955f8b8d21b481de46f24",
+      "oneTypingDispatch": true,
+      "popupActivations": 0,
+      "entryActivations": 0
+    },
+    "gtk4-pixel-entry": {
+      "accepted": true,
+      "originalCountersEachOnce": true,
+      "successfulClicks": 5,
+      "supervisorsExitedUnforced": 4,
+      "savedUTF8Bytes": 49,
+      "savedSHA256": "0ab6d45bbb5de12f6e4fc316b6395204e5496a907fd955f8b8d21b481de46f24",
+      "oneTypingDispatch": true,
+      "popupActivations": 0,
+      "entryActivations": 0,
+      "captureBoundForegroundEntryFocus": true,
+      "consumedCaptureRefused": true,
+      "stalePopupRefused": true,
+      "screenshots": {
+        "entry-after-click.png": {
+          "SHA256": "b8f9f1d5298a12be97187fb8621b02dd7e301ddca8854061cfbd7a59aa09b878",
+          "width": 428,
+          "height": 329
+        },
+        "popup-final.png": {
+          "SHA256": "5d950d95ab41d84be2ee291327163d770fc385260fa5719d3515f0f655c13ed4",
+          "width": 428,
+          "height": 329
+        }
+      }
+    }
+  },
+  "GTK4UnsupportedFocus": {
+    "accepted": true,
+    "code": "native_focus_unavailable",
+    "nativeError": "org.freedesktop.DBus.Error.NotSupported",
+    "freshUnchangedSamples": 5,
+    "savedBytes": 0,
+    "oneExactForegroundRefDispatch": true,
+    "noFallbackOrReplay": true,
+    "supervisorsExitedUnforced": 4,
+    "screenshots": {
+      "before.png": {
+        "SHA256": "cf2da0191aa4c1b91ab90ae5cb2981ed9dd51fedde7e9c3d67b4c4bd6ac1a3cf",
+        "width": 428,
+        "height": 329
+      },
+      "after.png": {
+        "SHA256": "cf2da0191aa4c1b91ab90ae5cb2981ed9dd51fedde7e9c3d67b4c4bd6ac1a3cf",
+        "width": 428,
+        "height": 329
+      }
+    }
+  },
+  "GTK4SemanticEntryRefFocusAccepted": false,
+  "paidDispatchAllowed": false,
+  "fullMacAcceptance": false,
+  "runId": 40191882567,
+  "baseline": {
+    "runId": 40191634139,
+    "SDKHarnessSource": "961e22c7c68d0b7d2b827b104a8dbf505b59aa03",
+    "driverSource": "096490a1721a4fe693623531f9ba0cf5e20806d0",
+    "ownerCaughtOldBehavior": true,
+    "accepted": false,
+    "returnedNormally": true,
+    "unchangedFreshSamples": 5,
+    "unforcedSupervisorExits": 4,
+    "clicks": 1,
+    "noFallbackOrReplay": true,
+    "sha256": "6fe363d9e2c5e830ce08cbb2898b323c497e3156de0b34566037d213651390ed"
+  },
+  "foregroundRefusalCall": {
+    "tool": "click",
+    "args": {
+      "pid": 15465,
+      "window_id": 4194308,
+      "element_index": 6,
+      "element_token": "s00000002:6",
+      "snapshot_id": "s00000002",
+      "delivery_mode": "foreground",
+      "button": "left",
+      "session": "opensky-15516-c082f5f1"
+    },
+    "elapsedMs": 870.4802809999999,
+    "error": {
+      "code": "native_focus_unavailable",
+      "message": "native_focus_unavailable: element [6] (pid 15465) rejected Component.GrabFocus as unsupported. No pointer or text input was sent; the authorized window activation may already have changed window focus. Observe a fresh screenshot and explicitly choose coordinates if needed; no fallback or replay was attempted.",
+      "details": {
+        "ax_action": "grab_focus",
+        "bounds_reason": "the text box is not showing (its menu or page is closed)",
+        "code": "native_focus_unavailable",
+        "delivery_mode": "foreground",
+        "effect": "refused",
+        "element_index": 6,
+        "evidence": [
+          {
+            "detail": "toolkit rejected widget focus as unsupported; foreground window activation may already have occurred",
+            "kind": "native_api_result"
+          }
+        ],
+        "focus_after": "target",
+        "foreground": {
+          "activated": false,
+          "confirm_ms": 0,
+          "focus_after": "target",
+          "retried_activation": false
+        },
+        "native_error": "org.freedesktop.DBus.Error.NotSupported",
+        "path": "ax_fg",
+        "pointer_input_sent": false,
+        "text_input_sent": false,
+        "verified": false
+      }
+    }
+  },
+  "actualBefore": {
+    "pid": 15465,
+    "counts": {
+      "One": 0,
+      "Dot": 0,
+      "Two": 0
+    },
+    "events": [],
+    "sampleSequence": 17,
+    "gtkVersion": [
+      4,
+      8,
+      3
+    ],
+    "active": true,
+    "label": "One:0 Dot:0 Two:0",
+    "popup": {
+      "visible": false,
+      "mapped": false,
+      "activations": 0
+    },
+    "inputText": "",
+    "entryActivations": 0,
+    "entryFocused": false
+  },
+  "actualAfterSamples": [
+    {
+      "pid": 15465,
+      "counts": {
+        "One": 0,
+        "Dot": 0,
+        "Two": 0
+      },
+      "events": [],
+      "sampleSequence": 35,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "active": true,
+      "label": "One:0 Dot:0 Two:0",
+      "popup": {
+        "visible": false,
+        "mapped": false,
+        "activations": 0
+      },
+      "inputText": "",
+      "entryActivations": 0,
+      "entryFocused": false
+    },
+    {
+      "pid": 15465,
+      "counts": {
+        "One": 0,
+        "Dot": 0,
+        "Two": 0
+      },
+      "events": [],
+      "sampleSequence": 36,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "active": true,
+      "label": "One:0 Dot:0 Two:0",
+      "popup": {
+        "visible": false,
+        "mapped": false,
+        "activations": 0
+      },
+      "inputText": "",
+      "entryActivations": 0,
+      "entryFocused": false
+    },
+    {
+      "pid": 15465,
+      "counts": {
+        "One": 0,
+        "Dot": 0,
+        "Two": 0
+      },
+      "events": [],
+      "sampleSequence": 37,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "active": true,
+      "label": "One:0 Dot:0 Two:0",
+      "popup": {
+        "visible": false,
+        "mapped": false,
+        "activations": 0
+      },
+      "inputText": "",
+      "entryActivations": 0,
+      "entryFocused": false
+    },
+    {
+      "pid": 15465,
+      "counts": {
+        "One": 0,
+        "Dot": 0,
+        "Two": 0
+      },
+      "events": [],
+      "sampleSequence": 38,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "active": true,
+      "label": "One:0 Dot:0 Two:0",
+      "popup": {
+        "visible": false,
+        "mapped": false,
+        "activations": 0
+      },
+      "inputText": "",
+      "entryActivations": 0,
+      "entryFocused": false
+    },
+    {
+      "pid": 15465,
+      "counts": {
+        "One": 0,
+        "Dot": 0,
+        "Two": 0
+      },
+      "events": [],
+      "sampleSequence": 39,
+      "gtkVersion": [
+        4,
+        8,
+        3
+      ],
+      "active": true,
+      "label": "One:0 Dot:0 Two:0",
+      "popup": {
+        "visible": false,
+        "mapped": false,
+        "activations": 0
+      },
+      "inputText": "",
+      "entryActivations": 0,
+      "entryFocused": false
+    }
+  ],
+  "requiredGrants": "version: 3\nexpires_after: 10m\nidle_timeout: 5m\nresources:\n  files:\n    write:\n      - dir: \"/__w/opensky/opensky/artifacts/halo/gtk4-entry-refusal/shots\"\n        recursive: false\n  desktop:\n    display: true\n    applications: [15465]\n    windows:\n      - pid: 15465\n        window_id: 4194308\nallow:\n  tools: [start_session, end_session, list_apps, list_windows, get_window_state, bring_to_front, click]\n",
+  "crossPlatformUnitRun": 40191884362,
+  "crossPlatformUnits": {
+    "ubuntu-24.04": {
+      "platformPassed": 728,
+      "driverPassed": 345,
+      "contractAndCorePassed": [
+        68,
+        1162
+      ],
+      "desktopAcceptance": false
+    },
+    "macos-26": {
+      "platformPassed": 711,
+      "driverPassed": 353,
+      "contractAndCorePassed": [
+        68,
+        1159
+      ],
+      "desktopAcceptance": false
+    },
+    "windows-2025": {
+      "platformPassed": 305,
+      "driverPassed": 326,
+      "contractAndCorePassed": [
+        68,
+        1138
+      ],
+      "desktopAcceptance": false
+    }
+  },
+  "installedMacDriverChanged": false,
+  "issue76Closed": false,
+  "releaseVersion": "0.2.46",
+  "SDKRuntimeFilesChanged": false
+}

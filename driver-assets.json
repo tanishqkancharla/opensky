@@ -47,18 +47,18 @@
         "originalBuildRun": "https://github.com/tanishqkancharla/opensky/actions/runs/40191882567",
         "node": "22.23.4",
         "display": "TigerVNC X11 :1, XFWM4 compositor on, shared D-Bus/AT-SPI",
-        "nativeAccepted": false,
+        "nativeAccepted": true,
         "sandboxedBookwormBrowserAccepted": false,
         "unrestrictedPermissions": false,
         "rustBuildInConsumer": false,
-        "GTK4ForegroundAccepted": false,
+        "GTK4ForegroundAccepted": true,
         "TLSOwnersPassed": 3,
         "LinuxUnitsPassed": 728,
-        "GTK4ForegroundPixelEntryAccepted": false,
+        "GTK4ForegroundPixelEntryAccepted": true,
         "GTK4SemanticEntryRefFocusAccepted": false,
-        "consumedCaptureAndStalePopupRefusalsAccepted": false,
-        "GTK4UnsupportedFocusRefusalAccepted": false,
-        "status": "application qualification pending"
+        "consumedCaptureAndStalePopupRefusalsAccepted": true,
+        "GTK4UnsupportedFocusRefusalAccepted": true,
+        "status": "qualified native and GTK4 explicit unsupported-focus refusal"
       }
     }
   ]

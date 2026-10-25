@@ -6,7 +6,7 @@ The Linux native foreground ref-click route preserves an authoritative D-Bus `or
 
 Exact candidate driver: `5f5c17bbc2a9f8c6260d151ec734b86fab164ae8` (0.38.0).
 SDK application consumer/build: `0b1d73ae66df06c886b00449ab53929002adff34`.
-Qualification status: **pending**; do not infer application acceptance from passing unit tests.
+Qualification status: **verified for the bounded Linux contract below**. Published SDK0.2.46 metadata/package is verified separately from the unchanged compiled SDK runtime exercised by this consumer.
 
 ## Public SDK handling
 
@@ -45,9 +45,9 @@ Fresh capture-bound foreground pixel input remains a separately supported choice
 
 Before: [run40191634139](https://github.com/tanishqkancharla/opensky/actions/runs/40191634139), SDK owner `961e22c7c68d0b7d2b827b104a8dbf505b59aa03`, unchanged released driver `096490a1721a4fe693623531f9ba0cf5e20806d0`. One fresh foreground ref click returned normally; five independent application samples stayed unfocused with empty saved text, zero activation and unchanged popup/counters. The new owner failed specifically because the SDK did not reject with the exact code. All four supervisors exited unforced. This is the deliberate before/mutation check, not a newly failing product path introduced by the test.
 
-After: [run40191882567](https://github.com/tanishqkancharla/opensky/actions/runs/40191882567), application result pending. Existing embedded/native paste/partial/Stop/drain/rebind and GTK button/popup/keyboard/pixel owners run before the separate fresh refusal owner. The previous semantic-positive failure remains retained.
+After: [run40191882567](https://github.com/tanishqkancharla/opensky/actions/runs/40191882567), the SDK rejects with exact code `native_focus_unavailable`, `native_error: org.freedesktop.DBus.Error.NotSupported`, `effect: refused`, `verified: false`, and pointer/text input sent false. Five fresh application samples stay unfocused/empty with zero activation, and before/after PNG hashes are identical. Exactly one fresh foreground ref click is sent; no key/text/paste/fallback call follows. Session detach and all four unforced supervisor exits pass. Existing 275 embedded, native paste/partial/Stop/drain/rebind and GTK button/popup/keyboard/pixel owners pass before this separate fresh refusal owner. The previous semantic-positive failure remains retained. [Machine-readable pins, calls, application effects and screenshot hashes](gtk4-focus-refusal101.json).
 
-Driver [whole Linux build/unit run40191234471](https://github.com/tanishqkancharla/cua/actions/runs/40191234471) passed: 728 platform, 345 driver, 68 contract, 1162 core tests. Focus reply classification is tested against exact remote NotSupported versus NoReply/Timeout/UnknownObject/UnknownMethod, local Unsupported and text-containing errors. A formatter test covers refusing focus despite a confirming window change. These unit checks do not establish native application behavior.
+Driver [whole Linux build/unit run40191234471](https://github.com/tanishqkancharla/cua/actions/runs/40191234471) passed: 728 platform, 345 driver, 68 contract, 1162 core tests. Focus reply classification is tested against exact remote NotSupported versus NoReply/Timeout/UnknownObject/UnknownMethod, local Unsupported and text-containing errors. A formatter test covers refusing focus despite a confirming window change. The separate three-platform whole build/unit run40191884362 also passes (Linux728, Mac711, Windows305 platform tests). Unit checks do not establish native application behavior on the other platforms.
 
 ## Remaining limitations
 
