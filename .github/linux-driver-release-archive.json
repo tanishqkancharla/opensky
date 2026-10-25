@@ -1,16 +1,16 @@
 {
-  "file": "opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm.tar.gz",
-  "sha256": "0fb7f9b6c1cb79b4e2e16293f8203806e14415fe7affeb97d2f26ceb7ee55eb4",
-  "binarySHA256": "207f8347b0ba20c51a3a95809cf016b48b0a30ff2d3294f85b38f9c0574ade0f",
-  "directory": "opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm",
-  "sourceCommit": "096490a1721a4fe693623531f9ba0cf5e20806d0",
+  "file": "opensky-driver-0.38.0-5f5c17bbc2a9f8c6260d151ec734b86fab164ae8-linux-x86_64-gnu-bookworm.tar.gz",
+  "sha256": "6f391ff38f4b4ecd2d74eb334181b34583b77aab078e452ee68ceafb11405611",
+  "binarySHA256": "6030faa73e1979dd0a63789bf590415bde1b9dbcb54e5b39726057c1058f92af",
+  "directory": "opensky-driver-0.38.0-5f5c17bbc2a9f8c6260d151ec734b86fab164ae8-linux-x86_64-gnu-bookworm",
+  "sourceCommit": "5f5c17bbc2a9f8c6260d151ec734b86fab164ae8",
   "version": "0.38.0",
-  "sourceRun": 40043907707,
+  "sourceRun": 40191882567,
   "artifact": "linux-driver-release-candidate",
-  "buildSDKCommit": "59876bf34d6a7e28983920452d50481d3c88bda9",
-  "unitTestsPassed": 725,
-  "unitLogSHA256": "122eac860c2c9e4ba991e9c9da7b81fbf29c9988f339a180674a8e6d3fc63284",
-  "TLSLogSHA256": "def6167481b29d6ab3990bd2abfa70fd293888d49bbf198e14fac7b31edd9af9",
-  "provenanceSHA256": "46a62a26eb92f4c8b27d99feee062daae136b0b44c092a80661dff4cfef6e0e9",
-  "qualification": "Fresh ordinary-user bounded TigerVNC native/strict/Stop/drain/rebind/GTK4 keyboard/capture-bound pixel entry and refusals independently verified. Semantic GTK4 entry ref focus remains failed/open #76; sandboxed Bookworm Chrome and paid-source acceptance unqualified. Every reuse requires a fresh consumer."
+  "buildSDKCommit": "0b1d73ae66df06c886b00449ab53929002adff34",
+  "unitTestsPassed": 728,
+  "unitLogSHA256": "a08371508cd4249e898609d637526abe6258425dd1cf85a2f3c467742150b3c5",
+  "TLSLogSHA256": "b06e91a7d5020e20b734fb2e49d9236b52da77191c3afc267353dc5aaed8e807",
+  "provenanceSHA256": "7d7b8eae470831e60d4efbf4a031f9d5e89b0dd1a889ba3fcdcfc296313418ac",
+  "qualification": "Exact candidate archive/build/unit identity verified; new application qualification pending. Every reuse requires a fresh consumer. No Bookworm browser, Mac full-source or paid acceptance."
 }

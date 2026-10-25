@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "sdkVersion": "0.2.45",
+  "sdkVersion": "0.2.46",
   "sourceRepository": "https://github.com/tanishqkancharla/cua",
-  "sourceCommit": "096490a1721a4fe693623531f9ba0cf5e20806d0",
+  "sourceCommit": "5f5c17bbc2a9f8c6260d151ec734b86fab164ae8",
   "automaticInstallation": false,
   "assets": [
     {
@@ -10,12 +10,12 @@
       "arch": "x64",
       "target": "x86_64-unknown-linux-gnu",
       "version": "0.38.0",
-      "releaseTag": "v0.2.45",
-      "file": "opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm.tar.gz",
-      "url": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.45/opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm.tar.gz",
-      "sha256": "0fb7f9b6c1cb79b4e2e16293f8203806e14415fe7affeb97d2f26ceb7ee55eb4",
-      "binarySHA256": "207f8347b0ba20c51a3a95809cf016b48b0a30ff2d3294f85b38f9c0574ade0f",
-      "archiveRoot": "opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm",
+      "releaseTag": "v0.2.46",
+      "file": "opensky-driver-0.38.0-5f5c17bbc2a9f8c6260d151ec734b86fab164ae8-linux-x86_64-gnu-bookworm.tar.gz",
+      "url": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.46/opensky-driver-0.38.0-5f5c17bbc2a9f8c6260d151ec734b86fab164ae8-linux-x86_64-gnu-bookworm.tar.gz",
+      "sha256": "6f391ff38f4b4ecd2d74eb334181b34583b77aab078e452ee68ceafb11405611",
+      "binarySHA256": "6030faa73e1979dd0a63789bf590415bde1b9dbcb54e5b39726057c1058f92af",
+      "archiveRoot": "opensky-driver-0.38.0-5f5c17bbc2a9f8c6260d151ec734b86fab164ae8-linux-x86_64-gnu-bookworm",
       "executable": "opensky-driver",
       "abi": {
         "distribution": "Debian",
@@ -39,24 +39,26 @@
         "libxrandr2",
         "libxcursor1"
       ],
-      "provenanceUrl": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.45/opensky-driver-0.38.0-096490a1721a4fe693623531f9ba0cf5e20806d0-linux-x86_64-gnu-bookworm.provenance.json",
+      "provenanceUrl": "https://github.com/tanishqkancharla/opensky/releases/download/v0.2.46/opensky-driver-0.38.0-5f5c17bbc2a9f8c6260d151ec734b86fab164ae8-linux-x86_64-gnu-bookworm.provenance.json",
       "qualification": {
-        "run": 40045288833,
-        "sdkCommit": "e79e1ebbcc16b4ca3871e4a0a10ec02ed3148dca",
-        "binaryBuildSDKCommit": "59876bf34d6a7e28983920452d50481d3c88bda9",
-        "originalBuildRun": "https://github.com/tanishqkancharla/opensky/actions/runs/40043907707",
+        "run": 40191882567,
+        "sdkCommit": "0b1d73ae66df06c886b00449ab53929002adff34",
+        "binaryBuildSDKCommit": "0b1d73ae66df06c886b00449ab53929002adff34",
+        "originalBuildRun": "https://github.com/tanishqkancharla/opensky/actions/runs/40191882567",
         "node": "22.23.4",
         "display": "TigerVNC X11 :1, XFWM4 compositor on, shared D-Bus/AT-SPI",
-        "nativeAccepted": true,
+        "nativeAccepted": false,
         "sandboxedBookwormBrowserAccepted": false,
         "unrestrictedPermissions": false,
         "rustBuildInConsumer": false,
-        "GTK4ForegroundAccepted": true,
+        "GTK4ForegroundAccepted": false,
         "TLSOwnersPassed": 3,
-        "LinuxUnitsPassed": 725,
-        "GTK4ForegroundPixelEntryAccepted": true,
+        "LinuxUnitsPassed": 728,
+        "GTK4ForegroundPixelEntryAccepted": false,
         "GTK4SemanticEntryRefFocusAccepted": false,
-        "consumedCaptureAndStalePopupRefusalsAccepted": true
+        "consumedCaptureAndStalePopupRefusalsAccepted": false,
+        "GTK4UnsupportedFocusRefusalAccepted": false,
+        "status": "application qualification pending"
       }
     }
   ]
