@@ -43,6 +43,7 @@ try:
     queue = [matches[0]]
     visited = set()
     entries = []
+    evidence["nodes"] = []
     while queue:
         destination, path = queue.pop(0)
         assert destination == matches[0][0], "Cross-application object refused"
@@ -55,7 +56,13 @@ try:
         if hasattr(name, "unpack"):
             name = name.unpack()
         role, = invoke(bus, destination, path, "org.a11y.atspi.Accessible", "GetRoleName")
-        if name == "Receipt input" and role in ("text", "entry"):
+        evidence["nodes"].append({"busName": destination, "path": path, "name": name, "protocolRoleName": role})
+        if name == "Receipt input":
+            interfaces, = invoke(bus, destination, path, "org.a11y.atspi.Accessible", "GetInterfaces")
+            # GTK GetRoleName uses GTK role vocabulary (e.g. textbox), unlike
+            # libatspi's numeric-role display name. Prove the actual capability.
+            assert "org.a11y.atspi.Component" in interfaces
+            assert "org.a11y.atspi.EditableText" in interfaces
             entries.append((destination, path))
         descendants, = invoke(bus, destination, path, "org.a11y.atspi.Accessible", "GetChildren")
         queue.extend((d, p) for d, p in descendants if p != "/org/a11y/atspi/null")
