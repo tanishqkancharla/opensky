@@ -29,3 +29,6 @@ The first harness attempt40159835001 failed before any focus request because raw
 Select the independently verified [fresh capture-bound foreground coordinate route](gtk4-entry96.md#public-sdk-path-for-an-embedded-host) before input. It focuses the field and saves exact Unicode in its own fresh fixture; it is not an automatic fallback after a failed ref request. Do not call activate/submit to simulate focus or relax the Showing/ownership gates. If further semantic routing work is justified, inspect read-only exact-object point ownership first; do not repeat the now-confirmed unsupported method.
 
 Issue#76 remains open. Mac#19/#66, full source/ownership/paid admission and sandboxed Bookworm Chrome remain unresolved. Mac driver bytes, stable signing identity, Accessibility/ScreenRecording grants, desktop and preserved Calendar are unchanged. No benchmark arms, new scored pairs or comparative improvement are claimed.
+
+
+Subsequent [read-only point inspection](gtk4-point-protocol100.md) receives a null accessible reference from the top-level hit test despite entry Contains=true. It sends no focus/input and does not establish pointer ownership or relax the driver gates.

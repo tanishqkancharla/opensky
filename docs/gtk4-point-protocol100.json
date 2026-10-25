@@ -1,0 +1,54 @@
+{
+  "verifiedAt": "2026-10-25T07:59:11.103424+00:00",
+  "runId": 40174593340,
+  "SDKHarness": "fdb55619e82c5604493176d2b48e61b3e6176d75",
+  "driverSource": "096490a1721a4fe693623531f9ba0cf5e20806d0",
+  "diagnosticAccepted": true,
+  "SDKPointerAcceptance": false,
+  "SDKFocusAcceptance": false,
+  "focusRequests": 0,
+  "target": {
+    "busName": ":1.2",
+    "path": "/io/opensky/Gtk4Ownership/a11y/d5376a45_33d3_4be9_b823_43ceba7b9982",
+    "pidVerifiedByBusDaemon": 14721
+  },
+  "point": {
+    "entryScreenExtents": [
+      29,
+      192,
+      342,
+      32
+    ],
+    "entryWindowExtents": [
+      29,
+      192,
+      342,
+      32
+    ],
+    "windowPoint": [
+      200,
+      208
+    ],
+    "entryContains": true,
+    "hitChain": [
+      {
+        "busName": ":1.2",
+        "path": "/io/opensky/Gtk4Ownership/a11y/ffe28119_6711_4179_8023_24625a2b7d39"
+      }
+    ],
+    "exactTargetOnChain": false,
+    "readOnlyPointRequests": 1,
+    "stop": "null"
+  },
+  "elapsedMs": 4.265040999996472,
+  "applicationStateUnchangedSamples": 5,
+  "supervisorsExitedUnforced": 4,
+  "packages": "gir1.2-gtk-4.0:amd64\t4.8.3+ds-2+deb12u1\nlibatspi2.0-0:amd64\t2.46.0-5\nlibgtk-4-1:amd64\t4.8.3+ds-2+deb12u1\nlibgtk-4-common\t4.8.3+ds-2+deb12u1\n",
+  "GTKLibrary": {
+    "path": "/usr/lib/x86_64-linux-gnu/libgtk-4.so.1.800.3",
+    "sha256": "83fef9e03bf8117428cb184cc76da6f3e4dc672713081a0d2306c2a26fd1a2d7"
+  },
+  "xwininfo": "\nxwininfo: Window id: 0x400004 \"OpenSky GTK4 Ownership\"\n\n  Absolute upper-left X:  426\n  Absolute upper-left Y:  288\n  Relative upper-left X:  0\n  Relative upper-left Y:  0\n  Width: 428\n  Height: 329\n  Depth: 32\n  Visual: 0x4fd\n  Visual Class: TrueColor\n  Border width: 0\n  Class: InputOutput\n  Colormap: 0x400001 (not installed)\n  Bit Gravity State: NorthWestGravity\n  Window Gravity State: NorthWestGravity\n  Backing Store State: NotUseful\n  Save Under State: no\n  Map State: IsViewable\n  Override Redirect State: no\n  Corners:  +426+288  -426+288  -426-283  +426-283\n  -geometry 428x329+426+288\n\n",
+  "newPaidArms": 0,
+  "newScoreRows": 0
+}
