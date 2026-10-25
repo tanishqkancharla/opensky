@@ -6848,3 +6848,8 @@ SET466 first run40159835001 stopped before any focus request (methodRequests0), 
 
 
 SET466 verified: fresh consumer40160142461 on corrected harness7c33e876 reuses unchanged source096 driver bytes. The exact GTK connection/label/Component/EditableText target returns org.freedesktop.DBus.Error.NotSupported to one direct GrabFocus request (0.69ms). Five fresh application samples retain unfocused/empty/zero-activation state; all four supervisors exit unforced. GTK4.8.3+ds-2+deb12u1 and installed library hash83fef9e0 are retained. Existing embedded/native/Stop/drain/rebind consumers pass. This verifies toolkit capability only; original SDK semantic failure, missing original wire reply and open#76 remain. No product runtime, release asset, Mac signer/grant, paid arm or score change. [Evidence and reproduction](gtk4-focus-protocol99.md).
+
+
+## SET467 — Inspect exact point ownership without repeating unsupported focus
+
+After the fresh Debian GTK4 GrabFocus NotSupported reply, further input would repeat a known unsupported route. Add a separate optional read-only mode to the existing exact-application protocol owner: collect entry Screen/Window bounds, Contains at its Window-coordinate center, a bounded same-application GetAccessibleAtPoint chain, native window geometry and five unchanged app-state samples. The mode makes zero focus/input requests, preserves the existing focus-capability owner/default lanes and cannot grant SDK point/focus acceptance or relax Showing/stale/foreground gates. Reuse the approved unchanged driver archive. Actual point-query result pending; unknown/null/error is retained as evidence, never treated as point ownership.
