@@ -1,0 +1,56 @@
+{
+  "verifiedAt": "2026-10-25T04:01:32.531698+00:00",
+  "SDKCandidate": "7c33e876b047b7faa30fbd775f25ad95fb86ce1e",
+  "runId": 40160142461,
+  "driverSource": "096490a1721a4fe693623531f9ba0cf5e20806d0",
+  "driverRebuilt": false,
+  "diagnosticAccepted": true,
+  "SDKFocusAcceptance": false,
+  "semanticRefFocusAccepted": false,
+  "remoteError": "org.freedesktop.DBus.Error.NotSupported",
+  "methodRequests": 1,
+  "elapsedMs": 0.6896619999849918,
+  "GTKVersion": [
+    4,
+    8,
+    3
+  ],
+  "packages": "gir1.2-gtk-4.0:amd64\t4.8.3+ds-2+deb12u1\nlibatspi2.0-0:amd64\t2.46.0-5\nlibgtk-4-1:amd64\t4.8.3+ds-2+deb12u1\nlibgtk-4-common\t4.8.3+ds-2+deb12u1\n",
+  "GTKLibrary": {
+    "path": "/usr/lib/x86_64-linux-gnu/libgtk-4.so.1.800.3",
+    "sha256": "83fef9e03bf8117428cb184cc76da6f3e4dc672713081a0d2306c2a26fd1a2d7"
+  },
+  "before": {
+    "pid": 14727,
+    "active": true,
+    "entryFocused": false,
+    "inputText": "",
+    "entryActivations": 0,
+    "popup": {
+      "visible": false,
+      "mapped": false,
+      "activations": 0
+    },
+    "counts": {
+      "One": 0,
+      "Dot": 0,
+      "Two": 0
+    },
+    "events": []
+  },
+  "afterSamples": 5,
+  "allApplicationStateUnchanged": true,
+  "supervisorsExitedUnforced": 4,
+  "retainedFirstFailedRun": 40159835001,
+  "firstRunMethodRequests": 0,
+  "newPaidArms": 0,
+  "newScoreRows": 0,
+  "paidDispatchAllowed": false,
+  "status": "direct-toolkit-unsupported-reply-verified",
+  "SDKVersion": "0.2.45 unchanged",
+  "directToolkitProbe": true,
+  "originalSDKMethodReplyCaptured": false,
+  "driverReleaseChanged": false,
+  "sourceDiagnosis": "GTK4 source793831af Component.GrabFocus returns NotSupported; fresh Debian direct method call independently confirms that result. Original SDK semantic run40043907707 is not relabelled.",
+  "scope": "Ordinary uid1001 Debian Bookworm/Node22/TigerVNC X11:1/XFWM4/shared D-Bus/AT-SPI. One direct method request to exact application connection and label/Component/EditableText target. No SDK semantic-focus acceptance, typing, fallback, replay or broader production acceptance."
+}

@@ -18,6 +18,8 @@ This is consistent with the retained application-level failure (field focus fals
 
 No runtime fix, new GUI acceptance, or toolkit upgrade is claimed here. If another diagnostic is needed, capture that exact method error once in a fresh owned fixture. Do not retry an uncertain click, activate/submit the entry, or silently choose a pointer route. Choose the independently verified foreground coordinate path before input when this toolkit's semantic route cannot establish focus. Issue #76 remains open.
 
+Subsequent [fresh direct protocol verification](gtk4-focus-protocol99.md) captures `NotSupported` from the tested Debian GTK4 library with unchanged independent application state. This strengthens the source diagnosis; it does not retroactively capture the original SDK reply or establish semantic-click support.
+
 ## Public SDK path for an embedded host
 
 Keep the client and desktop queue in the Node host across workers. The example functions below use the public SDK; the host supplies its owned target and a screenshot directory covered by its grants. Call `observe`, inspect its PNG, then choose coordinates from that image and call `foregroundClick` with its exact capture ID. Serialize conflicting work through the [persistent host lifecycle contract](halo-host-integration.md).
