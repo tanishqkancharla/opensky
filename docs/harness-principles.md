@@ -217,3 +217,8 @@ Describe a first-class operation once. Keep repetitive platform action variants 
 Verify both full and incremental presentation paths against the same structured authority; they may serialize metadata differently.
 
 - Keep temporary outputs in an explicitly owned writable directory. Preserve task revisions when changing fixture locations, verify the actual retained bytes, and separate common cleanup overhead from interface performance.
+
+
+### Cache immutable contracts
+
+Cache compiled type metadata at process scope; keep action results and user/session data outside those caches. Verify exported contracts stay identical and measure the affected public boundary before claiming a performance improvement.

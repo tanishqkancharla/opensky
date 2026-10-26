@@ -1,0 +1,441 @@
+{
+  "baselineSource": "5f5c17bbc2a9f8c6260d151ec734b86fab164ae8",
+  "candidateSource": "9b44434c09c6fae60948266ea8a78683049b7e28",
+  "upstreamSource": "6a48bfc0ade6d8226e7d0866eeafc3dde40a235b",
+  "baselineMedianStartupToFirstListMs": 64.12312481552362,
+  "candidateMedianStartupToFirstListMs": 10.521083138883114,
+  "medianPairedRatio": 0.16216626671260323,
+  "medianStartupReductionPercent": 83.59237300248341,
+  "toolCount": 66,
+  "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+  "allToolListsExactlyEqual": true,
+  "contractAndCoreTestsPassed": {
+    "baseline": [
+      68,
+      1159
+    ],
+    "candidate": [
+      68,
+      1159
+    ]
+  },
+  "all17MetadataProcessesExitedUnforced": true,
+  "toolsCalls": 0,
+  "installedDriverChanged": false,
+  "newDesktopAcceptance": false,
+  "newScoreRows": 0,
+  "paidDispatchAllowed": false,
+  "newPaidArms": 0,
+  "scope": "Local Mac same-profile release binaries; isolated metadata-only initialize/tools-list/EOF. Not a paid agent parity/performance score.",
+  "verifiedAt": "2026-10-26T12:05:45.950917+00:00",
+  "pairedTrials": [
+    {
+      "index": 0,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidate": {
+        "pid": 99723,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 13.189666904509068,
+        "initializeMs": 11.971416883170605,
+        "firstListMs": 1.2182500213384628,
+        "warmListMs": 0.9604580700397491,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      },
+      "baseline": {
+        "pid": 99725,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 92.29729231446981,
+        "initializeMs": 91.07262501493096,
+        "firstListMs": 1.2246672995388508,
+        "warmListMs": 1.0308749042451382,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      }
+    },
+    {
+      "index": 1,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": {
+        "pid": 99729,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 63.853958155959845,
+        "initializeMs": 62.707250006496906,
+        "firstListMs": 1.1467081494629383,
+        "warmListMs": 0.9604590013623238,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      },
+      "candidate": {
+        "pid": 99735,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 10.35495800897479,
+        "initializeMs": 9.2763751745224,
+        "firstListMs": 1.0785828344523907,
+        "warmListMs": 0.9182500652968884,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      }
+    },
+    {
+      "index": 2,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidate": {
+        "pid": 99737,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 10.63462533056736,
+        "initializeMs": 9.514292236417532,
+        "firstListMs": 1.120333094149828,
+        "warmListMs": 1.172791700810194,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      },
+      "baseline": {
+        "pid": 99739,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 64.48304187506437,
+        "initializeMs": 63.3092918433249,
+        "firstListMs": 1.1737500317394733,
+        "warmListMs": 0.941708218306303,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      }
+    },
+    {
+      "index": 3,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "candidate": {
+        "pid": 99741,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 10.521083138883114,
+        "initializeMs": 9.409000165760517,
+        "firstListMs": 1.1120829731225967,
+        "warmListMs": 0.9382497519254684,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      },
+      "baseline": {
+        "pid": 99743,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 63.45954118296504,
+        "initializeMs": 62.311249785125256,
+        "firstListMs": 1.1482913978397846,
+        "warmListMs": 0.9831669740378857,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      }
+    },
+    {
+      "index": 4,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": {
+        "pid": 99745,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 64.12312481552362,
+        "initializeMs": 62.97237519174814,
+        "firstListMs": 1.1507496237754822,
+        "warmListMs": 0.9241662919521332,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      },
+      "candidate": {
+        "pid": 99747,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 10.331999976187944,
+        "initializeMs": 9.222667198628187,
+        "firstListMs": 1.1093327775597572,
+        "warmListMs": 0.933667179197073,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      }
+    },
+    {
+      "index": 5,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": {
+        "pid": 99750,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 63.00729187205434,
+        "initializeMs": 61.863083858042955,
+        "firstListMs": 1.144208014011383,
+        "warmListMs": 0.9479578584432602,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      },
+      "candidate": {
+        "pid": 99752,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 10.415957774966955,
+        "initializeMs": 9.267749730497599,
+        "firstListMs": 1.1482080444693565,
+        "warmListMs": 0.9564170613884926,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      }
+    },
+    {
+      "index": 6,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "baseline": {
+        "pid": 99754,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 67.51324981451035,
+        "initializeMs": 66.00999971851707,
+        "firstListMs": 1.5032500959932804,
+        "warmListMs": 1.4236252754926682,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      },
+      "candidate": {
+        "pid": 99756,
+        "toolCount": 66,
+        "canonicalBytes": 225302,
+        "toolsSHA256": "ba65b82eed202e5c41433c31cd6c4edfc30cc56e52b43fd287795f63806e46b7",
+        "startupToFirstListMs": 10.799583978950977,
+        "initializeMs": 9.680458810180426,
+        "firstListMs": 1.1191251687705517,
+        "warmListMs": 0.9837080724537373,
+        "exitCode": 0,
+        "forced": false,
+        "toolsCalls": 0
+      }
+    }
+  ],
+  "releaseVersion": "0.2.47",
+  "SDKConsumerSource": "76e2a2528ace782acaab5001717fe4015c40ba29",
+  "driverSource": "9b44434c09c6fae60948266ea8a78683049b7e28",
+  "upstreamAuthor": "Georgios Konstantopoulos",
+  "upstreamPR": "https://github.com/trycua/cua/pull/5977",
+  "platform": {
+    "OS": "macOS 27.0",
+    "architecture": "arm64",
+    "Rust": "1.97.1",
+    "build": "release, RUSTFLAGS=-C strip=none; same settings before and after"
+  },
+  "crossPlatform": {
+    "runId": 40320069274,
+    "source": "9b44434c09c6fae60948266ea8a78683049b7e28",
+    "allPassed": true,
+    "platforms": {
+      "ubuntu-24.04": {
+        "platformPassed": 728,
+        "driverPassed": 345,
+        "contractAndCorePassed": [
+          68,
+          1162
+        ],
+        "publicContractExactlyEqualTo5fBaseline": true,
+        "publicContractSHA256": "da01bc588ae14aa51f0fd5a66e1039151a2d3771af1c1c2833f67fa68cb17b16",
+        "baselineContractSHA256": "da01bc588ae14aa51f0fd5a66e1039151a2d3771af1c1c2833f67fa68cb17b16",
+        "desktopAcceptance": false
+      },
+      "macos-26": {
+        "platformPassed": 711,
+        "driverPassed": 353,
+        "contractAndCorePassed": [
+          68,
+          1159
+        ],
+        "publicContractExactlyEqualTo5fBaseline": true,
+        "publicContractSHA256": "35bf65f450c7c4f16ab86bb0d7ac0cd2f037b106fadeb18385fb6480e8a35caf",
+        "baselineContractSHA256": "35bf65f450c7c4f16ab86bb0d7ac0cd2f037b106fadeb18385fb6480e8a35caf",
+        "desktopAcceptance": false
+      },
+      "windows-2025": {
+        "platformPassed": 305,
+        "driverPassed": 326,
+        "contractAndCorePassed": [
+          68,
+          1138
+        ],
+        "publicContractExactlyEqualTo5fBaseline": true,
+        "publicContractSHA256": "a272d538ff45ae04867b5a1f2ed04ca8165e9e39ab24b1348319a4edada51820",
+        "baselineContractSHA256": "a272d538ff45ae04867b5a1f2ed04ca8165e9e39ab24b1348319a4edada51820",
+        "desktopAcceptance": false
+      }
+    },
+    "newNativeInputAcceptance": false
+  },
+  "BookwormConsumer": {
+    "accepted": true,
+    "sdkCommit": "76e2a2528ace782acaab5001717fe4015c40ba29",
+    "binaryBuildSDKCommit": "76e2a2528ace782acaab5001717fe4015c40ba29",
+    "driverSource": "9b44434c09c6fae60948266ea8a78683049b7e28",
+    "driverVersion": "0.38.0",
+    "LinuxUnitsPassed": 728,
+    "embeddedPassed": 275,
+    "nativeSavedByteCounts": [
+      29,
+      46
+    ],
+    "partialSaved": "par",
+    "partialEffect": "unknown",
+    "partialOneDispatch": true,
+    "typingAtDeadlineCodepoints": 49,
+    "typingFinalCodepoints": 1000,
+    "typingSavedBytes": 2750,
+    "queuedCancelledBeforeDispatch": true,
+    "followingWaitsForCompletion": true,
+    "strictBridgeRetainsApp": true,
+    "originalPID": 14345,
+    "replacementPID": 14407,
+    "reboundSavedSHA256": "60f2e56e7eab82cf3f5e888d7fea4af03dbdf8e0edeba9f8cb8fa5818296271f",
+    "ownedChildrenExitedUnforced": 3,
+    "supervisorsExitedUnforced": [
+      7,
+      3
+    ],
+    "browserAccepted": false,
+    "paidArms": 0,
+    "TLSOwnersPassed": 3,
+    "GTK4Owners": {
+      "gtk4-owner": {
+        "accepted": true,
+        "originalCountersEachOnce": true,
+        "successfulClicks": 3,
+        "supervisorsExitedUnforced": 4
+      },
+      "gtk4-popup": {
+        "accepted": true,
+        "originalCountersEachOnce": true,
+        "successfulClicks": 4,
+        "supervisorsExitedUnforced": 4,
+        "savedUTF8Bytes": 49,
+        "savedSHA256": "0ab6d45bbb5de12f6e4fc316b6395204e5496a907fd955f8b8d21b481de46f24",
+        "oneTypingDispatch": true,
+        "popupActivations": 0,
+        "entryActivations": 0
+      },
+      "gtk4-pixel-entry": {
+        "accepted": true,
+        "originalCountersEachOnce": true,
+        "successfulClicks": 5,
+        "supervisorsExitedUnforced": 4,
+        "savedUTF8Bytes": 49,
+        "savedSHA256": "0ab6d45bbb5de12f6e4fc316b6395204e5496a907fd955f8b8d21b481de46f24",
+        "oneTypingDispatch": true,
+        "popupActivations": 0,
+        "entryActivations": 0,
+        "captureBoundForegroundEntryFocus": true,
+        "consumedCaptureRefused": true,
+        "stalePopupRefused": true,
+        "screenshots": {
+          "entry-after-click.png": {
+            "SHA256": "9ca84812ff32529964998443c84842d352415fe3eaef6c2654333c54dc30ffde",
+            "width": 428,
+            "height": 329
+          },
+          "popup-final.png": {
+            "SHA256": "5d950d95ab41d84be2ee291327163d770fc385260fa5719d3515f0f655c13ed4",
+            "width": 428,
+            "height": 329
+          }
+        }
+      }
+    },
+    "GTK4UnsupportedFocus": {
+      "accepted": true,
+      "code": "native_focus_unavailable",
+      "nativeError": "org.freedesktop.DBus.Error.NotSupported",
+      "freshUnchangedSamples": 5,
+      "savedBytes": 0,
+      "oneExactForegroundRefDispatch": true,
+      "noFallbackOrReplay": true,
+      "supervisorsExitedUnforced": 4,
+      "screenshots": {
+        "before.png": {
+          "SHA256": "cf2da0191aa4c1b91ab90ae5cb2981ed9dd51fedde7e9c3d67b4c4bd6ac1a3cf",
+          "width": 428,
+          "height": 329
+        },
+        "after.png": {
+          "SHA256": "cf2da0191aa4c1b91ab90ae5cb2981ed9dd51fedde7e9c3d67b4c4bd6ac1a3cf",
+          "width": 428,
+          "height": 329
+        }
+      }
+    },
+    "GTK4SemanticEntryRefFocusAccepted": false,
+    "paidDispatchAllowed": false,
+    "fullMacAcceptance": false
+  },
+  "LinuxArchive": {
+    "file": "opensky-driver-0.38.0-9b44434c09c6fae60948266ea8a78683049b7e28-linux-x86_64-gnu-bookworm.tar.gz",
+    "sha256": "ed7cb28f2bb8bf806b6bc984b008595d64aca8d99c1ed5dc31899a4a11a8d94e",
+    "binarySHA256": "5054ba89d2d6cecbe1d569f0f283b0594589bca465f0e2df44f001e56a3406e8",
+    "directory": "opensky-driver-0.38.0-9b44434c09c6fae60948266ea8a78683049b7e28-linux-x86_64-gnu-bookworm",
+    "sourceCommit": "9b44434c09c6fae60948266ea8a78683049b7e28",
+    "version": "0.38.0"
+  },
+  "MacReadOnly": {
+    "source": "9b44434c09c6fae60948266ea8a78683049b7e28",
+    "exactOriginalCalendarPID": 84295,
+    "exactOriginalCalendarWindow": 54774,
+    "permissionsPreserved": true,
+    "stableSignerPreserved": true,
+    "actualObservationTimeoutMs": 250,
+    "actualObservationPollMs": 50,
+    "inputAcceptance": false
+  },
+  "agentParityScoreChanged": false
+}

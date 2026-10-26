@@ -13,12 +13,12 @@ interaction shape; unsupported capabilities are reported explicitly.
 ## Install
 
 ```sh
-npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.46/opensky-cua-0.2.46.tgz
+npm install -g https://github.com/tanishqkancharla/opensky/releases/download/v0.2.47/opensky-cua-0.2.47.tgz
 opensky doctor
 opensky skill install -g
 ```
 
-[OpenSky 0.2.46](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.46)
+[OpenSky 0.2.47](https://github.com/tanishqkancharla/opensky/releases/tag/v0.2.47)
 is distributed as the attached npm tarball with a published SHA-256 checksum.
 Registry publication awaits publisher authentication; the command above selects
 the released SDK directly. For a local project, omit `-g`.
@@ -203,6 +203,6 @@ When supplying a custom `DriverClient`, native observations must include the str
 
 Linux native foreground click [application evidence](docs/linux-native-foreground81.json) and [Rust HTTPS distrust validation](docs/tls-distrust81.json) accompany this release.
 
-OpenSky 0.2.46 preserves explicit unsupported GTK4 widget focus as an actionable SDK refusal. [Exact contract, calls and limits](docs/gtk4-focus-refusal101.md). [Capture-bound foreground input](docs/gtk4-entry96.md) remains a separately authorized route.
+OpenSky 0.2.47 caches static tool contracts: local metadata-only MCP startup measured 64 ms to 11 ms with identical tool definitions. [Measurement, pins and limits](docs/manifest-cache102.md). Explicit unsupported GTK4 widget focus remains an actionable SDK refusal. [Exact contract, calls and limits](docs/gtk4-focus-refusal101.md). [Capture-bound foreground input](docs/gtk4-entry96.md) remains a separately authorized route.
 
 Mac web typing safety: [actual application evidence and limitations](docs/web-typing-safety87.md).
